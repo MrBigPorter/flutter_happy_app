@@ -1,5 +1,6 @@
 // main.dart
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
 import 'package:easy_localization/easy_localization.dart';
 
@@ -26,7 +27,11 @@ Future<void> main() async {
       fallbackLocale: const Locale('en'),
       child: ChangeNotifierProvider.value(
         value: themeProvider,
-        child: MyApp(lightTokens: lightTokens, darkTokens: darkTokens),
+        child: ScreenUtilInit(
+          designSize: const Size(375, 812),
+          minTextAdapt: true,
+          builder: (_,__)=>MyApp(lightTokens: lightTokens, darkTokens: darkTokens)
+        )
       ),
     ),
   );

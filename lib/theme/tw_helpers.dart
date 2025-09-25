@@ -260,7 +260,7 @@ class TwContainer extends StatelessWidget {
   }
 
   BoxShadow _shadowLayer(BuildContext ctx, String tokenKey, {double blur = 6, double dx = 0, double dy = 1, double spread = 0}) {
-    final col = _token(ctx, tokenKey) ?? Colors.black.withOpacity(0.08);
+    final col = _token(ctx, tokenKey) ?? Colors.black.withValues(alpha: 0.08);
     return BoxShadow(color: col, blurRadius: blur, offset: Offset(dx, dy), spreadRadius: spread);
   }
 }

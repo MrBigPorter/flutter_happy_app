@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_app/components/base_scaffold.dart';
 
 class LoginPage extends StatelessWidget {
   final String id;
@@ -6,8 +7,10 @@ class LoginPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text('login #$id')),
+    return BaseScaffold(
+      body: Center(
+        child:Text("login page"),
+      ),
     );
   }
 }

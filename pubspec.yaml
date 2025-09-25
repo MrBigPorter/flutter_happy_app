@@ -42,6 +42,9 @@ dependencies:
   shared_preferences: ^2.0.15
   provider: ^6.0.3
 
+  # auto compute screen size
+  flutter_screenutil: ^5.9.0
+
   # json serialization and deserialization solution
   json_annotation: ^4.9.0
 
@@ -68,6 +71,9 @@ dev_dependencies:
   build_runner: ^2.4.0
   json_serializable: ^6.6.0
 
+  # svg image
+  flutter_svg: ^2.0.9
+
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
 
@@ -81,6 +87,7 @@ flutter:
 
   # To add assets to your application, add an assets section, like this:
   assets:
+    - assets/images/
     - assets/figma-tokens.light.json
     - assets/figma-tokens.dark.json
     - assets/tw_metrics.json
