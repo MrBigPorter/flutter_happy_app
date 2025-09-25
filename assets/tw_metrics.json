@@ -1,0 +1,26 @@
+{
+  "fontSize": {
+    "2xs": "10rem", "3xs": "8rem",
+    "xs": "12rem", "sm": "14rem", "md": "16rem", "lg": "18rem", "xl": "20rem",
+    "display_xs": "24rem", "display_sm": "30rem", "display_md": "36rem", "display_lg": "48rem", "display_xl": "60rem"
+  },
+  "lineHeight": {
+    "text_2xs": "14rem", "text_xs": "18rem", "text_sm": "20rem", "text_md": "24rem",
+    "text_lg": "28rem", "text_xl": "30rem",
+    "display_xs": "32rem", "display_sm": "38rem", "display_md": "44rem", "display_lg": "60rem", "display_xl": "72rem"
+  },
+  "spacing": {
+    "none": "0rem", "xxs": "2rem", "xs": "4rem", "sm": "6rem", "md": "8rem", "lg": "12rem", "xl": "16rem",
+    "2xl": "20rem", "3xl": "24rem", "4xl": "32rem", "5xl": "40rem", "6xl": "48rem",
+    "7xl": "64rem", "8xl": "80rem", "9xl": "96rem", "10xl": "128rem", "11xl": "160rem"
+  },
+  "borderRadius": {
+    "none": "0", "xxs": "2rem", "xs": "4rem", "sm": "6rem", "md": "8rem", "lg": "10rem", "xl": "12rem",
+    "2xl": "16rem", "3xl": "20rem", "4xl": "24rem", "full": "9999rem"
+  },
+  "width": {
+    "xxs": "320rem", "xs": "384rem", "sm": "480rem", "md": "560rem", "lg": "640rem", "xl": "768rem",
+    "2xl": "1024rem", "3xl": "1280rem", "4xl": "1440rem", "5xl": "1600rem", "6xl": "1920rem",
+    "paragraph-max-width": "720rem"
+  }
+}
