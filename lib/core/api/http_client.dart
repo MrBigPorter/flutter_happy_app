@@ -58,25 +58,25 @@ class Api {
             response.requestOptions.extra = {'noErrorToast': true};
             // clear token and redirect to login
             _clearToken();
-            AppRouter.replace("/login");
+            AppRouter.router.replace("/login");
           }
 
           // no address found, redirect to settings
           if(code == 92001){
             response.requestOptions.extra = {'noErrorToast': true};
-            AppRouter.push("/me/setting");
+            AppRouter.router.push("/me/setting");
           }
 
           // no kyc found, redirect to kyc
           if(code == 93001){
             response.requestOptions.extra = {'noErrorToast': true};
-            AppRouter.push("/me/kyc/verify");
+            AppRouter.router.push("/me/kyc/verify");
           }
 
           // phone not bound, redirect to bind phone
           if(code == 18023){
             response.requestOptions.extra = {'noErrorToast': true};
-             AppRouter.push("/me/bind-phone");
+             AppRouter.router.push("/me/bind-phone");
           }
 
           // show error toast

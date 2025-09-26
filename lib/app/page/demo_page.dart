@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
-import '../routes/route_generator.dart'; //
+import 'package:go_router/go_router.dart';
 
 class DemoPage extends StatelessWidget {
   final VoidCallback onToggleTheme;
@@ -46,7 +46,7 @@ class DemoPage extends StatelessWidget {
             // ✅ 路由跳转到 Login
             FilledButton(
               onPressed: () {
-                Navigator.pushNamed(context, AppRoutes.login);
+                context.push('/login');
               },
               child: const Text("Go to Login"),
             ),

@@ -1,53 +1,44 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_app/app/routes/app_router.dart';
 import 'package:flutter_app/common.dart';
-import 'package:flutter_app/components/lucky_tab_bar.dart';
 import 'package:provider/provider.dart';
 import 'package:easy_localization/easy_localization.dart';
 
 import '../../theme/theme_provider.dart';
-import 'page/demo_page.dart';
-import 'routes/route_generator.dart';
 
 // app/app.dart（改成无异步，首帧即最终主题）
 class MyApp extends StatelessWidget {
-  const MyApp({super.key, required this.lightTokens, required this.darkTokens});
-  final TokenTheme lightTokens;
-  final TokenTheme darkTokens;
+  const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     final themeProvider = context.watch<ThemeProvider>();
-    return MaterialApp(
+    return MaterialApp.router(
       title: 'Lucky App',
-      onGenerateRoute: RouteGenerator.generateRoute,
-      navigatorKey: AppRouter.navigatorKey,
+      routerConfig: AppRouter.router,
       themeMode: themeProvider.themeMode,
-      theme: _buildTheme(lightTokens, dark: false),
-      darkTheme: _buildTheme(darkTokens, dark: true),
+      theme: _buildTheme(false),
+      darkTheme: _buildTheme(true),
       localizationsDelegates: context.localizationDelegates,
       supportedLocales: context.supportedLocales,
       locale: context.locale,
-      home: LuckyTabBar(),
     );
   }
 }
 
-ThemeData _buildTheme(TokenTheme tokens, {required bool dark}) {
-  final cs = ColorScheme.fromSeed(
-    seedColor: tokens.color('colors_foreground_fg_brand_primary') ?? Colors.deepPurple,
-    brightness: dark ? Brightness.dark : Brightness.light,
-  ).copyWith(
-    surface: tokens.color('colors_background_bg_primary'),
-  );
+ThemeData _buildTheme(bool dark) {
+  final brightness = dark ? Brightness.dark : Brightness.light;
 
+  final cs = ColorScheme.fromSeed(
+    seedColor: Colors.deepOrange,
+    brightness: brightness,
+  ).copyWith(
+    surface: brightness == Brightness.dark ? TokensDark.bgPrimary : TokensLight.bgBrandPrimary,
+  );
   return ThemeData(
     useMaterial3: true,
-    brightness: dark ? Brightness.dark : Brightness.light,
+    brightness: brightness,
     colorScheme: cs,
-    scaffoldBackgroundColor:
-    tokens.color('colors_background_bg_secondary') ??
-        (dark ? Colors.black : Colors.white),
-    extensions: [tokens],
+    scaffoldBackgroundColor: brightness == Brightness.dark ? TokensDark.bgSecondary : TokensLight.bgSecondary,
   );
 }

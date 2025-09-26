@@ -6,3 +6,6 @@ export 'core/api/index.dart';
 export 'core/store/lucky_store.dart';
 // === Models (数据结构) ===
 export 'core/models/index.dart';
+
+export 'theme/design_tokens.g.dart';
+

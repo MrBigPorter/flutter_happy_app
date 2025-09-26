@@ -31,7 +31,7 @@ class BaseScaffold extends StatelessWidget {
           ? AppBar(
               title: title != null
                   ? Text(title!)
-                  : Image.asset('assets/images/logo.png', height: 32),
+                  : Image.asset('/images/logo.png', height: 32),
               centerTitle: true,
               leading: showBack
                   ? IconButton(

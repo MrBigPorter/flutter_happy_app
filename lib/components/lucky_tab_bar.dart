@@ -1,87 +1,86 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_app/app/page/me_page.dart';
-import 'package:flutter_app/app/page/product_detail_page.dart';
 import 'package:flutter_app/common.dart';
-import 'package:flutter_app/tw/tw_metrics.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:go_router/go_router.dart';
 
-import '../app/page/home_page.dart';
-import '../app/page/winners_page.dart';
+class LuckyTabBar extends StatelessWidget {
+  final Widget child;
 
-class LuckyTabBar extends StatefulWidget {
-   const LuckyTabBar({super.key});
-   @override
-   State<LuckyTabBar>  createState() => _LuckyTabBarState();
-}
+  const LuckyTabBar({super.key, required this.child});
 
-class _LuckyTabBarState extends State<LuckyTabBar> {
-  int _currentIndex = 0;
-
-  final List<Widget> _pages = [
-    KeepAliveWrapper(child: HomePage(id: '',)),
-    KeepAliveWrapper(child: ProductDetailPage(id: '')),
-    KeepAliveWrapper(child: WinnersPage() ),
-    KeepAliveWrapper(child: MePage() ),
-  ];
-
-
-  final List<_TabItem> _tabs = const  [
+  final List<_TabItem> _tabs = const [
     _TabItem(
-      label: "Home",
+      label: "common.tabbar.home",
       icon: "images/TabBar/home.svg",
       activeIcon: "images/TabBar/home_active.svg",
+      location: "/home",
     ),
     _TabItem(
-      label: "Product",
+      label: "common.tabbar.product",
       icon: "images/TabBar/product.svg",
       activeIcon: "images/TabBar/product_active.svg",
+      location: "/product",
     ),
     _TabItem(
-      label: "Winners",
+      label: "common.tabbar.winners",
       icon: "images/TabBar/winners.svg",
       activeIcon: "images/TabBar/winners_active.svg",
+      location: "/winners",
     ),
     _TabItem(
-      label: "Me",
+      label: "common.tabbar.me",
       icon: "images/TabBar/me.svg",
       activeIcon: "images/TabBar/me_active.svg",
+      location: "/me",
     ),
   ];
+
   @override
-  Widget build(BuildContext content){
+  Widget build(BuildContext context) {
+    final String location = GoRouterState.of(context).uri.toString();
+     int currentIndex = _tabs.indexWhere(
+      (tab) => location.startsWith(tab.location),
+    );
+    if (currentIndex == -1) currentIndex = 0;
     return Scaffold(
-      body: IndexedStack(
-        index: _currentIndex,
-        children: _pages,
-      ),
+      body: child,
       bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        onTap: (index) => setState(()=> _currentIndex = index),
+        currentIndex: currentIndex,
+        onTap: (index) {
+          context.go(_tabs[index].location);
+        },
         type: BottomNavigationBarType.fixed,
-        selectedItemColor:content.foregroundFgBrandPrimary,
-        unselectedItemColor: content.foregroundFgQuinary400 ,
+        selectedItemColor: context.fgBrandPrimary,
+        unselectedItemColor: context.fgQuinary400,
         selectedLabelStyle: TextStyle(
-          fontSize: content.text2xs,
+          fontSize: context.text2xs,
           fontWeight: FontWeight.w600,
         ),
-        items: _tabs.asMap().entries.map((entry){
+        items: _tabs.asMap().entries.map((entry) {
           final tab = entry.value;
           return BottomNavigationBarItem(
             icon: SvgPicture.asset(
               tab.icon,
               width: 24,
               height: 24,
-              colorFilter: ColorFilter.mode(content.foregroundFgQuinary400 ?? Color(#a3a7ae as int), BlendMode.srcIn),
+              colorFilter: ColorFilter.mode(
+                context.fgQuinary400,
+                BlendMode.srcIn,
+              ),
             ),
             activeIcon: SvgPicture.asset(
               tab.activeIcon,
               width: 24,
               height: 24,
-              colorFilter: ColorFilter.mode(content.foregroundFgBrandPrimary ?? Color(#fc7701 as int), BlendMode.srcIn),
+              colorFilter: ColorFilter.mode(
+                context.fgBrandPrimary,
+                BlendMode.srcIn,
+              ),
             ),
-            label: tab.label,
+            label: tab.label.tr(),
           );
-        }).toList()
+        }).toList(),
       ),
     );
   }
@@ -89,13 +88,15 @@ class _LuckyTabBarState extends State<LuckyTabBar> {
 
 class KeepAliveWrapper extends StatefulWidget {
   final Widget child;
-  const KeepAliveWrapper({super.key,required this.child});
+
+  const KeepAliveWrapper({super.key, required this.child});
 
   @override
   State<KeepAliveWrapper> createState() => KeepAliveWrapperState();
 }
 
-class KeepAliveWrapperState extends State<KeepAliveWrapper> with AutomaticKeepAliveClientMixin{
+class KeepAliveWrapperState extends State<KeepAliveWrapper>
+    with AutomaticKeepAliveClientMixin {
   @override
   bool get wantKeepAlive => true;
 
@@ -111,10 +112,12 @@ class _TabItem {
   final String label;
   final String icon;
   final String activeIcon;
+  final String location;
 
   const _TabItem({
     required this.label,
     required this.icon,
     required this.activeIcon,
+    required this.location,
   });
 }

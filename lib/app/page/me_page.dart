@@ -5,8 +5,9 @@ class MePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Text("Me Page"),
+    return Scaffold(
+     appBar: AppBar(title: Text('Me')),
+      body: Center(child: Text("个人重心个人重心个人重心个人重心个人重心个人重心个人重心个人重心个人重心个人重心个人重心个人重心个人重心个人重心个人重心个人重心个人重心个人重心个人重心个人重心个人重心个人重心个人重心"),),
     );
   }
 }
