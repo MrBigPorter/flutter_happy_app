@@ -1,0 +1,19 @@
+{
+  "code": 10000,
+  "message": "success",
+  "tid": "a22b43c76a5c54f6f1b91bd6b4a2549d",
+  "data": {
+    "default_1": "https://test-pesolucky.s3.ap-east-1.amazonaws.com/default/Avatar01.png",
+    "default_2": "https://test-pesolucky.s3.ap-east-1.amazonaws.com/default/Avatar02.png",
+    "default_3": "https://test-pesolucky.s3.ap-east-1.amazonaws.com/default/Avatar03.png",
+    "default_4": "https://test-pesolucky.s3.ap-east-1.amazonaws.com/default/Avatar04.png",
+    "default_5": "https://test-pesolucky.s3.ap-east-1.amazonaws.com/default/Avatar05.png",
+    "default_6": "https://test-pesolucky.s3.ap-east-1.amazonaws.com/default/Avatar06.png",
+    "default_7": "https://test-pesolucky.s3.ap-east-1.amazonaws.com/default/Avatar07.png",
+    "default_8": "https://test-pesolucky.s3.ap-east-1.amazonaws.com/default/Avatar08.png",
+    "default_9": "https://test-pesolucky.s3.ap-east-1.amazonaws.com/default/Avatar09.png",
+    "default_10": "https://test-pesolucky.s3.ap-east-1.amazonaws.com/default/Avatar10.png",
+    "default_11": "https://test-pesolucky.s3.ap-east-1.amazonaws.com/default/Avatar11.png",
+    "default_12": "https://test-pesolucky.s3.ap-east-1.amazonaws.com/default/Avatar12.png"
+  }
+}

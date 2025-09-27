@@ -1,18 +1,24 @@
 import 'package:json_annotation/json_annotation.dart';
 part 'user_info.g.dart';
 
-@JsonSerializable()
+@JsonSerializable(checked: true)
 class UserInfo {
   final String id;
   final String nickname;
   final String avatar;
+  @JsonKey(name: 'phone_md5')
   final String phoneMd5;
   final String phone;
+  @JsonKey(name: 'invite_code')
   final String inviteCode;
   final int vipLevel;
+  @JsonKey(name: 'last_login_at')
   final int lastLoginAt;
+  @JsonKey(name: 'kyc_status')
   final int? kycStatus;
+  @JsonKey(name: 'delivery_address_id')
   final int deliveryAddressId;
+  @JsonKey(name: 'self_exclusion_expire_at')
   final int selfExclusionExpireAt;
 
   UserInfo({

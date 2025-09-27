@@ -1,0 +1,193 @@
+{
+  "code": 10000,
+  "message": "success",
+  "tid": "2673764aab5501fc50a47800a6754cbd",
+  "data": {
+    "page": 1,
+    "size": 10,
+    "count": 0,
+    "total": 500,
+    "list": [
+      {
+        "group_id": "584239367690649859",
+        "joined_num": 1,
+        "leader_username": "lizzie9",
+        "leader_avatar": "https://prod-pesolucky.s3.ap-east-1.amazonaws.com/default/Avatar01.png",
+        "lucky_winners_count": 0,
+        "total_winning_times": 0,
+        "group_user": [
+          {
+            "user_id": 584238315222335747,
+            "username": "lizzie9",
+            "avatar": "https://prod-pesolucky.s3.ap-east-1.amazonaws.com/default/Avatar01.png",
+            "created_at": 1757763399759,
+            "leader_user_id": 584238315222335747,
+            "leader_username": "lizzie9"
+          }
+        ]
+      },
+      {
+        "group_id": "584239358479958274",
+        "joined_num": 1,
+        "leader_username": "lizzie9",
+        "leader_avatar": "https://prod-pesolucky.s3.ap-east-1.amazonaws.com/default/Avatar01.png",
+        "lucky_winners_count": 0,
+        "total_winning_times": 0,
+        "group_user": [
+          {
+            "user_id": 584238315222335747,
+            "username": "lizzie9",
+            "avatar": "https://prod-pesolucky.s3.ap-east-1.amazonaws.com/default/Avatar01.png",
+            "created_at": 1757763394262,
+            "leader_user_id": 584238315222335747,
+            "leader_username": "lizzie9"
+          }
+        ]
+      },
+      {
+        "group_id": "584235760891199747",
+        "joined_num": 1,
+        "leader_username": "pl_584235520507248899",
+        "leader_avatar": "https://prod-pesolucky.s3.ap-east-1.amazonaws.com/default/Avatar01.png",
+        "lucky_winners_count": 0,
+        "total_winning_times": 0,
+        "group_user": [
+          {
+            "user_id": 584235520507248899,
+            "username": "pl_584235520507248899",
+            "avatar": "https://prod-pesolucky.s3.ap-east-1.amazonaws.com/default/Avatar01.png",
+            "created_at": 1757761249935,
+            "leader_user_id": 584235520507248899,
+            "leader_username": "pl_584235520507248899"
+          }
+        ]
+      },
+      {
+        "group_id": "584217740013732098",
+        "joined_num": 1,
+        "leader_username": "pl_581788518842368259",
+        "leader_avatar": "https://prod-pesolucky.s3.ap-east-1.amazonaws.com/default/Avatar01.png",
+        "lucky_winners_count": 0,
+        "total_winning_times": 0,
+        "group_user": [
+          {
+            "user_id": 581788518842368259,
+            "username": "pl_581788518842368259",
+            "avatar": "https://prod-pesolucky.s3.ap-east-1.amazonaws.com/default/Avatar01.png",
+            "created_at": 1757750508659,
+            "leader_user_id": 581788518842368259,
+            "leader_username": "pl_581788518842368259"
+          }
+        ]
+      },
+      {
+        "group_id": "584203973704024321",
+        "joined_num": 1,
+        "leader_username": "pl_584203535785132290",
+        "leader_avatar": "https://prod-pesolucky.s3.ap-east-1.amazonaws.com/default/Avatar01.png",
+        "lucky_winners_count": 0,
+        "total_winning_times": 0,
+        "group_user": [
+          {
+            "user_id": 584203535785132290,
+            "username": "pl_584203535785132290",
+            "avatar": "https://prod-pesolucky.s3.ap-east-1.amazonaws.com/default/Avatar01.png",
+            "created_at": 1757742303295,
+            "leader_user_id": 584203535785132290,
+            "leader_username": "pl_584203535785132290"
+          }
+        ]
+      },
+      {
+        "group_id": "584199564081234178",
+        "joined_num": 1,
+        "leader_username": "pl_584199421189685506",
+        "leader_avatar": "https://prod-pesolucky.s3.ap-east-1.amazonaws.com/default/Avatar01.png",
+        "lucky_winners_count": 0,
+        "total_winning_times": 0,
+        "group_user": [
+          {
+            "user_id": 584199421189685506,
+            "username": "pl_584199421189685506",
+            "avatar": "https://prod-pesolucky.s3.ap-east-1.amazonaws.com/default/Avatar01.png",
+            "created_at": 1757739674953,
+            "leader_user_id": 584199421189685506,
+            "leader_username": "pl_584199421189685506"
+          }
+        ]
+      },
+      {
+        "group_id": "584199545341083906",
+        "joined_num": 1,
+        "leader_username": "pl_584199421189685506",
+        "leader_avatar": "https://prod-pesolucky.s3.ap-east-1.amazonaws.com/default/Avatar01.png",
+        "lucky_winners_count": 0,
+        "total_winning_times": 0,
+        "group_user": [
+          {
+            "user_id": 584199421189685506,
+            "username": "pl_584199421189685506",
+            "avatar": "https://prod-pesolucky.s3.ap-east-1.amazonaws.com/default/Avatar01.png",
+            "created_at": 1757739663789,
+            "leader_user_id": 584199421189685506,
+            "leader_username": "pl_584199421189685506"
+          }
+        ]
+      },
+      {
+        "group_id": "584197162120773889",
+        "joined_num": 1,
+        "leader_username": "pl_584196710562005251",
+        "leader_avatar": "https://prod-pesolucky.s3.ap-east-1.amazonaws.com/default/Avatar01.png",
+        "lucky_winners_count": 0,
+        "total_winning_times": 0,
+        "group_user": [
+          {
+            "user_id": 584196710562005251,
+            "username": "pl_584196710562005251",
+            "avatar": "https://prod-pesolucky.s3.ap-east-1.amazonaws.com/default/Avatar01.png",
+            "created_at": 1757738243275,
+            "leader_user_id": 584196710562005251,
+            "leader_username": "pl_584196710562005251"
+          }
+        ]
+      },
+      {
+        "group_id": "584197039512879361",
+        "joined_num": 1,
+        "leader_username": "pl_584196710562005251",
+        "leader_avatar": "https://prod-pesolucky.s3.ap-east-1.amazonaws.com/default/Avatar01.png",
+        "lucky_winners_count": 0,
+        "total_winning_times": 0,
+        "group_user": [
+          {
+            "user_id": 584196710562005251,
+            "username": "pl_584196710562005251",
+            "avatar": "https://prod-pesolucky.s3.ap-east-1.amazonaws.com/default/Avatar01.png",
+            "created_at": 1757738170192,
+            "leader_user_id": 584196710562005251,
+            "leader_username": "pl_584196710562005251"
+          }
+        ]
+      },
+      {
+        "group_id": "584189367912759554",
+        "joined_num": 1,
+        "leader_username": "pl_572932064484000002",
+        "leader_avatar": "https://prod-pesolucky.s3.ap-east-1.amazonaws.com/default/Avatar01.png",
+        "lucky_winners_count": 0,
+        "total_winning_times": 0,
+        "group_user": [
+          {
+            "user_id": 572932064484000002,
+            "username": "pl_572932064484000002",
+            "avatar": "https://prod-pesolucky.s3.ap-east-1.amazonaws.com/default/Avatar01.png",
+            "created_at": 1757733597563,
+            "leader_user_id": 572932064484000002,
+            "leader_username": "pl_572932064484000002"
+          }
+        ]
+      }
+    ]
+  }
+}

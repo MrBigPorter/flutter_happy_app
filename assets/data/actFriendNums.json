@@ -1,0 +1,19 @@
+{
+  "code": 10000,
+  "message": "success",
+  "tid": "1a077fda0d27e2e6d50c196761d9788e",
+  "data": {
+    "total_invites": 0,
+    "first_bet_person_nums": 0,
+    "total_coins": 0,
+    "coupon_amount": 0,
+    "invitee_registered_coin": 0,
+    "inviter_registered_coin": 0,
+    "inviter_first_coin": 0,
+    "invitee_registered_coupon": 0,
+    "inviter_first_coupon": 0,
+    "invitee_first_coupon": 0,
+    "state_coin": 1,
+    "state_coupon": 0
+  }
+}

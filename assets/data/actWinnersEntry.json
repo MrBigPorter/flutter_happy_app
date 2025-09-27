@@ -1,0 +1,20 @@
+{
+  "code": 10000,
+  "message": "success",
+  "tid": "ce4a102833d83c61dc294f56634d98db",
+  "data": {
+    "page": 1,
+    "size": 10,
+    "count": 0,
+    "total": 1,
+    "list": [
+      {
+        "user_id": 563631382262185994,
+        "Username": "Pineapple",
+        "avatar": "https://test-pesolucky.s3.ap-east-1.amazonaws.com/default/Avatar08.png",
+        "created_at": 1757677037261,
+        "user_buy_quantity": 1
+      }
+    ]
+  }
+}

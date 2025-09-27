@@ -1,0 +1,23 @@
+{
+  "code": 10000,
+  "message": "success",
+  "tid": "828b6e2723daa631d947190fad12df1e",
+  "data": {
+    "reward_coin": 10,
+    "coupon_info": {
+      "id": 0,
+      "coupon_name": "",
+      "act_start_at": 0,
+      "act_end_at": 0,
+      "threshold_start": 0,
+      "reward_amount": 0,
+      "rule_type": 0,
+      "created_at": 0,
+      "has_coupon": 0,
+      "use_start_at": 0,
+      "use_end_at": 0,
+      "use_days": 0,
+      "user_type": 0
+    }
+  }
+}

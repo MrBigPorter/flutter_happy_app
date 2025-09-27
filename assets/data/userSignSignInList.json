@@ -1,0 +1,312 @@
+{
+  "code": 10000,
+  "message": "success",
+  "tid": "a2e9061d0ff7c7ee36aef06e342353cc",
+  "data": [
+    {
+      "date": "2025-08-15",
+      "if_sign_in": 1,
+      "reward": 0
+    },
+    {
+      "date": "2025-08-16",
+      "if_sign_in": 1,
+      "reward": 0
+    },
+    {
+      "date": "2025-08-17",
+      "if_sign_in": 1,
+      "reward": 0
+    },
+    {
+      "date": "2025-08-18",
+      "if_sign_in": 1,
+      "reward": 0
+    },
+    {
+      "date": "2025-08-19",
+      "if_sign_in": 1,
+      "reward": 0
+    },
+    {
+      "date": "2025-08-20",
+      "if_sign_in": 1,
+      "reward": 0
+    },
+    {
+      "date": "2025-08-21",
+      "if_sign_in": 1,
+      "reward": 0
+    },
+    {
+      "date": "2025-08-22",
+      "if_sign_in": 1,
+      "reward": 0
+    },
+    {
+      "date": "2025-08-23",
+      "if_sign_in": 1,
+      "reward": 0
+    },
+    {
+      "date": "2025-08-24",
+      "if_sign_in": 1,
+      "reward": 0
+    },
+    {
+      "date": "2025-08-25",
+      "if_sign_in": 1,
+      "reward": 0
+    },
+    {
+      "date": "2025-08-26",
+      "if_sign_in": 1,
+      "reward": 0
+    },
+    {
+      "date": "2025-08-27",
+      "if_sign_in": 1,
+      "reward": 0
+    },
+    {
+      "date": "2025-08-28",
+      "if_sign_in": 1,
+      "reward": 0
+    },
+    {
+      "date": "2025-08-29",
+      "if_sign_in": 1,
+      "reward": 0
+    },
+    {
+      "date": "2025-08-30",
+      "if_sign_in": 1,
+      "reward": 0
+    },
+    {
+      "date": "2025-08-31",
+      "if_sign_in": 1,
+      "reward": 0
+    },
+    {
+      "date": "2025-09-01",
+      "if_sign_in": 1,
+      "reward": 0
+    },
+    {
+      "date": "2025-09-02",
+      "if_sign_in": 1,
+      "reward": 0
+    },
+    {
+      "date": "2025-09-03",
+      "if_sign_in": 1,
+      "reward": 0
+    },
+    {
+      "date": "2025-09-04",
+      "if_sign_in": 1,
+      "reward": 0
+    },
+    {
+      "date": "2025-09-05",
+      "if_sign_in": 1,
+      "reward": 0
+    },
+    {
+      "date": "2025-09-06",
+      "if_sign_in": 1,
+      "reward": 0
+    },
+    {
+      "date": "2025-09-07",
+      "if_sign_in": 1,
+      "reward": 0
+    },
+    {
+      "date": "2025-09-08",
+      "if_sign_in": 1,
+      "reward": 0
+    },
+    {
+      "date": "2025-09-09",
+      "if_sign_in": 1,
+      "reward": 0
+    },
+    {
+      "date": "2025-09-10",
+      "if_sign_in": 1,
+      "reward": 0
+    },
+    {
+      "date": "2025-09-11",
+      "if_sign_in": 1,
+      "reward": 0
+    },
+    {
+      "date": "2025-09-12",
+      "if_sign_in": 2,
+      "reward": 0
+    },
+    {
+      "date": "2025-09-13",
+      "if_sign_in": 1,
+      "reward": 0
+    },
+    {
+      "date": "2025-09-14",
+      "if_sign_in": 1,
+      "reward": 10
+    },
+    {
+      "date": "2025-09-15",
+      "if_sign_in": 1,
+      "reward": 15
+    },
+    {
+      "date": "2025-09-16",
+      "if_sign_in": 1,
+      "reward": 20
+    },
+    {
+      "date": "2025-09-17",
+      "if_sign_in": 1,
+      "reward": 35
+    },
+    {
+      "date": "2025-09-18",
+      "if_sign_in": 1,
+      "reward": 40
+    },
+    {
+      "date": "2025-09-19",
+      "if_sign_in": 1,
+      "reward": 60
+    },
+    {
+      "date": "2025-09-20",
+      "if_sign_in": 1,
+      "reward": 60
+    },
+    {
+      "date": "2025-09-21",
+      "if_sign_in": 1,
+      "reward": 60
+    },
+    {
+      "date": "2025-09-22",
+      "if_sign_in": 1,
+      "reward": 60
+    },
+    {
+      "date": "2025-09-23",
+      "if_sign_in": 1,
+      "reward": 60
+    },
+    {
+      "date": "2025-09-24",
+      "if_sign_in": 1,
+      "reward": 60
+    },
+    {
+      "date": "2025-09-25",
+      "if_sign_in": 1,
+      "reward": 60
+    },
+    {
+      "date": "2025-09-26",
+      "if_sign_in": 1,
+      "reward": 60
+    },
+    {
+      "date": "2025-09-27",
+      "if_sign_in": 1,
+      "reward": 60
+    },
+    {
+      "date": "2025-09-28",
+      "if_sign_in": 1,
+      "reward": 60
+    },
+    {
+      "date": "2025-09-29",
+      "if_sign_in": 1,
+      "reward": 60
+    },
+    {
+      "date": "2025-09-30",
+      "if_sign_in": 1,
+      "reward": 60
+    },
+    {
+      "date": "2025-10-01",
+      "if_sign_in": 1,
+      "reward": 60
+    },
+    {
+      "date": "2025-10-02",
+      "if_sign_in": 1,
+      "reward": 60
+    },
+    {
+      "date": "2025-10-03",
+      "if_sign_in": 1,
+      "reward": 60
+    },
+    {
+      "date": "2025-10-04",
+      "if_sign_in": 1,
+      "reward": 60
+    },
+    {
+      "date": "2025-10-05",
+      "if_sign_in": 1,
+      "reward": 60
+    },
+    {
+      "date": "2025-10-06",
+      "if_sign_in": 1,
+      "reward": 60
+    },
+    {
+      "date": "2025-10-07",
+      "if_sign_in": 1,
+      "reward": 60
+    },
+    {
+      "date": "2025-10-08",
+      "if_sign_in": 1,
+      "reward": 60
+    },
+    {
+      "date": "2025-10-09",
+      "if_sign_in": 1,
+      "reward": 60
+    },
+    {
+      "date": "2025-10-10",
+      "if_sign_in": 1,
+      "reward": 60
+    },
+    {
+      "date": "2025-10-11",
+      "if_sign_in": 1,
+      "reward": 60
+    },
+    {
+      "date": "2025-10-12",
+      "if_sign_in": 1,
+      "reward": 60
+    },
+    {
+      "date": "2025-10-13",
+      "if_sign_in": 1,
+      "reward": 60
+    },
+    {
+      "date": "2025-10-14",
+      "if_sign_in": 1,
+      "reward": 60
+    }
+  ]
+}

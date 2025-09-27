@@ -1,0 +1,32 @@
+{
+  "code": 10000,
+  "message": "success",
+  "tid": "69cd12902ac29bf8dae43835edc4b7f8",
+  "data": [
+    {
+      "id": 1,
+      "type_name": "Ticket Types:",
+      "create_at": 1747045874378
+    },
+    {
+      "id": 2,
+      "type_name": "Rules Help",
+      "create_at": 1747045874378
+    },
+    {
+      "id": 3,
+      "type_name": "Result Issue",
+      "create_at": 1747045874378
+    },
+    {
+      "id": 4,
+      "type_name": "Payment Help",
+      "create_at": 1747045874378
+    },
+    {
+      "id": 5,
+      "type_name": "Prize Issue",
+      "create_at": 1747045874378
+    }
+  ]
+}

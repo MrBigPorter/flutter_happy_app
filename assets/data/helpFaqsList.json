@@ -1,0 +1,41 @@
+{
+  "code": 10000,
+  "message": "success",
+  "tid": "d429da434ed17b3a990bcb5035d43fcf",
+  "data": [
+    {
+      "id": 216,
+      "category_content": "Hot issue",
+      "questions": [
+        {
+          "description": "How can I check if I won a raffle I joined?",
+          "solution": "Go to Account \u003e My Raffle Tickets to see the raffles you have joined or are currently participating in, and check the results. And don’t miss out! Prizes expire 14 days after winning. "
+        },
+        {
+          "description": "How can I claim and use coupons?",
+          "solution": "You can view your available coupons under Account, or tap the coupon banner on the prize page if you meet the claim conditions. Coupons can be applied directly when purchasing raffle tickets on the corresponding prize page."
+        },
+        {
+          "description": "What if I entered the wrong shipping address?",
+          "solution": "Please double-check your address before purchasing tickets. The platform will use the default address you provided for prize delivery. If a prize is sent to the wrong address due to incorrect information, the platform will not be responsible for compensation."
+        },
+        {
+          "description": "Do I have to join a team to participate in the raffle?",
+          "solution": "No, joining a team is optional. The difference is : If the winner is a team member, a Lucky Coin Grab Bag will be randomly distributed to other team members. If you’re not in a team, you can only get the prize when you win."
+        },
+        {
+          "description": "How can I earn and use Lucky Coins?",
+          "solution": "By participating in any raffle, you have a chance to earn Lucky Coins. Lucky Coins can be partially used to offset the cost of raffle tickets. 10 Lucky Coins = ₱1."
+        },
+        {
+          "description": "How can I invite friends?",
+          "solution": "Go to Account \u003e Invite Friends, copy your referral link, and share it on social media. Your friends can register by clicking the link."
+        },
+        {
+          "description": "How can I purchase raffle tickets to join the draw?",
+          "solution": "Once you complete mobile verification and KYC verification, you can immediately purchase raffle tickets to participate in the draw."
+        }
+      ]
+    }
+  ]
+}

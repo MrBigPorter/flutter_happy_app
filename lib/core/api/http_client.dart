@@ -14,9 +14,10 @@ import 'package:flutter_app/app/routes/app_router.dart';
 ///   Api.post('/path', data: {...});
 ///   Api.put('/path', data: {...});
 ///   Api.delete('/path', data: {...});
-class Api {
+class HttpClient {
   // Base URL for the API
-  static const String baseUrl = 'https://api.example.com';
+  // static const String baseUrl = 'https://api.example.com';
+  static const String baseUrl = 'http://127.0.0.1:5173';
   // Success and token error codes
   static const List<int> successCodes = [10000];
   // Codes indicating token issues

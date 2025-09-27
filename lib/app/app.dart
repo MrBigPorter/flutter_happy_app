@@ -40,5 +40,14 @@ ThemeData _buildTheme(bool dark) {
     brightness: brightness,
     colorScheme: cs,
     scaffoldBackgroundColor: brightness == Brightness.dark ? TokensDark.bgSecondary : TokensLight.bgSecondary,
+    pageTransitionsTheme: const PageTransitionsTheme(
+      builders: {
+        TargetPlatform.android: CupertinoPageTransitionsBuilder(),
+        TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+        TargetPlatform.linux: CupertinoPageTransitionsBuilder(),
+        TargetPlatform.macOS: CupertinoPageTransitionsBuilder(),
+        TargetPlatform.windows: CupertinoPageTransitionsBuilder(),
+    }
+    )
   );
 }

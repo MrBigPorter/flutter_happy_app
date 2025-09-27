@@ -1,0 +1,25 @@
+{
+  "code": 10000,
+  "message": "success",
+  "tid": "f261d8071166edb6f2065cf4af13ea5a",
+  "data": [
+    {
+      "id": 1,
+      "name": "QR VIA GCASH",
+      "use_channel": 3,
+      "use_channel_name": "mpay",
+      "icon_url": "",
+      "min_amount": 100,
+      "max_amount": 50000
+    },
+    {
+      "id": 3,
+      "name": "qrph",
+      "use_channel": 2,
+      "use_channel_name": "Payloro",
+      "icon_url": "",
+      "min_amount": 200,
+      "max_amount": 5000
+    }
+  ]
+}

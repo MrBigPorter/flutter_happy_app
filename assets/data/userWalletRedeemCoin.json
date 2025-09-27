@@ -1,0 +1,15 @@
+{
+  "code": 10000,
+  "message": "Redeem code not found",
+  "tid": "874ddca31cdba4b5632f1c1e60088b51",
+  "data": {
+    "code_type": 1,
+    "ts": 1755078201729,
+    "amount": 200,
+    "threshold_start": 200,
+    "coupon_name": "Test Redeem Code",
+    "coupon_desc": "This is a test redeem code for demonstration purposes.",
+    "use_start_at": 1755078201729,
+    "valid_end": 1786614201729
+  }
+}

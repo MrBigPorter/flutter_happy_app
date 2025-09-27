@@ -1,0 +1,47 @@
+{
+  "code": 10000,
+  "message": "success",
+  "tid": "f288f2926b22a44954d9530b2fd1d30b",
+  "data": [
+    {
+      "treasure_id": 120,
+      "treasure_name": "Win ₱1,500 Cash",
+      "main_image_list": [
+        "https://prod-pesolucky.s3.ap-east-1.amazonaws.com/avatar/202508191028190c6149a4-8668-462a-b11a-a1dfccb5e5ed.png"
+      ],
+      "winner_name": "p*******************1"
+    },
+    {
+      "treasure_id": 18,
+      "treasure_name": "Win ₱3,800 or Inifinix Smart 9",
+      "main_image_list": [
+        "https://prod-pesolucky.s3.ap-east-1.amazonaws.com/avatar/20250820131851c0c36c21-2be7-4488-9266-f432e4462920.jpg"
+      ],
+      "winner_name": "n****8"
+    },
+    {
+      "treasure_id": 119,
+      "treasure_name": "Win ₱500 Cash\t",
+      "main_image_list": [
+        "https://prod-pesolucky.s3.ap-east-1.amazonaws.com/avatar/20250718104158c03f4b6b-7fc8-4a41-9e7d-b638959a2ba3.png"
+      ],
+      "winner_name": "p*******************2"
+    },
+    {
+      "treasure_id": 104,
+      "treasure_name": "Win ₱550 or POPMART!!!",
+      "main_image_list": [
+        "https://prod-pesolucky.s3.ap-east-1.amazonaws.com/avatar/202508181654468b6a29b4-49f3-4242-97c9-39c732cb8f78.jpg"
+      ],
+      "winner_name": "p*******************0"
+    },
+    {
+      "treasure_id": 118,
+      "treasure_name": "Win ₱200 Cash",
+      "main_image_list": [
+        "https://prod-pesolucky.s3.ap-east-1.amazonaws.com/avatar/20250805105241df87e423-2ffe-4311-b9da-2395add876ac.png"
+      ],
+      "winner_name": "p*******************6"
+    }
+  ]
+}

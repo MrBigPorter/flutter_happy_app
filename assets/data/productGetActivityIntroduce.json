@@ -1,0 +1,9 @@
+{
+  "code": 10000,
+  "message": "success",
+  "tid": "2db845dc539abb4150d15fa31bfb9b58",
+  "data": {
+    "activity_introduce": "<p style=\"text-align: center;\"><img src=\"https://cdn.cnbj1.fds.api.mi-img.com/mi-mall/4e2f3f6e1f0a5b8d6d6f4e3e3b3c2a1b.jpg\" style=\"max-width: 100%;\"/></p><p style=\"text-align: center;\"><img src=\"https://cdn.cnbj1.fds.api.mi-img.com/mi-mall/5e4f3d2c1b0a9e8d7c6b5a4a3b2c1d0e.jpg\" style=\"max-width: 100%;\"/></p><p style=\"text-align: center;\"><img src=\"https://cdn.cnbj1.fds.api.mi-img.com/mi-mall/6f5e4d3c2b1a0e9d8c7b6a5a4b3c2d1e.jpg\" style=\"max-width: 100%;\"/></p>",
+    "id":10000
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "code": 10000,
+  "message": "success",
+  "tid": "deadd219d33317341549673d74aa7a14",
+  "data": [
+    {
+      "id": 22,
+      "amount": 100,
+      "reward_amount": 0,
+      "actual_amount": 100
+    },
+    {
+      "id": 23,
+      "amount": 200,
+      "reward_amount": 0,
+      "actual_amount": 200
+    },
+    {
+      "id": 24,
+      "amount": 500,
+      "reward_amount": 0,
+      "actual_amount": 500
+    }
+  ]
+}

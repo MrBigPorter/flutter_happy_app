@@ -9,21 +9,21 @@ class LuckyStore with ChangeNotifier {
   SysConfig sysConfig = SysConfig(kycAndPhoneVerification: "1");
 
   Future<UserInfo?> updateUserInfo() async {
-    final res = await LuckyApi.getUserInfo();
+    final res = await Api.getUserInfo();
     userInfo = res;
     notifyListeners();
     return res;
   }
 
   Future<Balance> updateWalletBalance() async {
-    final res = await LuckyApi.getWalletBalance();
+    final res = await Api.getWalletBalance();
     balance = res;
     notifyListeners();
     return res;
   }
 
   Future<SysConfig> updateSysConfig() async {
-    final res = await LuckyApi.getSysConfig();
+    final res = await Api.getSysConfig();
     sysConfig = res;
     notifyListeners();
     return res;

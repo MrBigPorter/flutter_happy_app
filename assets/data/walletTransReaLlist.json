@@ -1,0 +1,103 @@
+{
+  "code": 10000,
+  "message": "success",
+  "tid": "7f7b2fbe41ab2856a24240d4a4899a7b",
+  "data": {
+    "page": 1,
+    "size": 10,
+    "count": 3,
+    "total": 24,
+    "list": [
+      {
+        "amount": 0.9,
+        "before_balance": 3.9,
+        "after_balance": 3,
+        "currency": "PHP",
+        "trans_at": 1757851188164,
+        "cate": 3,
+        "title": " Lucky Draw Entry -  Win ₱78,000 or Holiday to Bangkok"
+      },
+      {
+        "amount": 0.9,
+        "before_balance": 4.8,
+        "after_balance": 3.9,
+        "currency": "PHP",
+        "trans_at": 1757851174251,
+        "cate": 3,
+        "title": " Lucky Draw Entry -  Win ₱1,600 or Mion Vacuum"
+      },
+      {
+        "amount": 0.95,
+        "before_balance": 5.75,
+        "after_balance": 4.8,
+        "currency": "PHP",
+        "trans_at": 1757851156777,
+        "cate": 3,
+        "title": " Lucky Draw Entry -  Win ₱2,300 or Xiaomi Blender\t"
+      },
+      {
+        "amount": 0.9,
+        "before_balance": 6.65,
+        "after_balance": 5.75,
+        "currency": "PHP",
+        "trans_at": 1757851143427,
+        "cate": 3,
+        "title": " Lucky Draw Entry -  Win ₱60,000 or Holiday to Taiwan"
+      },
+      {
+        "amount": 1,
+        "before_balance": 7.65,
+        "after_balance": 6.65,
+        "currency": "PHP",
+        "trans_at": 1757851130779,
+        "cate": 3,
+        "title": " Lucky Draw Entry -  Win ₱500 Cash\t"
+      },
+      {
+        "amount": 0.9,
+        "before_balance": 8.55,
+        "after_balance": 7.65,
+        "currency": "PHP",
+        "trans_at": 1757851120030,
+        "cate": 3,
+        "title": " Lucky Draw Entry -  Win ₱2300 or Mion Air purifier"
+      },
+      {
+        "amount": 0.95,
+        "before_balance": 9.5,
+        "after_balance": 8.55,
+        "currency": "PHP",
+        "trans_at": 1757848390679,
+        "cate": 3,
+        "title": " Lucky Draw Entry -  Win ₱3,200 or Realme T300 "
+      },
+      {
+        "amount": 1.8,
+        "before_balance": 11.3,
+        "after_balance": 9.5,
+        "currency": "PHP",
+        "trans_at": 1755861169410,
+        "cate": 3,
+        "title": " Lucky Draw Entry -  Win ₱16,800 or Poco X7Pro"
+      },
+      {
+        "amount": 0.9,
+        "before_balance": 12.2,
+        "after_balance": 11.3,
+        "currency": "PHP",
+        "trans_at": 1755860580052,
+        "cate": 3,
+        "title": " Lucky Draw Entry -  Win ₱3,800 or Inifinix Smart 9"
+      },
+      {
+        "amount": 0.9,
+        "before_balance": 13.1,
+        "after_balance": 12.2,
+        "currency": "PHP",
+        "trans_at": 1755860508822,
+        "cate": 3,
+        "title": " Lucky Draw Entry -  Win ₱3,800 or Inifinix Smart 9"
+      }
+    ]
+  }
+}

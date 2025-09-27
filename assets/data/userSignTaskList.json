@@ -1,0 +1,31 @@
+{
+  "code": 10000,
+  "message": "success",
+  "tid": "ce9026b0f365e1a414977e66e56c9bee",
+  "data": [
+    {
+      "task_type": 1,
+      "if_complete": 2,
+      "reward": 2
+    },
+    {
+      "task_type": 2,
+      "if_complete": 2,
+      "reward": 3
+    },
+    {
+      "task_type": 3,
+      "if_complete": 2,
+      "reward": [
+        {
+          "reward_type": 1,
+          "reward": 10
+        },
+        {
+          "reward_type": 2,
+          "reward": 0
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "code": 10000,
+  "message": "success",
+  "tid": "8a486d87521b89913017e6d4d5b386ff",
+  "data": {
+    "exchange_rate": 10,
+    "invitee_registered_coin": 0,
+    "invitee_first_receive_coin": 10,
+    "inviter_registered_coin": 0,
+    "inviter_first_receive_coin": 0,
+    "inviter_first_receive_amount": 10,
+    "invitee_first_receive_amount": 10,
+    "invitee_registered_amount": 10,
+    "state_coin": 1,
+    "state_coupon": 1,
+    "coin_friend_rules": "\u003cp\u003e-------------------\u003c/p\u003e",
+    "coin_reward_rules": "\u003cp\u003e-------------------\u003c/p\u003e",
+    "coupon_friend_rules": "",
+    "coupon_reward_rules": ""
+  }
+}

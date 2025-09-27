@@ -1,33 +1,46 @@
 import 'dart:convert';
-import 'package:http/http.dart' as http;
+import 'package:flutter_app/common.dart';
 
-import '../models/index.dart';
+import '../../utils/helper.dart';
 
 
-class LuckyApi {
-  static const baseUrl = "https://api.yourdomain.com";
+class Api {
+
+  static Future<List<Banners>> bannersApi(int type) async {
+    final res = await HttpClient.get("/bannersList.json?type=$type");
+    return parseList<Banners>(res, (e) => Banners.fromJson(e));
+  }
+
+  static Future<List<IndexTreasureItem>> indexTreasuresApi() async {
+    final res = await HttpClient.get("/treasuresList.json");
+
+   return parseList<IndexTreasureItem>(res, (e) => IndexTreasureItem.fromJson(e));
+
+  }
+
+  static Future<List<AdRes>> indexAdApi(int type) async {
+    final res = await HttpClient.get("/advertiseList.json?type=$type");
+     return parseList(res, (e) => AdRes.fromJson(e));
+  }
+
+  static Future<IndexStatistics> indexStatisticsApi() async {
+    final res = await HttpClient.get("/homepageStatisticalData.json");
+      return IndexStatistics.fromJson(res);
+  }
+
 
   static Future<UserInfo> getUserInfo() async {
-    final res = await http.get(Uri.parse("$baseUrl/user/info"));
-    if (res.statusCode == 200) {
-      return UserInfo.fromJson(jsonDecode(res.body));
-    }
-    throw Exception("Failed to load user info");
+    final res = await HttpClient.get("user/info");
+      return UserInfo.fromJson(jsonDecode(res));
   }
 
   static Future<Balance> getWalletBalance() async {
-    final res = await http.get(Uri.parse("$baseUrl/wallet/balance"));
-    if (res.statusCode == 200) {
-      return Balance.fromJson(jsonDecode(res.body));
-    }
-    throw Exception("Failed to load wallet balance");
+    final res = await HttpClient.get('/balance.json');
+    return Balance.fromJson(jsonDecode(res));
   }
 
   static Future<SysConfig> getSysConfig() async {
-    final res = await http.get(Uri.parse("$baseUrl/sys/config"));
-    if (res.statusCode == 200) {
-      return SysConfig.fromJson(jsonDecode(res.body));
-    }
-    throw Exception("Failed to load sys config");
+    final res = await HttpClient.get('/sysConfigGet.json');
+    return SysConfig.fromJson(jsonDecode(res));
   }
 }

@@ -1,0 +1,9 @@
+{
+  "code": 10000,
+  "message": "success",
+  "tid": "2c057cf302ddb79afcea15874fe73ccb",
+  "data": {
+    "real_balance": 2000,
+    "coin_balance": 5
+  }
+}

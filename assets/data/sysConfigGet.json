@@ -1,0 +1,9 @@
+{
+  "code": 10000,
+  "message": "success",
+  "tid": "e6334fc94b11c90c5c440aef7af1ab66",
+  "data": {
+    "kyc_and_phone_verification": "1",
+    "kyc_and_phone_verification_for_pg": "2"
+  }
+}

@@ -1,0 +1,55 @@
+{
+  "code": 10000,
+  "message": "success",
+  "tid": "5b930b2959ccfe041718e9defc608111",
+  "data": [
+    {
+      "address_id": 201,
+      "first_name": "Juan",
+      "middle_name": "D.",
+      "last_name": "Cruz",
+      "phone": "+63 912 345 6789",
+      "province": "Metro Manila",
+      "city": "Quezon City",
+      "full_address": "Blk 12 Lot 5, Camella Homes, Brgy. Commonwealth",
+      "postal_code": "1121",
+      "is_default": 1
+    },
+    {
+      "address_id": 202,
+      "first_name": "Maria",
+      "middle_name": "L.",
+      "last_name": "Santos",
+      "phone": "+63 917 234 5678",
+      "province": "Metro Manila",
+      "city": "Makati City",
+      "full_address": "Unit 808, Ayala Triangle Residences, Paseo de Roxas",
+      "postal_code": "1226",
+      "is_default": 0
+    },
+    {
+      "address_id": 203,
+      "first_name": "Kevin",
+      "middle_name": "",
+      "last_name": "Tan",
+      "phone": "+63 999 888 7777",
+      "province": "Metro Manila",
+      "city": "Taguig City",
+      "full_address": "26th Street, Bonifacio Global City",
+      "postal_code": "1630",
+      "is_default": 0
+    },
+    {
+      "address_id": 204,
+      "first_name": "Ana",
+      "middle_name": "M.",
+      "last_name": "Reyes",
+      "phone": "+63 915 555 1111",
+      "province": "Cebu",
+      "city": "Cebu City",
+      "full_address": "123 Mango Ave, Capitol Site",
+      "postal_code": "6000",
+      "is_default": 0
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "code": 10000,
+  "message": "success",
+  "tid": "734bd11c62e8a569532ab20f475b9d99",
+  "data": {
+    "lottery_tickets": [
+      "ODFCMkU0OTE3MDAwMDBBLjE"
+    ],
+    "order_id": "584111468127977482",
+    "group_id": "584111468144754698",
+    "activity_coin": 0
+  }
+}

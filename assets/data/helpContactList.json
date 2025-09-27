@@ -1,0 +1,29 @@
+{
+  "code": 10000,
+  "message": "success",
+  "tid": "dfe685b55a0d613a630a949739510642",
+  "data": [
+    {
+      "contact_title": "CONTACT",
+      "contact_tool": "email",
+      "contact_number": "xxxxxx.com",
+      "remark": "Please include your lucky User ID in the email subject.",
+      "created_at": 78767687876,
+      "updated_at": 1752744106,
+      "created_by": "bit",
+      "updated_by": "bit",
+      "valid_state": 1
+    },
+    {
+      "contact_title": "CALL US",
+      "contact_tool": "Phone",
+      "contact_number": "+63 9098989888",
+      "remark": "Monday to Friday, 10 a.m. to 6 p.m.(Except for official holidays)",
+      "created_at": 67686876,
+      "updated_at": 1747106753,
+      "created_by": "bit",
+      "updated_by": "bit",
+      "valid_state": 1
+    }
+  ]
+}

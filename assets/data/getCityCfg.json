@@ -1,0 +1,115 @@
+{
+  "code": 10000,
+  "message": "success",
+  "tid": "d6b14fcf1518edc0c4da6c9d6c715330",
+  "data": [
+    {
+      "id": 122,
+      "country_id": 1,
+      "province_id": 10,
+      "name": "Anini-y"
+    },
+    {
+      "id": 123,
+      "country_id": 1,
+      "province_id": 10,
+      "name": "Barbaza"
+    },
+    {
+      "id": 124,
+      "country_id": 1,
+      "province_id": 10,
+      "name": "Belison"
+    },
+    {
+      "id": 125,
+      "country_id": 1,
+      "province_id": 10,
+      "name": "Bugasong"
+    },
+    {
+      "id": 126,
+      "country_id": 1,
+      "province_id": 10,
+      "name": "Caluya"
+    },
+    {
+      "id": 127,
+      "country_id": 1,
+      "province_id": 10,
+      "name": "Culasi"
+    },
+    {
+      "id": 128,
+      "country_id": 1,
+      "province_id": 10,
+      "name": "Hamtic"
+    },
+    {
+      "id": 129,
+      "country_id": 1,
+      "province_id": 10,
+      "name": "Laua-an"
+    },
+    {
+      "id": 130,
+      "country_id": 1,
+      "province_id": 10,
+      "name": "Libertad"
+    },
+    {
+      "id": 131,
+      "country_id": 1,
+      "province_id": 10,
+      "name": "Pandan"
+    },
+    {
+      "id": 132,
+      "country_id": 1,
+      "province_id": 10,
+      "name": "Patnongon"
+    },
+    {
+      "id": 133,
+      "country_id": 1,
+      "province_id": 10,
+      "name": "San Jose de Buenavista"
+    },
+    {
+      "id": 134,
+      "country_id": 1,
+      "province_id": 10,
+      "name": "San Remigio"
+    },
+    {
+      "id": 135,
+      "country_id": 1,
+      "province_id": 10,
+      "name": "Sebaste"
+    },
+    {
+      "id": 136,
+      "country_id": 1,
+      "province_id": 10,
+      "name": "Sibalom"
+    },
+    {
+      "id": 137,
+      "country_id": 1,
+      "province_id": 10,
+      "name": "Tibiao"
+    },
+    {
+      "id": 138,
+      "country_id": 1,
+      "province_id": 10,
+      "name": "Tobias Fornier (Dao)"
+    },
+    {
+      "id": 139,
+      "country_id": 1,
+      "province_id": 10,
+      "name": "Valderrama"
+    }
+  ]
+}

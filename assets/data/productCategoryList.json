@@ -1,0 +1,27 @@
+{
+  "code": 10000,
+  "message": "success",
+  "tid": "2db845dc539abb4150d15fa31bfb9b58",
+  "data": [
+    {
+      "products_category_id": 18,
+      "name": "Hot"
+    },
+    {
+      "products_category_id": 16,
+      "name": "Tech"
+    },
+    {
+      "products_category_id": 13,
+      "name": "Home"
+    },
+    {
+      "products_category_id": 19,
+      "name": "Cash"
+    },
+    {
+      "products_category_id": 7,
+      "name": "Travel"
+    }
+  ]
+}

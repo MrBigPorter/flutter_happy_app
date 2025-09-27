@@ -1,0 +1,11 @@
+{
+  "code": 10000,
+  "message": "success",
+  "tid": "726c778015f9580165c3f3a9603ddb67",
+  "data": {
+    "couponList": [],
+    "products": [],
+    "act_start_at": 0,
+    "act_end_at": 0
+  }
+}

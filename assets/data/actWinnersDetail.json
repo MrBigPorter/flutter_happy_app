@@ -1,0 +1,18 @@
+{
+  "code": 10000,
+  "message": "success",
+  "tid": "10b0ffe3f9d03bf4aad3e27d9581467e",
+  "data": {
+    "lottery_time": 1757677045602,
+    "treasure_name": "0912 Virtual Delivery",
+    "img_style_type": 0,
+    "treasure_cover_img": "https://test-pesolucky.s3.ap-east-1.amazonaws.com/avatar/20250912191242a1d171f0-f024-40b0-b477-7d5cf3d39147.jpeg",
+    "lucky_prize_total_coin": 550,
+    "main_image_list": [
+      "https://test-pesolucky.s3.ap-east-1.amazonaws.com/avatar/20250829180632f0ed8dba-b9c2-424b-a31f-e58842cda6b2.jpg"
+    ],
+    "winner_num": 1,
+    "total_quantity": 10,
+    "ticket_quantity": 1
+  }
+}

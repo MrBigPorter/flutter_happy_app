@@ -1,0 +1,22 @@
+{
+  "code": 10000,
+  "message": "success",
+  "tid": "afa72b277facf92aadb04d006b24f01d",
+  "data": [
+    {
+      "id": 1,
+      "payment_type": 3,
+      "payment_name": "RCBC"
+    },
+    {
+      "id": 2,
+      "payment_type": 3,
+      "payment_name": "ICBC"
+    },
+    {
+      "id": 3,
+      "payment_type": 3,
+      "payment_name": "RCBC"
+    }
+  ]
+}

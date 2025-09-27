@@ -1,0 +1,24 @@
+{
+  "code": 10000,
+  "message": "success",
+  "tid": "1f4504660e908d50e4271a537423cf96",
+  "data": [
+    {
+      "leader_user_id": 584238315222335747,
+      "leader_username": "lizzie9",
+      "user_id": 584238315222335747,
+      "username": "lizzie9",
+      "avatar": "https://prod-pesolucky.s3.ap-east-1.amazonaws.com/default/Avatar01.png",
+      "created_at": 1757763399759,
+      "inviter_id": 0,
+      "inviter_nickname": "",
+      "lottery_tickets": [
+        {
+          "num": "ODFCQTI5QzA2MDAwMTAzLjE",
+          "state": 1
+        }
+      ],
+      "order_at": 0
+    }
+  ]
+}

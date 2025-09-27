@@ -1,0 +1,18 @@
+{
+  "code": 10000,
+  "message": "success",
+  "tid": "c056e6f0f450949f2a170e3d31d6d627",
+  "data": {
+    "Id": "584112257881866250",
+    "nickname": "pl_584112257881866250",
+    "avatar": "https://test-pesolucky.s3.ap-east-1.amazonaws.com/default/Avatar01.png",
+    "phoneMd5": "dd98cba23faa4c515ceb2d6c30c841e3",
+    "phone": "9043443444",
+    "invite_code": "635995310",
+    "vip_level": 0,
+    "last_login_at": 1757687636519,
+    "kyc_status": 4,
+    "delivery_address_id": 0,
+    "self_exclusion_expire_at": 0
+  }
+}

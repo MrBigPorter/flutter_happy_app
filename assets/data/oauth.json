@@ -1,0 +1,15 @@
+{
+  "code": 10000,
+  "message": "success",
+  "tid": "e8ef6800063d0cefc412b94117b19903",
+  "data": {
+    "id": "580580894817910794",
+    "phone": "9189642222",
+    "phoneMd5": "3d060c2304116e215708c654cec49ab3",
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjU4MDU4MDg5NDgxNzkxMDc5NCIsIm5tIjoicGxfNTgwNTgwODk0ODE3OTEwNzk0Iiwicm0iOjE3NTc5MTI0NTk2MDAsIm5jIjoiIiwibWlkIjoiIiwidHAiOjAsImN1ciI6IiIsInd0IjowfQ.59jejd1-StySFMXskFmbk78zU3Ha53DZq7Rd2IJYnLc",
+    "nickname": "pl_580580894817910794",
+    "username": "pl_580580894817910794",
+    "avatar": "https://test-pesolucky.s3.ap-east-1.amazonaws.com/default/Avatar01.png",
+    "country_code": 63
+  }
+}

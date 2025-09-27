@@ -1,0 +1,57 @@
+{
+  "code": 10000,
+  "message": "success",
+  "tid": "5c72b277facf92aadb04d006b24f01d",
+  "data": [
+    {
+      "id": "1",
+      "bank_branch": "RCBC Makati Branch",
+      "bank_type": "RCBC",
+      "is_default": 1,
+      "payment_account": "1234567890",
+      "payment_name": "John Doe",
+      "receive_payment_type": 3,
+      "swift_code": "RCBCPHMM"
+    },
+    {
+      "id": "2",
+      "bank_branch": "ICBC Beijing Branch",
+      "bank_type": "ICBC",
+      "is_default": 0,
+      "payment_account": "9876543210",
+      "payment_name": "Li Wei",
+      "receive_payment_type": 3,
+      "swift_code": "ICBKCNBJ"
+    },
+    {
+      "id": "3",
+      "bank_branch": "BDO Quezon City",
+      "bank_type": "BDO",
+      "is_default": 0,
+      "payment_account": "5566778899",
+      "payment_name": "Maria Santos",
+      "receive_payment_type": 3,
+      "swift_code": "BNORPHMM"
+    },
+    {
+      "id": "4",
+      "bank_branch": "HSBC Hong Kong",
+      "bank_type": "HSBC",
+      "is_default": 0,
+      "payment_account": "1122334455",
+      "payment_name": "David Wong",
+      "receive_payment_type": 3,
+      "swift_code": "HSBCHKHH"
+    },
+    {
+      "id": "5",
+      "bank_branch": "Metrobank BGC",
+      "bank_type": "Metrobank",
+      "is_default": 0,
+      "payment_account": "6677889900",
+      "payment_name": "Kevin Lim",
+      "receive_payment_type": 3,
+      "swift_code": "MBTCPHMM"
+    }
+  ]
+}

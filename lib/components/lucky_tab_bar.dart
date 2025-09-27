@@ -1,6 +1,7 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_app/common.dart';
+import 'package:flutter_app/motion/motion_ext.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 
@@ -77,7 +78,7 @@ class LuckyTabBar extends StatelessWidget {
                 context.fgBrandPrimary,
                 BlendMode.srcIn,
               ),
-            ),
+            ).wiggleOnTap(),
             label: tab.label.tr(),
           );
         }).toList(),

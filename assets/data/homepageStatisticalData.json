@@ -1,0 +1,10 @@
+{
+  "code": 10000,
+  "message": "success",
+  "tid": "557275774bc8a4afcb9ca982350270fe",
+  "data": {
+    "total_amount": 1115694.18,
+    "total_user_amount": 826,
+    "charity_fund_num": 5980.72
+  }
+}

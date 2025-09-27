@@ -1,0 +1,57 @@
+{
+  "code": 10000,
+  "message": "success",
+  "tid": "mock-654321",
+  "data": {
+    "page": 1,
+    "size": 10,
+    "total": 5,
+    "list": [
+      {
+        "id": "1",
+        "avatar": "https://test-pesolucky.s3.ap-east-1.amazonaws.com/default/Avatar01.png",
+        "nickname": "Alice",
+        "status": 2,
+        "invitee_first_receive_coin": 100,
+        "coupon_amount": 50,
+        "invitee_registered_at": 1757823600000
+      },
+      {
+        "id": "2",
+        "avatar": "https://test-pesolucky.s3.ap-east-1.amazonaws.com/default/Avatar01.png",
+        "nickname": "Bob",
+        "status": 1,
+        "invitee_first_receive_coin": 0,
+        "coupon_amount": 30,
+        "invitee_registered_at": 1757809200000
+      },
+      {
+        "id": "3",
+        "avatar": "https://test-pesolucky.s3.ap-east-1.amazonaws.com/default/Avatar01.png",
+        "nickname": "Charlie",
+        "status": 2,
+        "invitee_first_receive_coin": 50,
+        "coupon_amount": 0,
+        "invitee_registered_at": 1757794800000
+      },
+      {
+        "id": "4",
+        "avatar": "https://test-pesolucky.s3.ap-east-1.amazonaws.com/default/Avatar01.png",
+        "nickname": "Diana",
+        "status": 2,
+        "invitee_first_receive_coin": 0,
+        "coupon_amount": 100,
+        "invitee_registered_at": 1757780400000
+      },
+      {
+        "id": "5",
+        "avatar": "https://test-pesolucky.s3.ap-east-1.amazonaws.com/default/Avatar01.png",
+        "nickname": "Evan",
+        "status": 1,
+        "invitee_first_receive_coin": 20,
+        "coupon_amount": 0,
+        "invitee_registered_at": 1757766000000
+      }
+    ]
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "code": 10000,
+  "message": "success",
+  "tid": "809ec8c6064185bb45eb8dbe966982d6",
+  "data": {
+    "page": 0,
+    "size": 0,
+    "count": 2,
+    "total": 2,
+    "list": [
+      {
+        "id": 2025091504,
+        "user_id": 584412098541387786,
+        "nickname": "",
+        "work_type_id": "Result Issue",
+        "problem_describe": "New Year Bonus Full Gift CouponNew Year Bonus Full Gift CouponNew Year Bonus Full Gift CouponNew Year Bonus Full Gift CouponNew Year Bonus Full Gift CouponNew Year Bonus Full Gift Coupon",
+        "reply_content": "",
+        "problem_img": "https://test-pesolucky.s3.ap-east-1.amazonaws.com/test/1757866443671_4fc983cf-1ba4-4c4f-8b9c-5793df3432f8.png",
+        "reply_state": 1,
+        "urgency": 1,
+        "create_at": 1757866443817,
+        "update_at": 1757866443817
+      },
+      {
+        "id": 2025091503,
+        "user_id": 584412098541387786,
+        "nickname": "",
+        "work_type_id": "Ticket Types:",
+        "problem_describe": "New Year BonusNew Year BonusNew Year BonusNew Year BonusNew Year BonusNew Year BonusNew Year BonusNew Year BonusNew Year Bonus",
+        "reply_content": "",
+        "problem_img": "https://test-pesolucky.s3.ap-east-1.amazonaws.com/test/1757866412163_c2c12983-3a9d-441f-b2f4-fbd704240773.png",
+        "reply_state": 1,
+        "urgency": 1,
+        "create_at": 1757866412318,
+        "update_at": 1757866412318
+      }
+    ]
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "code": 10000,
+  "message": "success",
+  "tid": "63dd72e34b67b13381b6fc6857b6c818",
+  "data": {
+    "code": "SUCCESS",
+    "message": "OK",
+    "data": {
+      "signatureId": "23fe70af2b74da49",
+      "url": "https://ph-liveness.advance.ai/index?biz_token=eyJhbGciOiJIUzUxMiJ9.eyJpc3MiOiJoNV9saXZlbmVzcyIsInN1YiI6IntcImN1c3RvbWVySWRcIjo5OTI5MTIzNDc1LFwiYWNjb3VudElkXCI6OTkyOTEyMzYwMixcIl90aW1lc3RhbXBcIjoxNzU3OTA2MDA4MTEyLFwiX3V1aWRcIjpcIjM4MjMwYWQ2OGExZDQyMzJiZDRlYzhkM2U3ZTc5MjZjXCJ9IiwiYXVkIjoiV0VCIiwiaWF0IjoxNzU3OTA2MDA4LCJleHAiOjE3NTc5MDk2MDh9.e6EMuIytme8HwSc12ZnUnQW88bpmtEUfLBiPXIFOQ3TJKqVqBkboSUXWYGCRJ16WEFfI4u0371keT_o7-L-I9g\u0026tag=c1087265602856b93bc71165bc9dc548\u0026enhanced=true"
+    }
+  }
+}
