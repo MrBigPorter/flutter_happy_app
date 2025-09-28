@@ -63,6 +63,7 @@ dependencies:
   # router
   go_router: ^14.0.2
   url_launcher: ^6.3.0
+  web: ^1.1.0
 
   animations: ^2.0.0
   flutter_animate: ^4.5.0

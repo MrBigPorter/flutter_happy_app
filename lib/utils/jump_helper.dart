@@ -1,11 +1,12 @@
+import 'package:web/web.dart' as web;
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_app/app/routes/app_router.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 
 import '../core/models/clickable_resource.dart';
-// ignore: avoid_web_libraries_in_flutter should put it in the top of the file
-import 'dart:html' as html;
+
 
 class JumHelper {
   static Future<void> handleTap(BuildContext context, ClickableResource item) async {
@@ -16,8 +17,7 @@ class JumHelper {
         final url = item.jumpUrl!;
         if(kIsWeb){
           // web 端直接打开新标签页 open in new tab on web
-          // ignore: avoid_web_libraries_in_flutter
-           html.window.open(url, '_blank');
+          web.window.open(url, '_blank');
         } else {
           // 移动端用浏览器打开 open in browser on mobile
           if (await canLaunchUrlString(url)) {
