@@ -4,6 +4,7 @@ import 'package:flutter_app/app/page/home_components/home_statistics.dart';
 import 'package:flutter_app/common.dart';
 import 'package:flutter_app/components/base_scaffold.dart';
 import 'package:flutter_app/components/home_banner.dart';
+import 'package:flutter_app/components/skeleton.dart';
 
 class _HomeData {
   final List<Banners> banners;
@@ -30,40 +31,23 @@ class HomePage extends StatefulWidget {
 /// 包含轮播图、宝贝列表、广告位、数据统计等模块 including carousel, treasure list, ad space, data statistics, etc.
 class _HomePageState extends State<HomePage> {
 
-  /// 首页数据 future home page data future
-  late Future<_HomeData> _homeDataFuture;
+  ///  banner, treasure, ad, statistics fetch functions
+  Future<List<Banners>> _fetchBanners()=> Api.bannersApi(1);
+  Future<List<IndexTreasureItem>> _fetchTreasures()=> Api.indexTreasuresApi();
+  Future<List<AdRes>> _fetchAds()=> Api.indexAdApi(1);
+  Future<IndexStatistics> _fetchStatistics()=> Api.indexStatisticsApi();
 
-  /// 初始化时加载首页数据 load home page data on init
-  @override
-  void initState() {
-    super.initState();
-    _homeDataFuture = _loadAll();
-  }
-
-  /// 并行加载所有首页数据 load all home page data in parallel
-  Future<_HomeData> _loadAll() async {
-
-      final results = await Future.wait([
-        Api.bannersApi(1),
-        Api.indexTreasuresApi(),
-        Api.indexAdApi(1),
-        Api.indexStatisticsApi(),
-      ]);
-
-      final data = _HomeData(
-          banners: results[0] as List<Banners>,
-          treasureList: results[1] as List<IndexTreasureItem>,
-          adList: results[2] as List<AdRes>,
-          statistics: results[3] as IndexStatistics
-      );
-      return data;
-
-  }
 
   /// 下拉刷新 refresh handler
   Future<void> _onRefresh() async {
-    setState(()=> _homeDataFuture = _loadAll());
-    await _homeDataFuture;
+    setState(() {});
+     Future.wait([
+      _fetchAds(),
+      _fetchBanners(),
+      _fetchStatistics(),
+      _fetchTreasures(),
+    ]);
+     await Future.delayed(const Duration(milliseconds: 600));
   }
 
   @override
@@ -72,28 +56,32 @@ class _HomePageState extends State<HomePage> {
         showBack: false,
         body: RefreshIndicator(
           onRefresh: _onRefresh,
-          child: FutureBuilder<_HomeData>(
-              future: _homeDataFuture,
-              builder: (context, snap){
-                if(snap.connectionState != ConnectionState.done){
-                  return Text("loading");
-                }
-                if(snap.hasError){
-                  return Text("Error: ${snap.error}");
-                }
+          child: CustomScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            slivers: [
+              // 轮播图 Banner
+              SliverToBoxAdapter(
+                child: FutureBuilder<List<Banners>>(
+                  future: _fetchBanners(),
+                  builder: (context,snapshot){
+                    if(snapshot.connectionState != ConnectionState.done){
+                      return Padding(
+                          padding: EdgeInsets.all(16),
+                          child: Skeleton.react(
+                              width: double.infinity,
+                              height: 356,
+                          ),
+                      );
+                    }
 
-                final data = snap.data!;
-
-                return CustomScrollView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  slivers: [
-                    SliverToBoxAdapter(child: HomeBanner(banners:data.banners)),
-                    SliverToBoxAdapter(child: HomeStatistics()),
-                    SliverToBoxAdapter(child: HomeAd()),
-                  ]
-                );
-
-              }
+                    if(snapshot.hasError) {
+                      return Center(child: Text('loading fail: ${snapshot.error}'));
+                    }
+                    return HomeBanner(banners: snapshot.data!);
+                  },
+                ),
+              )
+            ]
           ),
         )
     );

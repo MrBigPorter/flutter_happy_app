@@ -1,24 +1,30 @@
 import 'package:json_annotation/json_annotation.dart';
 
+import 'clickable_resource.dart';
+
 part 'ad_res.g.dart';
 
 @JsonSerializable(checked: true)
-class AdRes {
+class AdRes implements ClickableResource {
   @JsonKey(name: 'banner_cate')
   final int? bannerCate;
   final String img;
+  @override
   @JsonKey(name: 'video_url')
   final String? videoUrl; // 视频地址
   @JsonKey(name: 'grid_id')
   final int gridId;
   @JsonKey(name: 'id')
   final int id;
+  @override
   @JsonKey(name: 'jump_cate')
   final int jumpCate; // 1 | 2 | 3 | 4; // 跳转类型: 1 - 无跳转 2 - 外部链接 3 - 跳转夺宝
+  @override
   @JsonKey(name: 'jump_url')
   final String jumpUrl;
   @JsonKey(name: 'position')
   final int? position; //1 | 2 | 3; // 1 左侧 2右上 3右下
+  @override
   @JsonKey(name: 'related_title_id')
   final int relatedTitleId;
   @JsonKey(name: 'sort_order')

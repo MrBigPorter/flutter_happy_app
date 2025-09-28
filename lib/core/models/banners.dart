@@ -1,22 +1,27 @@
+import 'package:flutter_app/core/models/clickable_resource.dart';
 import 'package:json_annotation/json_annotation.dart';
 part 'banners.g.dart';
 
 @JsonSerializable(checked: true)
-class Banners {
+class Banners implements ClickableResource {
   final int id;
   @JsonKey(name: "banner_cate")
   final int? bannerCate;
   @JsonKey(name: "banner_img_url")
   final String bannerImgUrl;
+  @override
   @JsonKey(name: "video_url")
   final String? videoUrl;
+  @override
   @JsonKey(name: "jump_cate")
   final int jumpCate;
+  @override
   @JsonKey(name: "related_title_id")
   final int relatedTitleId;
   final int state;
   @JsonKey(name: "sort_order")
   final int sortOrder;
+  @override
   @JsonKey(name: "jump_url")
   final String jumpUrl;
 
