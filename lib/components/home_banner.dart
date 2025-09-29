@@ -85,10 +85,10 @@ class _HomeBannerState extends State<HomeBanner> {
     if(items.isEmpty){
       return Container(
         height: widget.height.h,
-        margin: const EdgeInsets.all(16),
+        margin:  EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: context.bgBrandPrimary,
-          borderRadius: BorderRadius.circular(12)
+          borderRadius: BorderRadius.circular(12.r)
         )
       );
     }

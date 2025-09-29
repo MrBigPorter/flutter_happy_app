@@ -1,9 +1,7 @@
-import 'package:web/web.dart' as web;
+import 'package:url_launcher/url_launcher.dart';
 
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_app/app/routes/app_router.dart';
-import 'package:url_launcher/url_launcher_string.dart';
 
 import '../core/models/clickable_resource.dart';
 
@@ -13,18 +11,16 @@ class JumHelper {
       final jump = item.jumpCate ?? 1;
 
       // outer link 外部链接
-      if(jump == 2 && item.jumpUrl!.isNotEmpty ){
-        final url = item.jumpUrl!;
-        if(kIsWeb){
-          // web 端直接打开新标签页 open in new tab on web
-          web.window.open(url, '_blank');
-        } else {
-          // 移动端用浏览器打开 open in browser on mobile
-          if (await canLaunchUrlString(url)) {
-            await launchUrlString(url, mode: LaunchMode.externalApplication);
-          } else {
-            throw 'Could not launch $url';
-          }
+      // 外部链接：所有平台一套写法
+      if (jump == 2 && (item.jumpUrl?.isNotEmpty ?? false)) {
+        final uri = Uri.parse(item.jumpUrl!);
+        final ok = await launchUrl(
+          uri,
+          mode: LaunchMode.externalApplication,   // 移动端用系统浏览器
+          webOnlyWindowName: '_blank',           // Web 打开新标签页
+        );
+        if (!ok) {
+          throw 'Could not launch $uri';
         }
       }
 

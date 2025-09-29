@@ -6,19 +6,6 @@ import 'package:flutter_app/components/base_scaffold.dart';
 import 'package:flutter_app/components/home_banner.dart';
 import 'package:flutter_app/components/skeleton.dart';
 
-class _HomeData {
-  final List<Banners> banners;
-  final List<IndexTreasureItem> treasureList;
-  final List<AdRes> adList;
-  final IndexStatistics statistics;
-
-  const _HomeData({
-    required this.banners,
-    required this.treasureList,
-    required this.adList,
-    required this.statistics,
-  });
-}
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -81,6 +68,7 @@ class _HomePageState extends State<HomePage> {
                   },
                 ),
               ),
+              /// statistics 统计数据
               SliverToBoxAdapter(
                 child: FutureBuilder(
                   future: _fetchStatistics(),

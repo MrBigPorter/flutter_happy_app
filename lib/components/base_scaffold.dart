@@ -31,34 +31,37 @@ class BaseScaffold extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: showAppBar
-          ? AppBar(
-              backgroundColor: context.bgPrimary,
-              elevation: 0,
-              shape: Border(
-                bottom: BorderSide(color: context.borderSecondary, width: 1),
+          ? PreferredSize(
+          preferredSize: Size.fromHeight(50.h),
+          child: AppBar(
+            backgroundColor: context.bgPrimary,
+            elevation: 0,
+            shape: Border(
+              bottom: BorderSide(color: context.borderSecondary, width: 1),
+            ),
+            title: title != null
+                ? Text(
+              title!.tr(),
+              style: TextStyle(
+                fontSize: 16.w,
+                fontWeight: FontWeight.w800,
+                color: context.textPrimary900,
               ),
-              title: title != null
-                  ? Text(
-                      title!.tr(),
-                      style: TextStyle(
-                        fontSize: 16.w,
-                        fontWeight: FontWeight.w800,
-                        color: context.textPrimary900,
-                      ),
-                    )
-                  : Image.asset('assets/images/logo.png', height: 32.w),
-              centerTitle: true,
-              leading: showBack
-                  ? IconButton(
-                      icon: backIconPath != null
-                          ? Image.asset(backIconPath!)
-                          :  Icon(Icons.chevron_left, size: 24.w),
-                      onPressed: () => Navigator.pop(context),
-                    )
-                  : null,
-              actions: actions,
-              bottom: bottom,
             )
+                : Image.asset('assets/images/logo.png', height: 32.w),
+            centerTitle: true,
+            leading: showBack
+                ? IconButton(
+              icon: backIconPath != null
+                  ? Image.asset(backIconPath!)
+                  :  Icon(Icons.chevron_left, size: 24.w),
+              onPressed: () => Navigator.pop(context),
+            )
+                : null,
+            actions: actions,
+            bottom: bottom,
+          )
+      )
           : null,
       body: body,
     );

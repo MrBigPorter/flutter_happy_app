@@ -40,6 +40,8 @@ class LuckyTabBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    /// safe area bottom inset
+    final bottomInset = MediaQuery.paddingOf(context).bottom;
     final String location = GoRouterState.of(context).uri.toString();
      int currentIndex = _tabs.indexWhere(
       (tab) => location.startsWith(tab.location),
@@ -47,45 +49,55 @@ class LuckyTabBar extends StatelessWidget {
     if (currentIndex == -1) currentIndex = 0;
     return Scaffold(
       body: child,
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: currentIndex,
-        onTap: (index) {
-          context.go(_tabs[index].location);
-        },
-        type: BottomNavigationBarType.fixed,
-        selectedItemColor: context.fgBrandPrimary,
-        unselectedItemColor: context.fgQuinary400,
-        unselectedFontSize: 12.sp,
-        selectedFontSize: 12.sp,
-        selectedLabelStyle: TextStyle(
-          fontSize: context.text2xs,
-          fontWeight: FontWeight.w600,
+      bottomNavigationBar: SizedBox(
+        height: 74.h + bottomInset,
+        child: BottomNavigationBar(
+          backgroundColor: context.bgPrimary,
+          currentIndex: currentIndex,
+          onTap: (index) {
+            context.go(_tabs[index].location);
+          },
+          type: BottomNavigationBarType.fixed,
+          selectedItemColor: context.fgBrandPrimary,
+          unselectedItemColor: context.fgQuinary400,
+          selectedFontSize: 12.sp,
+          unselectedFontSize: 12.sp,
+          unselectedLabelStyle: TextStyle(
+            fontSize: context.textXs,
+            fontWeight: FontWeight.w600,
+            height: 1.6
+          ),
+          selectedLabelStyle: TextStyle(
+            fontSize: context.textXs,
+            fontWeight: FontWeight.w600,
+            height: 1.6
+          ),
+          items: _tabs.asMap().entries.map((entry) {
+            final tab = entry.value;
+            return BottomNavigationBarItem(
+              icon: SvgPicture.asset(
+                tab.icon,
+                width: 24.w,
+                height: 24.w,
+                colorFilter: ColorFilter.mode(
+                  context.fgQuinary400,
+                  BlendMode.srcIn,
+                ),
+              ),
+              activeIcon: SvgPicture.asset(
+                tab.activeIcon,
+                width: 24.w,
+                height: 24.w,
+                colorFilter: ColorFilter.mode(
+                  context.fgBrandPrimary,
+                  BlendMode.srcIn,
+                ),
+              ).wiggleOnTap(),
+              label: tab.label.tr(),
+            );
+          }).toList(),
         ),
-        items: _tabs.asMap().entries.map((entry) {
-          final tab = entry.value;
-          return BottomNavigationBarItem(
-            icon: SvgPicture.asset(
-              tab.icon,
-              width: 24.w,
-              height: 24.w,
-              colorFilter: ColorFilter.mode(
-                context.fgQuinary400,
-                BlendMode.srcIn,
-              ),
-            ),
-            activeIcon: SvgPicture.asset(
-              tab.activeIcon,
-              width: 24.w,
-              height: 24.w,
-              colorFilter: ColorFilter.mode(
-                context.fgBrandPrimary,
-                BlendMode.srcIn,
-              ),
-            ).wiggleOnTap(),
-            label: tab.label.tr(),
-          );
-        }).toList(),
-      ),
+      )
     );
   }
 }
