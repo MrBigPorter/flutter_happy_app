@@ -5,6 +5,7 @@ import 'package:flutter_app/common.dart';
 import 'package:flutter_app/components/base_scaffold.dart';
 import 'package:flutter_app/components/home_banner.dart';
 import 'package:flutter_app/components/skeleton.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 
 class HomePage extends StatefulWidget {
@@ -75,7 +76,7 @@ class _HomePageState extends State<HomePage> {
                   builder: (context, snapshot) {
                     if (snapshot.connectionState != ConnectionState.done) {
                       return Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
                         child: Skeleton.react(
                           width: double.infinity,
                           height: 80,
@@ -84,14 +85,54 @@ class _HomePageState extends State<HomePage> {
                     }
 
                     if (snapshot.hasError) {
-                      return Skeleton.react(
+                      return Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 12.w,vertical: 8.h),
+                        child: Skeleton.react(
                           width: 343,
                           height: 80,
+                        ),
                       );
                     }
 
                     return HomeStatistics(statistics: snapshot.data!);
                   },
+                ),
+              ),
+              /// ad 广告位
+              SliverToBoxAdapter(
+                child: FutureBuilder(
+                    future: _fetchAds(),
+                    builder: (context,snapshot){
+                      if(snapshot.connectionState == ConnectionState.waiting){
+                        return Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 8.w, ),
+                          child: Column(
+                            children: [
+                              Skeleton.react(width: 343, height: 114,),
+                              SizedBox(height: 8.h),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Skeleton.react(width: 205, height: 267,),
+                                  SizedBox(width: 8.w),
+                                  Column(
+                                    children: [
+                                      Skeleton.react(width: 130, height: 130,),
+                                      SizedBox(height: 8.h),
+                                      Skeleton.react(width: 130, height: 130,),
+                                    ],
+                                  )
+                                ],
+                              )
+                            ],
+                          ),
+                        );
+                      }
+                      if(snapshot.hasError){
+                        return Center(child: Text('loading fail: ${snapshot.error}'));
+                      }
+                      return HomeAd(list: snapshot.data!,);
+                    }
                 ),
               )
             ]
