@@ -2,6 +2,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_app/common.dart';
 import 'package:flutter_app/motion/motion_ext.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 
@@ -13,26 +14,26 @@ class LuckyTabBar extends StatelessWidget {
   final List<_TabItem> _tabs = const [
     _TabItem(
       label: "common.tabbar.home",
-      icon: "images/TabBar/home.svg",
-      activeIcon: "images/TabBar/home_active.svg",
+      icon: "assets/images/tab_bar/home.svg",
+      activeIcon: "assets/images/tab_bar/home_active.svg",
       location: "/home",
     ),
     _TabItem(
       label: "common.tabbar.product",
-      icon: "images/TabBar/product.svg",
-      activeIcon: "images/TabBar/product_active.svg",
+      icon: "assets/images/tab_bar/product.svg",
+      activeIcon: "assets/images/tab_bar/product_active.svg",
       location: "/product",
     ),
     _TabItem(
       label: "common.tabbar.winners",
-      icon: "images/TabBar/winners.svg",
-      activeIcon: "images/TabBar/winners_active.svg",
+      icon: "assets/images/tab_bar/winners.svg",
+      activeIcon: "assets/images/tab_bar/winners_active.svg",
       location: "/winners",
     ),
     _TabItem(
       label: "common.tabbar.me",
-      icon: "images/TabBar/me.svg",
-      activeIcon: "images/TabBar/me_active.svg",
+      icon: "assets/images/tab_bar/me.svg",
+      activeIcon: "assets/images/tab_bar/me_active.svg",
       location: "/me",
     ),
   ];
@@ -54,6 +55,8 @@ class LuckyTabBar extends StatelessWidget {
         type: BottomNavigationBarType.fixed,
         selectedItemColor: context.fgBrandPrimary,
         unselectedItemColor: context.fgQuinary400,
+        unselectedFontSize: 12.sp,
+        selectedFontSize: 12.sp,
         selectedLabelStyle: TextStyle(
           fontSize: context.text2xs,
           fontWeight: FontWeight.w600,
@@ -63,8 +66,8 @@ class LuckyTabBar extends StatelessWidget {
           return BottomNavigationBarItem(
             icon: SvgPicture.asset(
               tab.icon,
-              width: 24,
-              height: 24,
+              width: 24.w,
+              height: 24.w,
               colorFilter: ColorFilter.mode(
                 context.fgQuinary400,
                 BlendMode.srcIn,
@@ -72,8 +75,8 @@ class LuckyTabBar extends StatelessWidget {
             ),
             activeIcon: SvgPicture.asset(
               tab.activeIcon,
-              width: 24,
-              height: 24,
+              width: 24.w,
+              height: 24.w,
               colorFilter: ColorFilter.mode(
                 context.fgBrandPrimary,
                 BlendMode.srcIn,

@@ -80,6 +80,31 @@ class _HomePageState extends State<HomePage> {
                     return HomeBanner(banners: snapshot.data!);
                   },
                 ),
+              ),
+              SliverToBoxAdapter(
+                child: FutureBuilder(
+                  future: _fetchStatistics(),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState != ConnectionState.done) {
+                      return Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        child: Skeleton.react(
+                          width: double.infinity,
+                          height: 80,
+                        ),
+                      );
+                    }
+
+                    if (snapshot.hasError) {
+                      return Skeleton.react(
+                          width: 343,
+                          height: 80,
+                      );
+                    }
+
+                    return HomeStatistics(statistics: snapshot.data!);
+                  },
+                ),
               )
             ]
           ),

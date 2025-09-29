@@ -1,4 +1,7 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_app/common.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// one base scaffold with optional app bar
 /// can be use showAppBar to control whether show app bar
@@ -29,15 +32,27 @@ class BaseScaffold extends StatelessWidget {
     return Scaffold(
       appBar: showAppBar
           ? AppBar(
+              backgroundColor: context.bgPrimary,
+              elevation: 0,
+              shape: Border(
+                bottom: BorderSide(color: context.borderSecondary, width: 1),
+              ),
               title: title != null
-                  ? Text(title!)
-                  : Image.asset('/images/logo.png', height: 32),
+                  ? Text(
+                      title!.tr(),
+                      style: TextStyle(
+                        fontSize: 16.w,
+                        fontWeight: FontWeight.w800,
+                        color: context.textPrimary900,
+                      ),
+                    )
+                  : Image.asset('assets/images/logo.png', height: 32.w),
               centerTitle: true,
               leading: showBack
                   ? IconButton(
                       icon: backIconPath != null
                           ? Image.asset(backIconPath!)
-                          : const Icon(Icons.chevron_left, size: 24),
+                          :  Icon(Icons.chevron_left, size: 24.w),
                       onPressed: () => Navigator.pop(context),
                     )
                   : null,

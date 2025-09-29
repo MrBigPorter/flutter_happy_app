@@ -5,6 +5,7 @@ import 'package:flutter/cupertino.dart';
 
 import 'package:flutter_app/common.dart';
 import 'package:flutter_app/components/skeleton.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import '../utils/helper.dart';
 import '../utils/jump_helper.dart';
@@ -83,7 +84,7 @@ class _HomeBannerState extends State<HomeBanner> {
     /// 无数据时显示占位图 show placeholder when no data
     if(items.isEmpty){
       return Container(
-        height: widget.height,
+        height: widget.height.h,
         margin: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: context.bgBrandPrimary,

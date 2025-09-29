@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:shimmer/shimmer.dart';
 
 enum SkeletonShape { rect, circle }
@@ -35,8 +36,8 @@ class Skeleton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final box = Container(
-      width: width,
-      height: height,
+      width: width.w,
+      height: height.h,
       decoration: BoxDecoration(
         color: Colors.grey.shade300,
         shape: shape == SkeletonShape.circle

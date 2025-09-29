@@ -33,13 +33,14 @@ ThemeData _buildTheme(bool dark) {
     seedColor: Colors.deepOrange,
     brightness: brightness,
   ).copyWith(
-    surface: brightness == Brightness.dark ? TokensDark.bgPrimary : TokensLight.bgBrandPrimary,
+    surface: brightness == Brightness.dark ? TokensDark.bgMobilePrimary : TokensLight.bgMobilePrimary,
   );
   return ThemeData(
     useMaterial3: true,
+    fontFamily: 'Inter',
     brightness: brightness,
     colorScheme: cs,
-    scaffoldBackgroundColor: brightness == Brightness.dark ? TokensDark.bgSecondary : TokensLight.bgSecondary,
+    scaffoldBackgroundColor: brightness == Brightness.dark ? TokensDark.bgMobilePrimary : TokensLight.bgMobilePrimary,
     pageTransitionsTheme: const PageTransitionsTheme(
       builders: {
         TargetPlatform.android: CupertinoPageTransitionsBuilder(),
