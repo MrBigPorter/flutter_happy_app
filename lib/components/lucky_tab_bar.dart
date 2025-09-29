@@ -50,7 +50,6 @@ class LuckyTabBar extends StatelessWidget {
     return Scaffold(
       body: child,
       bottomNavigationBar: SizedBox(
-        height: 74.h + bottomInset,
         child: BottomNavigationBar(
           backgroundColor: context.bgPrimary,
           currentIndex: currentIndex,
@@ -65,12 +64,12 @@ class LuckyTabBar extends StatelessWidget {
           unselectedLabelStyle: TextStyle(
             fontSize: context.textXs,
             fontWeight: FontWeight.w600,
-            height: 1.6
+            height: 1.4
           ),
           selectedLabelStyle: TextStyle(
             fontSize: context.textXs,
             fontWeight: FontWeight.w600,
-            height: 1.6
+            height: 1.4
           ),
           items: _tabs.asMap().entries.map((entry) {
             final tab = entry.value;

@@ -117,7 +117,7 @@ class _HomeBannerState extends State<HomeBanner> {
                   child: Hero(
                     tag: 'banner_$i',
                     child: ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(8.r),
                       child: CachedNetworkImage(
                         imageUrl: proxied(item.bannerImgUrl),
                         fit: BoxFit.cover,
@@ -126,12 +126,12 @@ class _HomeBannerState extends State<HomeBanner> {
                         placeholder: (_, __) => Skeleton.react(
                             width: double.infinity,
                             height: widget.height,
-                            borderRadius: BorderRadius.circular(8)
+                            borderRadius: BorderRadius.circular(8.r)
                         ),
                         errorWidget: (_, __, ___) => Container(
                           color: const Color(0x11000000),
                           alignment: Alignment.center,
-                          child: Icon(CupertinoIcons.photo, size: 32, color: Colors.grey),
+                          child: Icon(CupertinoIcons.photo, size: 32.w, color: Colors.grey),
                         ),
                       ),
                     ),
@@ -179,12 +179,12 @@ class _Dots extends StatelessWidget {
         final active = i == index;
         return AnimatedContainer(
           duration: const Duration(milliseconds: 200),
-          margin: const EdgeInsets.symmetric(horizontal: 3),
-          width: active ? 16 : 6,
-          height: 6,
+          margin:  EdgeInsets.symmetric(horizontal: 3.w),
+          width: active ? 16.w : 6.w,
+          height: 6.h,
           decoration: BoxDecoration(
             color: active ? activeColor : inactiveColor,
-            borderRadius: BorderRadius.circular(3),
+            borderRadius: BorderRadius.circular(3.r),
           ),
         );
       }),
