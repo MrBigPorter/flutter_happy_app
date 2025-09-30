@@ -54,7 +54,7 @@ class _HomePageState extends State<HomePage> {
                   builder: (context,snapshot){
                     if(snapshot.connectionState != ConnectionState.done){
                       return Padding(
-                          padding: EdgeInsets.all(16),
+                          padding: EdgeInsets.all(16.w),
                           child: Skeleton.react(
                               width: double.infinity,
                               height: 356,
@@ -76,7 +76,7 @@ class _HomePageState extends State<HomePage> {
                   builder: (context, snapshot) {
                     if (snapshot.connectionState != ConnectionState.done) {
                       return Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+                        padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
                         child: Skeleton.react(
                           width: double.infinity,
                           height: 80,
@@ -86,9 +86,9 @@ class _HomePageState extends State<HomePage> {
 
                     if (snapshot.hasError) {
                       return Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 12.w,vertical: 8.h),
+                        padding: EdgeInsets.symmetric(horizontal: 16.w,vertical: 8.h),
                         child: Skeleton.react(
-                          width: 343,
+                          width: double.infinity,
                           height: 80,
                         ),
                       );
@@ -105,10 +105,10 @@ class _HomePageState extends State<HomePage> {
                     builder: (context,snapshot){
                       if(snapshot.connectionState == ConnectionState.waiting){
                         return Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 8.w, ),
+                          padding: EdgeInsets.symmetric(horizontal: 16.w, ),
                           child: Column(
                             children: [
-                              Skeleton.react(width: 343, height: 114,),
+                              Skeleton.react(width: double.infinity, height: 114,),
                               SizedBox(height: 8.h),
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
@@ -132,9 +132,34 @@ class _HomePageState extends State<HomePage> {
                         return Center(child: Text('loading fail: ${snapshot.error}'));
                       }
                       return Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+                        padding: EdgeInsets.symmetric(horizontal: 16.w, ),
                         child: HomeAd(list: snapshot.data!),
                       );
+                    }
+                ),
+              ),
+              /// 宝贝列表 Treasure List
+              SliverToBoxAdapter(
+                child: FutureBuilder(
+                    future: _fetchTreasures(),
+                    builder: (context,snapshot){
+                      // if(snapshot.connectionState == ConnectionState.waiting){
+                      if(snapshot.hasData){
+                        return Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Padding(
+                                padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
+                                child:Skeleton.react(width: 165, height: 352)
+                            ),
+                            Padding(
+                                padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
+                                child:Skeleton.react(width: 165, height: 352)
+                            )
+                          ],
+                        );
+                      }
+                      return Text('data');
                     }
                 ),
               )

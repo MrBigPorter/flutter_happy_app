@@ -24,10 +24,11 @@ class HomeAd extends StatelessWidget {
       children: openAds.map((item) {
         /// sortType 1 单图广告 single-image ad
         if (item.sortType == 1) {
-          return Padding(
-            padding: EdgeInsets.only(bottom: 8.h),
+          /*return Padding(
+            padding: EdgeInsets.only(bottom: 0.h),
             child: SingleAd(ad: item),
-          );
+          );*/
+          return SingleAd(ad: item);
         } else {
           /// sortType 2 三图广告 three-image ad
           return Padding(
@@ -53,8 +54,9 @@ class GridAd extends StatelessWidget {
     final BannerItem? second = bannerArray.length > 1 ? bannerArray[1] : null;
     final BannerItem? third = bannerArray.length > 2 ? bannerArray[2] : null;
 
+
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      mainAxisAlignment: MainAxisAlignment.start,
       children: [
         AdImage(
           src: first!.img,
@@ -65,6 +67,7 @@ class GridAd extends StatelessWidget {
           jumpUrl: first.jumpUrl,
           videoUrl: first.videoUrl,
         ),
+        SizedBox(width: 8.w,),
         Column(
           children: [
             AdImage(
@@ -104,7 +107,7 @@ class SingleAd extends StatelessWidget {
   build(BuildContext context){
     return AdImage(
       src: ad!.img,
-      width: 343,
+      width: double.infinity,
       height: 114,
       relatedTitleId: ad!.relatedTitleId,
       jumpCate: ad!.jumpCate,

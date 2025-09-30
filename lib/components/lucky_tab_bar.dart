@@ -41,7 +41,6 @@ class LuckyTabBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     /// safe area bottom inset
-    final bottomInset = MediaQuery.paddingOf(context).bottom;
     final String location = GoRouterState.of(context).uri.toString();
      int currentIndex = _tabs.indexWhere(
       (tab) => location.startsWith(tab.location),

@@ -1,6 +1,7 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_app/common.dart';
+import 'package:flutter_app/utils/format_helper.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 class HomeStatistics extends StatelessWidget {
@@ -8,12 +9,6 @@ class HomeStatistics extends StatelessWidget {
 
   const HomeStatistics({super.key, required this.statistics});
 
-  String formatNumber(num? n) {
-    if (n == null) return '0';
-    if (n >= 1000000) return '${(n / 1000000).toStringAsFixed(1)}M';
-    if (n >= 1000) return '${(n / 1000).toStringAsFixed(1)}K';
-    return n.toString();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -21,7 +16,7 @@ class HomeStatistics extends StatelessWidget {
       {
         'label': 'home-statistics-prize',
         'icon': 'assets/images/home_statistics/prize.png', // 建议移除开头的 '/'
-        'num': formatNumber(statistics.totalAmount),
+        'num': FormatHelper.formatCompactDecimal(statistics.totalAmount,decimalDigits: 1),
         'symbol': '₱',
       },
       {
@@ -33,19 +28,19 @@ class HomeStatistics extends StatelessWidget {
       {
         'label': 'home-statistics-donate',
         'icon': 'assets/images/home_statistics/donate.png',
-        'num': formatNumber(statistics.charityFundNum),
+        'num': FormatHelper.formatCompactDecimal(statistics.charityFundNum,decimalDigits: 1),
         'symbol': '₱',
       },
     ];
 
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 12.h, vertical: 8.h),
+      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: config.map((item) {
           return Expanded(
             child: Container(
-              margin: EdgeInsets.symmetric(horizontal: 4.h),
+              margin: EdgeInsets.symmetric(horizontal: 4.w),
               padding: EdgeInsets.only(top: 12.h, bottom: 8.h),
               decoration: BoxDecoration(
                 color: context.bgPrimary,

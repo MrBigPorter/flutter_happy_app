@@ -96,7 +96,7 @@ class _HomeBannerState extends State<HomeBanner> {
     /// 有数据时显示轮播图 show banner when have data
     return Container(
       key: widget.bannerID != null ? Key(widget.bannerID!) : null,
-      margin: const EdgeInsets.only(top: 8, left: 16, right: 16),
+      margin:  EdgeInsets.only(top: 8.h, left: 16.w, right: 16.w),
       height: widget.height,
       child: Stack(
         fit: StackFit.expand,

@@ -83,6 +83,7 @@ dev_dependencies:
   # json serialization and deserialization solution
   build_runner: ^2.4.0
   json_serializable: ^6.6.0
+  intl: ^0.20.2
 
 
 

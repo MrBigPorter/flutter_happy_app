@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 
 /// Description: ClickableResource model interface
 abstract class ClickableResource {
