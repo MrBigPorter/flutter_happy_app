@@ -50,7 +50,7 @@ class ProductListItem{
     required this.treasureName,
     required this.unitAmount,
     required this.treasureCoverImg,
-    this.rate,
+     this.rate,
   });
 
   factory ProductListItem.fromJson(Map<String,dynamic> json) => _$ProductListItemFromJson(json);

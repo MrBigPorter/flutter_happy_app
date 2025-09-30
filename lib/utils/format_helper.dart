@@ -69,4 +69,16 @@ class FormatHelper {
       decimalDigits: decimalDigits,
     ).format(n);
   }
+
+  /// 解析百分比字符串为小数 parseRate('78.00') => 78
+  static double parseRate(dynamic value, {target = '.00'}) {
+    if (value == null) return 0;
+    if (value is num) return value.toDouble().clamp(0, 100);
+    if (value is String) {
+      final clean = value.replaceAll(target, '');
+      final parsed = double.tryParse(clean) ?? 0;
+      return parsed.clamp(0, 100);
+    }
+    return 0;
+  }
 }

@@ -29,7 +29,7 @@ class Ending extends StatelessWidget {
         ),
         SizedBox(
           width: 375.w,
-          height: 250.h,
+          height: 400.h,
           child: ListView.separated(
               padding: EdgeInsets.only(left: 16.w,top: 12.h,right: 16.w),
               scrollDirection: Axis.horizontal,
