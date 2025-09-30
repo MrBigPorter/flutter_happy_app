@@ -131,7 +131,10 @@ class _HomePageState extends State<HomePage> {
                       if(snapshot.hasError){
                         return Center(child: Text('loading fail: ${snapshot.error}'));
                       }
-                      return HomeAd(list: snapshot.data!,);
+                      return Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+                        child: HomeAd(list: snapshot.data!),
+                      );
                     }
                 ),
               )
