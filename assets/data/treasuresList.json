@@ -302,6 +302,259 @@
           "unit_amount": 1
         }
       ]
+    },
+    {
+      "act_id": 306,
+      "img_style_type": 3,
+      "treasure_resp": [
+        {
+          "treasure_id": 492,
+          "lottery_time": 0,
+          "treasure_name": "300 globe load card",
+          "img_style_type": 0,
+          "lottery_mode": 1,
+          "treasure_cover_img": "https://test-pesolucky.s3.ap-east-1.amazonaws.com/avatar/20250304164859ce2296c8-f92e-4e23-86cc-d4423642c945.jpg",
+          "product_name": "globe300",
+          "cost_amount": 300,
+          "main_image_list": [
+            "https://test-pesolucky.s3.ap-east-1.amazonaws.com/avatar/2025022814510732635234-eb84-4482-a19c-48b1437e215c.jpg"
+          ],
+          "seq_shelves_quantity": 11,
+          "seq_buy_quantity": 11,
+          "min_buy_quantity": 1,
+          "buy_quantity_rate": "100.00",
+          "unit_amount": 32.73
+        },
+        {
+          "treasure_id": 628,
+          "lottery_time": 0,
+          "treasure_name": "多人参团-手动开奖",
+          "img_style_type": 0,
+          "lottery_mode": 1,
+          "treasure_cover_img": "https://test-pesolucky.s3.ap-east-1.amazonaws.com/avatar/2025032615445980438dcd-6d4d-4898-9699-d3d23edd3acc.jpg",
+          "product_name": "大狗-实物",
+          "cost_amount": 100,
+          "main_image_list": [
+            "https://test-pesolucky.s3.ap-east-1.amazonaws.com/avatar/202503061517547acfb3ce-fadb-490b-9acb-b3ac761914c9.jpg"
+          ],
+          "seq_shelves_quantity": 100,
+          "seq_buy_quantity": 50,
+          "min_buy_quantity": 50,
+          "buy_quantity_rate": "50.00",
+          "unit_amount": 2
+        },
+        {
+          "treasure_id": 642,
+          "lottery_time": 0,
+          "treasure_name": "大狗实物财务统计",
+          "img_style_type": 0,
+          "lottery_mode": 1,
+          "treasure_cover_img": "https://test-pesolucky.s3.ap-east-1.amazonaws.com/avatar/202503211626297c97410f-a414-4749-a8df-84c19f0971bf.jpg",
+          "product_name": "大狗-实物",
+          "cost_amount": 100,
+          "main_image_list": [
+            "https://test-pesolucky.s3.ap-east-1.amazonaws.com/avatar/202503061517547acfb3ce-fadb-490b-9acb-b3ac761914c9.jpg"
+          ],
+          "seq_shelves_quantity": 10,
+          "seq_buy_quantity": 5,
+          "min_buy_quantity": 0,
+          "buy_quantity_rate": "50.00",
+          "unit_amount": 20
+        },
+        {
+          "treasure_id": 572,
+          "lottery_time": 0,
+          "treasure_name": "多张图片1",
+          "img_style_type": 0,
+          "lottery_mode": 1,
+          "treasure_cover_img": "https://test-pesolucky.s3.ap-east-1.amazonaws.com/avatar/20250314181048c16c388f-7269-49a9-95dc-54e0a86bd765.png",
+          "product_name": "虚拟-多张图片",
+          "cost_amount": 10,
+          "main_image_list": [
+            "https://test-pesolucky.s3.ap-east-1.amazonaws.com/avatar/202503141806334faf9f7c-ea73-4307-b44e-906fbd7e6ae2.jpg",
+            "https://test-pesolucky.s3.ap-east-1.amazonaws.com/avatar/20250314180637d8896c56-dad2-4b81-ae10-748d23f271b1.jpg",
+            "https://test-pesolucky.s3.ap-east-1.amazonaws.com/avatar/20250314180641e0f7a160-99b5-438f-8043-0d1746e22dfc.jpg",
+            "https://test-pesolucky.s3.ap-east-1.amazonaws.com/avatar/202503141806452f8b3a67-9b82-427f-8c5f-183b919f5fa2.jpg",
+            "https://test-pesolucky.s3.ap-east-1.amazonaws.com/avatar/202503141806482694e84f-d6a7-430a-812f-1eb1025cfd13.jpg",
+            "https://test-pesolucky.s3.ap-east-1.amazonaws.com/avatar/2025031418084359421059-f149-49d0-9db1-abca2438535a.png",
+            "https://test-pesolucky.s3.ap-east-1.amazonaws.com/avatar/20250314180933134ece4d-ae4b-43ee-84fc-57e61ce9df6b.jpeg",
+            "https://test-pesolucky.s3.ap-east-1.amazonaws.com/avatar/20250314180941ad7b3160-72a1-4c99-a95e-57de7976cfe0.jpg"
+          ],
+          "seq_shelves_quantity": 10,
+          "seq_buy_quantity": 10,
+          "min_buy_quantity": 1,
+          "buy_quantity_rate": "100.00",
+          "unit_amount": 1.5
+        },
+        {
+          "treasure_id": 586,
+          "lottery_time": 0,
+          "treasure_name": "草莓夺宝19",
+          "img_style_type": 0,
+          "lottery_mode": 1,
+          "treasure_cover_img": "https://test-pesolucky.s3.ap-east-1.amazonaws.com/avatar/20250319161337f109fdaf-9e90-407f-9c1c-d4e20aa336a7.jpg",
+          "product_name": "虚拟话费卡面值100",
+          "cost_amount": 100,
+          "main_image_list": [
+            "https://test-pesolucky.s3.ap-east-1.amazonaws.com/avatar/202503131815349d2e2eca-053f-4036-92df-f374a58174b3.jpg"
+          ],
+          "seq_shelves_quantity": 10,
+          "seq_buy_quantity": 10,
+          "min_buy_quantity": 1,
+          "buy_quantity_rate": "100.00",
+          "unit_amount": 15
+        },
+        {
+          "treasure_id": 589,
+          "lottery_time": 0,
+          "treasure_name": "最新夺宝1",
+          "img_style_type": 0,
+          "lottery_mode": 1,
+          "treasure_cover_img": "https://test-pesolucky.s3.ap-east-1.amazonaws.com/avatar/2025031918461041953615-94e7-47a8-a179-c47b57d85ef2.jpg",
+          "product_name": "话费-五大类",
+          "cost_amount": 100,
+          "main_image_list": [
+            "https://test-pesolucky.s3.ap-east-1.amazonaws.com/avatar/20250319180603e7b09faa-c979-4686-9558-66ad575e7078.jpg"
+          ],
+          "seq_shelves_quantity": 111,
+          "seq_buy_quantity": 62,
+          "min_buy_quantity": 1,
+          "buy_quantity_rate": "55.86",
+          "unit_amount": 1.8
+        },
+        {
+          "treasure_id": 643,
+          "lottery_time": 0,
+          "treasure_name": "开奖严重0",
+          "img_style_type": 0,
+          "lottery_mode": 1,
+          "treasure_cover_img": "https://test-pesolucky.s3.ap-east-1.amazonaws.com/avatar/202503311546193179b053-e657-4530-8a35-ccf3ad6a7c92.jpg",
+          "product_name": "大狗-实物",
+          "cost_amount": 100,
+          "main_image_list": [
+            "https://test-pesolucky.s3.ap-east-1.amazonaws.com/avatar/202503061517547acfb3ce-fadb-490b-9acb-b3ac761914c9.jpg"
+          ],
+          "seq_shelves_quantity": 4,
+          "seq_buy_quantity": 4,
+          "min_buy_quantity": 2,
+          "buy_quantity_rate": "100.00",
+          "unit_amount": 50
+        },
+        {
+          "treasure_id": 644,
+          "lottery_time": 0,
+          "treasure_name": "验证自动开奖1",
+          "img_style_type": 0,
+          "lottery_mode": 1,
+          "treasure_cover_img": "https://test-pesolucky.s3.ap-east-1.amazonaws.com/avatar/2025033116255064723363-b225-4f5f-a4de-1fd5ff4ec944.jpg",
+          "product_name": "大狗-实物",
+          "cost_amount": 100,
+          "main_image_list": [
+            "https://test-pesolucky.s3.ap-east-1.amazonaws.com/avatar/202503061517547acfb3ce-fadb-490b-9acb-b3ac761914c9.jpg"
+          ],
+          "seq_shelves_quantity": 5,
+          "seq_buy_quantity": 5,
+          "min_buy_quantity": 2,
+          "buy_quantity_rate": "100.00",
+          "unit_amount": 40
+        },
+        {
+          "treasure_id": 645,
+          "lottery_time": 0,
+          "treasure_name": "123123123",
+          "img_style_type": 0,
+          "lottery_mode": 1,
+          "treasure_cover_img": "https://test-pesolucky.s3.ap-east-1.amazonaws.com/avatar/2025033116362627137116-287f-4d6d-8d0f-d34c77e53659.jpg",
+          "product_name": "虚拟话费卡面值100",
+          "cost_amount": 100,
+          "main_image_list": [
+            "https://test-pesolucky.s3.ap-east-1.amazonaws.com/avatar/202503131815349d2e2eca-053f-4036-92df-f374a58174b3.jpg"
+          ],
+          "seq_shelves_quantity": 10,
+          "seq_buy_quantity": 10,
+          "min_buy_quantity": 10,
+          "buy_quantity_rate": "100.00",
+          "unit_amount": 15
+        },
+        {
+          "treasure_id": 646,
+          "lottery_time": 0,
+          "treasure_name": "循环上架0",
+          "img_style_type": 0,
+          "lottery_mode": 1,
+          "treasure_cover_img": "https://test-pesolucky.s3.ap-east-1.amazonaws.com/avatar/2025033116403789902e2d-cb2c-4aaa-867c-3ea0176d4315.jpg",
+          "product_name": "大狗-实物",
+          "cost_amount": 100,
+          "main_image_list": [
+            "https://test-pesolucky.s3.ap-east-1.amazonaws.com/avatar/202503061517547acfb3ce-fadb-490b-9acb-b3ac761914c9.jpg"
+          ],
+          "seq_shelves_quantity": 5,
+          "seq_buy_quantity": 5,
+          "min_buy_quantity": 2,
+          "buy_quantity_rate": "100.00",
+          "unit_amount": 40
+        },
+        {
+          "treasure_id": 647,
+          "lottery_time": 0,
+          "treasure_name": "5555556666",
+          "img_style_type": 0,
+          "lottery_mode": 1,
+          "treasure_cover_img": "https://test-pesolucky.s3.ap-east-1.amazonaws.com/avatar/202503311722065ac576a0-acc7-4942-9fdf-3eca5c2ec182.jpg",
+          "product_name": "虚拟商品面值50",
+          "cost_amount": 50,
+          "main_image_list": [
+            "https://test-pesolucky.s3.ap-east-1.amazonaws.com/avatar/20250313182632e37e97a9-1115-459d-bc59-3b9b2ff18d5d.jpg"
+          ],
+          "seq_shelves_quantity": 1,
+          "seq_buy_quantity": 1,
+          "min_buy_quantity": 1,
+          "buy_quantity_rate": "100.00",
+          "unit_amount": 100
+        }
+      ]
+    },
+    {
+      "act_id": 288,
+      "img_style_type": 4,
+      "treasure_resp": [
+        {
+          "treasure_id": 1684,
+          "lottery_time": 0,
+          "treasure_name": "0912虚拟发货",
+          "img_style_type": 0,
+          "lottery_mode": 1,
+          "treasure_cover_img": "https://test-pesolucky.s3.ap-east-1.amazonaws.com/avatar/20250912191242a1d171f0-f024-40b0-b477-7d5cf3d39147.jpeg",
+          "product_name": "0829新虚拟",
+          "cost_amount": 100,
+          "main_image_list": [
+            "https://test-pesolucky.s3.ap-east-1.amazonaws.com/avatar/20250829180632f0ed8dba-b9c2-424b-a31f-e58842cda6b2.jpg"
+          ],
+          "seq_shelves_quantity": 10,
+          "seq_buy_quantity": 2,
+          "min_buy_quantity": 5,
+          "buy_quantity_rate": "20.00",
+          "unit_amount": 20
+        },
+        {
+          "treasure_id": 1701,
+          "lottery_time": 0,
+          "treasure_name": "iPhone 17 pro",
+          "img_style_type": 0,
+          "lottery_mode": 1,
+          "treasure_cover_img": "https://test-pesolucky.s3.ap-east-1.amazonaws.com/avatar/202509261540041de42a63-5e1b-4828-869a-f40d10ec06d3.jpg",
+          "product_name": "最新一加手机",
+          "cost_amount": 1000,
+          "main_image_list": [
+            "https://test-pesolucky.s3.ap-east-1.amazonaws.com/avatar/20250612141201cb9d87f2-7210-4b94-b662-ec4b5b2c04e4.png"
+          ],
+          "seq_shelves_quantity": 100,
+          "seq_buy_quantity": 1,
+          "min_buy_quantity": 50,
+          "buy_quantity_rate": "1.00",
+          "unit_amount": 20
+        }
+      ]
     }
   ]
 }
