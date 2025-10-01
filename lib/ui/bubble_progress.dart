@@ -100,13 +100,13 @@ class BubbleProgress extends StatelessWidget {
                   child: tipBuilder != null
                       ? tipBuilder!(pct.toDouble())
                       : Text(
-                          "${pct.toStringAsFixed(0)}%",
-                          style: TextStyle(
-                            fontSize: 10.sp,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.white,
-                          ),
-                        ),
+                    "${pct.toStringAsFixed(0)}%",
+                    style: TextStyle(
+                      fontSize: 10.sp,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
+                  ),
                 ),
               ),
             ),
