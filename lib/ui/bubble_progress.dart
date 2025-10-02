@@ -52,7 +52,7 @@ class BubbleProgress extends StatelessWidget {
     final top = showTip ? topPadding : 0.0;
 
     return SizedBox(
-      height: topPadding + trackHeight,
+      height: trackHeight,
       child: Stack(
         clipBehavior: Clip.none,
         children: [

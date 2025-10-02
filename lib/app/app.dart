@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_app/app/routes/app_router.dart';
 import 'package:flutter_app/common.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:easy_localization/easy_localization.dart';
 
@@ -22,6 +23,16 @@ class MyApp extends StatelessWidget {
       localizationsDelegates: context.localizationDelegates,
       supportedLocales: context.supportedLocales,
       locale: context.locale,
+      builder: (context,child){
+        return DefaultTextStyle.merge(
+          style: GoogleFonts.inter(
+            fontSize: 14,
+            height: 1.2,
+            fontWeight: FontWeight.w400,
+          ),
+          child: child!,
+        );
+      },
     );
   }
 }
@@ -29,18 +40,23 @@ class MyApp extends StatelessWidget {
 ThemeData _buildTheme(bool dark) {
   final brightness = dark ? Brightness.dark : Brightness.light;
 
-  final cs = ColorScheme.fromSeed(
-    seedColor: Colors.deepOrange,
-    brightness: brightness,
-  ).copyWith(
-    surface: brightness == Brightness.dark ? TokensDark.bgMobilePrimary : TokensLight.bgMobilePrimary,
-  );
+  final cs =
+      ColorScheme.fromSeed(
+        seedColor: Colors.deepOrange,
+        brightness: brightness,
+      ).copyWith(
+        surface: brightness == Brightness.dark
+            ? TokensDark.bgMobilePrimary
+            : TokensLight.bgMobilePrimary,
+      );
   return ThemeData(
-    useMaterial3: true,
     fontFamily: 'Inter',
+    useMaterial3: true,
     brightness: brightness,
     colorScheme: cs,
-    scaffoldBackgroundColor: brightness == Brightness.dark ? TokensDark.bgMobilePrimary : TokensLight.bgMobilePrimary,
+    scaffoldBackgroundColor: brightness == Brightness.dark
+        ? TokensDark.bgMobilePrimary
+        : TokensLight.bgMobilePrimary,
     pageTransitionsTheme: const PageTransitionsTheme(
       builders: {
         TargetPlatform.android: CupertinoPageTransitionsBuilder(),
@@ -48,7 +64,7 @@ ThemeData _buildTheme(bool dark) {
         TargetPlatform.linux: CupertinoPageTransitionsBuilder(),
         TargetPlatform.macOS: CupertinoPageTransitionsBuilder(),
         TargetPlatform.windows: CupertinoPageTransitionsBuilder(),
-    }
-    )
+      },
+    ),
   );
 }

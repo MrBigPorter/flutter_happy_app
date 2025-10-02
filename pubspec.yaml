@@ -69,6 +69,8 @@ dependencies:
   shimmer: ^3.0.0
   syncfusion_flutter_sliders: ^31.1.21
   syncfusion_flutter_core: ^31.1.21
+  intl: ^0.20.2
+  google_fonts: ^6.2.1
 
 dev_dependencies:
   flutter_test:
@@ -85,7 +87,7 @@ dev_dependencies:
   # json serialization and deserialization solution
   build_runner: ^2.4.0
   json_serializable: ^6.6.0
-  intl: ^0.20.2
+
 
 
 
@@ -107,31 +109,19 @@ flutter:
     - assets/images/tab_bar/
     - assets/locales/en.json
     - assets/locales/tl.json
-    - assets/fonts/
     - assets/data/
-
+    - assets/fonts/
   fonts:
     - family: Inter
       fonts:
-        - asset: assets/fonts/Inter.ttf
-          weight: 100
-        - asset: assets/fonts/Inter.ttf
-          weight: 200
-        - asset: assets/fonts/Inter.ttf
-          weight: 300
-        - asset: assets/fonts/Inter.ttf
+        - asset: assets/fonts/Inter-Regular.ttf
           weight: 400
-        - asset: assets/fonts/Inter.ttf
-          weight: 500
-        - asset: assets/fonts/Inter.ttf
+        - asset: assets/fonts/Inter-SemiBold.ttf
           weight: 600
-        - asset: assets/fonts/Inter.ttf
+        - asset: assets/fonts/Inter-Bold.ttf
           weight: 700
-        - asset: assets/fonts/Inter.ttf
+        - asset: assets/fonts/Inter-ExtraBold.ttf
           weight: 800
-        - asset: assets/fonts/Inter.ttf
-          weight: 900
-
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
 

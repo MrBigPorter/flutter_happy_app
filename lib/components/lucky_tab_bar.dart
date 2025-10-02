@@ -58,15 +58,15 @@ class LuckyTabBar extends StatelessWidget {
           type: BottomNavigationBarType.fixed,
           selectedItemColor: context.fgBrandPrimary,
           unselectedItemColor: context.fgQuinary400,
-          selectedFontSize: 12.sp,
-          unselectedFontSize: 12.sp,
+          selectedFontSize: 10.sp,
+          unselectedFontSize: 10.sp,
           unselectedLabelStyle: TextStyle(
-            fontSize: context.textXs,
+            fontSize: context.text2xs,
             fontWeight: FontWeight.w600,
             height: 1.4
           ),
           selectedLabelStyle: TextStyle(
-            fontSize: context.textXs,
+            fontSize: context.text2xs,
             fontWeight: FontWeight.w600,
             height: 1.4
           ),
