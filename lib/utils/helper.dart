@@ -4,7 +4,14 @@ import 'package:flutter/foundation.dart';
 extension NullOrEmpty on Object? {
   bool get isNullOrEmpty => switch (this) {
     null => true,
-    String s => s.isEmpty,
+
+    /// ""、"   "、"0" 都算空 empty String or "0" is considered empty
+    String s => s.trim().isEmpty || int.tryParse(s.trim()) == 0,
+
+    /// <= 0 视为无效时间戳 <= 0 is considered invalid timestamp
+    num n => n <= 0,
+
+    /// List、Set、Map 都有 isEmpty 方法 List, Set and Map all have isEmpty method
     Iterable i => i.isEmpty,
     Map m => m.isEmpty,
     _ => false,

@@ -17,7 +17,7 @@ class FeaturedSkeleton extends StatelessWidget {
         crossAxisCount: 2,
         mainAxisSpacing: 4.h,
         crossAxisSpacing: 2.w,
-        childAspectRatio: 165 / 265,
+        childAspectRatio: 157/344.w,
       ),
       itemBuilder: (context, index) {
         return Container(
@@ -30,36 +30,36 @@ class FeaturedSkeleton extends StatelessWidget {
             children: [
               Skeleton.react(
                 width: double.infinity,
-                height: 165.h,
+                height: 157.h,
                 borderRadius: BorderRadius.only(
                   topLeft: Radius.circular(8.r),
                   topRight: Radius.circular(8.r),
                 ),
               ),
-              SizedBox(height: 8.h),
+              SizedBox(height: 8.w),
               Skeleton.react(
                 width: 140.w,
-                height: 20.h,
+                height: 20.w,
                 borderRadius: BorderRadius.circular(0),
               ),
-              SizedBox(height: 4.h),
+              SizedBox(height: 4.w),
               Skeleton.react(
                 width: 140.w,
-                height: 20.h,
+                height: 20.w,
                 borderRadius: BorderRadius.circular(0),
               ),
-              SizedBox(height: 8.h),
+              SizedBox(height: 8.w),
               Skeleton.react(
                 width: 53.w,
-                height: 22.h,
+                height: 22.w,
                 borderRadius: BorderRadius.circular(4.r),
               ),
               SizedBox(height: 8),
-              Skeleton.react(width: 140.w, height: 4.h),
-              SizedBox(height: 10.h),
-              Skeleton.react(width: 100.w, height: 20.h),
-              SizedBox(height: 20.h),
-              Skeleton.react(width: 120.w, height: 49.h),
+              Skeleton.react(width: 140.w, height: 4.w),
+              SizedBox(height: 10.w),
+              Skeleton.react(width: 100.w, height: 20.w),
+              SizedBox(height: 20.w),
+              Skeleton.react(width: 120.w, height: 49.w),
             ],
           ),
         );

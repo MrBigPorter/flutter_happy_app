@@ -1,11 +1,14 @@
 // 商品项组件，用于展示单个商品的卡片视图
 // Product item component for displaying individual product card view
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_app/app/routes/app_router.dart';
 import 'package:flutter_app/common.dart';
 import 'package:flutter_app/components/render_countdown.dart';
 import 'package:flutter_app/components/skeleton.dart';
 import 'package:flutter_app/ui/bubble_progress.dart';
+import 'package:flutter_app/ui/enter_button.dart';
 import 'package:flutter_app/utils/format_helper.dart';
 import 'package:flutter_app/utils/helper.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -153,7 +156,6 @@ class ProductItem extends StatelessWidget {
                 ),
               ),
               child: Column(
-                mainAxisSize: MainAxisSize.min,
                 children: [
                   // 商品标题
                   // Product title
@@ -208,7 +210,7 @@ class ProductItem extends StatelessWidget {
                   // 销售进度条
                   // Sales progress bar
                   Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       /// 进度条 Progress bar
                       BubbleProgress(
@@ -306,6 +308,16 @@ class ProductItem extends StatelessWidget {
                           ],
                         ),
                       ),
+
+                      // 底部间距 Bottom spacing
+                      SizedBox(height: 8.w),
+                      EnterButton(
+                        child: Text('common.enter.now'.tr()),
+                        onPressed: () {
+                          /// 进入商品详情 Enter product details
+                          AppRouter.router.push('/product/${data.treasureId}');
+                        },
+                      )
                     ],
                   ),
                 ],
