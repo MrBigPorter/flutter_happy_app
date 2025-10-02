@@ -86,16 +86,21 @@ class EnterButton extends StatefulWidget {
 class _EnterButtonState extends State<EnterButton> {
   bool _pressing = false;
   bool _locked = false;
-
   void _setPress(bool pressing) {
     setState(() {
       _pressing = pressing;
     });
   }
 
+  void _setLocked(bool locked) {
+    setState(() {
+      _locked = locked;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
-    final disabled = widget.onPressed == null || widget.loading;
+    final disabled = widget.onPressed == null || widget.loading || _locked;
 
     final radius = widget.borderRadius ?? BorderRadius.circular(8);
 
@@ -128,6 +133,8 @@ class _EnterButtonState extends State<EnterButton> {
         child: Opacity(
           opacity: disabled ? 0.7 : 1.0,
           child: Material(
+            elevation: 2,
+            shadowColor: Colors.black,
             color: Colors.transparent,
             borderRadius: radius,
             child: Ink(
@@ -135,13 +142,6 @@ class _EnterButtonState extends State<EnterButton> {
                 color: bg,
                 borderRadius: radius,
                 border: Border.all(color: Colors.white.withAlpha(12), width: 2),
-                boxShadow: const [
-                  BoxShadow(
-                    blurRadius: .5,
-                    offset: Offset(0, .5),
-                    color: Color(0x99000000),
-                  ),
-                ],
                 image: widget.backgroundImage == null
                     ? null
                     : DecorationImage(
@@ -163,8 +163,7 @@ class _EnterButtonState extends State<EnterButton> {
                   onTap: disabled
                       ? null
                       : () async {
-                          _locked = true;
-                          setState(() {});
+                          _setLocked(true);
                           await Future.delayed(
                             Duration(milliseconds: widget.pressDelayMs),
                           );
@@ -178,9 +177,7 @@ class _EnterButtonState extends State<EnterButton> {
                             Duration(milliseconds: widget.cooldownMs),
                           );
                           if (mounted) {
-                            setState(() {
-                              _locked = false;
-                            });
+                            _setLocked(false);
                           }
                         },
                   child: Padding(
