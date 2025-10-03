@@ -20,9 +20,17 @@ class ProductItem extends StatelessWidget {
 
   // 卡片宽度
   // Card width
-  final int width = 157;
+  final int? cardWidth;
+  final int? imgWidth;
+  final int? imgHeight;
 
-  const ProductItem({super.key, required this.data});
+  const ProductItem({
+    super.key,
+    required this.data,
+    this.cardWidth = 157,
+    this.imgWidth = 157,
+    this.imgHeight = 157,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -35,7 +43,7 @@ class ProductItem extends StatelessWidget {
     return RepaintBoundary(
       key: ValueKey(data.treasureId),
       child: SizedBox(
-        width: width.w,
+        width: cardWidth!.w,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -53,10 +61,14 @@ class ProductItem extends StatelessWidget {
                     child: CachedNetworkImage(
                       imageUrl: proxied(data.treasureCoverImg),
                       fit: BoxFit.cover,
-                      placeholder: (_, __) =>
-                          Skeleton.react(width: double.infinity, height: 157.w),
-                      errorWidget: (_, __, ___) =>
-                          Skeleton.react(width: double.infinity, height: 157.w),
+                      placeholder: (_, __) => Skeleton.react(
+                        width: double.infinity,
+                        height: imgWidth!.w,
+                      ),
+                      errorWidget: (_, __, ___) => Skeleton.react(
+                        width: double.infinity,
+                        height: imgHeight!.w,
+                      ),
                     ),
                   ),
                 ),
@@ -317,9 +329,11 @@ class ProductItem extends StatelessWidget {
                           child: Text('common.enter.now'.tr()),
                           onPressed: () {
                             /// 进入商品详情 Enter product details
-                            AppRouter.router.push('/product/${data.treasureId}');
+                            AppRouter.router.push(
+                              '/product/${data.treasureId}',
+                            );
                           },
-                        )
+                        ),
                       ],
                     ),
                   ],

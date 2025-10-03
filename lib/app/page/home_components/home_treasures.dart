@@ -21,7 +21,7 @@ class HomeTreasures extends StatelessWidget{
         }else if(item.imgStyleType == 3) {
           return HomeFuture(list: item.treasureResp,);
         }else if(item.imgStyleType == 4) {
-          return Recommendation();
+          return Recommendation(list: item.treasureResp,);
         }
         return const SizedBox.shrink();
       }).toList(),
