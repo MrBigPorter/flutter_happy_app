@@ -241,10 +241,10 @@ class _MeasuredTipState extends State<_MeasuredTip> {
             // 拇指
             Positioned(
               left: widget.endX - 4,
-              top: (widget.trackHeight / 2) - (widget.thumbSize / 2) + 0.5,
+              top: (widget.trackHeight / 2) - (widget.thumbSize / 2) ,
               child: Container(
                 width: 8.w,
-                height: 8.h,
+                height: 8.w,
                 decoration: BoxDecoration(
                   color: context.utilityBrand500,
                   shape: BoxShape.circle,

@@ -4,6 +4,84 @@
   "tid": "45803cdc92960ccf89d88e1d226fb392",
   "data": [
     {
+      "act_id": 399,
+      "img_style_type": 2,
+      "treasure_resp": [
+        {
+          "treasure_id": 10,
+          "lottery_time": 1759473090000,
+          "treasure_name": "Win ₱3,200 or Realme T300 ",
+          "img_style_type": 0,
+          "lottery_mode": 2,
+          "treasure_cover_img": "https://prod-pesolucky.s3.ap-east-1.amazonaws.com/avatar/202508191540333d2e6ad1-1fdf-4c96-b224-8342bc6a4688.jpg",
+          "product_name": "Realme T300",
+          "cost_amount": 3500,
+          "main_image_list": [
+            "https://prod-pesolucky.s3.ap-east-1.amazonaws.com/avatar/2025081915411981febf27-0026-4da7-93fc-c696f46463b8.jpg"
+          ],
+          "seq_shelves_quantity": 4600,
+          "seq_buy_quantity": 2733,
+          "min_buy_quantity": 4600,
+          "buy_quantity_rate": "59.41",
+          "unit_amount": 1
+        },
+        {
+          "treasure_id": 120,
+          "lottery_time": 1764657090000,
+          "treasure_name": "Win ₱1,500 Cash",
+          "img_style_type": 0,
+          "lottery_mode": 1,
+          "treasure_cover_img": "https://prod-pesolucky.s3.ap-east-1.amazonaws.com/avatar/20250830154022020e83e6-b2a8-4bad-a0b3-b6441a249d1c.png",
+          "product_name": "1500 Cash",
+          "cost_amount": 1499,
+          "main_image_list": [
+            "https://prod-pesolucky.s3.ap-east-1.amazonaws.com/avatar/202508191028190c6149a4-8668-462a-b11a-a1dfccb5e5ed.png"
+          ],
+          "seq_shelves_quantity": 1950,
+          "seq_buy_quantity": 1710,
+          "min_buy_quantity": 1950,
+          "buy_quantity_rate": "87.69",
+          "unit_amount": 1
+        },
+        {
+          "treasure_id": 122,
+          "lottery_time": 1764657090000,
+          "treasure_name": "Win ₱550 or POPMART!!!\t",
+          "img_style_type": 0,
+          "lottery_mode": 2,
+          "treasure_cover_img": "https://prod-pesolucky.s3.ap-east-1.amazonaws.com/avatar/202509091501398c6e060e-d59b-4a71-8da1-40554415b0e0.jpg",
+          "product_name": "POP-Reg",
+          "cost_amount": 600,
+          "main_image_list": [
+            "https://prod-pesolucky.s3.ap-east-1.amazonaws.com/avatar/202508181654468b6a29b4-49f3-4242-97c9-39c732cb8f78.jpg"
+          ],
+          "seq_shelves_quantity": 800,
+          "seq_buy_quantity": 536,
+          "min_buy_quantity": 800,
+          "buy_quantity_rate": "67.00",
+          "unit_amount": 1
+        },
+        {
+          "treasure_id": 111,
+          "lottery_time": 1764657090000,
+          "treasure_name": "Win ₱2,300 or Xiaomi Blender\t",
+          "img_style_type": 0,
+          "lottery_mode": 2,
+          "treasure_cover_img": "https://prod-pesolucky.s3.ap-east-1.amazonaws.com/avatar/20250830153824447e8ce2-6590-4916-ab6b-fde0a61b1c43.jpg",
+          "product_name": "Xiaomi Juice maker",
+          "cost_amount": 2500,
+          "main_image_list": [
+            "https://prod-pesolucky.s3.ap-east-1.amazonaws.com/avatar/2025081915250237ea0b6b-53fe-4f8a-a73d-1fb60b03f3d0.jpg"
+          ],
+          "seq_shelves_quantity": 3300,
+          "seq_buy_quantity": 368,
+          "min_buy_quantity": 3300,
+          "buy_quantity_rate": "11.15",
+          "unit_amount": 1
+        }
+      ]
+    },
+    {
       "act_id": 288,
       "img_style_type": 1,
       "treasure_resp": [

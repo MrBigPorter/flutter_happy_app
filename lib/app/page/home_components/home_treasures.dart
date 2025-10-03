@@ -17,7 +17,7 @@ class HomeTreasures extends StatelessWidget{
         if(item.imgStyleType == 1){
           return Ending(list: item.treasureResp);
         }else if(item.imgStyleType == 2) {
-          return SpecialArea();
+          return SpecialArea(list: item.treasureResp);
         }else if(item.imgStyleType == 3) {
           return HomeFuture();
         }else if(item.imgStyleType == 4) {
