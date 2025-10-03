@@ -32,299 +32,302 @@ class ProductItem extends StatelessWidget {
 
     /// 倒计时 Countdown
 
-    return SizedBox(
-      width: width.w,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Stack(
-            clipBehavior: Clip.none,
-            children: [
-              // 商品图片
-              // Product image
-              AspectRatio(
-                aspectRatio: 1,
-                child: ClipRRect(
-                  borderRadius: BorderRadius.vertical(
-                    top: Radius.circular(8.r),
-                  ),
-                  child: CachedNetworkImage(
-                    imageUrl: proxied(data.treasureCoverImg),
-                    fit: BoxFit.cover,
-                    placeholder: (_, __) =>
-                        Skeleton.react(width: double.infinity, height: 157.w),
-                    errorWidget: (_, __, ___) =>
-                        Skeleton.react(width: double.infinity, height: 157.w),
+    return RepaintBoundary(
+      key: ValueKey(data.treasureId),
+      child: SizedBox(
+        width: width.w,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                // 商品图片
+                // Product image
+                AspectRatio(
+                  aspectRatio: 1,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.vertical(
+                      top: Radius.circular(8.r),
+                    ),
+                    child: CachedNetworkImage(
+                      imageUrl: proxied(data.treasureCoverImg),
+                      fit: BoxFit.cover,
+                      placeholder: (_, __) =>
+                          Skeleton.react(width: double.infinity, height: 157.w),
+                      errorWidget: (_, __, ___) =>
+                          Skeleton.react(width: double.infinity, height: 157.w),
+                    ),
                   ),
                 ),
-              ),
 
-              /// 倒计时 Countdown
-              Positioned(
-                top: -10.w,
-                left: 0,
-                right: 0,
-                child: Center(
-                  child: RenderCountdown(
-                    lotteryTime: data.lotteryTime,
-                    renderSoldOut: () => SizedBox.shrink(),
-                    renderEnd: (days) => Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Center(
-                          child: Container(
+                /// 倒计时 Countdown
+                Positioned(
+                  top: -10.w,
+                  left: 0,
+                  right: 0,
+                  child: Center(
+                    child: RenderCountdown(
+                      lotteryTime: data.lotteryTime,
+                      renderSoldOut: () => SizedBox.shrink(),
+                      renderEnd: (days) => Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Center(
+                            child: Container(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 15.w,
+                                vertical: 2.w,
+                              ),
+                              height: 22.w,
+                              decoration: BoxDecoration(
+                                color: Colors.black,
+                                borderRadius: BorderRadius.circular(
+                                  context.radius2xl,
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  Text(
+                                    'reffle end ',
+                                    style: TextStyle(
+                                      fontSize: context.textXs,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.white,
+                                      height: 1,
+                                    ),
+                                  ),
+                                  Text(
+                                    '$days days',
+                                    style: TextStyle(
+                                      fontSize: context.textXs,
+                                      fontWeight: FontWeight.w600,
+                                      color: context.textErrorPrimary600,
+                                      height: 1,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      renderCountdown: (timeDilation) => Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
                             padding: EdgeInsets.symmetric(
                               horizontal: 15.w,
                               vertical: 2.w,
                             ),
+                            alignment: Alignment.center,
                             height: 22.w,
                             decoration: BoxDecoration(
-                              color: Colors.black,
+                              color: context.utilityError500,
                               borderRadius: BorderRadius.circular(
                                 context.radius2xl,
                               ),
                             ),
-                            child: Row(
-                              children: [
-                                Text(
-                                  'reffle end ',
-                                  style: TextStyle(
-                                    fontSize: context.textXs,
-                                    fontWeight: FontWeight.w600,
-                                    color: Colors.white,
-                                    height: 1,
-                                  ),
-                                ),
-                                Text(
-                                  '$days days',
-                                  style: TextStyle(
-                                    fontSize: context.textXs,
-                                    fontWeight: FontWeight.w600,
-                                    color: context.textErrorPrimary600,
-                                    height: 1,
-                                  ),
-                                ),
-                              ],
+                            child: Text(
+                              timeDilation,
+                              style: TextStyle(
+                                fontSize: context.textXs,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white,
+                                height: 1,
+                              ),
                             ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                    renderCountdown: (timeDilation) => Row(
+                  ),
+                ),
+              ],
+            ),
+            // 商品信息容器
+            // Product info container
+            Flexible(
+              fit: FlexFit.loose,
+              child: Container(
+                padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 12.w),
+                decoration: BoxDecoration(
+                  color: context.bgPrimary,
+                  borderRadius: BorderRadius.vertical(
+                    bottom: Radius.circular(8.r),
+                  ),
+                ),
+                child: Column(
+                  children: [
+                    // 商品标题
+                    // Product title
+                    Container(
+                      alignment: Alignment.center,
+                      height: 40.w,
+                      child: Text(
+                        data.treasureName,
+                        textAlign: TextAlign.center,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: context.textSm,
+                          height: context.leadingSm,
+                          fontWeight: FontWeight.w800,
+                          color: context.textPrimary900,
+                        ),
+                      ),
+                    ),
+                    SizedBox(height: 8.w),
+
+                    // 价格标签
+                    // Price tag
+                    Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Container(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: 15.w,
-                            vertical: 2.w,
-                          ),
-                          alignment: Alignment.center,
                           height: 22.w,
+                          padding: EdgeInsets.symmetric(horizontal: 8.w),
+                          alignment: Alignment.center,
                           decoration: BoxDecoration(
-                            color: context.utilityError500,
-                            borderRadius: BorderRadius.circular(
-                              context.radius2xl,
-                            ),
+                            color: context.utilityBrand500,
+                            borderRadius: BorderRadius.circular(4.r),
                           ),
                           child: Text(
-                            timeDilation,
+                            FormatHelper.formatCurrency(
+                              data.unitAmount,
+                              symbol: "₱ ",
+                            ),
                             style: TextStyle(
-                              fontSize: context.textXs,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.white,
-                              height: 1,
+                              fontSize: context.text2xs,
+                              fontWeight: FontWeight.w800,
+                              height: 1.4,
+                              color: context.textPrimaryOnBrand,
                             ),
                           ),
                         ),
                       ],
                     ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          // 商品信息容器
-          // Product info container
-          Flexible(
-            fit: FlexFit.loose,
-            child: Container(
-              padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 12.w),
-              decoration: BoxDecoration(
-                color: context.bgPrimary,
-                borderRadius: BorderRadius.vertical(
-                  bottom: Radius.circular(8.r),
-                ),
-              ),
-              child: Column(
-                children: [
-                  // 商品标题
-                  // Product title
-                  Container(
-                    alignment: Alignment.center,
-                    height: 40.w,
-                    child: Text(
-                     data.treasureName,
-                      textAlign: TextAlign.center,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: context.textSm,
-                        height: context.leadingSm,
-                        fontWeight: FontWeight.w800,
-                        color: context.textPrimary900,
-                      ),
-                    ),
-                  ),
-                  SizedBox(height: 8.w),
+                    SizedBox(height: 26.w),
 
-                  // 价格标签
-                  // Price tag
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        height: 22.w,
-                        padding: EdgeInsets.symmetric(horizontal: 8.w),
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
+                    // 销售进度条
+                    // Sales progress bar
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        /// 进度条 Progress bar
+                        BubbleProgress(
+                          value: rate,
+                          showTip: true,
+                          showTipBg: false,
                           color: context.utilityBrand500,
-                          borderRadius: BorderRadius.circular(4.r),
-                        ),
-                        child: Text(
-                          FormatHelper.formatCurrency(
-                            data.unitAmount,
-                            symbol: "₱ ",
-                          ),
-                          style: TextStyle(
-                            fontSize: context.text2xs,
-                            fontWeight: FontWeight.w800,
-                            height: 1.4,
-                            color: context.textPrimaryOnBrand,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: 26.w),
-
-                  // 销售进度条
-                  // Sales progress bar
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      /// 进度条 Progress bar
-                      BubbleProgress(
-                        value: rate,
-                        showTip: true,
-                        showTipBg: false,
-                        color: context.utilityBrand500,
-                        trackHeight: 4,
-                        thumbSize: 8,
-                        tipBuilder: (v) {
-                          final txt = v
-                              .toStringAsFixed(2)
-                              .replaceFirst(RegExp(r'\.00$'), '');
-                          return RichText(
-                            text: TextSpan(
-                              children: [
-                                TextSpan(
-                                  text: "$txt%",
-                                  style: TextStyle(
-                                    fontSize: 10.sp,
-                                    fontWeight: FontWeight.w600,
-                                    color: context.textPrimary900,
-                                    height: 1.4,
+                          trackHeight: 4,
+                          thumbSize: 8,
+                          tipBuilder: (v) {
+                            final txt = v
+                                .toStringAsFixed(2)
+                                .replaceFirst(RegExp(r'\.00$'), '');
+                            return RichText(
+                              text: TextSpan(
+                                children: [
+                                  TextSpan(
+                                    text: "$txt%",
+                                    style: TextStyle(
+                                      fontSize: 10.sp,
+                                      fontWeight: FontWeight.w600,
+                                      color: context.textPrimary900,
+                                      height: 1.4,
+                                    ),
                                   ),
-                                ),
-                                TextSpan(
-                                  text: " Sold",
-                                  style: TextStyle(
-                                    fontSize: 10.sp,
-                                    fontWeight: FontWeight.w600,
-                                    color: context.textPrimary900,
-                                    height: 1.4,
+                                  TextSpan(
+                                    text: " Sold",
+                                    style: TextStyle(
+                                      fontSize: 10.sp,
+                                      fontWeight: FontWeight.w600,
+                                      color: context.textPrimary900,
+                                      height: 1.4,
+                                    ),
                                   ),
-                                ),
-                              ],
-                            ),
-                          );
-                        },
-                      ),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
 
-                      ///  倒计时 Countdown
-                      RenderCountdown(
-                        lotteryTime: data.lotteryTime,
-                        renderSoldOut: () => Text(
-                          'Draw once sold out',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: context.text2xs,
-                            fontWeight: FontWeight.w600,
-                            color: context.textPrimary900,
+                        ///  倒计时 Countdown
+                        RenderCountdown(
+                          lotteryTime: data.lotteryTime,
+                          renderSoldOut: () => Text(
+                            'Draw once sold out',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: context.text2xs,
+                              fontWeight: FontWeight.w600,
+                              color: context.textPrimary900,
+                            ),
+                          ),
+                          renderEnd: (days) => Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                'reffle end',
+                                style: TextStyle(
+                                  fontSize: context.text2xs,
+                                  fontWeight: FontWeight.w600,
+                                  color: context.textPrimary900,
+                                ),
+                              ),
+                              SizedBox(width: 4.w),
+                              Text(
+                                '$days days',
+                                style: TextStyle(
+                                  fontSize: context.text2xs,
+                                  fontWeight: FontWeight.w800,
+                                  color: context.textErrorPrimary600,
+                                ),
+                              ),
+                            ],
+                          ),
+                          renderCountdown: (time) => Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                'Countdown',
+                                style: TextStyle(
+                                  fontSize: context.text2xs,
+                                  fontWeight: FontWeight.w600,
+                                  color: context.textPrimary900,
+                                ),
+                              ),
+                              SizedBox(width: 4.w),
+                              Text(
+                                time,
+                                style: TextStyle(
+                                  fontSize: context.text2xs,
+                                  fontWeight: FontWeight.w800,
+                                  color: context.textErrorPrimary600,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                        renderEnd: (days) => Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(
-                              'reffle end',
-                              style: TextStyle(
-                                fontSize: context.text2xs,
-                                fontWeight: FontWeight.w600,
-                                color: context.textPrimary900,
-                              ),
-                            ),
-                            SizedBox(width: 4.w),
-                            Text(
-                              '$days days',
-                              style: TextStyle(
-                                fontSize: context.text2xs,
-                                fontWeight: FontWeight.w800,
-                                color: context.textErrorPrimary600,
-                              ),
-                            ),
-                          ],
-                        ),
-                        renderCountdown: (time) => Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(
-                              'Countdown',
-                              style: TextStyle(
-                                fontSize: context.text2xs,
-                                fontWeight: FontWeight.w600,
-                                color: context.textPrimary900,
-                              ),
-                            ),
-                            SizedBox(width: 4.w),
-                            Text(
-                              time,
-                              style: TextStyle(
-                                fontSize: context.text2xs,
-                                fontWeight: FontWeight.w800,
-                                color: context.textErrorPrimary600,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
 
-                      // 底部间距 Bottom spacing
-                      SizedBox(height: 8.w),
-                      EnterButton(
-                        child: Text('common.enter.now'.tr()),
-                        onPressed: () {
-                          /// 进入商品详情 Enter product details
-                          AppRouter.router.push('/product/${data.treasureId}');
-                        },
-                      )
-                    ],
-                  ),
-                ],
+                        // 底部间距 Bottom spacing
+                        SizedBox(height: 8.w),
+                        EnterButton(
+                          child: Text('common.enter.now'.tr()),
+                          onPressed: () {
+                            /// 进入商品详情 Enter product details
+                            AppRouter.router.push('/product/${data.treasureId}');
+                          },
+                        )
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
