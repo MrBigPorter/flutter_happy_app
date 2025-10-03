@@ -1,8 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:easy_localization/easy_localization.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_app/app/routes/app_router.dart';
 import 'package:flutter_app/common.dart';
 import 'package:flutter_app/components/render_countdown.dart';
@@ -223,6 +221,7 @@ class SpecialArea extends StatelessWidget {
             },
           ),
         ),
+        SizedBox(height: 20.w,)
       ],
     );
   }
