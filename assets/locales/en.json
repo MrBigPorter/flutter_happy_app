@@ -102,7 +102,7 @@
   "home.entries.sold": "{{number}} entries sold",
   "common.featured": "Featured Jackpots",
   "common.play": "PLAY",
-  "common.sold.upperCase": "Sold {{number}}",
+  "common.sold.upperCase": "Sold {number}",
   "common.recommendations": "Featured Prizes",
   "common.to.recharge": "Recharge",
   "wallet.balance.insufficient.tip": "Unable to participate in the lucky draw, please top up now",

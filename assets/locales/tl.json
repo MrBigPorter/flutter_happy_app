@@ -102,7 +102,7 @@
   "home.entries.sold": "{{number}} na mga entry ang nabenta",
   "common.featured": "Mga Featured na Jackpots",
   "common.play": "MAGLARO",
-  "common.sold.upperCase": "Nabenta: {{number}}",
+  "common.sold.upperCase": "Nabenta: {number}",
   "common.recommendations": "Mga Featured na Prizes",
   "common.to.recharge": "Upang mag-recharge",
   "wallet.balance.insufficient.tip": "Hindi makasali sa lucky draw, mag top-up na ngayon",
