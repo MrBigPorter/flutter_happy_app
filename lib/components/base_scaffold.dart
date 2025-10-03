@@ -36,6 +36,7 @@ class BaseScaffold extends StatelessWidget {
           child: AppBar(
             backgroundColor: context.bgPrimary,
             elevation: 0,
+            surfaceTintColor: Colors.transparent,
             shape: Border(
               bottom: BorderSide(color: context.borderSecondary, width: 1),
             ),
