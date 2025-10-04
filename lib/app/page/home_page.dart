@@ -165,6 +165,11 @@ class _HomePageState extends State<HomePage> {
                 },
               ),
             ),
+
+            /// bottom padding 底部留白
+            SliverToBoxAdapter(
+              child: SizedBox(height: 20.h),
+            )
           ],
         ),
       ),
