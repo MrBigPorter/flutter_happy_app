@@ -9,6 +9,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import '../utils/helper.dart';
 import '../utils/jump_helper.dart';
+import 'package:flutter_app/core/models/index.dart';
 
 class HomeBanner extends StatefulWidget {
   final List<Banners> banners;

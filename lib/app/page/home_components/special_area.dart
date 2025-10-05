@@ -11,6 +11,7 @@ import 'package:flutter_app/utils/format_helper.dart';
 import 'package:flutter_app/utils/helper.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:visibility_detector/visibility_detector.dart';
+import 'package:flutter_app/core/models/index.dart';
 
 class SpecialArea extends StatelessWidget {
   final List<ProductListItem>? list;

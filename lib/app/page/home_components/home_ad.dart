@@ -1,12 +1,12 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_app/common.dart';
 import 'package:flutter_app/components/skeleton.dart';
 import 'package:flutter_app/core/models/clickable_resource.dart';
 import 'package:flutter_app/utils/helper.dart';
 import 'package:flutter_app/utils/jump_helper.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:flutter_app/core/models/index.dart';
 
 /// 首页广告位 Home Ad
 /// 包含单图广告、三图广告等模块 including single-image ad, three-image ad, etc.

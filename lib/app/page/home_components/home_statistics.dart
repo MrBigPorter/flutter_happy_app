@@ -3,7 +3,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_app/common.dart';
 import 'package:flutter_app/utils/format_helper.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-
+import 'package:flutter_app/core/models/index.dart';
 class HomeStatistics extends StatelessWidget {
   final IndexStatistics statistics;
 

@@ -6,3 +6,4 @@ export 'banners.dart';
 export 'ad_res.dart';
 export 'index_statistics.dart';
 export 'product_list_item.dart';
+export 'product_category_item.dart';

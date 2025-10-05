@@ -2,15 +2,18 @@ import 'dart:convert';
 import 'package:flutter_app/common.dart';
 
 import '../../utils/helper.dart';
+import 'package:flutter_app/core/models/index.dart';
 
 
 class Api {
 
+  /// 首页轮播图 type 1: banner 2: 广告 home banner
   static Future<List<Banners>> bannersApi(int type) async {
     final res = await HttpClient.get("/bannersList.json?type=$type");
     return parseList<Banners>(res, (e) => Banners.fromJson(e));
   }
 
+  /// 首页宝藏推荐  home treasures
   static Future<List<IndexTreasureItem>> indexTreasuresApi() async {
     final res = await HttpClient.get("/treasuresList.json");
 
@@ -18,29 +21,53 @@ class Api {
 
   }
 
+  /// 首页广告 type 1: banner 2: 广告 home ad
   static Future<List<AdRes>> indexAdApi(int type) async {
     final res = await HttpClient.get("/advertiseList.json?type=$type");
-     return parseList(res, (e) => AdRes.fromJson(e));
+     return parseList<AdRes>(res, (e) => AdRes.fromJson(e));
   }
 
+  /// 首页统计数据 home statistics
   static Future<IndexStatistics> indexStatisticsApi() async {
     final res = await HttpClient.get("/homepageStatisticalData.json");
       return IndexStatistics.fromJson(res);
   }
 
 
+  /// 用户信息 user info
   static Future<UserInfo> getUserInfo() async {
     final res = await HttpClient.get("user/info");
       return UserInfo.fromJson(jsonDecode(res));
   }
 
+  /// 钱包余额 wallet balance
   static Future<Balance> getWalletBalance() async {
     final res = await HttpClient.get('/balance.json');
     return Balance.fromJson(jsonDecode(res));
   }
 
+  /// 系统配置 sys config
   static Future<SysConfig> getSysConfig() async {
     final res = await HttpClient.get('/sysConfigGet.json');
     return SysConfig.fromJson(jsonDecode(res));
   }
+
+  /// 商品分类 product category tabs
+  static Future<List<ProductCategoryItem>> getProductCategoryList() async {
+    final res = await HttpClient.get('/productCategoryList.json');
+    return parseList<ProductCategoryItem>(res, (e)=> ProductCategoryItem.fromJson(e));
+  }
+
+  /// 商品列表 product list
+  /// products_category_id 0: all
+  /// products_category_id 1: hot
+  /// products_category_id 2: tech
+  static Future<List<ProductListItem>> getProductList(int productsCategoryId) async {
+      final res = await HttpClient.get('/productList.json',queryParameters: {
+      "products_category_id": productsCategoryId
+    });
+    return parseList<ProductListItem>(res, (e)=> ProductListItem.fromJson(e));
+  }
+
+
 }

@@ -9,7 +9,7 @@ import 'package:flutter_app/ui/bubble_progress.dart';
 import 'package:flutter_app/ui/enter_button.dart';
 import 'package:flutter_app/utils/format_helper.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-
+import 'package:flutter_app/core/models/index.dart';
 /// 首页未来可期 (商品列表) Home Future (list of products)
 class HomeFuture extends StatelessWidget {
   final List<ProductListItem>? list;

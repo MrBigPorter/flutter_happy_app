@@ -3,6 +3,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter_app/common.dart';
 import 'package:flutter_app/components/product_item.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:flutter_app/core/models/index.dart';
 
 class Ending extends StatelessWidget {
   final List<ProductListItem>? list;
@@ -28,12 +29,12 @@ class Ending extends StatelessWidget {
           ),
         ),
         SizedBox(
-          width: 375.w,
           height: 366.w,
           child: ListView.separated(
               padding: EdgeInsets.only(left: 16.w,top: 12.h,right: 16.w),
               scrollDirection: Axis.horizontal,
               physics: const BouncingScrollPhysics(),
+              cacheExtent: 500,
               itemBuilder:(context,index){
                 final item = list![index];
                 return ProductItem(data: item );

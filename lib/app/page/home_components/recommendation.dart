@@ -3,7 +3,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter_app/common.dart';
 import 'package:flutter_app/components/product_item.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-
+import 'package:flutter_app/core/models/index.dart';
 class Recommendation extends StatelessWidget {
   final List<ProductListItem>? list;
 
@@ -17,6 +17,8 @@ class Recommendation extends StatelessWidget {
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 16.w),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(height: 22.w),
           /// title
@@ -41,7 +43,7 @@ class Recommendation extends StatelessWidget {
               crossAxisCount: 2, // 两列 two columns
               crossAxisSpacing: 10.w, // 主轴间距 cross axis spacing
               mainAxisSpacing: 30.w, // cross间距 main axis spacing
-              childAspectRatio: 165.w / 365.w, // 宽高比 width to height ratio
+              childAspectRatio: 165.w / 370.w, // 宽高比 width to height ratio
             ),
             itemBuilder: (context, index) {
               final item = list![index];

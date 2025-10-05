@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_app/common.dart';
 import 'package:flutter_app/components/skeleton.dart';
+import 'package:flutter_app/utils/helper.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Tab bar with underline indicator
@@ -101,7 +102,7 @@ class _TabsState<T> extends State<Tabs<T>> {
 
   /// update indicator position and width
   void _updateIndicator({bool scrollToView = false}) {
-    final index = widget.data.indexOf(widget.activeItem);
+    final index = findIndex<T>(widget.data, widget.activeItem );
     if (index < 0 || index >= _tabsKey.length) return;
 
     /// get render box of active tab item
@@ -157,10 +158,8 @@ class _TabsState<T> extends State<Tabs<T>> {
 
   @override
   Widget build(BuildContext context) {
-    final activeIndex = widget.data.indexOf(widget.activeItem);
-
     /// skeleton loading before data loaded
-    if (widget.data.isEmpty) {
+    if (widget.data.isNullOrEmpty) {
       return SizedBox(
         height: widget.height.w,
         child: Row(
@@ -178,6 +177,8 @@ class _TabsState<T> extends State<Tabs<T>> {
         ),
       );
     }
+
+    final activeIndex = findIndex<T>(widget.data, widget.activeItem );
 
     /// auto scroll active tab into view
     return SizedBox(

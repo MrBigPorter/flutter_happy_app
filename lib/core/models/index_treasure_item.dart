@@ -1,6 +1,6 @@
 
-import 'package:flutter_app/common.dart';
 import 'package:json_annotation/json_annotation.dart';
+import 'package:flutter_app/core/models/product_list_item.dart';
 part 'index_treasure_item.g.dart';
 
 @JsonSerializable(checked: true)
