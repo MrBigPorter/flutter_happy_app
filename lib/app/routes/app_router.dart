@@ -27,7 +27,7 @@ class AppRouter {
           ),
           GoRoute(
             path: '/product',
-            builder: (context, state) => const ProductPage(),
+            builder: (context, state) => ProductPage(),
           ),
           GoRoute(
             path: '/winners',

@@ -161,15 +161,15 @@ class _TabsState<T> extends State<Tabs<T>> {
     /// skeleton loading before data loaded
     if (widget.data.isNullOrEmpty) {
       return SizedBox(
-        height: widget.height.w,
+        height: widget.height.h,
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: List.generate(widget.tabCount, (_) {
             return Container(
-              margin: EdgeInsets.symmetric(horizontal: 12.w),
+              margin: EdgeInsets.symmetric(horizontal: 12.h),
               child: Skeleton.react(
                 width: 60.w,
-                height: widget.height.w,
+                height: widget.height.h,
                 borderRadius: BorderRadius.circular(context.radiusSm),
               ),
             );
@@ -182,7 +182,7 @@ class _TabsState<T> extends State<Tabs<T>> {
 
     /// auto scroll active tab into view
     return SizedBox(
-      height: widget.height.w,
+      height: widget.height.h,
       child: Stack(
         children: [
           /// underline/current highline Box for active tab
@@ -192,7 +192,7 @@ class _TabsState<T> extends State<Tabs<T>> {
             left: _indicatorLeft,
             bottom: 0,
             width: _indicatorWidth,
-            height: widget.height.w,
+            height: widget.height.h,
             child: Container(
               decoration: BoxDecoration(
                 color: context.bgBrandSolid,
@@ -274,8 +274,8 @@ class _TabBarItemState<T> extends State<_TabBarItem<T>> {
       onTapUp: (_) => setState(() => pressed = false),
       onTapCancel: () => setState(() => pressed = false),
       child: Container(
-        padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.w),
-        height: widget.height!.w,
+        padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
+        height: widget.height!.h,
         child: DefaultTextStyle(
           style: TextStyle(
             fontSize: 14.w,

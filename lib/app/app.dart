@@ -7,7 +7,7 @@ import 'package:easy_localization/easy_localization.dart';
 
 import '../../theme/theme_provider.dart';
 
-// app/app.dart（改成无异步，首帧即最终主题）
+
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
