@@ -56,7 +56,7 @@ class ProductItem extends StatelessWidget {
                   aspectRatio: 1,
                   child: ClipRRect(
                     borderRadius: BorderRadius.vertical(
-                      top: Radius.circular(8.r),
+                      top: Radius.circular(8.w),
                     ),
                     child: CachedNetworkImage(
                       imageUrl: proxied(data.treasureCoverImg),
@@ -103,7 +103,7 @@ class ProductItem extends StatelessWidget {
                                   Text(
                                     'reffle end ',
                                     style: TextStyle(
-                                      fontSize: context.textXs,
+                                      fontSize: 12.w,
                                       fontWeight: FontWeight.w600,
                                       color: Colors.white,
                                       height: 1,
@@ -112,7 +112,7 @@ class ProductItem extends StatelessWidget {
                                   Text(
                                     '$days days',
                                     style: TextStyle(
-                                      fontSize: context.textXs,
+                                      fontSize: 12.w,
                                       fontWeight: FontWeight.w600,
                                       color: context.textErrorPrimary600,
                                       height: 1,
@@ -143,7 +143,7 @@ class ProductItem extends StatelessWidget {
                             child: Text(
                               timeDilation,
                               style: TextStyle(
-                                fontSize: context.textXs,
+                                fontSize: 12.w,
                                 fontWeight: FontWeight.w600,
                                 color: Colors.white,
                                 height: 1,
@@ -166,7 +166,7 @@ class ProductItem extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: context.bgPrimary,
                   borderRadius: BorderRadius.vertical(
-                    bottom: Radius.circular(8.r),
+                    bottom: Radius.circular(8.w),
                   ),
                 ),
                 child: Column(
@@ -182,7 +182,7 @@ class ProductItem extends StatelessWidget {
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          fontSize: context.textSm,
+                          fontSize: 14.w,
                           height: context.leadingSm,
                           fontWeight: FontWeight.w800,
                           color: context.textPrimary900,
@@ -202,7 +202,7 @@ class ProductItem extends StatelessWidget {
                           alignment: Alignment.center,
                           decoration: BoxDecoration(
                             color: context.utilityBrand500,
-                            borderRadius: BorderRadius.circular(4.r),
+                            borderRadius: BorderRadius.circular(4.w),
                           ),
                           child: Text(
                             FormatHelper.formatCurrency(
@@ -210,7 +210,7 @@ class ProductItem extends StatelessWidget {
                               symbol: "₱ ",
                             ),
                             style: TextStyle(
-                              fontSize: context.text2xs,
+                              fontSize:10.w,
                               fontWeight: FontWeight.w800,
                               height: 1.4,
                               color: context.textPrimaryOnBrand,
@@ -219,7 +219,7 @@ class ProductItem extends StatelessWidget {
                         ),
                       ],
                     ),
-                    SizedBox(height: 26.w),
+                    SizedBox(height: 6.w),
 
                     // 销售进度条
                     // Sales progress bar
@@ -244,7 +244,7 @@ class ProductItem extends StatelessWidget {
                                   TextSpan(
                                     text: "$txt%",
                                     style: TextStyle(
-                                      fontSize: 10.sp,
+                                      fontSize: 10.w,
                                       fontWeight: FontWeight.w600,
                                       color: context.textPrimary900,
                                       height: 1.4,
@@ -253,7 +253,7 @@ class ProductItem extends StatelessWidget {
                                   TextSpan(
                                     text: " Sold",
                                     style: TextStyle(
-                                      fontSize: 10.sp,
+                                      fontSize: 10.w,
                                       fontWeight: FontWeight.w600,
                                       color: context.textPrimary900,
                                       height: 1.4,
@@ -272,7 +272,7 @@ class ProductItem extends StatelessWidget {
                             'Draw once sold out',
                             textAlign: TextAlign.center,
                             style: TextStyle(
-                              fontSize: context.text2xs,
+                              fontSize: 10.w,
                               fontWeight: FontWeight.w600,
                               color: context.textPrimary900,
                             ),
@@ -283,7 +283,7 @@ class ProductItem extends StatelessWidget {
                               Text(
                                 'reffle end',
                                 style: TextStyle(
-                                  fontSize: context.text2xs,
+                                  fontSize: 10.w,
                                   fontWeight: FontWeight.w600,
                                   color: context.textPrimary900,
                                 ),
@@ -292,7 +292,7 @@ class ProductItem extends StatelessWidget {
                               Text(
                                 '$days days',
                                 style: TextStyle(
-                                  fontSize: context.text2xs,
+                                  fontSize: 10.w,
                                   fontWeight: FontWeight.w800,
                                   color: context.textErrorPrimary600,
                                 ),
@@ -305,7 +305,7 @@ class ProductItem extends StatelessWidget {
                               Text(
                                 'Countdown',
                                 style: TextStyle(
-                                  fontSize: context.text2xs,
+                                  fontSize: 10.w,
                                   fontWeight: FontWeight.w600,
                                   color: context.textPrimary900,
                                 ),
@@ -314,7 +314,7 @@ class ProductItem extends StatelessWidget {
                               Text(
                                 time,
                                 style: TextStyle(
-                                  fontSize: context.text2xs,
+                                  fontSize: 10.w,
                                   fontWeight: FontWeight.w800,
                                   color: context.textErrorPrimary600,
                                 ),

@@ -53,9 +53,12 @@ Future<void> main() async {
               value: themeProvider,
               child: ScreenUtilInit(
                   designSize: const Size(375, 812),
-
+                  useInheritedMediaQuery: true,
                   minTextAdapt: true,
-                  builder: (_,__)=>MyApp()
+                  splitScreenMode: true,
+                  builder: (_,__){
+                    return MyApp();
+                  }
               )
           ),
         ),

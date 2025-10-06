@@ -100,13 +100,11 @@ class SpecialArea extends StatelessWidget {
                                     color: context.textPrimary900,
                                   ),
                                 ),
-                                SizedBox(height: 30.h),
 
                                 /// and progress bar 以及 进度条
                                 BubbleProgress(
                                   value: item.buyQuantityRate,
                                   showTipBg: true,
-                                  topPadding: 22.w,
                                 ),
                               ],
                             ),
@@ -150,9 +148,19 @@ class SpecialArea extends StatelessWidget {
                             renderSoldOut: () => Column(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Text('Draw once'),
+                                Text('Draw once',style: TextStyle(
+                                  fontSize: context.textXs,
+                                  color: context.textQuaternary500,
+                                  fontWeight: FontWeight.w600,
+                                  height: 1,
+                                ),),
                                 SizedBox(height: 12.h),
-                                Text('sold out'),
+                                Text('sold out',style: TextStyle(
+                                  fontSize: context.textXs,
+                                  color: context.textErrorPrimary600,
+                                  fontWeight: FontWeight.w600,
+                                  height: 1,
+                                ),),
                               ],
                             ),
                             renderEnd: (days) => Column(

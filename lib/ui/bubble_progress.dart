@@ -42,78 +42,8 @@ class BubbleProgress extends StatelessWidget {
     this.duration = const Duration(milliseconds: 220),
     this.tipBuilder,
     this.showTipBg = true,
-    this.topPadding = 18,
+    this.topPadding = 8,
   });
-
-  @override
-  Widget build(BuildContext context) {
-    final pct = _parseRate(value).clamp(0, 100); // 将进度值转换为0-100的范围
-    final pct01 = pct / 100.0; // 转换为0-1的比例
-    final top = showTip ? topPadding : 0.0;
-
-    return SizedBox(
-      height: trackHeight,
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          // 背景轨道 - 使用透明度较低的进度条颜色
-          Container(
-            width: double.infinity,
-            height: trackHeight,
-            decoration: BoxDecoration(
-              color: color.withAlpha(40),
-              borderRadius: BorderRadius.circular(trackHeight),
-            ),
-            child: TweenAnimationBuilder<double>(
-              tween: Tween(begin: 0, end: pct01),
-              duration: duration,
-              curve: Curves.easeInOut,
-              builder: (context, t, _) {
-                return FractionallySizedBox(
-                  alignment: Alignment.centerLeft,
-                  widthFactor: t,
-                  child: Container(
-                    height: trackHeight,
-                    decoration: BoxDecoration(
-                      color: color,
-                      borderRadius: BorderRadius.circular(trackHeight),
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-
-          // 气泡提示层
-          if (showTip)
-            Positioned.fill(
-              child: _TipFollower(
-                percent01: pct01,
-                duration: duration,
-                topOffsetForTip: top,
-                trackHeight: trackHeight,
-                thumbSize: thumbSize,
-                color: color,
-                tip: _TipBubble(
-                  color: color,
-                  showBg: showTipBg,
-                  child: tipBuilder != null
-                      ? tipBuilder!(pct.toDouble())
-                      : Text(
-                    "${pct.toStringAsFixed(0)}%",
-                    style: TextStyle(
-                      fontSize: 10.sp,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
 
   /// 将不同类型的进度值解析为double类型
   double _parseRate(dynamic v) {
@@ -122,134 +52,76 @@ class BubbleProgress extends StatelessWidget {
     if (v is String) return double.tryParse(v) ?? 0;
     return 0;
   }
-}
-
-/// _TipFollower - 自动跟随进度的气泡容器
-///
-/// 负责根据进度位置计算和更新气泡位置
-class _TipFollower extends StatelessWidget {
-  final double percent01; // 进度比例(0-1)
-  final Duration duration; // 动画时长
-  final double topOffsetForTip; // 气泡顶部偏移
-  final Widget tip; // 气泡内容
-  final double trackHeight; // 进度条高度
-  final double thumbSize; // 拇指大小
-  final Color color; // 气泡颜色
-
-  const _TipFollower({
-    required this.percent01,
-    required this.duration,
-    required this.topOffsetForTip,
-    required this.tip,
-    required this.trackHeight,
-    required this.thumbSize,
-    required this.color,
-  });
 
   @override
   Widget build(BuildContext context) {
+    final pct = _parseRate(value).clamp(0, 100); // 将进度值转换为0-100的范围
+    final pct01 = pct / 100.0; // 转换为0-1的比例
+
     return LayoutBuilder(
       builder: (_, constraints) {
         final w = constraints.maxWidth;
-        final endX = w * percent01;
-
-        return _MeasureSize(
-          onChange: (tipSize) {
-            // 测量气泡尺寸用于位置调整
-          },
-          child: _MeasuredTip(
-            percent01: percent01,
-            duration: duration,
-            topOffsetForTip: topOffsetForTip,
-            endX: endX,
-            tip: tip,
-            trackHeight: trackHeight,
-            thumbSize: thumbSize,
-            color: color,
-          ),
-        );
-      },
-    );
-  }
-}
-
-/// _MeasuredTip - 带尺寸测量的气泡组件
-///
-/// 负责:
-/// 1. 计算气泡实际尺寸
-/// 2. 控制气泡动画
-/// 3. 防止气泡超出边界
-class _MeasuredTip extends StatefulWidget {
-  final double percent01;
-  final Duration duration;
-  final double topOffsetForTip;
-  final double endX;
-  final Widget tip;
-
-  final double trackHeight;
-  final double thumbSize;
-  final Color color;
-
-  const _MeasuredTip({
-    required this.percent01,
-    required this.duration,
-    required this.topOffsetForTip,
-    required this.endX,
-    required this.tip,
-    required this.trackHeight,
-    required this.thumbSize,
-    required this.color,
-  });
-
-  @override
-  State<_MeasuredTip> createState() => _MeasuredTipState();
-}
-
-class _MeasuredTipState extends State<_MeasuredTip> {
-  Size _tipSize = Size.zero; // 气泡尺寸
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (_, constraints) {
-        final w = constraints.maxWidth;
-        final tipW = _tipSize.width > 0 ? _tipSize.width : 40.0;
-
-        // 计算气泡位置,确保不超出边界
-        double left = widget.endX - tipW / 2;
-        if (left < 0) left = 0;
-        if (left > w - tipW) left = w - tipW;
-
-        return Stack(
-          clipBehavior: Clip.none,
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 气泡
-            AnimatedPositioned(
-              duration: widget.duration,
-              curve: Curves.easeInOut,
-              left: left,
-              top: -widget.topOffsetForTip,
-              child: _MeasureSize(
-                onChange: (size) {
-                  if (size != _tipSize) {
-                    setState(() => _tipSize = size);
-                  }
-                },
-                child: widget.tip,
-              ),
+            // text tip and bubble tip
+            _AutoMoveTip(
+              topPadding: topPadding,
+              thumbSize: thumbSize,
+              trackHeight: trackHeight,
+              tipBuilder: tipBuilder,
+              showTipBg: showTipBg,
+              showTip: showTip,
+              pct: pct01,
+              color: color,
+              duration: duration,
+              w:w
             ),
-            // 拇指
-            Positioned(
-              left: widget.endX - 4,
-              top: (widget.trackHeight / 2) - (widget.thumbSize / 2) ,
-              child: Container(
-                width: 8.w,
-                height: 8.w,
-                decoration: BoxDecoration(
-                  color: context.utilityBrand500,
-                  shape: BoxShape.circle,
-                ),
-              ),
+            // progress bar with thumb
+            TweenAnimationBuilder(
+              tween: Tween(begin: 0, end: pct01),
+              duration: duration,
+              builder: (context, t, _) {
+                return Stack(
+                  clipBehavior: Clip.none,
+                  alignment: Alignment.centerLeft,
+                  children: [
+                    // background track
+                    Container(
+                      height: trackHeight,
+                      decoration: BoxDecoration(
+                        color: context.utilityBrand500.withValues(alpha: 200),
+                        borderRadius: BorderRadius.circular(trackHeight),
+                      ),
+                    ),
+                    // filled track
+                    FractionallySizedBox(
+                      widthFactor: t.toDouble(),
+                      alignment: Alignment.centerLeft,
+                      child: Container(
+                        height: trackHeight,
+                        decoration: BoxDecoration(
+                          color: color,
+                          borderRadius: BorderRadius.circular(trackHeight),
+                        ),
+                      ),
+                    ),
+                    // thumb
+                    Positioned(
+                      left: (w - thumbSize) * t,
+                      child: Container(
+                        width: thumbSize.w,
+                        height: thumbSize.w,
+                        decoration: BoxDecoration(
+                          color: color,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                    ),
+                  ],
+                );
+              },
             ),
           ],
         );
@@ -258,9 +130,99 @@ class _MeasuredTipState extends State<_MeasuredTip> {
   }
 }
 
+class _AutoMoveTip extends StatefulWidget {
+  final bool showTip; // 是否显示气泡
+  final Color color; // 进度条颜色
+  final double trackHeight; // 进度条高度
+  final double thumbSize; // 拇指大小
+  final Duration duration; // 动画持续时间
+  final bool showTipBg; // 是否显示气泡背景
+  final double topPadding; // 顶部内边距
+  final double pct; // 进度值 0-100
+  final double w; // parent width
+
+  /// 自定义气泡内容构建器
+  final Widget Function(double value)? tipBuilder;
+
+  const _AutoMoveTip({
+    required this.showTip,
+    required this.color,
+    required this.trackHeight,
+    required this.duration,
+    required this.showTipBg,
+    required this.thumbSize,
+    required this.topPadding,
+    this.tipBuilder,
+    required this.pct,
+    required this.w
+});
+
+    @override
+  State<_AutoMoveTip> createState() => _AutoMoveTipState();
+
+}
+
+class _AutoMoveTipState extends State<_AutoMoveTip> {
+    @override
+    Widget build(BuildContext context){
+      var tipSize = Size.zero;
+
+      // tip left
+      final tipLeft = widget.pct * (widget.w - tipSize.width);
+      print(widget.pct);
+      print(widget.w);
+      print(tipSize.width);
+
+      // tip text above the progress bar
+      if (widget.showTip){
+        return Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Transform.translate(
+              offset: Offset(0, 0),
+              child: AnimatedSwitcher(
+                duration: widget.duration,
+                transitionBuilder: (child, animation) {
+                  return ScaleTransition(scale: animation, child: child);
+                },
+                child:_MeasureSize(
+                    onChange:(size){
+                       setState(() {
+                         tipWidth = size;
+                       });
+                    },
+                    child: _TipBubble(
+                      // key: ValueKey(widget.pct.toStringAsFixed(0)),
+                      color: widget.color,
+                      showBg: widget.showTipBg,
+                      child: widget.tipBuilder != null
+                          ? widget.tipBuilder!(widget.pct.toDouble())
+                          : Text(
+                        '${widget.pct.toStringAsFixed(0)}%',
+                        style: TextStyle(
+                          fontSize: 10.w,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                      ),
+                    )
+                ),
+
+              ),
+            ),
+          ],
+        );
+      }
+      return SizedBox.shrink();
+    }
+
+}
+
+
 /// _MeasureSize - Widget尺寸测量组件
 ///
-/// 用于测量子Widget的实际渲染尺寸
+/// 用于测量子Widget的实际渲染尺
+
 class _MeasureSize extends StatefulWidget {
   final Widget child;
   final ValueChanged<Size> onChange;
@@ -296,6 +258,7 @@ class _TipBubble extends StatelessWidget {
   final bool showBg;
 
   const _TipBubble({
+    super.key,
     required this.child,
     required this.color,
     required this.showBg,
@@ -303,6 +266,7 @@ class _TipBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // only show text when showBg is false
     if (!showBg) return child;
 
     return Column(
