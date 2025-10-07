@@ -162,19 +162,22 @@ class _TabsState<T> extends State<Tabs<T>> {
     if (widget.data.isNullOrEmpty) {
       return SizedBox(
         height: widget.height.h,
-        child: Row(
-          mainAxisSize: MainAxisSize.max,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: List.generate(widget.tabCount, (_) {
-            return Container(
-              margin: EdgeInsets.symmetric(horizontal: 12.h),
-              child: Skeleton.react(
-                width: 60.w,
-                height: widget.height.h,
-                borderRadius: BorderRadius.circular(context.radiusSm),
-              ),
-            );
-          }),
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            mainAxisSize: MainAxisSize.max,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List.generate(widget.tabCount, (_) {
+              return Container(
+                margin: EdgeInsets.symmetric(horizontal: 12.h),
+                child: Skeleton.react(
+                  width: 60.w,
+                  height: widget.height.h,
+                  borderRadius: BorderRadius.circular(context.radiusSm),
+                ),
+              );
+            }),
+          ),
         ),
       );
     }
@@ -205,6 +208,7 @@ class _TabsState<T> extends State<Tabs<T>> {
 
           /// tabs
           ListView.separated(
+            shrinkWrap: true,
             controller: _scrollController,
             physics: BouncingScrollPhysics(),
             padding: EdgeInsets.only(left: 16.w, right: 16.w),

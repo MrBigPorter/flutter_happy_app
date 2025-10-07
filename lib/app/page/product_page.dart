@@ -184,7 +184,7 @@ class _CategoryTabs extends StatelessWidget {
               builder: (context, value, _) {
                 final progress = value.clamp(0.0, 1.0);
                 // over 0.2 start to change background color
-                final start = 0.2;
+                final start = 0.9;
                 // normalize t to 0-1
                 final t = (progress - start) / (1 - start);
                 final easedT = Curves.easeOut.transform(t.clamp(0.0, 1.0));
@@ -206,9 +206,9 @@ class _CategoryTabs extends StatelessWidget {
                     onChangeActive: (item) {
                       ref.read(activeCategoryProvider.notifier).state = item;
                       if(scrollController.hasClients){
-                        const double appBarHeight = 56+60;
+                        final double appBarHeight = (56.h);
                         if(scrollProgress.value >= 1.0){
-                          scrollController.animateTo(appBarHeight.clamp(0.0, scrollController.position.maxScrollExtent), duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
+                          scrollController.animateTo(appBarHeight, duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
                         }
                       }
                     },

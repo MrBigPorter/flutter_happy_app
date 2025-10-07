@@ -27,6 +27,7 @@ class FeaturedSkeleton extends StatelessWidget {
             borderRadius: BorderRadius.circular(8.r),
           ),
           child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
               Skeleton.react(
                 width: double.infinity,
