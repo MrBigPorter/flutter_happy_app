@@ -163,7 +163,7 @@ class _TabsState<T> extends State<Tabs<T>> {
       return SizedBox(
         height: widget.height.h,
         child: Row(
-          mainAxisSize: MainAxisSize.min,
+          mainAxisSize: MainAxisSize.max,
           mainAxisAlignment: MainAxisAlignment.center,
           children: List.generate(widget.tabCount, (_) {
             return Container(
@@ -185,6 +185,7 @@ class _TabsState<T> extends State<Tabs<T>> {
     return SizedBox(
       height: widget.height.w,
       child: Stack(
+        clipBehavior: Clip.none,
         children: [
           /// underline/current highline Box for active tab
           AnimatedPositioned(
