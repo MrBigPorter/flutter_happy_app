@@ -1,5 +1,6 @@
 import 'dart:math';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_app/common.dart';
 import 'package:flutter_app/components/featured_skeleton.dart';
@@ -81,8 +82,8 @@ class _ProductPageState extends ConsumerState<ProductPage> {
             SliverPersistentHeader(
               pinned: false,
               delegate: _FixedHeaderDelegate(
-                minHeight: 50.h,
-                maxHeight: 50.h,
+                minHeight: 50.w,
+                maxHeight: 50.w,
                 devicePixelRatio: devicePixelRatio,
                 child: ValueListenableBuilder<double>(
                   valueListenable: scrollProgress,
@@ -96,106 +97,15 @@ class _ProductPageState extends ConsumerState<ProductPage> {
                 ),
               ),
             ),
-
-            /// tabs category list
-            categoryList.when(
-              data: (data) => SliverPersistentHeader(
-                pinned: true,
-                delegate: _FixedHeaderDelegate(
-                  minHeight: 60.w,
-                  maxHeight: 60.w,
-                  devicePixelRatio: devicePixelRatio,
-                  child: ValueListenableBuilder<double>(
-                    valueListenable: scrollProgress,
-                    builder: (context, value, _) {
-                      final progress = value.clamp(0.0, 1.0);
-                      // over 0.2 start to change background color
-                      final start = 0.2;
-                      // normalize t to 0-1
-                      final t = (progress - start) / (1 - start);
-                      final easedT = Curves.easeOut.transform(t.clamp(0.0, 1.0));
-                      return Container(
-                        padding: EdgeInsets.symmetric(vertical: 8.w),
-                        decoration: BoxDecoration(
-                          color: Color.lerp(Colors.transparent, context.bgPrimary, easedT),
-                          border: Border(
-                            bottom: BorderSide(
-                              color: Color.lerp(Colors.transparent, context.bgSecondary, easedT)!,
-                              width: 1 - progress,
-                            ),
-                          ),
-                        ),
-                        child: Tabs<ProductCategoryItem>(
-                          data: data,
-                          activeItem: active,
-                          renderItem: (item) => Center(child: Text(item.name)),
-                          onChangeActive: (item) => {
-                            ref.read(activeCategoryProvider.notifier).state =
-                                item,
-                            if(scrollController.hasClients){
-                              scrollController.animateTo(0, duration: const Duration(milliseconds: 300), curve: Curves.easeOut),
-                            }
-                          },
-                        ),
-                      );
-                    },
-                  ),
-                ),
-              ),
-              error: (_, __) => SliverToBoxAdapter(
-                child: Tabs(
-                  data: [],
-                  activeItem: '',
-                  renderItem: (item) => SizedBox.shrink(),
-                  onChangeActive: (item) => {},
-                ),
-              ),
-              loading: () => SliverToBoxAdapter(
-                child: Tabs(
-                  data: [],
-                  activeItem: '',
-                  renderItem: (item) => SizedBox.shrink(),
-                  onChangeActive: (item) => {},
-                ),
-              ),
+            _CategoryTabs(
+              categoryList: categoryList,
+              devicePixelRatio: devicePixelRatio,
+              scrollProgress: scrollProgress,
+              active: active,
+              ref: ref,
+              scrollController: scrollController
             ),
-            // product list
-            products.when(
-              data: (list) {
-                if (list.isEmpty) {
-                  return const SliverFillRemaining(
-                    hasScrollBody: false,
-                    child: Text('No products'),
-                  );
-                }
-                return SliverPadding(
-                  padding: EdgeInsets.only(
-                    top: 16.w,
-                    bottom: 20.w,
-                    left: 16.w,
-                    right: 16.w,
-                  ),
-                  sliver: SliverGrid(
-                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      mainAxisSpacing: 16.w,
-                      crossAxisSpacing: 16.w,
-                      childAspectRatio: 166.w / 365.w,
-                    ),
-                    delegate: SliverChildBuilderDelegate((context, index) {
-                      final item = list[index];
-                      return ProductItem(
-                        data: item,
-                        imgHeight: 166,
-                        imgWidth: 166,
-                      );
-                    }, childCount: list.length),
-                  ),
-                );
-              },
-              error: (_, __) => SliverToBoxAdapter(child: FeaturedSkeleton()),
-              loading: () => SliverToBoxAdapter(child: FeaturedSkeleton()),
-            ),
+            _ListItem(products: products),
           ],
         ),
       ),
@@ -242,4 +152,133 @@ class _FixedHeaderDelegate extends SliverPersistentHeaderDelegate {
       old.maxHeight != maxHeight ||
       old.devicePixelRatio != devicePixelRatio ||
       old.child != child;
+}
+
+class _CategoryTabs extends StatelessWidget {
+  final AsyncValue<List<ProductCategoryItem>> categoryList;
+  final double devicePixelRatio;
+  final ValueNotifier<double> scrollProgress;
+  final ProductCategoryItem active;
+  final WidgetRef ref;
+  final ScrollController scrollController;
+
+     const _CategoryTabs({
+        required this.categoryList,
+        required this.devicePixelRatio,
+        required this.scrollProgress,
+        required this.active,
+        required this.ref,
+        required this.scrollController
+    });
+
+  @override
+  Widget build(BuildContext context) {
+    return categoryList.when(
+        data: (data) => SliverPersistentHeader(
+          pinned: true,
+          delegate: _FixedHeaderDelegate(
+            minHeight: 60.w,
+            maxHeight: 60.w,
+            devicePixelRatio: devicePixelRatio,
+            child: ValueListenableBuilder<double>(
+              valueListenable: scrollProgress,
+              builder: (context, value, _) {
+                final progress = value.clamp(0.0, 1.0);
+                // over 0.2 start to change background color
+                final start = 0.2;
+                // normalize t to 0-1
+                final t = (progress - start) / (1 - start);
+                final easedT = Curves.easeOut.transform(t.clamp(0.0, 1.0));
+                return Container(
+                  padding: EdgeInsets.symmetric(vertical: 8.w),
+                  decoration: BoxDecoration(
+                    color: Color.lerp(Colors.transparent, context.bgPrimary, easedT),
+                    border: Border(
+                      bottom: BorderSide(
+                        color: Color.lerp(Colors.transparent, context.bgSecondary, easedT)!,
+                        width: 1 - progress,
+                      ),
+                    ),
+                  ),
+                  child: Tabs<ProductCategoryItem>(
+                    data: data,
+                    activeItem: active,
+                    renderItem: (item) => Center(child: Text(item.name)),
+                    onChangeActive: (item) {
+                      ref.read(activeCategoryProvider.notifier).state = item;
+                      if(scrollController.hasClients){
+                        const double appBarHeight = 56.0;
+                        scrollController.animateTo(appBarHeight.clamp(0.0, scrollController.position.maxScrollExtent), duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
+                      }
+                    },
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
+        error: (_, __) => SliverToBoxAdapter(
+          child: Tabs(
+            data: [],
+            activeItem: '',
+            renderItem: (item) => SizedBox.shrink(),
+            onChangeActive: (item) => {},
+          ),
+        ),
+        loading: () => SliverToBoxAdapter(
+          child: Tabs(
+            data: [],
+            activeItem: '',
+            renderItem: (item) => SizedBox.shrink(),
+            onChangeActive: (item) => {},
+          ),
+        ),
+      );
+  }
+}
+
+/// product list item
+class _ListItem extends StatelessWidget {
+  final AsyncValue<List<ProductListItem>> products;
+  const _ListItem({required this.products});
+
+  @override
+  Widget build(BuildContext context) {
+    return products.when(
+        data: (list) {
+          if (list.isEmpty) {
+            return const SliverFillRemaining(
+              hasScrollBody: false,
+              child: Text('No products'),
+            );
+          }
+          return SliverPadding(
+            padding: EdgeInsets.only(
+              top: 16.w,
+              bottom: 20.w,
+              left: 16.w,
+              right: 16.w,
+            ),
+            sliver: SliverGrid(
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                mainAxisSpacing: 16.w,
+                crossAxisSpacing: 16.w,
+                childAspectRatio: 166.w / 365.w,
+              ),
+              delegate: SliverChildBuilderDelegate((context, index) {
+                final item = list[index];
+                return ProductItem(
+                  data: item,
+                  imgHeight: 166,
+                  imgWidth: 166,
+                );
+              }, childCount: list.length),
+            ),
+          );
+        },
+        error: (_, __) => SliverToBoxAdapter(child: FeaturedSkeleton()),
+        loading: () => SliverToBoxAdapter(child: FeaturedSkeleton()),
+      );
+  }
 }

@@ -163,6 +163,7 @@ class _TabsState<T> extends State<Tabs<T>> {
       return SizedBox(
         height: widget.height.h,
         child: Row(
+          mainAxisSize: MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.center,
           children: List.generate(widget.tabCount, (_) {
             return Container(
@@ -182,7 +183,7 @@ class _TabsState<T> extends State<Tabs<T>> {
 
     /// auto scroll active tab into view
     return SizedBox(
-      height: widget.height.h,
+      height: widget.height.w,
       child: Stack(
         children: [
           /// underline/current highline Box for active tab
@@ -192,7 +193,7 @@ class _TabsState<T> extends State<Tabs<T>> {
             left: _indicatorLeft,
             bottom: 0,
             width: _indicatorWidth,
-            height: widget.height.h,
+            height: widget.height.w,
             child: Container(
               decoration: BoxDecoration(
                 color: context.bgBrandSolid,

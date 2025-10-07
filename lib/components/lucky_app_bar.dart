@@ -24,21 +24,49 @@ class LuckyAppBar extends StatelessWidget implements PreferredSizeWidget {
   });
 
   @override
-  Size get preferredSize => Size.fromHeight(50.h);
+  Size get preferredSize => Size.fromHeight(56.h);
 
   @override
   Widget build(BuildContext context) {
-    return AppBar(
-      backgroundColor: context.bgPrimary,
+    return Material(
+      color: context.bgPrimary,
       elevation: 0,
-      surfaceTintColor: Colors.transparent,
-      shape: Border(
-        bottom: BorderSide(color: context.borderSecondary, width: 1),
+      child: SafeArea(
+        bottom: false,
+        child: Container(
+          height: 56.h,
+          alignment: Alignment.center,
+          padding: EdgeInsets.symmetric(horizontal: 8.w),
+          decoration: BoxDecoration(
+            border: Border(
+              bottom: BorderSide(color: context.bgSecondary,width: 1),
+            )
+          ),
+          child: Stack(
+            children: [
+              _Title(title: title),
+              if(showBack)
+                Positioned(
+                  left: 0,
+                  bottom: 0,
+                  top: 0,
+                  child: _BackIcon(backIconPath: backIconPath),
+                ),
+
+              if(actions != null)
+                Positioned(
+                  right: 0,
+                  bottom: 0,
+                  top: 0,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: actions!,
+                  ),
+                )
+            ],
+          ),
+        ),
       ),
-      title: _Title(title: title),
-      centerTitle: true,
-      leading: _BackIcon(backIconPath: backIconPath),
-      actions: actions,
     );
   }
 }
@@ -55,7 +83,12 @@ class _Title extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (title == null) {
-      return Image.asset('assets/images/logo.png', height: 32.w);
+      return Center(
+        child: Image.asset(
+          'assets/images/logo.png',
+          height: 32.h,
+        ),
+      );
     }
 
     return Text(
@@ -83,7 +116,7 @@ class _BackIcon  extends StatelessWidget {
       return IconButton(
         icon: backIconPath != null
             ? Image.asset(backIconPath!)
-            : Icon(Icons.chevron_left, size: 24.w),
+            : Icon(Icons.chevron_left, size: 24.h),
         onPressed: () => Navigator.pop(context),
       );
     }
