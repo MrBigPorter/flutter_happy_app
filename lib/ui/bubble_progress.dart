@@ -42,7 +42,7 @@ class BubbleProgress extends StatelessWidget {
     this.duration = const Duration(milliseconds: 220),
     this.tipBuilder,
     this.showTipBg = true,
-    this.topPadding = 8,
+    this.topPadding = 4,
   });
 
   /// 将不同类型的进度值解析为double类型
@@ -73,11 +73,13 @@ class BubbleProgress extends StatelessWidget {
               tipBuilder: tipBuilder,
               showTipBg: showTipBg,
               showTip: showTip,
-              pct: pct01,
+              pct: pct.toDouble(),
+              pct01: pct01,
               color: color,
               duration: duration,
               w:w
             ),
+            if(showTip) SizedBox(height: topPadding.h),
             // progress bar with thumb
             TweenAnimationBuilder(
               tween: Tween(begin: 0, end: pct01),
@@ -109,7 +111,7 @@ class BubbleProgress extends StatelessWidget {
                     ),
                     // thumb
                     Positioned(
-                      left: (w - thumbSize) * t,
+                       left: (w - thumbSize) * t,
                       child: Container(
                         width: thumbSize.w,
                         height: thumbSize.w,
@@ -139,6 +141,7 @@ class _AutoMoveTip extends StatefulWidget {
   final bool showTipBg; // 是否显示气泡背景
   final double topPadding; // 顶部内边距
   final double pct; // 进度值 0-100
+  final double pct01; // 进度值 0-100
   final double w; // parent width
 
   /// 自定义气泡内容构建器
@@ -154,6 +157,7 @@ class _AutoMoveTip extends StatefulWidget {
     required this.topPadding,
     this.tipBuilder,
     required this.pct,
+    required this.pct01,
     required this.w
 });
 
@@ -163,53 +167,49 @@ class _AutoMoveTip extends StatefulWidget {
 }
 
 class _AutoMoveTipState extends State<_AutoMoveTip> {
+   Size _tipSize = Size.zero;
+
     @override
     Widget build(BuildContext context){
-      var tipSize = Size.zero;
+      if(!widget.showTip) return SizedBox.shrink();
 
-      // tip left
-      final tipLeft = widget.pct * (widget.w - tipSize.width);
-      print(widget.pct);
-      print(widget.w);
-      print(tipSize.width);
-
+      // default tip width to void layout shift
+      final tipW = _tipSize.width > 0 ? _tipSize.width : 36;
+      final thumbCenter = (widget.w - widget.thumbSize);
+      double left = (widget.pct01 * thumbCenter) - tipW/2 + widget.thumbSize.w/2;
+      left = left.clamp(0, widget.w - tipW);
       // tip text above the progress bar
       if (widget.showTip){
         return Stack(
           clipBehavior: Clip.none,
           children: [
             Transform.translate(
-              offset: Offset(0, 0),
-              child: AnimatedSwitcher(
-                duration: widget.duration,
-                transitionBuilder: (child, animation) {
-                  return ScaleTransition(scale: animation, child: child);
-                },
-                child:_MeasureSize(
-                    onChange:(size){
-                       setState(() {
-                         tipWidth = size;
-                       });
-                    },
-                    child: _TipBubble(
-                      // key: ValueKey(widget.pct.toStringAsFixed(0)),
-                      color: widget.color,
-                      showBg: widget.showTipBg,
-                      child: widget.tipBuilder != null
-                          ? widget.tipBuilder!(widget.pct.toDouble())
-                          : Text(
-                        '${widget.pct.toStringAsFixed(0)}%',
-                        style: TextStyle(
-                          fontSize: 10.w,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.white,
-                        ),
+              offset: Offset(left, 0),
+              child: _MeasureSize(
+                  onChange:(size){
+                    if(size != _tipSize){
+                      setState(() {
+                        _tipSize = size;
+                      });
+                    }
+                  },
+                  child: _TipBubble(
+                    key: ValueKey(widget.pct.toStringAsFixed(0)),
+                    color: widget.color,
+                    showBg: widget.showTipBg,
+                    child: widget.tipBuilder != null
+                        ? widget.tipBuilder!(widget.pct.toDouble())
+                        : Text(
+                      '${widget.pct.toStringAsFixed(0)}%',
+                      style: TextStyle(
+                        fontSize: 10.w,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
                       ),
-                    )
-                ),
-
+                    ),
+                  )
               ),
-            ),
+            )
           ],
         );
       }
@@ -237,7 +237,9 @@ class _MeasureSize extends StatefulWidget {
 class _MeasureSizeState extends State<_MeasureSize> {
   @override
   Widget build(BuildContext context) {
+    // 页面渲染完成后获取尺寸 get size after frame render
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if(!mounted) return;
       final size = context.size;
       if (size != null) {
         widget.onChange(size);
@@ -274,7 +276,7 @@ class _TipBubble extends StatelessWidget {
       children: [
         // 气泡主体
         Container(
-          padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2),
+          padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.w),
           decoration: BoxDecoration(
             color: color,
             borderRadius: BorderRadius.circular(8.r),
@@ -282,7 +284,7 @@ class _TipBubble extends StatelessWidget {
           child: child,
         ),
         // 小三角指示器
-        CustomPaint(size: const Size(8, 4), painter: _TrianglePainter(color)),
+        CustomPaint(size:  Size(8.w, 4.w), painter: _TrianglePainter(color)),
       ],
     );
   }
