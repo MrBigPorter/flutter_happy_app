@@ -75,6 +75,7 @@ dependencies:
   collection: ^1.19.1
   dartx: ^1.2.0
   flutter_riverpod: ^2.6.1
+  widgetbook: ^3.18.0
 
 dev_dependencies:
   flutter_test:

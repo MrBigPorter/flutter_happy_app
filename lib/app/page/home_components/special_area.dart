@@ -103,7 +103,8 @@ class SpecialArea extends StatelessWidget {
 
                                 /// and progress bar 以及 进度条
                                 BubbleProgress(
-                                  value: item.buyQuantityRate,
+                                  // value: item.buyQuantityRate,
+                                  value: 0,
                                   showTipBg: true,
                                 ),
                               ],

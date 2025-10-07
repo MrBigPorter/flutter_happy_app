@@ -23,6 +23,7 @@ class BubbleProgress extends StatelessWidget {
   final dynamic value; // 进度值(0~100)
   final bool showTip; // 是否显示气泡
   final Color color; // 进度条颜色
+  final Color textColor; // 文案颜色
   final double trackHeight; // 进度条高度
   final double thumbSize; // 拇指大小
   final Duration duration; // 动画持续时间
@@ -37,6 +38,7 @@ class BubbleProgress extends StatelessWidget {
     required this.value,
     this.showTip = true,
     this.color = const Color(0xFFFF8A00),
+    this.textColor =  Colors.white,
     this.trackHeight = 4,
     this.thumbSize = 8,
     this.duration = const Duration(milliseconds: 220),
@@ -76,6 +78,7 @@ class BubbleProgress extends StatelessWidget {
               pct: pct.toDouble(),
               pct01: pct01,
               color: color,
+              textColor: textColor,
               duration: duration,
               w:w
             ),
@@ -93,7 +96,7 @@ class BubbleProgress extends StatelessWidget {
                     Container(
                       height: trackHeight,
                       decoration: BoxDecoration(
-                        color: context.utilityBrand500.withValues(alpha: 200),
+                        color: color.withValues(alpha: 200),
                         borderRadius: BorderRadius.circular(trackHeight),
                       ),
                     ),
@@ -135,6 +138,7 @@ class BubbleProgress extends StatelessWidget {
 class _AutoMoveTip extends StatefulWidget {
   final bool showTip; // 是否显示气泡
   final Color color; // 进度条颜色
+  final Color textColor; // 文案颜色
   final double trackHeight; // 进度条高度
   final double thumbSize; // 拇指大小
   final Duration duration; // 动画持续时间
@@ -150,6 +154,7 @@ class _AutoMoveTip extends StatefulWidget {
   const _AutoMoveTip({
     required this.showTip,
     required this.color,
+    required this.textColor,
     required this.trackHeight,
     required this.duration,
     required this.showTipBg,
@@ -177,7 +182,10 @@ class _AutoMoveTipState extends State<_AutoMoveTip> {
       final tipW = _tipSize.width > 0 ? _tipSize.width : 36;
       final thumbCenter = (widget.w - widget.thumbSize);
       double left = (widget.pct01 * thumbCenter) - tipW/2 + widget.thumbSize.w/2;
-      left = left.clamp(0, widget.w - tipW);
+      if(!widget.showTipBg){
+        // for text tip, keep it in the progress bar
+        left = left.clamp(0, widget.w - tipW);
+      }
       // tip text above the progress bar
       if (widget.showTip){
         return Stack(
@@ -204,7 +212,7 @@ class _AutoMoveTipState extends State<_AutoMoveTip> {
                       style: TextStyle(
                         fontSize: 10.w,
                         fontWeight: FontWeight.w600,
-                        color: Colors.white,
+                        color: widget.textColor,
                       ),
                     ),
                   )
