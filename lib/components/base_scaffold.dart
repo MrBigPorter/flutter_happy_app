@@ -1,7 +1,4 @@
-import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_app/common.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import 'lucky_app_bar.dart';
 
