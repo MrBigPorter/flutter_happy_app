@@ -1,6 +1,5 @@
 import 'dart:math';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_app/common.dart';
 import 'package:flutter_app/components/featured_skeleton.dart';
@@ -35,7 +34,7 @@ class _ProductPageState extends ConsumerState<ProductPage> {
 
   void _onScroll() {
     final offset = scrollController.offset;
-    double maxHeaderHeight = 126; // app bar height + tabs height + padding
+    double maxHeaderHeight = 132; // app bar height + tabs height + padding
     double minHeaderHeight = 60;
     final progress = (offset / (maxHeaderHeight - minHeaderHeight)).clamp(
       0.0,
@@ -82,8 +81,8 @@ class _ProductPageState extends ConsumerState<ProductPage> {
             SliverPersistentHeader(
               pinned: false,
               delegate: _FixedHeaderDelegate(
-                minHeight: 50.w,
-                maxHeight: 50.w,
+                minHeight: 56.h,
+                maxHeight: 56.h,
                 devicePixelRatio: devicePixelRatio,
                 child: ValueListenableBuilder<double>(
                   valueListenable: scrollProgress,
@@ -207,8 +206,10 @@ class _CategoryTabs extends StatelessWidget {
                     onChangeActive: (item) {
                       ref.read(activeCategoryProvider.notifier).state = item;
                       if(scrollController.hasClients){
-                        const double appBarHeight = 56.0;
-                        scrollController.animateTo(appBarHeight.clamp(0.0, scrollController.position.maxScrollExtent), duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
+                        const double appBarHeight = 56+60;
+                        if(scrollProgress.value >= 1.0){
+                          scrollController.animateTo(appBarHeight.clamp(0.0, scrollController.position.maxScrollExtent), duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
+                        }
                       }
                     },
                   ),
