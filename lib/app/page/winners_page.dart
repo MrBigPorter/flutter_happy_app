@@ -56,7 +56,7 @@ class _Banner extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.w),
-      child: SwiperBanner(banners: list??[]),
+      child: SwiperBanner<Banners>(banners: list??[]),
     );
   }
 }

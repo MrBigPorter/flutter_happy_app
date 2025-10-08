@@ -1,15 +1,13 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_app/common.dart';
 import 'package:flutter_app/components/skeleton.dart';
-import 'package:flutter_app/core/models/index.dart';
 import 'package:card_swiper/card_swiper.dart';
 import 'package:flutter_app/utils/helper.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
-class SwiperBanner extends StatelessWidget {
-  final List<Banners> banners; // banner list
+class SwiperBanner<T> extends StatelessWidget {
+  final List<T> banners; // banner list
   final String? bannerID; // optional banner ID
   final double height; // banner height
   final double width; // banner width
@@ -17,6 +15,8 @@ class SwiperBanner extends StatelessWidget {
   final Duration interval; // autoplay interval
   final bool autoPlay; // whether to autoplay
   final double borderRadius; // border radius
+  final Function(T item)? onTapItem; // on tap item callback
+  final Widget Function(T item)? itemBuilder; // custom item builder
 
   // dots pagination configuration
   final double dotSize; // inactive dot size
@@ -37,6 +37,8 @@ class SwiperBanner extends StatelessWidget {
     this.autoPlay = true,
     this.interval = const Duration(seconds: 3),
     this.borderRadius = 8.0,
+    this.onTapItem,
+    this.itemBuilder,
 
     this.dotSize = 6.0,
     this.activeDotSize = 16.0,
@@ -48,6 +50,11 @@ class SwiperBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+
+    if(banners.isNullOrEmpty){
+      return Skeleton.react(width: width, height: height,borderRadius: BorderRadius.circular(borderRadius.w));
+    }
+
     return Container(
       clipBehavior: Clip.antiAlias,
       width: double.infinity,
@@ -63,22 +70,14 @@ class SwiperBanner extends StatelessWidget {
          final item = banners[index];
          return ClipRRect(
            borderRadius: BorderRadius.circular(borderRadius.w),
-           child: CachedNetworkImage(
-             imageUrl: proxied(item.bannerImgUrl),
-              width: width,
-              height: height,
-              fit: BoxFit.cover,
-              placeholder: (_,__)=>Skeleton.react(width: width.w, height: height.w),
-              errorWidget: (_,__,___)=>Container(
-                width: width,
-                height: height,
-                color: const Color(0x11000000),
-                alignment: Alignment.center,
-                child: Icon(
-                  CupertinoIcons.photo,
-                  size: 32.w,
-                ),
-              )
+           child: GestureDetector(
+             onTap: ()=> onTapItem!(item),
+             child: ImageWidget(
+                 item: item,
+                 width: width,
+                 height: height,
+                 itemBuilder: itemBuilder
+             ),
            ),
          );
         },
@@ -169,3 +168,47 @@ class CustomDotPaginationBuilder extends SwiperPlugin {
   }
 }
 
+/// Image widget with placeholder and error handling
+/// if itemBuilder is provided, use it to build the widget
+/// otherwise, use CachedNetworkImage to load image from network
+/// with placeholder and error widget
+class ImageWidget<T> extends StatelessWidget {
+  final dynamic item;
+  final double width;
+  final double height;
+  final Widget Function(T item)? itemBuilder;
+
+  const ImageWidget({
+    super.key,
+    this.item,
+    required this.width,
+    required this.height,
+    this.itemBuilder
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    /// if itemBuilder is provided, use it to build the widget
+    if(itemBuilder != null) {
+      return itemBuilder!(item);
+    }
+
+    return CachedNetworkImage(
+        imageUrl: proxied(item?.bannerImgUrl),
+        width: width,
+        height: height,
+        fit: BoxFit.cover,
+        placeholder: (_,__)=>Skeleton.react(width: width.w, height: height.w),
+        errorWidget: (_,__,___)=>Container(
+          width: width,
+          height: height,
+          color: const Color(0x11000000),
+          alignment: Alignment.center,
+          child: Icon(
+            CupertinoIcons.photo,
+            size: 32.w,
+          ),
+        )
+    );
+  }
+}
