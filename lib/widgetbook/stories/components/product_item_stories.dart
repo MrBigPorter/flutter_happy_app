@@ -24,10 +24,6 @@ WidgetbookComponent buildProductItemStories() {
             max: 999,
           );
 
-          final showCountdown = context.knobs.boolean(
-            label: 'Show Countdown',
-            initialValue: true,
-          );
 
           final darkMode = context.knobs.boolean(
             label: 'Dark Mode',

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_app/theme/design_tokens.g.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// BubbleProgress - 带气泡提示的进度条组件

@@ -1,4 +1,3 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_app/components/home_banner.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';

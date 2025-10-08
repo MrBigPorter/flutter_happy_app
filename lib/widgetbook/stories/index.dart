@@ -1,6 +1,9 @@
 import 'package:flutter_app/widgetbook/stories/components/base_scaffold_stories.dart';
 import 'package:flutter_app/widgetbook/stories/components/home_banner_stories.dart';
 import 'package:flutter_app/widgetbook/stories/components/product_item_stories.dart';
+import 'package:flutter_app/widgetbook/stories/components/render_countdown_stories.dart';
+import 'package:flutter_app/widgetbook/stories/components/skeleton_stories.dart';
+import 'package:flutter_app/widgetbook/stories/components/tabs_stories.dart';
 import 'package:flutter_app/widgetbook/stories/ui/bubble_progress_stories.dart';
 import 'package:flutter_app/widgetbook/stories/ui/enter_button_stories.dart';
 import 'package:widgetbook/widgetbook.dart';
@@ -19,6 +22,9 @@ List<WidgetbookNode> buildAllComponentStories (){
           buildBaseScaffoldStories(),
           buildHomeBannerStories(),
           buildProductItemStories(),
+          buildRenderCountdownStories(),
+          buildSkeletonStories(),
+          buildTabsStories(),
           // Add other component stories here
         ]
     ),
