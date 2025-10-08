@@ -24,12 +24,17 @@ WidgetbookComponent buildFeaturedSkeletonStories() {
       ),
       WidgetbookUseCase(
         name: 'Dark Mode',
-        builder: (context) => Scaffold(
-          body: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Skeleton.circle(width: 100.w, height: 100.w),
-          ),
-        ),
+        builder: (context) {
+          final width = context.knobs.double.slider(label: 'width',initialValue: 300,min: 50,max: 600);
+          final height = context.knobs.double.slider(label: 'height',initialValue: 200,min: 50,max: 600);
+          final shimer = context.knobs.boolean(label: 'shimer',initialValue: true);
+          return Scaffold(
+            body: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Skeleton.circle(width: width.w, height: height.w,shimmer: shimer,),
+            ),
+          );
+        },
       ),
     ],
   );

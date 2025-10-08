@@ -1,3 +1,5 @@
+import 'package:flutter_app/widgetbook/stories/components/base_scaffold_stories.dart';
+import 'package:flutter_app/widgetbook/stories/components/home_banner_stories.dart';
 import 'package:flutter_app/widgetbook/stories/ui/bubble_progress_stories.dart';
 import 'package:flutter_app/widgetbook/stories/ui/enter_button_stories.dart';
 import 'package:widgetbook/widgetbook.dart';
@@ -13,6 +15,8 @@ List<WidgetbookNode> buildAllComponentStories (){
         children: [
           buildBubbleProgressStories(),
           buildEnterButtonStories(),
+          buildBaseScaffoldStories(),
+          buildHomeBannerStories(),
           // Add other component stories here
         ]
     ),

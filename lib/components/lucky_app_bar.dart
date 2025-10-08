@@ -34,6 +34,7 @@ class LuckyAppBar extends StatelessWidget implements PreferredSizeWidget {
       child: SafeArea(
         bottom: false,
         child: Container(
+          width: double.infinity,
           height: 56.h,
           alignment: Alignment.center,
           padding: EdgeInsets.symmetric(horizontal: 8.w),
@@ -91,12 +92,15 @@ class _Title extends StatelessWidget {
       );
     }
 
-    return Text(
-      title!.tr(),
-      style: TextStyle(
-        fontSize: 16.w,
-        fontWeight: FontWeight.w800,
-        color: context.textPrimary900,
+    return Align(
+      alignment: Alignment.center,
+      child: Text(
+        title!.tr(),
+        style: TextStyle(
+          fontSize: 16.w,
+          fontWeight: FontWeight.w800,
+          color: context.textPrimary900,
+        ),
       ),
     );
   }

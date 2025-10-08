@@ -16,6 +16,7 @@ class HomeBanner extends StatefulWidget {
   final String? bannerID;
   final double height;
   final bool autoPlay;
+  final bool showIndicator;
   final Duration interval;
 
   const HomeBanner({
@@ -24,6 +25,7 @@ class HomeBanner extends StatefulWidget {
     this.bannerID,
     this.height = 356,
     this.autoPlay = true,
+    this.showIndicator = true,
     this.interval = const Duration(seconds: 3),
   });
 
@@ -45,7 +47,7 @@ class _HomeBannerState extends State<HomeBanner> {
 
   /// 释放资源 dispose resources
   @override
-  void dispose(){
+  void dispose() {
     _timer?.cancel();
     _pc.dispose();
     super.dispose();
@@ -53,9 +55,11 @@ class _HomeBannerState extends State<HomeBanner> {
 
   /// 当 widget 更新时，检查是否需要重新设置计时器 when widget updated, check if need to reset timer
   @override
-  void didUpdateWidget(HomeBanner oldWidget){
+  void didUpdateWidget(HomeBanner oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if(oldWidget.autoPlay != widget.autoPlay || oldWidget.interval != widget.interval || oldWidget.banners.length != widget.banners.length){
+    if (oldWidget.autoPlay != widget.autoPlay ||
+        oldWidget.interval != widget.interval ||
+        oldWidget.banners.length != widget.banners.length) {
       _setupTimer();
     }
   }
@@ -83,21 +87,21 @@ class _HomeBannerState extends State<HomeBanner> {
     final items = widget.banners;
 
     /// 无数据时显示占位图 show placeholder when no data
-    if(items.isEmpty){
+    if (items.isEmpty) {
       return Container(
         height: widget.height.h,
-        margin:  EdgeInsets.all(16),
+        margin: EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: context.bgBrandPrimary,
-          borderRadius: BorderRadius.circular(12.r)
-        )
+          borderRadius: BorderRadius.circular(12.r),
+        ),
       );
     }
 
     /// 有数据时显示轮播图 show banner when have data
     return Container(
       key: widget.bannerID != null ? Key(widget.bannerID!) : null,
-      margin:  EdgeInsets.only(top: 8.h, left: 16.w, right: 16.w),
+      margin: EdgeInsets.only(top: 8.h, left: 16.w, right: 16.w),
       height: widget.height,
       child: Stack(
         fit: StackFit.expand,
@@ -125,14 +129,18 @@ class _HomeBannerState extends State<HomeBanner> {
                         width: double.infinity,
                         height: widget.height,
                         placeholder: (_, __) => Skeleton.react(
-                            width: double.infinity,
-                            height: widget.height,
-                            borderRadius: BorderRadius.circular(8.r)
+                          width: double.infinity,
+                          height: widget.height,
+                          borderRadius: BorderRadius.circular(8.r),
                         ),
                         errorWidget: (_, __, ___) => Container(
                           color: const Color(0x11000000),
                           alignment: Alignment.center,
-                          child: Icon(CupertinoIcons.photo, size: 32.w, color: Colors.grey),
+                          child: Icon(
+                            CupertinoIcons.photo,
+                            size: 32.w,
+                            color: Colors.grey,
+                          ),
                         ),
                       ),
                     ),
@@ -141,17 +149,18 @@ class _HomeBannerState extends State<HomeBanner> {
               },
             ),
           ),
-          Positioned(
-            bottom: 8,
-            left: 0,
-            right: 0,
-            child: _Dots(
+          if (widget.showIndicator && items.length > 1)
+            Positioned(
+              bottom: 8,
+              left: 0,
+              right: 0,
+              child: _Dots(
                 count: items.length,
                 index: _index,
                 activeColor: context.buttonPrimaryBg,
-                inactiveColor: context.bgActive
+                inactiveColor: context.bgActive,
+              ),
             ),
-          ),
         ],
       ),
     );
@@ -169,7 +178,7 @@ class _Dots extends StatelessWidget {
     required this.count,
     required this.index,
     required this.activeColor,
-    required this.inactiveColor
+    required this.inactiveColor,
   });
 
   @override
@@ -180,7 +189,7 @@ class _Dots extends StatelessWidget {
         final active = i == index;
         return AnimatedContainer(
           duration: const Duration(milliseconds: 200),
-          margin:  EdgeInsets.symmetric(horizontal: 3.w),
+          margin: EdgeInsets.symmetric(horizontal: 3.w),
           width: active ? 16.w : 6.w,
           height: 6.h,
           decoration: BoxDecoration(
