@@ -19,7 +19,7 @@
   "common.month.mar": "Marso",
   "common.month.feb": "Pebrero",
   "common.month.jan": "Enero",
-  "winner.number": "{{bilang}} Na Ang Nanalo!",
+  "winner.number": "{bilang} Na Ang Nanalo!",
   "winner.next": "Ikaw Na Ba Ang Susunod",
   "winner.latest": "Pinakabagong Nanalo",
   "common.award.details": "Mga Detalye ng Draw",

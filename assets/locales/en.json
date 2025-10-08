@@ -19,7 +19,7 @@
   "common.month.mar": "Mar",
   "common.month.feb": "Feb",
   "common.month.jan": "Jan",
-  "winner.number": "{{number}} WINNERS SO FAR",
+  "winner.number": "{number} WINNERS SO FAR",
   "winner.next": "COULD YOU BE NEXT?",
   "winner.latest": "Latest Winners",
   "common.award.details": "Draw Details",

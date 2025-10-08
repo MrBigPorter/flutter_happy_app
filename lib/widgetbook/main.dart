@@ -54,7 +54,7 @@ class WidgetBookApp extends StatelessWidget {
       builder: (context, child){
         return Widgetbook.material(
           // add all component stories here
-          directories: buildAllComponentStories(),
+          directories: buildAllComponentStories(context),
           lightTheme: _buildTheme(false),
           darkTheme: _buildTheme(true),
           themeMode: themeProvider.themeMode,
