@@ -45,6 +45,7 @@ class ProductItem extends StatelessWidget {
       child: SizedBox(
         width: cardWidth!.w,
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Stack(

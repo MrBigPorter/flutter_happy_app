@@ -23,7 +23,6 @@ Future<void> main() async {
       path: 'assets/locales',
       fallbackLocale: const Locale('en'),
 
-      // ✅ 把 EasyLocalization 放在最外层！
       child: riverpod.ProviderScope(
         child: ChangeNotifierProvider.value(
           value: themeProvider,
@@ -66,7 +65,16 @@ class WidgetBookApp extends StatelessWidget {
                 Devices.ios.iPad,
                 Devices.android.samsungGalaxyS20,
               ],
+            ),
+            // add localization support, elements will be translated if the text is wrapped with tr()
+            LocalizationAddon(
+                locales: const [Locale('en'), Locale('tl')],
+              localizationsDelegates: [
+                ...context.localizationDelegates,
+              ],
+              initialLocale: context.locale,
             )
+
           ],
           header: const Padding(
             padding: EdgeInsets.all(8.0),
