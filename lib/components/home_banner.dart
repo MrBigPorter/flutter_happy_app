@@ -103,6 +103,10 @@ class _HomeBannerState extends State<HomeBanner> {
       key: widget.bannerID != null ? Key(widget.bannerID!) : null,
       margin: EdgeInsets.only(top: 8.h, left: 16.w, right: 16.w),
       height: widget.height,
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(8.r),
+      ),
       child: Stack(
         fit: StackFit.expand,
         children: [
