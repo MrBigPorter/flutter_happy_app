@@ -142,7 +142,7 @@ class HomeStatisticsSkeleton extends StatelessWidget {
   Widget build(BuildContext context) {
     return SliverToBoxAdapter(
       child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 4.h),
+        padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 9.h),
         child: Skeleton.react(width: double.infinity, height: 80),
       ),
     );

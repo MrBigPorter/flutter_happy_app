@@ -1,5 +1,7 @@
 import 'dart:convert';
 import 'package:flutter_app/common.dart';
+import 'package:flutter_app/core/models/winners_lasts_item.dart';
+import 'package:flutter_app/core/models/winners_quantity.dart';
 
 import '../../utils/helper.dart';
 import 'package:flutter_app/core/models/index.dart';
@@ -67,6 +69,18 @@ class Api {
       "products_category_id": productsCategoryId
     });
     return parseList<ProductListItem>(res, (e)=> ProductListItem.fromJson(e));
+  }
+
+  /// 中奖总人数 total winners quantity
+  static Future<WinnersQuantity> winnersQuantityApi() async {
+    final res = await HttpClient.get('/actWinnersQuantity.json');
+    return WinnersQuantity.fromJson(res);
+  }
+
+  /// 最新中奖名单 latest winners list
+  static Future<List<WinnersLastsItem>> winnersLastsApi() async {
+    final res = await HttpClient.get('/actWinnersLasts.json');
+    return parseList<WinnersLastsItem>(res, (e) => WinnersLastsItem.fromJson(e));
   }
 
 
