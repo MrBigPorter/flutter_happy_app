@@ -126,7 +126,7 @@ class _ListItem extends StatelessWidget {
   Widget build(BuildContext context) {
     return products.when(
       data: (list) {
-        if (!list.isNullOrEmpty) {
+        if (list.isNullOrEmpty) {
           return const SliverFillRemaining(
             hasScrollBody: false,
             child: Empty(),
