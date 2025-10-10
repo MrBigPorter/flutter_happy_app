@@ -33,13 +33,30 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 ///  ```
 
 class Tabs<T> extends StatefulWidget {
-  final List<T> data;  /// list of tab items
-  final T activeItem;  /// current active tab item
-  final Widget Function(T item) renderItem; /// function to render tab item
-  final void Function(T v) onChangeActive;  /// function to change active tab item
-  final bool autoScrollIntoView; /// whether auto scroll active tab into view
-  final double height; /// height of tab bar
-  final int tabCount; /// number of tabs to show in skeleton loading
+  final List<T> data;
+
+  /// list of tab items
+  final T activeItem;
+
+  /// current active tab item
+  final Widget Function(T item) renderItem;
+
+  /// function to render tab item
+  final void Function(T v) onChangeActive;
+
+  /// function to change active tab item
+  final bool autoScrollIntoView;
+
+  /// whether auto scroll active tab into view
+  final double height;
+
+  /// height of tab bar
+  final double parentHeight;
+
+  /// height of tab bar
+  final int tabCount;
+
+  /// number of tabs to show in skeleton loading
 
   const Tabs({
     super.key,
@@ -50,6 +67,7 @@ class Tabs<T> extends StatefulWidget {
     this.autoScrollIntoView = true,
     this.height = 44,
     this.tabCount = 4,
+    this.parentHeight = 60,
   });
 
   @override
@@ -64,10 +82,18 @@ class Tabs<T> extends StatefulWidget {
 /// or active item changed
 /// also handle skeleton loading when data is empty
 class _TabsState<T> extends State<Tabs<T>> {
-  final _tabsKey = <GlobalKey>[]; /// keys for each tab item
-  double _indicatorLeft = 0; /// left position of indicator
-  double _indicatorWidth = 0; /// width of indicator
-  bool pressed = false; /// whether tab item is pressed
+  final _tabsKey = <GlobalKey>[];
+
+  /// keys for each tab item
+  double _indicatorLeft = 0;
+
+  /// left position of indicator
+  double _indicatorWidth = 0;
+
+  /// width of indicator
+  bool pressed = false;
+
+  /// whether tab item is pressed
 
   late ScrollController _scrollController;
 
@@ -83,10 +109,10 @@ class _TabsState<T> extends State<Tabs<T>> {
   void initState() {
     super.initState();
     _scrollController = ScrollController()
-    ..addListener((){
-      /// when scroll, need to update indicator position
-      _updateIndicator();
-    });
+      ..addListener(() {
+        /// when scroll, need to update indicator position
+        _updateIndicator();
+      });
     _tabsKey.addAll(List.generate(widget.data.length, (_) => GlobalKey()));
     WidgetsBinding.instance.addPostFrameCallback((_) => _updateIndicator());
   }
@@ -96,21 +122,22 @@ class _TabsState<T> extends State<Tabs<T>> {
   @override
   void didUpdateWidget(covariant Tabs<T> oldWidget) {
     super.didUpdateWidget(oldWidget);
+
     /// if data length changed, need to update keys
     WidgetsBinding.instance.addPostFrameCallback((_) => _updateIndicator());
   }
 
   /// update indicator position and width
   void _updateIndicator({bool scrollToView = false}) {
-    final index = findIndex<T>(widget.data, widget.activeItem );
+    final index = findIndex<T>(widget.data, widget.activeItem);
     if (index < 0 || index >= _tabsKey.length) return;
 
     /// get render box of active tab item
     final renderBox =
         _tabsKey[index].currentContext?.findRenderObject() as RenderBox?;
+
     /// get render box of parent (ListView)
     final parentBox = context.findRenderObject() as RenderBox?;
-
 
     if (renderBox != null && parentBox != null) {
       /// get position of active tab item relative to parent
@@ -129,7 +156,9 @@ class _TabsState<T> extends State<Tabs<T>> {
       /// and scroll controller has clients
       /// and only scroll when tab is not fully visible
       /// (e.g. tab is partially visible or not visible)
-      if(scrollToView && widget.autoScrollIntoView && _scrollController.hasClients) {
+      if (scrollToView &&
+          widget.autoScrollIntoView &&
+          _scrollController.hasClients) {
         final screenWidth = parentBox.size.width;
         final tabEndInViewport = position.dx + renderBox.size.width;
         final buffer = 16.w;
@@ -137,7 +166,7 @@ class _TabsState<T> extends State<Tabs<T>> {
         /// if tab is fully visible, do nothing
         /// if tab is partially visible or not visible, scroll to center it
         double target = _scrollController.offset;
-        target = tabEndInViewport - screenWidth/2 + buffer; // 16 padding
+        target = tabEndInViewport - screenWidth / 2 + buffer; // 16 padding
 
         final max = _scrollController.position.maxScrollExtent;
         final min = _scrollController.position.minScrollExtent;
@@ -145,7 +174,7 @@ class _TabsState<T> extends State<Tabs<T>> {
         // ensure target is within scroll range
         target = target.clamp(min, max);
 
-        if((target - _scrollController.offset).abs() > 0.5){
+        if ((target - _scrollController.offset).abs() > 0.5) {
           _scrollController.animateTo(
             target,
             duration: const Duration(milliseconds: 300),
@@ -182,54 +211,55 @@ class _TabsState<T> extends State<Tabs<T>> {
       );
     }
 
-    final activeIndex = findIndex<T>(widget.data, widget.activeItem );
+    final activeIndex = findIndex<T>(widget.data, widget.activeItem);
 
     /// auto scroll active tab into view
-    return SizedBox(
-      height: widget.height.w,
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          /// underline/current highline Box for active tab
-          AnimatedPositioned(
-            duration: const Duration(milliseconds: 300),
-            curve: Curves.easeOutBack,
-            left: _indicatorLeft,
-            bottom: 0,
-            width: _indicatorWidth,
-            height: widget.height.w,
-            child: Container(
-              decoration: BoxDecoration(
-                color: context.bgBrandSolid,
-                borderRadius: BorderRadius.all(Radius.circular(8.r)),
+    return Container(
+      height: widget.parentHeight.h,
+      alignment: Alignment.center,
+      child: SizedBox(
+        height: widget.height.h,
+        child: Stack(
+          children: [
+            AnimatedPositioned(
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeOutBack,
+              left: _indicatorLeft,
+              bottom: 0,
+              width: _indicatorWidth,
+              height: widget.height.h,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: context.bgBrandSolid,
+                  borderRadius: BorderRadius.all(Radius.circular(8.r)),
+                ),
               ),
             ),
-          ),
 
-          /// tabs
-          ListView.separated(
-            shrinkWrap: true,
-            controller: _scrollController,
-            physics: BouncingScrollPhysics(),
-            padding: EdgeInsets.only(left: 16.w, right: 16.w),
-            scrollDirection: Axis.horizontal,
-            itemCount: widget.data.length,
-            separatorBuilder: (_, __) => SizedBox(width: 12.w),
-            itemBuilder: (_, index) {
-              final item = widget.data[index];
-              final isActive = index == activeIndex;
-              return _TabBarItem<T>(
-                index: index,
-                isActive: isActive,
-                item: item,
-                renderItem: widget.renderItem,
-                onChangeActive: widget.onChangeActive,
-                tabsKey: _tabsKey,
-                height: widget.height,
-              );
-            },
-          ),
-        ],
+            ListView.separated(
+              shrinkWrap: true,
+              controller: _scrollController,
+              physics: BouncingScrollPhysics(),
+              padding: EdgeInsets.only(left: 16.w, right: 16.w),
+              scrollDirection: Axis.horizontal,
+              itemCount: widget.data.length,
+              separatorBuilder: (_, __) => SizedBox(width: 12.w),
+              itemBuilder: (_, index) {
+                final item = widget.data[index];
+                final isActive = index == activeIndex;
+                return _TabBarItem<T>(
+                  index: index,
+                  isActive: isActive,
+                  item: item,
+                  renderItem: widget.renderItem,
+                  onChangeActive: widget.onChangeActive,
+                  tabsKey: _tabsKey,
+                  height: widget.height,
+                );
+              },
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -269,9 +299,9 @@ class _TabBarItemState<T> extends State<_TabBarItem<T>> {
   build(BuildContext context) {
     return GestureDetector(
       key: widget._tabsKey[widget.index],
-      onTap: (){
+      onTap: () {
         widget.onChangeActive(widget.item);
-        WidgetsBinding.instance.addPostFrameCallback((_){
+        WidgetsBinding.instance.addPostFrameCallback((_) {
           final state = context.findAncestorStateOfType<_TabsState<T>>();
           state?._updateIndicator(scrollToView: true);
         });

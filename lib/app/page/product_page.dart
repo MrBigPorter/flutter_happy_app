@@ -7,6 +7,7 @@ import 'package:flutter_app/components/tabs.dart';
 import 'package:flutter_app/components/featured_skeleton.dart';
 import 'package:flutter_app/core/providers/index.dart';
 import 'package:flutter_app/core/models/index.dart';
+import 'package:flutter_app/utils/helper.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
@@ -29,16 +30,14 @@ class _ProductPageState extends ConsumerState<ProductPage> {
   @override
   void initState() {
     super.initState();
+
     /// initialize scroll controller and listen to scroll events
     scrollController = ScrollController()..addListener(_onScroll);
   }
 
   void _onScroll() {
     final offset = scrollController.offset;
-    const double maxHeaderHeight = 120; // max height of header
-    const double minHeaderHeight = 60;
-    final progress = (offset / (maxHeaderHeight - minHeaderHeight)).clamp(0.0, 1.0);
-    scrollProgress.value = progress;
+    scrollProgress.value = offset.clamp(0.0, double.infinity);
   }
 
   @override
@@ -62,40 +61,39 @@ class _ProductPageState extends ConsumerState<ProductPage> {
     }
 
     return Scaffold(
-      body: SafeArea(
-        top: true,
-        bottom: false,
-        child: RefreshIndicator(
-          onRefresh: onRefresh,
-          child: CustomScrollView(
-            controller: scrollController,
-            physics: const AlwaysScrollableScrollPhysics(),
-            slivers: [
-              /// 顶部 AppBar（上滑消失）
-              SliverPersistentHeader(
-                pinned: false,
-                delegate: _FadeHeaderDelegate(),
-              ),
+      body: RefreshIndicator(
+        onRefresh: onRefresh,
+        child: CustomScrollView(
+          controller: scrollController,
+          physics: const AlwaysScrollableScrollPhysics(),
+          slivers: [
+            /// 顶部 AppBar（上滑消失）
+            SliverPersistentHeader(
+              pinned: false,
+              delegate: _FadeHeaderDelegate(),
+            ),
 
-              /// Tabs（吸顶固定）
-              categoryList.when(
-                data: (data) => SliverPersistentHeader(
-                  pinned: true,
-                  delegate: _TabsHeaderDelegate(
-                    data: data,
-                    active: active,
-                    ref: ref,
-                    scrollController: scrollController,
-                  ),
+            /// Tabs（吸顶固定）
+            categoryList.when(
+              data: (data) => SliverPersistentHeader(
+                pinned: true,
+                delegate: _TabsHeaderDelegate(
+                  data: data,
+                  active: active,
+                  ref: ref,
+                  scrollController: scrollController,
+                  scrollProgress: scrollProgress,
                 ),
-                error: (_, __) => const SliverToBoxAdapter(child: FeaturedSkeleton()),
-                loading: () => const SliverToBoxAdapter(child: FeaturedSkeleton()),
               ),
+              error: (_, __) =>
+                  const SliverToBoxAdapter(child: FeaturedSkeleton()),
+              loading: () =>
+                  const SliverToBoxAdapter(child: FeaturedSkeleton()),
+            ),
 
-              /// 商品列表
-              _ListItem(products: products),
-            ],
-          ),
+            /// 商品列表
+            _ListItem(products: products),
+          ],
         ),
       ),
     );
@@ -106,12 +104,18 @@ class _ProductPageState extends ConsumerState<ProductPage> {
 class _FadeHeaderDelegate extends SliverPersistentHeaderDelegate {
   @override
   double get minExtent => 0.0;
-  @override
-  double get maxExtent => !kIsWeb ? 80.0 : 56.0;
 
   @override
-  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
-    final double fade = (1 - (shrinkOffset / maxExtent)).clamp(0.0, 1.0);
+  // double get maxExtent => 56.0.h; // should be same as the app bar height
+  double get maxExtent => ViewUtils.statusBarHeight + 56.0.h;
+
+  @override
+  Widget build(
+    BuildContext context,
+    double shrinkOffset,
+    bool overlapsContent,
+  ) {
+    final double progress = (1 - (shrinkOffset / maxExtent)).clamp(0.0, 1.0);
 
     return SizedBox(
       height: maxExtent,
@@ -122,9 +126,9 @@ class _FadeHeaderDelegate extends SliverPersistentHeaderDelegate {
             left: 0,
             right: 0,
             child: Opacity(
-              opacity: fade,
+              opacity: progress,
               child: SizedBox(
-                height: 56.h * fade,
+                height: maxExtent * progress,
                 child: const LuckyAppBar(showBack: false),
               ),
             ),
@@ -144,45 +148,73 @@ class _TabsHeaderDelegate extends SliverPersistentHeaderDelegate {
   final ProductCategoryItem active;
   final WidgetRef ref;
   final ScrollController scrollController;
+  final ValueNotifier<double> scrollProgress;
 
-  const _TabsHeaderDelegate({
+  _TabsHeaderDelegate({
     required this.data,
     required this.active,
     required this.ref,
     required this.scrollController,
+    required this.scrollProgress,
   });
 
-  @override
-  double get minExtent => 60.0;
-  @override
-  double get maxExtent => 60.0;
+  double tabNormalHeight =  60;
+  double appBarHeight = 56;
+
+  double get scrollHeight => ViewUtils.statusBarHeight + appBarHeight;
+
+  double get tabHeight => ViewUtils.statusBarHeight + tabNormalHeight;
+
+  bool get isAtTop => scrollProgress.value >= scrollHeight;
+
+  double calcHeight() {
+    if (!kIsWeb) {
+      return isAtTop
+          ? tabHeight.h
+          : tabNormalHeight.h;
+    }
+    return tabNormalHeight.h;
+  }
 
   @override
-  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
-     final height = !kIsWeb ? 90.0 : 60.0;
-     double t = (shrinkOffset / maxExtent).clamp(0.0, 1.0);
-    if(t > 0) {
+  double get minExtent => calcHeight(); // should be same as the tabs height
+  @override
+  double get maxExtent => calcHeight(); // should be same as the tabs height
+
+  @override
+  Widget build(
+    BuildContext context,
+    double shrinkOffset,
+    bool overlapsContent,
+  ) {
+    double t = (shrinkOffset / maxExtent).clamp(0.0, 1.0);
+    if (t > 0) {
       t = 0.8 + t;
     }
-    return Container(
-      color: context.bgPrimary.withAlpha((255 * t).clamp(0, 255).toInt()),
-      alignment: Alignment.center,
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 120),
+      alignment:  isAtTop&&!kIsWeb ? Alignment.bottomCenter : Alignment.center,
+      decoration: BoxDecoration(
+        color: context.bgPrimary.withAlpha((255 * t).clamp(0, 255).toInt()),
+        boxShadow: [
+          if (isAtTop)
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.03 * t),
+              offset: const Offset(0, 2),
+              blurRadius: 4,
+            ),
+        ],
+      ),
       child: Tabs<ProductCategoryItem>(
         data: data,
         activeItem: active,
-        renderItem: (item) => Center(
-          child: Text(
-            item.name,
-          ),
-        ),
+        parentHeight: tabNormalHeight,
+        renderItem: (item) => Center(child: Text(item.name)),
         onChangeActive: (item) {
           ref.read(activeCategoryProvider.notifier).state = item;
-          if (scrollController.hasClients && scrollController.offset > height) {
-            scrollController.animateTo(
-              height,
-              duration: const Duration(milliseconds: 300),
-              curve: Curves.easeOut,
-            );
+          if (scrollController.hasClients &&
+              scrollProgress.value > maxExtent) {
+            scrollController.jumpTo(maxExtent - 10.h);
           }
         },
       ),
@@ -197,6 +229,7 @@ class _TabsHeaderDelegate extends SliverPersistentHeaderDelegate {
 /// 商品列表
 class _ListItem extends StatelessWidget {
   final AsyncValue<List<ProductListItem>> products;
+
   const _ListItem({required this.products});
 
   @override
@@ -218,17 +251,10 @@ class _ListItem extends StatelessWidget {
               crossAxisSpacing: 16.w,
               childAspectRatio: 166.w / 365.w,
             ),
-            delegate: SliverChildBuilderDelegate(
-                  (context, index) {
-                final item = list[index];
-                return ProductItem(
-                  data: item,
-                  imgHeight: 166,
-                  imgWidth: 166,
-                );
-              },
-              childCount: list.length,
-            ),
+            delegate: SliverChildBuilderDelegate((context, index) {
+              final item = list[index];
+              return ProductItem(data: item, imgHeight: 166, imgWidth: 166);
+            }, childCount: list.length),
           ),
         );
       },

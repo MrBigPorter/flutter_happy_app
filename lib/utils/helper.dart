@@ -1,4 +1,7 @@
+import 'dart:ui';
+
 import 'package:collection/collection.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 
 /// check if an object is null or empty
@@ -78,4 +81,27 @@ int findIndex<T>(List<T> list, T target){
 String proxied(String imageUrl, {String base = 'http://127.0.0.1:5173'}) {
   if (!kIsWeb) return imageUrl;
   return '$base/proxy?url=${Uri.encodeComponent(imageUrl)}';
+}
+
+/// View related utilities
+/// - view: The current FlutterView
+/// - mq: MediaQueryData from the current view
+/// - statusBarHeight: Height of the status bar
+/// - bottomBarHeight: Height of the bottom bar (e.g., home indicator area)
+/// - dpr: Device pixel ratio
+/// - logicalSize: Logical size of the view (in logical pixels)
+/// Usage:
+/// ```dart
+/// final statusBarHeight = ViewUtils.statusBarHeight;
+/// final dpr = ViewUtils.dpr;
+/// final logicalSize = ViewUtils.logicalSize;
+/// ```
+class ViewUtils {
+  static FlutterView get view => PlatformDispatcher.instance.implicitView ?? PlatformDispatcher.instance.views.first;
+  static MediaQueryData get mq => MediaQueryData.fromView(view);
+
+  static double get statusBarHeight => mq.padding.top;
+  static double get bottomBarHeight => mq.padding.bottom;
+  static double get dpr => view.devicePixelRatio;
+  static Size get logicalSize => view.physicalSize / dpr;
 }
