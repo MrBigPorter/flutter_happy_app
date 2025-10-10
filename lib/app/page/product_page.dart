@@ -214,7 +214,7 @@ class _TabsHeaderDelegate extends SliverPersistentHeaderDelegate {
           ref.read(activeCategoryProvider.notifier).state = item;
           if (scrollController.hasClients &&
               scrollProgress.value > maxExtent) {
-            scrollController.jumpTo(maxExtent - 10.h);
+            scrollController.jumpTo(maxExtent - (kIsWeb ? 0 : 10.h));
           }
         },
       ),
