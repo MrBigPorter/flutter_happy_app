@@ -30,8 +30,6 @@ class LuckyAppBar extends StatelessWidget implements PreferredSizeWidget {
   Widget build(BuildContext context) {
     return Material(
       color: context.bgPrimary,
-      elevation: 1,
-      shadowColor: Colors.black.withAlpha(125),
       child: SafeArea(
         bottom: false,
         child: Container(
@@ -39,11 +37,6 @@ class LuckyAppBar extends StatelessWidget implements PreferredSizeWidget {
           height: 56.h,
           alignment: Alignment.center,
           padding: EdgeInsets.symmetric(horizontal: 8.w),
-          decoration: BoxDecoration(
-            border: Border(
-              bottom: BorderSide(color: context.bgSecondary,width: 1),
-            )
-          ),
           child: Stack(
             children: [
               _Title(title: title),

@@ -17,15 +17,21 @@ import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../utils/format_helper.dart';
 
+/// Winners Page
+/// Displays banners, total winners, latest winners, and categorized winners list.
+/// Uses Riverpod for state management and data fetching.
+
 class WinnersPage extends ConsumerWidget {
   const WinnersPage({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    /// Watch providers for banners, total winners, and latest winners
     final banners = ref.watch(winnersBannerProvider);
     final quantity = ref.watch(winnersQuantityProvider);
     final winnersLasts = ref.watch(winnersLastsProvider);
 
+    /// Pull-to-refresh handler
     Future<void> onRefresh() async {
       await Future.delayed(const Duration(milliseconds: 300));
     }
