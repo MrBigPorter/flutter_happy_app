@@ -187,8 +187,11 @@ class _TabsState<T> extends State<Tabs<T>> {
 
   @override
   Widget build(BuildContext context) {
+
+    final activeIndex = findIndex<T>(widget.data, widget.activeItem);
+
     /// skeleton loading before data loaded
-    if (widget.data.isNullOrEmpty) {
+    if (widget.data.isNullOrEmpty || activeIndex < 0) {
       return SizedBox(
         height: widget.height.h,
         child: SingleChildScrollView(
@@ -211,7 +214,6 @@ class _TabsState<T> extends State<Tabs<T>> {
       );
     }
 
-    final activeIndex = findIndex<T>(widget.data, widget.activeItem);
 
     /// auto scroll active tab into view
     return Container(

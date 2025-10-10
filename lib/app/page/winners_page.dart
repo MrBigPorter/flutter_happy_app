@@ -6,7 +6,9 @@ import 'package:flutter_app/common.dart';
 import 'package:flutter_app/components/anime_count.dart';
 import 'package:flutter_app/components/base_scaffold.dart';
 import 'package:flutter_app/components/skeleton.dart';
+import 'package:flutter_app/components/sticky_header.dart';
 import 'package:flutter_app/components/swiper_banner.dart';
+import 'package:flutter_app/components/tabs.dart';
 import 'package:flutter_app/core/models/index.dart';
 import 'package:flutter_app/core/models/winners_lasts_item.dart';
 import 'package:flutter_app/core/providers/winners_provider.dart';
@@ -15,7 +17,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
-import '../../utils/format_helper.dart';
+import 'package:flutter_app/utils/format_helper.dart';
 
 /// Winners Page
 /// Displays banners, total winners, latest winners, and categorized winners list.
@@ -30,6 +32,7 @@ class WinnersPage extends ConsumerWidget {
     final banners = ref.watch(winnersBannerProvider);
     final quantity = ref.watch(winnersQuantityProvider);
     final winnersLasts = ref.watch(winnersLastsProvider);
+    final actMonthNum = ref.watch(actMonthNumProvider);
 
     /// Pull-to-refresh handler
     Future<void> onRefresh() async {
@@ -39,34 +42,76 @@ class WinnersPage extends ConsumerWidget {
     return BaseScaffold(
       showBack: false,
       body: RefreshIndicator(
-        child: ListView(
-          children: [
-            // banner
-            banners.when(
-              data: (list) => _Banner(list: list),
-              error: (_, __) => _Banner(list: []),
-              loading: () => _Banner(list: []),
+        child: CustomScrollView(
+          slivers: [
+            SliverToBoxAdapter(
+              child: banners.when(
+                data: (list) => _Banner(list: list),
+                error: (_, __) => _Banner(list: []),
+                loading: () => _Banner(list: []),
+              ),
             ),
-            SizedBox(height: 32.w),
+            // banner
+            SliverToBoxAdapter(child: SizedBox(height: 32.w)),
             //total winners
-            quantity.when(
-              data: (data) =>
-                  _TotalWinners(totalWinners: data.awardTotalQuantity),
-              error: (_, __) => _TotalWinners(totalWinners: 0),
-              loading: () => _TotalWinners(totalWinners: 0),
+            SliverToBoxAdapter(
+              child: quantity.when(
+                data: (data) =>
+                    _TotalWinners(totalWinners: data.awardTotalQuantity),
+                error: (_, __) => _TotalWinners(totalWinners: 0),
+                loading: () => _TotalWinners(totalWinners: 0),
+              ),
             ),
             //latest winners list
-            SizedBox(height: 32.w),
-            winnersLasts.when(
-              data: (data) => LatestWinners(list: data),
-              error: (_, __) => LatestWinners(list: []),
-              loading: () => LatestWinners(list: []),
+            SliverToBoxAdapter(child: SizedBox(height: 32.w)),
+            SliverToBoxAdapter(
+              child: winnersLasts.when(
+                data: (data) => LatestWinners(list: data),
+                error: (_, __) => LatestWinners(list: []),
+                loading: () => LatestWinners(list: []),
+              ),
             ),
-            SizedBox(height: 40.w,),
-            // tabs section
-            _TabsSection(),
+
+            // tabs section title
+            SliverToBoxAdapter(child: SizedBox(height: 60.w)),
+            SliverToBoxAdapter(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      SvgPicture.asset(
+                        width: 24.w,
+                        height: 24.w,
+                        colorFilter: ColorFilter.mode(
+                          context.textPrimary900,
+                          BlendMode.srcIn,
+                        ),
+                        'assets/images/list.svg',
+                      ),
+                      SizedBox(width: 16.w),
+                      Text(
+                        'winner.list'.tr(),
+                        style: TextStyle(
+                          fontSize: 16.w,
+                          fontWeight: FontWeight.w800,
+                          color: context.textPrimary900,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            actMonthNum.when(
+              data: (data) => TabsSection(list: data),
+              error: (_, __) => TabsSection(list: []),
+              loading: () => TabsSection(list: []),
+            ),
             // winners list
-            _WinnerList(),
+            SliverToBoxAdapter(child: _WinnerList()),
           ],
         ),
         onRefresh: () => onRefresh(),
@@ -178,7 +223,6 @@ class _TotalWinners extends StatelessWidget {
   }
 }
 
-
 /// Latest Winners section
 class LatestWinners extends StatefulWidget {
   final List<WinnersLastsItem> list;
@@ -198,16 +242,16 @@ class _LatestWinnersState extends State<LatestWinners> {
     if (widget.list.isNullOrEmpty) {
       return SizedBox(
         height: 200.w,
-        child:  ListView.separated(
+        child: ListView.separated(
           scrollDirection: Axis.horizontal,
           shrinkWrap: true,
-          itemBuilder: (_,index){
+          itemBuilder: (_, index) {
             return Padding(
               padding: EdgeInsets.symmetric(horizontal: 16),
               child: Skeleton.react(width: 216.w, height: 200.w),
             );
           },
-          separatorBuilder: (_,__)=> SizedBox.shrink(),
+          separatorBuilder: (_, __) => SizedBox.shrink(),
           itemCount: 6,
         ),
       );
@@ -247,30 +291,32 @@ class _LatestWinnersState extends State<LatestWinners> {
           clipBehavior: Clip.none,
           alignment: Alignment.center,
           children: [
-           SizedBox(
-             height: 300.w,
-             child:  Swiper(
-               itemWidth: 216.w,
-               itemHeight: 300.w,
-               viewportFraction: 0.6, // two side item visible
-               scale: 0.86,
-               loop: false,
-               // disable infinite loop to void first item cut off
-               itemCount: widget.list.length,
-               onIndexChanged: (i){
-                 if(mounted){
-                   setState(() {
-                     currentIndex = i;
-                   });
-                 }
-               },
-               itemBuilder: (context, index) {
-                 final item = widget.list[index];
-                 /// winner item
-                 return _LatestWinnerSwiperItem(item: item);
-               },
-             ),
-           ),
+            SizedBox(
+              height: 300.w,
+              child: Swiper(
+                itemWidth: 216.w,
+                itemHeight: 300.w,
+                viewportFraction: 0.6,
+                // two side item visible
+                scale: 0.86,
+                loop: false,
+                // disable infinite loop to void first item cut off
+                itemCount: widget.list.length,
+                onIndexChanged: (i) {
+                  if (mounted) {
+                    setState(() {
+                      currentIndex = i;
+                    });
+                  }
+                },
+                itemBuilder: (context, index) {
+                  final item = widget.list[index];
+
+                  /// winner item
+                  return _LatestWinnerSwiperItem(item: item);
+                },
+              ),
+            ),
             // dots indicator
             if (widget.list.length > 1)
               _PositionedDot(
@@ -279,7 +325,6 @@ class _LatestWinnersState extends State<LatestWinners> {
               ),
           ],
         ),
-
       ],
     );
   }
@@ -287,137 +332,160 @@ class _LatestWinnersState extends State<LatestWinners> {
 
 /// latest winner swiper item
 class _LatestWinnerSwiperItem extends StatelessWidget {
-   final WinnersLastsItem item;
+  final WinnersLastsItem item;
 
-   const _LatestWinnerSwiperItem({required this.item});
+  const _LatestWinnerSwiperItem({required this.item});
 
-    @override
-    Widget build(BuildContext context) {
-      return Padding(
-        padding: EdgeInsets.symmetric(horizontal: 8.w,vertical: 20.w),
-        child: Material(
-          color: context.bgPrimary,
-          elevation: 8.w,
-          shadowColor: Colors.black.withValues(alpha: 120),
-          borderRadius: BorderRadius.circular(12.w),
-          clipBehavior: Clip.antiAlias,
-
-          surfaceTintColor: Colors.transparent,
-          child: Container(
-            padding: EdgeInsets.symmetric(horizontal:16.w,vertical: 16.w),
-            decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12.w),
-                border: Border.all(color: context.borderSecondary, width: 1.w)
-            ),
-            child:  Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Flexible(
-                  child:  ClipRRect(
-                    clipBehavior: Clip.antiAlias,
-                    borderRadius: BorderRadius.circular(8.w),
-                    child: CachedNetworkImage(
-                      imageUrl: proxied(item.mainImageList![0]),
-                      width: 180.w,
-                      height: 120.w,
-                      fit: BoxFit.cover,
-                      placeholder: (_, __) => Skeleton.react(
-                        width: 180.w,
-                        height: 120.w,
-                        borderRadius: BorderRadius.circular(8.w),
-                      ),
-                      errorWidget: (_, __, ___) => Skeleton.react(
-                        width: 180.w,
-                        height: 120.w,
-                        borderRadius: BorderRadius.circular(8.w),
-                      ),
-                    ),
-                  ),
-                ),
-                SizedBox(height: 8.w),
-                Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 10.w),
-                  child: Text(
-                    item.winnerName!,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: context.textMd,
-                      fontWeight: FontWeight.w800,
-                      color: context.textPrimary900,
-                      height: context.leadingMd,
-                    ),
-                  ),
-                ),
-                SizedBox(height: 8.w),
-                Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 10.w),
-                  child: Text(
-                    item.treasureName,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: context.textPrimary900,
-                      fontSize: context.textXs,
-                      fontWeight: FontWeight.w800,
-                      height: context.leadingXs,
-                    ),
-                  ),
-                ),
-                SizedBox(height: 8.w),
-                Container(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: 12.w,
-                    vertical: 8.w,
-                  ),
-                  decoration: BoxDecoration(
-                    border: Border.all(
-                      color: context.buttonOutlineBorder,
-                      width: 2.w,
-                    ),
-                    borderRadius: BorderRadius.circular(8.w),
-                  ),
-                  child: Text('common.award.details'.tr()),
-                ),
-              ],
-            ),
-          ),
-        ),
-      );
-    }
-
-}
-/// Tabs section
-class _TabsSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Winners by Category',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 20.w),
+      child: Material(
+        color: context.bgPrimary,
+        elevation: 8.w,
+        shadowColor: Colors.black.withValues(alpha: 120),
+        borderRadius: BorderRadius.circular(12.w),
+        clipBehavior: Clip.antiAlias,
+
+        surfaceTintColor: Colors.transparent,
+        child: Container(
+          padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 16.w),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12.w),
+            border: Border.all(color: context.borderSecondary, width: 1.w),
           ),
-          const SizedBox(height: 8),
-          // Tabs
-          DefaultTabController(
-            length: 3,
-            child: Column(
-              children: [
-                TabBar(
-                  tabs: const [
-                    Tab(text: 'Daily'),
-                    Tab(text: 'Weekly'),
-                    Tab(text: 'Monthly'),
-                  ],
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Flexible(
+                child: ClipRRect(
+                  clipBehavior: Clip.antiAlias,
+                  borderRadius: BorderRadius.circular(8.w),
+                  child: CachedNetworkImage(
+                    imageUrl: proxied(item.mainImageList![0]),
+                    width: 180.w,
+                    height: 120.w,
+                    fit: BoxFit.cover,
+                    placeholder: (_, __) => Skeleton.react(
+                      width: 180.w,
+                      height: 120.w,
+                      borderRadius: BorderRadius.circular(8.w),
+                    ),
+                    errorWidget: (_, __, ___) => Skeleton.react(
+                      width: 180.w,
+                      height: 120.w,
+                      borderRadius: BorderRadius.circular(8.w),
+                    ),
+                  ),
                 ),
-              ],
-            ),
+              ),
+              SizedBox(height: 8.w),
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 10.w),
+                child: Text(
+                  item.winnerName!,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: context.textMd,
+                    fontWeight: FontWeight.w800,
+                    color: context.textPrimary900,
+                    height: context.leadingMd,
+                  ),
+                ),
+              ),
+              SizedBox(height: 8.w),
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 10.w),
+                child: Text(
+                  item.treasureName,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: context.textPrimary900,
+                    fontSize: context.textXs,
+                    fontWeight: FontWeight.w800,
+                    height: context.leadingXs,
+                  ),
+                ),
+              ),
+              SizedBox(height: 8.w),
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.w),
+                decoration: BoxDecoration(
+                  border: Border.all(
+                    color: context.buttonOutlineBorder,
+                    width: 2.w,
+                  ),
+                  borderRadius: BorderRadius.circular(8.w),
+                ),
+                child: Text('common.award.details'.tr()),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
+    );
+  }
+}
+
+/// Tabs section for winner categories
+/// Uses StickyHeader to keep tabs visible during scrolling
+/// and a Tabs component for navigation
+/// Receives a list of category identifiers
+/// (e.g., months) to display as tabs
+/// Manages active tab state and handles tab changes
+/// Renders the tabs with appropriate styles and interactions
+/// Integrates with the overall winners page layout
+/// to provide a seamless user experience
+/// in navigating between different winner categories.
+/// Example usage:
+/// ```dart
+/// TabsSection(list: [1, 2, 3, 4, 5
+/// ])
+/// ```
+/// where the list represents category identifiers.
+class TabsSection extends StatefulWidget {
+  final List<num> list;
+
+  const TabsSection({super.key, required this.list});
+
+  @override
+  State<TabsSection> createState() => _TabsSectionState();
+}
+
+/// Tabs section
+class _TabsSectionState extends State<TabsSection> {
+  late num activeItem;
+
+  @override
+  void initState() {
+    super.initState();
+    activeItem = widget.list.isNotEmpty ? widget.list.first : 0;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return StickyHeader(
+        minHeight: 44,
+        maxHeight: 44,
+        builder: (context,info){
+          return Container(
+            color: context.bgPrimary,
+            padding: EdgeInsets.symmetric(horizontal: 16.w),
+            alignment: Alignment.centerLeft,
+            child: Tabs<num>(
+                data: widget.list,
+                activeItem: activeItem,
+                renderItem: (item)=>Text('$item'),
+                onChangeActive: (item){
+                  setState(() {
+                    activeItem = item;
+                  });
+                }
+            ),
+          );
+        }
     );
   }
 }
@@ -454,10 +522,7 @@ class _PositionedDot extends StatelessWidget {
   final int length;
   final int currentIndex;
 
-  const _PositionedDot({
-    required this.length,
-    required this.currentIndex,
-});
+  const _PositionedDot({required this.length, required this.currentIndex});
 
   @override
   Widget build(BuildContext context) {
@@ -468,14 +533,16 @@ class _PositionedDot extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         mainAxisAlignment: MainAxisAlignment.center,
-        children: List.generate(length, (i){
+        children: List.generate(length, (i) {
           return AnimatedContainer(
             duration: const Duration(milliseconds: 220),
             width: currentIndex == i ? 18.w : 8.w,
             height: 8.w,
             margin: EdgeInsets.symmetric(horizontal: 8.w),
             decoration: BoxDecoration(
-              color: currentIndex == i ? context.fgBrandPrimary : Colors.black.withAlpha(30),
+              color: currentIndex == i
+                  ? context.fgBrandPrimary
+                  : Colors.black.withAlpha(30),
               borderRadius: BorderRadius.circular(3.w),
             ),
           );

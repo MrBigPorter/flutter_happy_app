@@ -83,5 +83,11 @@ class Api {
     return parseList<WinnersLastsItem>(res, (e) => WinnersLastsItem.fromJson(e));
   }
 
+  /// 月度活动数据 monthly activity data
+  static Future<List<num>> actMonthNumApi() async {
+    final res = await HttpClient.get('/actMonthNum.json');
+    return (res as List).map((e) => e as num).toList();
+  }
+
 
 }
