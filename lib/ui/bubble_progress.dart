@@ -95,7 +95,7 @@ class BubbleProgress extends StatelessWidget {
                     Container(
                       height: trackHeight,
                       decoration: BoxDecoration(
-                        color: color.withValues(alpha: 200),
+                        color: color.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(trackHeight),
                       ),
                     ),
