@@ -2,7 +2,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_app/common.dart';
 import 'package:flutter_app/components/base_scaffold.dart';
-import 'package:flutter_app/components/lucky_app_bar.dart';
 import 'package:flutter_app/components/product_item.dart';
 import 'package:flutter_app/components/sticky_header.dart';
 import 'package:flutter_app/components/tabs.dart';
