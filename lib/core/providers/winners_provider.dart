@@ -1,6 +1,7 @@
-import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_app/core/api/lucky_api.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../models/act_month_tab.dart';
 
 /// Winners banner provider
 final winnersBannerProvider = FutureProvider((ref) async {
@@ -23,6 +24,6 @@ final actMonthNumProvider = FutureProvider((ref) async {
 });
 
 /// Active month state provider
-final activeMonthProvider = StateProvider<num>((ref){
-  return DateTime.now().month;
+final activeMonthProvider = StateProvider<ActMonthTab>((ref){
+  return ActMonthTab(title: '', monthTitle: '', value: 0);
 });

@@ -1,9 +1,7 @@
 import 'dart:convert';
 import 'package:flutter_app/common.dart';
-import 'package:flutter_app/core/models/winners_lasts_item.dart';
-import 'package:flutter_app/core/models/winners_quantity.dart';
 
-import '../../utils/helper.dart';
+import 'package:flutter_app/utils/helper.dart';
 import 'package:flutter_app/core/models/index.dart';
 
 
@@ -84,9 +82,22 @@ class Api {
   }
 
   /// 月度活动数据 monthly activity data
-  static Future<List<num>> actMonthNumApi() async {
+  static Future<List<int>> actMonthNumApi() async {
     final res = await HttpClient.get('/actMonthNum.json');
-    return (res as List).map((e) => e as num).toList();
+    return (res as List).map((e) => e as int).toList();
+  }
+
+  /// 月度中奖名单 monthly winners list
+  /// returns paginated result
+
+  static Future<PageResult<ActWinnersMonth>> winnersMonthApi(ActWinnersMonthParams params) async {
+    final res = await HttpClient.get('/actWinnersMonth.json',queryParameters: {
+      "month": params.month,
+      "current": params.current,
+      "size": params.size,
+    });
+
+    return parsePageResponse(res, (e) => ActWinnersMonth.fromJson(e) );
   }
 
 

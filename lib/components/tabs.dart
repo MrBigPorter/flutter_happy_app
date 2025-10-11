@@ -188,10 +188,13 @@ class _TabsState<T> extends State<Tabs<T>> {
   @override
   Widget build(BuildContext context) {
 
-    final activeIndex = findIndex<T>(widget.data, widget.activeItem);
+    int activeIndex = findIndex<T>(widget.data, widget.activeItem);
+    if(activeIndex < 0 ) {
+     activeIndex = 0;
+    }
 
     /// skeleton loading before data loaded
-    if (widget.data.isNullOrEmpty || activeIndex < 0) {
+    if (widget.data.isEmpty) {
       return SizedBox(
         height: widget.height.h,
         child: SingleChildScrollView(
@@ -326,7 +329,7 @@ class _TabBarItemState<T> extends State<_TabBarItem<T>> {
             scale: pressed ? 0.7 : 1.0,
             duration: const Duration(milliseconds: 800),
             curve: Curves.elasticOut,
-            child: widget.renderItem(widget.item),
+            child: Center(child: widget.renderItem(widget.item)),
           ),
         ),
       ),

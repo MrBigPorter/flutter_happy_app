@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:collection/collection.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_app/core/models/page_result.dart';
 
 /// check if an object is null or empty
 extension NullOrEmpty on Object? {
@@ -35,6 +36,34 @@ List<T> parseList<T>(
 ) {
   final list = raw as List;
   return list.map((e) => fromJson(e as Map<String, dynamic>)).toList();
+}
+
+/// Parse a paginated response into a PageResult object
+/// - [raw]: The raw JSON data (should be a Map with pagination info)
+/// - [fromJson]: A function that converts a Map to an object of type T
+/// - Returns: A PageResult containing a list of objects of type T and pagination details
+/// - Expected JSON structure:
+/// ```json
+/// {
+///  "list": [ ... ], // List of items
+///  "total": 100, // Total number of items
+///  "current": 1, // Current page number
+///  "count": 10, // Number of items in the current page
+///  "size": 10 // Page size
+///  }
+/// ```
+PageResult<T> parsePageResponse<T>(
+  dynamic raw,
+  T Function(Map<String, dynamic> json) fromJson,
+) {
+  final map = raw as Map<String, dynamic>;
+  return PageResult<T>(
+    list: parseList<T>(map['list'], fromJson),
+    total: map['total'] ?? 0,
+    page: map['current'] ?? 1,
+    count: map['count'] ?? 0,
+    size: map['size'] ?? 10,
+  );
 }
 
 

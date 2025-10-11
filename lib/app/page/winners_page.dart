@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_app/common.dart';
 import 'package:flutter_app/components/anime_count.dart';
 import 'package:flutter_app/components/base_scaffold.dart';
+import 'package:flutter_app/components/list.dart';
 import 'package:flutter_app/components/skeleton.dart';
 import 'package:flutter_app/components/sticky_header.dart';
 import 'package:flutter_app/components/swiper_banner.dart';
@@ -36,6 +37,10 @@ class WinnersPage extends ConsumerWidget {
 
     /// Pull-to-refresh handler
     Future<void> onRefresh() async {
+      ref.invalidate(winnersBannerProvider);
+      ref.invalidate(winnersQuantityProvider);
+      ref.invalidate(winnersLastsProvider);
+      ref.invalidate(actMonthNumProvider);
       await Future.delayed(const Duration(milliseconds: 300));
     }
 
@@ -44,6 +49,7 @@ class WinnersPage extends ConsumerWidget {
       body: RefreshIndicator(
         child: CustomScrollView(
           slivers: [
+            // banner
             SliverToBoxAdapter(
               child: banners.when(
                 data: (list) => _Banner(list: list),
@@ -51,7 +57,6 @@ class WinnersPage extends ConsumerWidget {
                 loading: () => _Banner(list: []),
               ),
             ),
-            // banner
             SliverToBoxAdapter(child: SizedBox(height: 32.w)),
             //total winners
             SliverToBoxAdapter(
@@ -71,44 +76,15 @@ class WinnersPage extends ConsumerWidget {
                 loading: () => LatestWinners(list: []),
               ),
             ),
-
             // tabs section title
             SliverToBoxAdapter(child: SizedBox(height: 60.w)),
-            SliverToBoxAdapter(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      SvgPicture.asset(
-                        width: 24.w,
-                        height: 24.w,
-                        colorFilter: ColorFilter.mode(
-                          context.textPrimary900,
-                          BlendMode.srcIn,
-                        ),
-                        'assets/images/list.svg',
-                      ),
-                      SizedBox(width: 16.w),
-                      Text(
-                        'winner.list'.tr(),
-                        style: TextStyle(
-                          fontSize: 16.w,
-                          fontWeight: FontWeight.w800,
-                          color: context.textPrimary900,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
+            SliverToBoxAdapter(child: _ListTitle()),
+            // spacing
+            SliverToBoxAdapter(child: SizedBox(height: 20.w)),
             actMonthNum.when(
-              data: (data) => TabsSection(list: data),
-              error: (_, __) => TabsSection(list: []),
-              loading: () => TabsSection(list: []),
+              data: (data) => _MonthTabsSection(monthList: data),
+              error: (_, __) => _MonthTabsSection(monthList: []),
+              loading: () => _MonthTabsSection(monthList: []),
             ),
             // winners list
             SliverToBoxAdapter(child: _WinnerList()),
@@ -239,6 +215,7 @@ class _LatestWinnersState extends State<LatestWinners> {
 
   @override
   Widget build(BuildContext context) {
+    /// Loading state with skeletons
     if (widget.list.isNullOrEmpty) {
       return SizedBox(
         height: 200.w,
@@ -257,6 +234,9 @@ class _LatestWinnersState extends State<LatestWinners> {
       );
     }
 
+    /// Build swiper when data is available
+    /// with dots indicator
+    /// if more than 1 item
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.center,
@@ -429,95 +409,353 @@ class _LatestWinnerSwiperItem extends StatelessWidget {
   }
 }
 
-/// Tabs section for winner categories
-/// Uses StickyHeader to keep tabs visible during scrolling
-/// and a Tabs component for navigation
-/// Receives a list of category identifiers
-/// (e.g., months) to display as tabs
-/// Manages active tab state and handles tab changes
-/// Renders the tabs with appropriate styles and interactions
-/// Integrates with the overall winners page layout
-/// to provide a seamless user experience
-/// in navigating between different winner categories.
-/// Example usage:
-/// ```dart
-/// TabsSection(list: [1, 2, 3, 4, 5
-/// ])
-/// ```
-/// where the list represents category identifiers.
-class TabsSection extends StatefulWidget {
-  final List<num> list;
-
-  const TabsSection({super.key, required this.list});
-
+/// Title for the winners list section
+class _ListTitle extends StatelessWidget {
   @override
-  State<TabsSection> createState() => _TabsSectionState();
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SvgPicture.asset(
+              width: 24.w,
+              height: 24.w,
+              colorFilter: ColorFilter.mode(
+                context.textPrimary900,
+                BlendMode.srcIn,
+              ),
+              'assets/images/list.svg',
+            ),
+            SizedBox(width: 16.w),
+            Text(
+              'winner.list'.tr(),
+              style: TextStyle(
+                fontSize: 16.w,
+                fontWeight: FontWeight.w800,
+                color: context.textPrimary900,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
 }
 
-/// Tabs section
-class _TabsSectionState extends State<TabsSection> {
-  late num activeItem;
+/// Month model for tabs
+/// Used to represent each month in the tabs section
+/// with its value, title, and display title.
+/// E.g., value: 1, title: "January", monthTitle: "Jan"
 
-  @override
-  void initState() {
-    super.initState();
-    activeItem = widget.list.isNotEmpty ? widget.list.first : 0;
+class _MonthTabsSection extends StatelessWidget {
+  final List<int> monthList;
+
+  const _MonthTabsSection({required this.monthList});
+
+  /// Build month tabs based on the provided month list
+  /// Generates a list of _MonthModel with localized month names
+  List<ActMonthTab> _buildTabs(BuildContext context) {
+    final names = [
+      'common.month.jan'.tr(),
+      'common.month.feb'.tr(),
+      'common.month.mar'.tr(),
+      'common.month.apr'.tr(),
+      'common.month.may'.tr(),
+      'common.month.jun'.tr(),
+      'common.month.jul'.tr(),
+      'common.month.aug'.tr(),
+      'common.month.sep'.tr(),
+      'common.month.oct'.tr(),
+      'common.month.nov'.tr(),
+      'common.month.dec'.tr(),
+    ];
+
+    final now = DateTime.now();
+    return monthList.map((v) {
+      final back = v - 1;
+      final d = DateTime(now.year, now.month - back, 1);
+      final title = names[d.month - 1];
+      final monthTitle = DateFormat(
+        'MMM yyyy',
+        context.locale.toLanguageTag(),
+      ).format(d).toUpperCase();
+      return ActMonthTab(value: v, title: title, monthTitle: monthTitle);
+    }).toList();
   }
 
   @override
   Widget build(BuildContext context) {
-    return StickyHeader(
-        minHeight: 44,
-        maxHeight: 44,
-        builder: (context,info){
-          return Container(
-            color: context.bgPrimary,
-            padding: EdgeInsets.symmetric(horizontal: 16.w),
-            alignment: Alignment.centerLeft,
-            child: Tabs<num>(
-                data: widget.list,
-                activeItem: activeItem,
-                renderItem: (item)=>Text('$item'),
-                onChangeActive: (item){
-                  setState(() {
-                    activeItem = item;
-                  });
-                }
+    /// Loading state with skeletons
+    if (monthList.isEmpty) {
+      return SliverToBoxAdapter(
+        child: SizedBox(
+          height: 44.h,
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              mainAxisSize: MainAxisSize.max,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List.generate(6, (_) {
+                return Container(
+                  margin: EdgeInsets.symmetric(horizontal: 12.h),
+                  child: Skeleton.react(
+                    width: 60.w,
+                    height: 44.h,
+                    borderRadius: BorderRadius.circular(context.radiusSm),
+                  ),
+                );
+              }),
             ),
-          );
-        }
+          ),
+        ),
+      );
+    }
+
+    /// Build tabs when data is available
+    final tabs = _buildTabs(context);
+    return _TabsSection(tabs: tabs);
+  }
+}
+
+/// Tabs section widget
+/// Manages the state of the active tab and renders the Tabs component
+/// with sticky header functionality
+class _TabsSection extends ConsumerStatefulWidget {
+  final List<ActMonthTab> tabs;
+
+  const _TabsSection({required this.tabs});
+
+  @override
+  ConsumerState<_TabsSection> createState() => _TabsSectionState();
+}
+
+/// Tabs section
+class _TabsSectionState extends ConsumerState<_TabsSection> {
+  @override
+  void initState() {
+    super.initState();
+
+    /// Initialize active tab to the first tab
+    /// and update the provider state after the first frame
+    Future.microtask(() {
+      /// Ensure the widget is still mounted before updating state
+      ///  don't update state if unmounted
+      if (!mounted) return;
+
+      /// is not allow to set state in initState
+      /// so use microtask to delay the state update
+      ref.read(activeMonthProvider.notifier).state = widget.tabs.first;
+    });
+  }
+
+  @override
+  void didUpdateWidget(covariant _TabsSection oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    /// Update active tab if the tabs list changes
+    if (oldWidget.tabs != widget.tabs && widget.tabs.isNotEmpty) {
+      /// inorder to avoid set state during build
+      /// use microtask to delay the state update
+      Future.microtask(
+        () => {
+          if (mounted)
+            {ref.read(activeMonthProvider.notifier).state = widget.tabs.first},
+        },
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    /// Watch the active tab from the provider
+    final activeItem = ref.watch(activeMonthProvider);
+    return StickyHeader.pinned(
+      minHeight: 60,
+      maxHeight: 60,
+      builder: (context, info) {
+        return AnimatedContainer(
+          duration: const Duration(milliseconds: 220),
+          color: context.bgPrimary.withAlpha((255 * info.progress).toInt()),
+          alignment: Alignment.center,
+          child: Tabs<ActMonthTab>(
+            data: widget.tabs,
+            activeItem: activeItem,
+            renderItem: (item) => Text(item.title),
+            onChangeActive: (item) {
+              /// Update active tab in the provider state
+              ref.read(activeMonthProvider.notifier).state = item;
+            },
+          ),
+        );
+      },
     );
   }
 }
 
 /// Winners list section
-class _WinnerList extends StatelessWidget {
+class _WinnerList extends ConsumerWidget {
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      child: ListView.builder(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        itemCount: 20,
-        itemBuilder: (context, index) {
-          return ListTile(
-            leading: CircleAvatar(
-              backgroundColor: Colors.blue,
-              child: Text(
-                'U$index',
-                style: const TextStyle(color: Colors.white),
+  Widget build(BuildContext context, WidgetRef ref) {
+    final currentMonth = ref.watch(activeMonthProvider);
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: 16.w),
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              currentMonth.monthTitle,
+              style: TextStyle(
+                fontSize: context.textMd,
+                fontWeight: FontWeight.w800,
+                color: context.textPrimary900,
+                height: context.leadingMd,
               ),
             ),
-            title: Text('User $index'),
-            subtitle: const Text('Won \$100'),
-          );
-        },
-      ),
+          ),
+        ),
+        SizedBox(height: 8.w),
+        PageListViewLite<ActWinnersMonth>(
+          key: ValueKey(currentMonth),
+          pageSize: 10,
+          request: ({required int current, required int pageSize}) =>
+              Api.winnersMonthApi(
+                ActWinnersMonthParams(
+                  month: currentMonth.value,
+                  current: current,
+                  size: pageSize,
+                ),
+              ),
+          preProcessData: preProcessWinnersData,
+          itemBuilder:
+              (
+                BuildContext context,
+                ActWinnersMonth item,
+                int index,
+                bool isLast,
+              ) {
+                return Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16.w),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      if (item.firstOfDay!)
+                        Padding(
+                          padding: EdgeInsets.only(
+                            left: 12.w,
+                            right: 12.w,
+                            bottom: 12.w,
+                          ),
+                          child: Text(
+                            item.dateTitle ?? '',
+                            style: TextStyle(
+                              fontSize: context.textXs,
+                              fontWeight: FontWeight.w600,
+                              color: context.textSecondary700,
+                            ),
+                          ),
+                        ),
+                      Transform.translate(
+                        offset: Offset(0, item.firstOfDay == true ? 0 : -12.w),
+                        child: Container(
+                          padding: EdgeInsets.only(
+                            left: 8.w,
+                            right: 8.w,
+                            top: item.firstOfDay== true ? 16.w : 12.w,
+                            bottom: item.lastOfDay == true ? 16.w : 0,
+                          ),
+                          decoration: BoxDecoration(
+                              color: context.bgPrimary,
+                            borderRadius: BorderRadius.vertical(
+                              top: item.firstOfDay == true ? Radius.circular(8.w) : Radius.zero,
+                              bottom: item.lastOfDay == true ? Radius.circular(8.w) : Radius.zero
+                            )
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            mainAxisAlignment: MainAxisAlignment.start,
+                            children: [
+                              ClipRRect(
+                                clipBehavior: Clip.antiAlias,
+                                borderRadius: BorderRadius.circular(8.w),
+                                child: CachedNetworkImage(
+                                  imageUrl: proxied(item.mainImageList!.first),
+                                  width: 72.w,
+                                  height: 72.w,
+                                  fit: BoxFit.cover,
+                                  placeholder: (_, __) {
+                                    return Skeleton.react(
+                                      width: 72.w,
+                                      height: 72.w,
+                                      borderRadius: BorderRadius.circular(8.w),
+                                    );
+                                  },
+                                  errorWidget: (_, __, ___) {
+                                    return Skeleton.react(
+                                      width: 72.w,
+                                      height: 72.w,
+                                      borderRadius: BorderRadius.circular(8.w),
+                                    );
+                                  },
+                                ),
+                              ),
+                              SizedBox(width: 4.w),
+                              Expanded(
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      item.treasureName,
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        fontSize: context.textSm,
+                                        fontWeight: FontWeight.w600,
+                                        color: context.textPrimary900,
+                                        height: context.leadingSm,
+                                      ),
+                                    ),
+                                    SizedBox(height: 4.w),
+                                    Text(
+                                      item.winnerName,
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        fontSize: context.textXs,
+                                        fontWeight: FontWeight.w500,
+                                        color: context.textSecondary700,
+                                        height: context.leadingXs,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              SizedBox(width: 4.w),
+                            ],
+                          ),
+                        ),
+                      )
+                    ],
+                  ),
+                );
+              },
+        ),
+      ],
     );
   }
 }
 
+/// Dots indicator for the swiper
+/// Indicates the current index in the swiper with animated dots
+/// - length: Total number of items in the swiper
+/// - currentIndex: Currently active index in the swiper
 class _PositionedDot extends StatelessWidget {
   final int length;
   final int currentIndex;
@@ -550,4 +788,38 @@ class _PositionedDot extends StatelessWidget {
       ),
     );
   }
+}
+
+List<ActWinnersMonth> preProcessWinnersData(List<ActWinnersMonth> data) {
+  // sort by lottery_time desc
+  final Map<String, List<ActWinnersMonth>> grouped = {};
+
+  for (final item in data) {
+    final date = DateFormat(
+      'yyyy-MM-dd',
+    ).format(DateTime.fromMillisecondsSinceEpoch(item.lotteryTime));
+    grouped.putIfAbsent(date, () => []);
+    grouped[date]!.add(item);
+  }
+
+  // connect title and tag
+  final List<ActWinnersMonth> result = [];
+
+  grouped.forEach((date, group) {
+    /// Add a title item for the date
+    final dateTitle = DateFormat('EEEE d MMM').format(DateTime.parse(date));
+
+    for (int i = 0; i < group.length; i++) {
+      final isFirst = i == 0;
+      final isLast = i == group.length - 1;
+      final item = group[i].copyWith(
+        firstOfDay: isFirst,
+        lastOfDay: isLast,
+        dateTitle: isFirst ? dateTitle : null,
+      );
+      result.add(item);
+    }
+  });
+  // preprocess data if needed
+  return result;
 }
