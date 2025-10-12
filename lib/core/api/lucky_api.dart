@@ -96,8 +96,22 @@ class Api {
       "current": params.current,
       "size": params.size,
     });
+    
+    final result = parsePageResponse(res, (e) => ActWinnersMonth.fromJson(e) );
 
-    return parsePageResponse(res, (e) => ActWinnersMonth.fromJson(e) );
+    final now = DateTime.now();
+    final target = DateTime(now.year,now.month - (params.month - 1), 1);
+
+    final filteredList = result.list.where((item){
+      final dt = DateTime.fromMillisecondsSinceEpoch(item.lotteryTime*1000).toLocal();
+      return  dt.month == target.month;
+    }).toList();
+    
+    result.list
+      ..clear()
+      ..addAll(filteredList);
+
+    return result;
   }
 
 

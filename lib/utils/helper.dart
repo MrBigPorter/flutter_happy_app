@@ -3,7 +3,8 @@ import 'dart:ui';
 import 'package:collection/collection.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter_app/core/models/page_result.dart';
+import 'package:flutter_app/core/models/page_request.dart';
+
 
 /// check if an object is null or empty
 extension NullOrEmpty on Object? {

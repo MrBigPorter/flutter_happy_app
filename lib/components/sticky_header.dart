@@ -57,11 +57,13 @@ class StickyHeaderInfo {
   final double progress;
   final bool isAtTop;
   final double opacity;
+  final double shrinkOffset;
 
   StickyHeaderInfo({
     required this.progress,
     required this.isAtTop,
     required this.opacity,
+    required this.shrinkOffset,
   });
 }
 
@@ -107,6 +109,7 @@ class _StickyHeaderDelegate extends SliverPersistentHeaderDelegate {
           progress: progress,
           isAtTop: isAtTop,
           opacity: opacity,
+            shrinkOffset: shrinkOffset
         ),
       ),
     );

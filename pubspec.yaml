@@ -78,6 +78,7 @@ dependencies:
   widgetbook: ^3.18.0
   card_swiper: ^3.0.1
   jiffy: ^6.4.3
+  sliver_tools: ^0.2.12
 
 dev_dependencies:
   flutter_test:

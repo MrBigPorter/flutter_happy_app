@@ -11,7 +11,6 @@ import 'package:flutter_app/components/sticky_header.dart';
 import 'package:flutter_app/components/swiper_banner.dart';
 import 'package:flutter_app/components/tabs.dart';
 import 'package:flutter_app/core/models/index.dart';
-import 'package:flutter_app/core/models/winners_lasts_item.dart';
 import 'package:flutter_app/core/providers/winners_provider.dart';
 import 'package:flutter_app/utils/helper.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -19,16 +18,27 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 import 'package:flutter_app/utils/format_helper.dart';
+import 'package:sliver_tools/sliver_tools.dart';
+
 
 /// Winners Page
 /// Displays banners, total winners, latest winners, and categorized winners list.
 /// Uses Riverpod for state management and data fetching.
 
-class WinnersPage extends ConsumerWidget {
+class WinnersPage extends ConsumerStatefulWidget {
   const WinnersPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<WinnersPage> createState() => _WinnersPageState();
+}
+
+class _WinnersPageState extends ConsumerState<WinnersPage> {
+
+  final ScrollController _scrollController = ScrollController();
+  final GlobalKey _tabsKey = GlobalKey();
+
+  @override
+  Widget build(BuildContext context) {
     /// Watch providers for banners, total winners, and latest winners
     final banners = ref.watch(winnersBannerProvider);
     final quantity = ref.watch(winnersQuantityProvider);
@@ -48,6 +58,7 @@ class WinnersPage extends ConsumerWidget {
       showBack: false,
       body: RefreshIndicator(
         child: CustomScrollView(
+          controller: _scrollController,
           slivers: [
             // banner
             SliverToBoxAdapter(
@@ -82,12 +93,16 @@ class WinnersPage extends ConsumerWidget {
             // spacing
             SliverToBoxAdapter(child: SizedBox(height: 20.w)),
             actMonthNum.when(
-              data: (data) => _MonthTabsSection(monthList: data),
+              data: (data) => _MonthTabsSection(
+                monthList: data,
+                tabsKey: _tabsKey,
+              ),
               error: (_, __) => _MonthTabsSection(monthList: []),
               loading: () => _MonthTabsSection(monthList: []),
             ),
+            SliverToBoxAdapter(key:_tabsKey,child: SizedBox(height: 1,),),
             // winners list
-            SliverToBoxAdapter(child: _WinnerList()),
+            _WinnerList(bindController: _scrollController),
           ],
         ),
         onRefresh: () => onRefresh(),
@@ -452,8 +467,9 @@ class _ListTitle extends StatelessWidget {
 
 class _MonthTabsSection extends StatelessWidget {
   final List<int> monthList;
+  final GlobalKey? tabsKey;
 
-  const _MonthTabsSection({required this.monthList});
+  const _MonthTabsSection({required this.monthList,  this.tabsKey,});
 
   /// Build month tabs based on the provided month list
   /// Generates a list of _MonthModel with localized month names
@@ -516,7 +532,10 @@ class _MonthTabsSection extends StatelessWidget {
 
     /// Build tabs when data is available
     final tabs = _buildTabs(context);
-    return _TabsSection(tabs: tabs);
+    return _TabsSection(
+        tabs: tabs,
+        tabsKey: tabsKey,
+    );
   }
 }
 
@@ -525,8 +544,9 @@ class _MonthTabsSection extends StatelessWidget {
 /// with sticky header functionality
 class _TabsSection extends ConsumerStatefulWidget {
   final List<ActMonthTab> tabs;
+  final GlobalKey? tabsKey;
 
-  const _TabsSection({required this.tabs});
+  const _TabsSection({required this.tabs,  this.tabsKey});
 
   @override
   ConsumerState<_TabsSection> createState() => _TabsSectionState();
@@ -534,6 +554,7 @@ class _TabsSection extends ConsumerStatefulWidget {
 
 /// Tabs section
 class _TabsSectionState extends ConsumerState<_TabsSection> {
+
   @override
   void initState() {
     super.initState();
@@ -548,6 +569,8 @@ class _TabsSectionState extends ConsumerState<_TabsSection> {
       /// is not allow to set state in initState
       /// so use microtask to delay the state update
       ref.read(activeMonthProvider.notifier).state = widget.tabs.first;
+
+
     });
   }
 
@@ -584,9 +607,16 @@ class _TabsSectionState extends ConsumerState<_TabsSection> {
             data: widget.tabs,
             activeItem: activeItem,
             renderItem: (item) => Text(item.title),
-            onChangeActive: (item) {
+            onChangeActive: (item) async{
+              await Scrollable.ensureVisible(
+                widget.tabsKey!.currentContext!,
+                duration: const Duration(milliseconds: 10),
+                curve: Curves.easeInOut,
+                alignment: 0,
+              );
               /// Update active tab in the provider state
               ref.read(activeMonthProvider.notifier).state = item;
+
             },
           ),
         );
@@ -595,161 +625,180 @@ class _TabsSectionState extends ConsumerState<_TabsSection> {
   }
 }
 
+
 /// Winners list section
 class _WinnerList extends ConsumerWidget {
+
+  final ScrollController bindController;
+  const _WinnerList({required this.bindController});
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final currentMonth = ref.watch(activeMonthProvider);
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.start,
+    final actWinnersMonthsRequest = ref.watch(actWinnersMonthsProvider(currentMonth.value));
+    return MultiSliver(
       children: [
-        Padding(
-          padding: EdgeInsets.symmetric(horizontal: 16.w),
-          child: Align(
-            alignment: Alignment.centerLeft,
-            child: Text(
-              currentMonth.monthTitle,
-              style: TextStyle(
-                fontSize: context.textMd,
-                fontWeight: FontWeight.w800,
-                color: context.textPrimary900,
-                height: context.leadingMd,
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16.w),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                currentMonth.monthTitle,
+                style: TextStyle(
+                  fontSize: context.textMd,
+                  fontWeight: FontWeight.w800,
+                  color: context.textPrimary900,
+                  height: context.leadingMd,
+                ),
               ),
             ),
           ),
         ),
-        SizedBox(height: 8.w),
         PageListViewLite<ActWinnersMonth>(
-          key: ValueKey(currentMonth),
+          requestKey: currentMonth.value,
           pageSize: 10,
-          request: ({required int current, required int pageSize}) =>
-              Api.winnersMonthApi(
-                ActWinnersMonthParams(
-                  month: currentMonth.value,
-                  current: current,
-                  size: pageSize,
-                ),
-              ),
+          mode: PageListMode.sliver,
+          bindingController: bindController,
+          request: actWinnersMonthsRequest,
           preProcessData: preProcessWinnersData,
           itemBuilder:
               (
-                BuildContext context,
-                ActWinnersMonth item,
-                int index,
-                bool isLast,
+              BuildContext context,
+              ActWinnersMonth item,
+              int index,
+              bool isLast,
               ) {
-                return Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 16.w),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      if (item.firstOfDay!)
-                        Padding(
-                          padding: EdgeInsets.only(
-                            left: 12.w,
-                            right: 12.w,
-                            bottom: 12.w,
-                          ),
-                          child: Text(
-                            item.dateTitle ?? '',
-                            style: TextStyle(
-                              fontSize: context.textXs,
-                              fontWeight: FontWeight.w600,
-                              color: context.textSecondary700,
-                            ),
-                          ),
-                        ),
-                      Transform.translate(
-                        offset: Offset(0, item.firstOfDay == true ? 0 : -12.w),
-                        child: Container(
-                          padding: EdgeInsets.only(
-                            left: 8.w,
-                            right: 8.w,
-                            top: item.firstOfDay== true ? 16.w : 12.w,
-                            bottom: item.lastOfDay == true ? 16.w : 0,
-                          ),
-                          decoration: BoxDecoration(
-                              color: context.bgPrimary,
-                            borderRadius: BorderRadius.vertical(
-                              top: item.firstOfDay == true ? Radius.circular(8.w) : Radius.zero,
-                              bottom: item.lastOfDay == true ? Radius.circular(8.w) : Radius.zero
-                            )
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            mainAxisAlignment: MainAxisAlignment.start,
-                            children: [
-                              ClipRRect(
-                                clipBehavior: Clip.antiAlias,
-                                borderRadius: BorderRadius.circular(8.w),
-                                child: CachedNetworkImage(
-                                  imageUrl: proxied(item.mainImageList!.first),
-                                  width: 72.w,
-                                  height: 72.w,
-                                  fit: BoxFit.cover,
-                                  placeholder: (_, __) {
-                                    return Skeleton.react(
-                                      width: 72.w,
-                                      height: 72.w,
-                                      borderRadius: BorderRadius.circular(8.w),
-                                    );
-                                  },
-                                  errorWidget: (_, __, ___) {
-                                    return Skeleton.react(
-                                      width: 72.w,
-                                      height: 72.w,
-                                      borderRadius: BorderRadius.circular(8.w),
-                                    );
-                                  },
-                                ),
-                              ),
-                              SizedBox(width: 4.w),
-                              Expanded(
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      item.treasureName,
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: TextStyle(
-                                        fontSize: context.textSm,
-                                        fontWeight: FontWeight.w600,
-                                        color: context.textPrimary900,
-                                        height: context.leadingSm,
-                                      ),
-                                    ),
-                                    SizedBox(height: 4.w),
-                                    Text(
-                                      item.winnerName,
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: TextStyle(
-                                        fontSize: context.textXs,
-                                        fontWeight: FontWeight.w500,
-                                        color: context.textSecondary700,
-                                        height: context.leadingXs,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              SizedBox(width: 4.w),
-                            ],
-                          ),
-                        ),
-                      )
-                    ],
-                  ),
-                );
-              },
+            return Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16.w),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                   _WinnerListItem(item: item),
+                ],
+              ),
+            );
+          },
         ),
       ],
     );
   }
+}
+
+/// Single winner list item
+class _WinnerListItem extends StatelessWidget{
+  final ActWinnersMonth item;
+  const _WinnerListItem({required this.item});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (item.firstOfDay!)
+          Padding(
+            padding: EdgeInsets.only(
+              left: 12.w,
+              bottom: 12.w,
+              top: 12.w,
+            ),
+            child: Text(
+              item.dateTitle ?? '',
+              style: TextStyle(
+                fontSize: context.textXs,
+                fontWeight: FontWeight.w600,
+                color: context.textSecondary700,
+              ),
+            ),
+          ),
+          Container(
+          padding: EdgeInsets.only(
+            left: 8.w,
+            right: 8.w,
+            top: item.firstOfDay == true ? 16.w : 12.w,
+            bottom: item.lastOfDay == true ? 16.w : 0,
+          ),
+          decoration: BoxDecoration(
+            color: context.bgPrimary,
+            borderRadius: BorderRadius.vertical(
+              top: item.firstOfDay == true
+                  ? Radius.circular(8.w)
+                  : Radius.zero,
+              bottom: item.lastOfDay == true
+                  ? Radius.circular(8.w)
+                  : Radius.zero,
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.start,
+            children: [
+              ClipRRect(
+                clipBehavior: Clip.antiAlias,
+                borderRadius: BorderRadius.circular(8.w),
+                child: CachedNetworkImage(
+                  imageUrl: proxied(item.mainImageList!.first),
+                  width: 72.w,
+                  height: 72.w,
+                  fit: BoxFit.cover,
+                  placeholder: (_, __) {
+                    return Skeleton.react(
+                      width: 72.w,
+                      height: 72.w,
+                      borderRadius: BorderRadius.circular(8.w),
+                    );
+                  },
+                  errorWidget: (_, __, ___) {
+                    return Skeleton.react(
+                      width: 72.w,
+                      height: 72.w,
+                      borderRadius: BorderRadius.circular(8.w),
+                    );
+                  },
+                ),
+              ),
+              SizedBox(width: 4.w),
+              Expanded(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      item.treasureName,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: context.textSm,
+                        fontWeight: FontWeight.w600,
+                        color: context.textPrimary900,
+                        height: context.leadingSm,
+                      ),
+                    ),
+                    SizedBox(height: 4.w),
+                    Text(
+                      item.winnerName,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: context.textXs,
+                        fontWeight: FontWeight.w500,
+                        color: context.textSecondary700,
+                        height: context.leadingXs,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(width: 4.w),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
 }
 
 /// Dots indicator for the swiper
@@ -821,5 +870,6 @@ List<ActWinnersMonth> preProcessWinnersData(List<ActWinnersMonth> data) {
     }
   });
   // preprocess data if needed
+  // return result;
   return result;
 }

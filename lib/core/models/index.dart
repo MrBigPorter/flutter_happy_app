@@ -10,6 +10,6 @@ export 'product_category_item.dart';
 export 'act_month_tab.dart';
 export 'act_winners_month.dart';
 export 'winners_quantity.dart';
-export 'page_result.dart';
 export 'winners_lasts_item.dart';
+export 'page_request.dart';
 
