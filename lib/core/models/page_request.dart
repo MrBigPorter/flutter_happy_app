@@ -28,8 +28,5 @@ class PageResult<T> {
 
 /// Description: A class to encapsulate a paginated request function.
 /// It takes a function that accepts page size and current page as parameters
-class PageRequest<T> {
-  final Future<PageResult<T>> Function({required int pageSize, required int current}) request;
+typedef PageRequest<T> = Future<PageResult<T>> Function({required int pageSize, required int current});
 
-  PageRequest(this.request);
-}
