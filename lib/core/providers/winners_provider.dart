@@ -22,7 +22,7 @@ final winnersLastsProvider = FutureProvider((ref) async {
 });
 
 /// Activity month number provider
-final actMonthNumProvider = FutureProvider((ref) async {
+final actMonthNumProvider = FutureProvider.autoDispose((ref) async {
   return  Api.actMonthNumApi();
 });
 
