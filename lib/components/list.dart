@@ -35,6 +35,9 @@
 
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_app/components/skeleton.dart';
+import 'package:flutter_app/ui/empty.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import '../core/models/page_request.dart';
 
@@ -48,8 +51,8 @@ import '../core/models/page_request.dart';
 
 enum PageStatus {
   idle,
-  loading,       // first load
-  refreshing,    // optional entry if you wire pull-to-refresh
+  loading, // first load
+  refreshing, // optional entry if you wire pull-to-refresh
   loadingMore,
   success,
   empty,
@@ -98,15 +101,23 @@ class PageListState<T> {
 // ────────────────────────────────────────────────────────────────────────────────
 
 class PageListController<T> extends ValueNotifier<PageListState<T>> {
-  final Future<PageResult<T>> Function({required int pageSize, required int current}) request;
+  final Future<PageResult<T>> Function({
+    required int pageSize,
+    required int current,
+  })
+  request;
   final int pageSize;
-  final ScrollController? scrollController; // bind when used inside NestedScrollView (sliverMode)
+  final ScrollController?
+  scrollController; // bind when used inside NestedScrollView (sliverMode)
   final List<T> Function(List<T>)? preprocess; // optional: sort/group/map
   final double loadMoreTriggerOffset; // near-bottom threshold
 
+  bool _isDisposed = false;
+
   bool _pending = false; // global request lock
-  int _ticket = 0;       // anti-race id
-  bool _noMoreFallback = false; // when total==0, rely on page size to detect no-more
+  int _ticket = 0; // anti-race id
+  bool _noMoreFallback =
+      false; // when total==0, rely on page size to detect no-more
 
   Object? _effectiveKey; // for auto reload on key change
 
@@ -140,6 +151,8 @@ class PageListController<T> extends ValueNotifier<PageListState<T>> {
     _ticket++;
     final my = _ticket;
 
+    if (_isDisposed) return;
+
     value = value.copyWith(
       status: PageStatus.loading,
       items: <T>[],
@@ -151,15 +164,18 @@ class PageListController<T> extends ValueNotifier<PageListState<T>> {
 
     try {
       final res = await request(pageSize: pageSize, current: 1);
-      if (my != _ticket) return; // race drop
+      if (my != _ticket || _isDisposed) return; // race drop
 
       List<T> data = res.list;
       if (preprocess != null) data = preprocess!(data);
 
       final bool noMoreBySize = res.list.length < pageSize;
-      final bool hasMore = (res.total > 0) ? (data.length < res.total) : !noMoreBySize;
+      final bool hasMore = (res.total > 0)
+          ? (data.length < res.total)
+          : !noMoreBySize;
       _noMoreFallback = (res.total <= 0 && noMoreBySize);
 
+      if (_isDisposed) return;
       value = value.copyWith(
         items: data,
         status: data.isEmpty ? PageStatus.empty : PageStatus.success,
@@ -168,7 +184,7 @@ class PageListController<T> extends ValueNotifier<PageListState<T>> {
         error: null,
       );
     } catch (e) {
-      if (my != _ticket) return;
+      if (my != _ticket || _isDisposed) return;
       value = value.copyWith(status: PageStatus.error, error: e);
     } finally {
       if (my == _ticket) _pending = false;
@@ -180,6 +196,7 @@ class PageListController<T> extends ValueNotifier<PageListState<T>> {
     _pending = true;
     _ticket++;
     final my = _ticket;
+    if (_isDisposed) return;
 
     value = value.copyWith(status: PageStatus.loadingMore);
 
@@ -191,9 +208,12 @@ class PageListController<T> extends ValueNotifier<PageListState<T>> {
       List<T> nextPage = res.list;
       if (preprocess != null) nextPage = preprocess!(nextPage);
 
+      if (_isDisposed) return;
       final merged = <T>[...value.items, ...nextPage];
       final bool noMoreBySize = res.list.length < pageSize;
-      final bool hasMore = (res.total > 0) ? (merged.length < res.total) : !noMoreBySize;
+      final bool hasMore = (res.total > 0)
+          ? (merged.length < res.total)
+          : !noMoreBySize;
       _noMoreFallback = _noMoreFallback || (res.total <= 0 && noMoreBySize);
 
       value = value.copyWith(
@@ -216,7 +236,8 @@ class PageListController<T> extends ValueNotifier<PageListState<T>> {
     if (m == null) return;
     if (m.pixels >= (m.maxScrollExtent - loadMoreTriggerOffset)) {
       // do not spam while first-loading
-      if (value.status != PageStatus.loading && value.status != PageStatus.loadingMore) {
+      if (value.status != PageStatus.loading &&
+          value.status != PageStatus.loadingMore) {
         loadMore();
       }
     }
@@ -226,6 +247,11 @@ class PageListController<T> extends ValueNotifier<PageListState<T>> {
 
   @override
   void dispose() {
+    /// Mark as disposed to avoid setState after dispose
+    _isDisposed = true;
+
+    /// Invalidate pending requests
+    _ticket++;
     scrollController?.removeListener(_onScroll);
     super.dispose();
   }
@@ -237,7 +263,8 @@ class PageListController<T> extends ValueNotifier<PageListState<T>> {
 
 class PageListViewPro<T> extends StatelessWidget {
   final PageListController<T> controller;
-  final Widget Function(BuildContext, T item, int index, bool isLast) itemBuilder;
+  final Widget Function(BuildContext, T item, int index, bool isLast)
+  itemBuilder;
   final bool sliverMode;
 
   // UI options
@@ -248,10 +275,14 @@ class PageListViewPro<T> extends StatelessWidget {
 
   // placeholders
   final Widget Function(BuildContext context)? emptyBuilder;
-  final Widget Function(BuildContext context, Object error, VoidCallback retry)? errorBuilder;
-  final Widget Function(BuildContext context)? skeletonBuilder; // first-load placeholder
+  final Widget Function(BuildContext context, Object error, VoidCallback retry)?
+  errorBuilder;
+  final Widget Function(BuildContext context)?
+  skeletonBuilder; // first-load placeholder
   final int skeletonCount;
   final double skeletonHeight;
+  final double skeletonSpace;
+  final EdgeInsetsGeometry skeletonPadding;
 
   const PageListViewPro({
     super.key,
@@ -266,14 +297,20 @@ class PageListViewPro<T> extends StatelessWidget {
     this.errorBuilder,
     this.skeletonBuilder,
     this.skeletonCount = 8,
-    this.skeletonHeight = 72,
-  }) : assert(itemExtent == null || prototypeItem == null, 'Provide either itemExtent or prototypeItem.');
+    this.skeletonHeight = 100,
+    this.skeletonSpace = 12,
+    this.skeletonPadding = const EdgeInsets.symmetric(horizontal: 10),
+  }) : assert(
+         itemExtent == null || prototypeItem == null,
+         'Provide either itemExtent or prototypeItem.',
+       );
 
   @override
   Widget build(BuildContext context) {
     return ValueListenableBuilder<PageListState<T>>(
       valueListenable: controller,
       builder: (context, state, _) {
+        print('state==:${state.status}');
         switch (state.status) {
           case PageStatus.loading:
             return _buildSkeleton(context);
@@ -296,8 +333,11 @@ class PageListViewPro<T> extends StatelessWidget {
         padding: padding ?? EdgeInsets.zero,
         sliver: SliverList.separated(
           itemCount: skeletonCount,
-          separatorBuilder: (_, __) => SizedBox(height: separatorSpace),
-          itemBuilder: (_, __) => _DefaultSkeleton(height: skeletonHeight),
+          separatorBuilder: (_, __) => SizedBox(height: skeletonSpace),
+          itemBuilder: (_, __) => _DefaultSkeleton(
+            height: skeletonHeight,
+            padding: skeletonPadding,
+          ),
         ),
       );
     }
@@ -305,7 +345,8 @@ class PageListViewPro<T> extends StatelessWidget {
       padding: padding ?? EdgeInsets.zero,
       itemCount: skeletonCount,
       separatorBuilder: (_, __) => SizedBox(height: separatorSpace),
-      itemBuilder: (_, __) => _DefaultSkeleton(height: skeletonHeight),
+      itemBuilder: (_, __) =>
+          _DefaultSkeleton(height: skeletonHeight, padding: skeletonPadding),
     );
   }
 
@@ -325,17 +366,21 @@ class PageListViewPro<T> extends StatelessWidget {
     final list = state.items;
 
     // +1 bottom status if hasMore OR currently loadingMore
-    final bool showBottom = state.hasMore || state.status == PageStatus.loadingMore;
+    final bool showBottom =
+        state.hasMore ||
+        state.status == PageStatus.loadingMore ||
+        state.status == PageStatus.error;
     final totalCount = list.length + (showBottom ? 1 : 0);
 
     final delegate = SliverChildBuilderDelegate(
-          (ctx, index) {
+      (ctx, index) {
         if (index == list.length) {
           // bottom status
           return _BottomStatus(
             loadingMore: state.status == PageStatus.loadingMore,
             hasMore: state.hasMore,
             onRetry: controller.loadMore,
+            isError: state.status == PageStatus.error,
           );
         }
         final item = list[index];
@@ -357,9 +402,14 @@ class PageListViewPro<T> extends StatelessWidget {
       final core = itemExtent != null
           ? SliverFixedExtentList(delegate: delegate, itemExtent: itemExtent!)
           : (prototypeItem != null
-          ? SliverPrototypeExtentList(delegate: delegate, prototypeItem: prototypeItem!)
-          : SliverList(delegate: delegate));
-      return padding != null ? SliverPadding(padding: padding!, sliver: core) : core;
+                ? SliverPrototypeExtentList(
+                    delegate: delegate,
+                    prototypeItem: prototypeItem!,
+                  )
+                : SliverList(delegate: delegate));
+      return padding != null
+          ? SliverPadding(padding: padding!, sliver: core)
+          : core;
     }
 
     // standalone ListView rendering (single scrollable)
@@ -370,7 +420,10 @@ class PageListViewPro<T> extends StatelessWidget {
         if (itemExtent != null)
           SliverFixedExtentList(delegate: delegate, itemExtent: itemExtent!)
         else if (prototypeItem != null)
-          SliverPrototypeExtentList(delegate: delegate, prototypeItem: prototypeItem!)
+          SliverPrototypeExtentList(
+            delegate: delegate,
+            prototypeItem: prototypeItem!,
+          )
         else
           SliverList(delegate: delegate),
       ],
@@ -384,32 +437,26 @@ class PageListViewPro<T> extends StatelessWidget {
 
 class _DefaultSkeleton extends StatelessWidget {
   final double height;
-  const _DefaultSkeleton({required this.height});
+  final EdgeInsetsGeometry padding;
+
+  const _DefaultSkeleton({required this.height, required this.padding});
+
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: height,
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.4),
-        borderRadius: BorderRadius.circular(8),
-      ),
+    return Padding(
+      padding: padding,
+      child: Skeleton.react(width: double.infinity, height: height.w),
     );
   }
 }
 
 class _DefaultEmpty extends StatelessWidget {
   const _DefaultEmpty();
+
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(Icons.inbox_outlined, size: 40),
-          const SizedBox(height: 8),
-          Text('No data', style: Theme.of(context).textTheme.bodyMedium),
-        ],
-      ),
+      child: Column(mainAxisSize: MainAxisSize.min, children: [Empty()]),
     );
   }
 }
@@ -417,21 +464,26 @@ class _DefaultEmpty extends StatelessWidget {
 class _DefaultError extends StatelessWidget {
   final VoidCallback onRetry;
   final Object? error;
+
   const _DefaultError({required this.onRetry, this.error});
+
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: Column(mainAxisSize: MainAxisSize.min, children: [
-        const Icon(Icons.error_outline, size: 40),
-        const SizedBox(height: 8),
-        Text('Load failed', style: Theme.of(context).textTheme.bodyMedium),
-        if (error != null) ...[
-          const SizedBox(height: 4),
-          Text('$error', style: Theme.of(context).textTheme.bodySmall),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.error_outline, size: 40),
+          const SizedBox(height: 8),
+          Text('Load failed', style: Theme.of(context).textTheme.bodyMedium),
+          if (error != null) ...[
+            const SizedBox(height: 4),
+            Text('$error', style: Theme.of(context).textTheme.bodySmall),
+          ],
+          const SizedBox(height: 8),
+          TextButton(onPressed: onRetry, child: const Text('Retry')),
         ],
-        const SizedBox(height: 8),
-        TextButton(onPressed: onRetry, child: const Text('Retry')),
-      ]),
+      ),
     );
   }
 }
@@ -439,14 +491,28 @@ class _DefaultError extends StatelessWidget {
 class _BottomStatus extends StatelessWidget {
   final bool loadingMore;
   final bool hasMore;
+  final bool isError;
   final VoidCallback onRetry;
-  const _BottomStatus({required this.loadingMore, required this.hasMore, required this.onRetry});
+
+  const _BottomStatus({
+    required this.loadingMore,
+    required this.hasMore,
+    required this.onRetry,
+    required this.isError,
+  });
+
   @override
   Widget build(BuildContext context) {
     if (loadingMore) {
       return const Padding(
         padding: EdgeInsets.symmetric(vertical: 12.0),
-        child: Center(child: SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))),
+        child: Center(
+          child: SizedBox(
+            width: 18,
+            height: 18,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+        ),
       );
     }
     if (!hasMore) {
@@ -455,10 +521,15 @@ class _BottomStatus extends StatelessWidget {
         child: Center(child: Text('— No more —')),
       );
     }
-    // hasMore but not loading (e.g., after error)
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 12.0),
-      child: Center(child: TextButton(onPressed: onRetry, child: const Text('Retry'))),
-    );
+    if (isError) {
+      // hasMore but not loading (e.g., after error)
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 12.0),
+        child: Center(
+          child: TextButton(onPressed: onRetry, child: const Text('Retry')),
+        ),
+      );
+    }
+    return  SizedBox(height: 10.w,);
   }
 }

@@ -6,20 +6,18 @@ import 'package:flutter_app/common.dart';
 import 'package:flutter_app/components/anime_count.dart';
 import 'package:flutter_app/components/base_scaffold.dart';
 import 'package:flutter_app/components/list.dart';
+import 'package:flutter_app/components/lucky_nested_tabs.dart';
 import 'package:flutter_app/components/skeleton.dart';
 import 'package:flutter_app/components/swiper_banner.dart';
 import 'package:flutter_app/core/models/index.dart';
 import 'package:flutter_app/core/providers/winners_provider.dart';
-import 'package:flutter_app/ui/custom_cupertino_sliver_refresh_control.dart';
 import 'package:flutter_app/utils/helper.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 import 'package:flutter_app/utils/format_helper.dart';
-import 'package:sliver_tools/sliver_tools.dart';
 
-import 'package:flutter/cupertino.dart';
 
 /// Winners Page
 /// Displays banners, total winners, latest winners, and categorized winners list.
@@ -34,166 +32,102 @@ class WinnersPage extends ConsumerStatefulWidget {
 
 class _WinnersPageState extends ConsumerState<WinnersPage> with SingleTickerProviderStateMixin {
 
-  late final ScrollController _scrollController;
-  late final PageListController<ActWinnersMonth> _listController;
-  TabController? _tabController;
+  final Map<int, GlobalKey<_WinnerListState>> _listKeys = {};
+
   List<ActMonthTab> _tabs = const [];
   @override
   void initState() {
     super.initState();
-    _scrollController = ScrollController();
-    _listController = PageListController<ActWinnersMonth>(
-      request:  ({required int pageSize, required int current}) {
-        final currentMonth = ref.read(activeMonthProvider)?.value??1;
-        final pageRequest =  ref.read(actWinnersMonthsProvider(currentMonth));
-        return pageRequest(pageSize: pageSize, current: current);
-      },
-      preprocess: preProcessWinnersData,
+    ref.listenManual<AsyncValue<List<int>>>(
+      actMonthNumProvider,
+        (prev,next){
+         next.whenData((months){
+           if(months.isNotEmpty){
+             final tabs = _buildTabs(context, months);
+             ref.read(activeMonthProvider.notifier).state = tabs.first;
+             setState(() {
+               _tabs = tabs;
+             });
+           }
+         });
+        }
     );
   }
 
   @override
-  void dispose() {
-    _scrollController.dispose();
-    _listController.dispose();
-    _tabController?.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final banners = ref.watch(winnersBannerProvider);
-    final quantity = ref.watch(winnersQuantityProvider);
-    final winnersLasts = ref.watch(winnersLastsProvider);
-    final actMonthNum = ref.watch(actMonthNumProvider);
-
-
-    ref.listen<ActMonthTab?>(activeMonthProvider, (prev, next) async {
-      if (prev?.value != next?.value) {
-        await _listController.refresh();
-      }
-    });
-
     Future<void> onRefresh() async {
       ref.invalidate(winnersBannerProvider);
       ref.invalidate(winnersQuantityProvider);
       ref.invalidate(winnersLastsProvider);
       ref.invalidate(actMonthNumProvider);
-      _listController.refresh();
+      final cur = ref.read(activeMonthProvider)?.value;
+      if (cur != null) {
+        await _listKeys[cur]?.currentState?.refresh();
+      }
       await Future.delayed(const Duration(milliseconds: 300));
     }
 
+    final activeItem = ref.watch(activeMonthProvider);
+
+
     return BaseScaffold(
       showBack: false,
-      body:  NestedScrollView(
-      controller: _scrollController,
-      physics: const BouncingScrollPhysics(
-        parent: AlwaysScrollableScrollPhysics()
+      body: LuckyNestedTabs<ActMonthTab>(
+          tabs: _tabs,
+          activeItem: activeItem,
+          renderItem: (item) => Text(item.title),
+          onChange: (tab) {
+            ref.read(activeMonthProvider.notifier).state = tab;
+          },
+          renderBeforeTabs: [RenderBeforeTabs()],
+          onRefresh: onRefresh,
+          children: _tabs.map((e){
+            _listKeys[e.value] ??= GlobalKey<_WinnerListState>();
+            return _WinnerList(key: _listKeys[e.value], monthValue: e.value);
+          }).toList(),
       ),
-      headerSliverBuilder: (context, innerBoxIsScrolled) => [
-        SliverOverlapAbsorber(
-            handle: NestedScrollView.sliverOverlapAbsorberHandleFor(context),
-            sliver: MultiSliver(
-              children: [
-                //下拉动画
-                CustomCupertinoSliverRefreshControl(onRefresh: onRefresh),
-                // banner
-                SliverToBoxAdapter(
-                  child: banners.when(
-                    data: (list) => _Banner(list: list),
-                    error: (_, __) => _Banner(list: []),
-                    loading: () => _Banner(list: []),
-                  ),
-                ),
-                SliverToBoxAdapter(child: SizedBox(height: 32.w)),
-                // total winners
-                SliverToBoxAdapter(
-                  child: quantity.when(
-                    data: (data) => _TotalWinners(totalWinners: data.awardTotalQuantity),
-                    error: (_, __) => _TotalWinners(totalWinners: 0),
-                    loading: () => _TotalWinners(totalWinners: 0),
-                  ),
-                ),
-                SliverToBoxAdapter(child: SizedBox(height: 32.w)),
-                // latest winners list
-                SliverToBoxAdapter(
-                  child: winnersLasts.when(
-                    data: (data) => LatestWinners(list: data),
-                    error: (_, __) => LatestWinners(list: []),
-                    loading: () => LatestWinners(list: []),
-                  ),
-                ),
-                SliverToBoxAdapter(child: SizedBox(height: 60.w)),
-                SliverToBoxAdapter(child: _ListTitle()),
-                SliverToBoxAdapter(child: SizedBox(height: 20.w)),
+    );
+  }
+}
 
-                // month tabs
-                actMonthNum.when(
-                  data: (data){
-                    if(_tabController == null && data.isNotEmpty){
-                      final newTabs = _buildTabs(context, data);
-                      _tabController = TabController(length: newTabs.length, vsync: this);
-                      WidgetsBinding.instance.addPostFrameCallback((_){
-                        if(_tabs.isEmpty){
-                          ref.read(activeMonthProvider.notifier).state = newTabs.first;
-                          setState(() {
-                            _tabs = newTabs;
-                          });
-                        }
-                      });
-                    }
-                    if(_tabController != null && _tabs.isNotEmpty){
-                      return SliverPersistentHeader(
-                        pinned: true,
-                        delegate: _TabsHeaderDelegate(
-                          tabs: _tabs,
-                          controller: _tabController!,
-                          ref: ref,
-                        ),
-                      );
-                    }
-                    return SliverToBoxAdapter(child: SizedBox.shrink());
-                  },
-                  error: (_, __) => _MonthTabsSection(monthList: [], controller: _scrollController),
-                  loading: () => _MonthTabsSection(monthList: [], controller: _scrollController),
-                ),
-              ],
-            ),
+/// Section before the tabs: banners, total winners, latest winners, and list title
+class RenderBeforeTabs extends ConsumerWidget {
+  const RenderBeforeTabs({super.key});
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final banners = ref.watch(winnersBannerProvider);
+    final quantity = ref.watch(winnersQuantityProvider);
+    final winnersLasts = ref.watch(winnersLastsProvider);
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Banner section
+        banners.when(
+          data: (data) => _Banner(list: data),
+          loading: () => _Banner(list: null),
+          error: (_, __) => _Banner(list: null),
         ),
-
-
+        SizedBox(height: 32.w),
+        // Total winners section
+        quantity.when(
+          data: (data) => _TotalWinners(totalWinners: data.awardTotalQuantity),
+          loading: () => _TotalWinners(totalWinners: 0),
+          error: (_, __) => _TotalWinners(totalWinners: 0),
+        ),
+        SizedBox(height: 32.w),
+        // Latest winners section
+        winnersLasts.when(
+          data: (data) => LatestWinners(list: data),
+          loading: () => LatestWinners(list: []),
+          error: (_, __) => LatestWinners(list: []),
+        ),
+        SizedBox(height: 80.w),
+        // List title section
+        _ListTitle(),
+        SizedBox(height: 16.w),
       ],
-      body: (_tabController == null || _tabs.isEmpty)
-          ? const SizedBox.shrink()
-          : TabBarView(
-        controller: _tabController,
-        // ✅ 禁止左右滑动，避免 NestedScroll 冲突 avoid NestedScroll conflict
-        physics: const NeverScrollableScrollPhysics(),
-        children: _tabs.map((t) {
-          return Builder(builder: (context) {
-            return CustomScrollView(
-              key: PageStorageKey(t.value),
-              // ✅ 重点 1：要让内部自己处理滚动
-              physics: const ClampingScrollPhysics(),
-              // ✅ 重点 2：不要共享 controller
-              controller: ScrollController(),
-              // ✅ 重点 3：确保不参与 NestedScrollView 的 primary 滚动
-              primary: false,
-              // ✅ 重点 4：添加顶部 overlap 修复
-              slivers: [
-                SliverOverlapInjector(
-                  handle: NestedScrollView.sliverOverlapAbsorberHandleFor(context),
-                ),
-                _WinnerList(
-                  listController: _listController,
-                  controller: ScrollController(),
-                )
-              ],
-            );
-          });
-        }).toList(),
-      ),
-    ),
     );
   }
 }
@@ -576,114 +510,71 @@ class _ListTitle extends StatelessWidget {
   }
 }
 
-/// Month model for tabs
-/// Used to represent each month in the tabs section
-/// with its value, title, and display title.
-/// E.g., value: 1, title: "January", monthTitle: "Jan"
 
-class _TabsHeaderDelegate extends SliverPersistentHeaderDelegate {
-  final List <ActMonthTab> tabs;
-  final TabController controller;
-  final WidgetRef ref;
-  _TabsHeaderDelegate({required this.tabs,required this.controller,required this.ref});
+class _WinnerList extends ConsumerStatefulWidget {
+  final int monthValue;
+  const _WinnerList({super.key, required this.monthValue});
 
   @override
-  double get minExtent => 60;
-  @override
-  double get maxExtent => 60;
-
-  @override
-  Widget build(BuildContext context,double shrinkOffset, bool overlapsContent) {
-    return Material(
-      color: context.bgPrimary,
-      clipBehavior: Clip.hardEdge,
-      child: SizedBox(
-        height: maxExtent,
-        child: TabBar(
-          tabs: tabs.map((e) => Tab(text: e.title)).toList(),
-          controller: controller,
-          isScrollable: true,
-          splashFactory: NoSplash.splashFactory,
-          overlayColor: WidgetStateProperty.all(Colors.transparent),
-          indicatorColor: context.fgBrandPrimary,
-          onTap: (i){
-            final next = tabs[i];
-            ref.read(activeMonthProvider.notifier).state = next;
-          },
-        ),
-      ),
-    );
-  }
-
-  @override
-  bool shouldRebuild(covariant _TabsHeaderDelegate oldDelegate) {
-    return oldDelegate.tabs != tabs || oldDelegate.controller != controller;
-  }
-}
-
-class _MonthTabsSection extends StatelessWidget {
-  final List<int> monthList;
-  final ScrollController controller;
-
-  const _MonthTabsSection({required this.monthList,required this.controller});
-
-  /// Build month tabs based on the provided month list
-  /// Generates a list of _MonthModel with localized month names
-
-
-  @override
-  Widget build(BuildContext context) {
-    /// Loading state with skeletons
-    return SliverToBoxAdapter(
-      child: SizedBox(
-        height: 44.h,
-        child: SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: Row(
-            mainAxisSize: MainAxisSize.max,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: List.generate(6, (_) {
-              return Container(
-                margin: EdgeInsets.symmetric(horizontal: 12.h),
-                child: Skeleton.react(
-                  width: 60.w,
-                  height: 44.h,
-                  borderRadius: BorderRadius.circular(context.radiusSm),
-                ),
-              );
-            }),
-          ),
-        ),
-      ),
-    );
-
-  }
+  ConsumerState<_WinnerList> createState() => _WinnerListState();
 }
 
 /// Winners list section
-class _WinnerList extends ConsumerWidget {
-
-  final PageListController<ActWinnersMonth> listController;
-  final ScrollController controller;
-  const _WinnerList({required this.listController,required this.controller});
+class _WinnerListState extends ConsumerState<_WinnerList> {
+  late PageListController<ActWinnersMonth> _ctl;
+  late final ScrollController _inner;                 // ← 每个 tab 独立
+  Future<void> refresh() async {
+    _ctl.refresh();
+  }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final currentMonth = ref.watch(activeMonthProvider);
-    print("🧩 currentMonth: ${currentMonth!.value}");
+  void initState() {
+    super.initState();
+     _inner = ScrollController();
+    _ctl = PageListController<ActWinnersMonth>(
+      request: ({required int pageSize, required int current}) {
+        final req = ref.read(actWinnersMonthsProvider(widget.monthValue));
+        return req(pageSize: pageSize, current: current);
+      },
+      preprocess: preProcessWinnersData,
+      requestKey: widget.monthValue, // 首次进来自动加载
+    );
+  }
 
-    if(currentMonth == null){
-      return SliverToBoxAdapter(child: SizedBox.shrink());
+  @override
+  void didUpdateWidget(covariant _WinnerList oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if(oldWidget.monthValue != widget.monthValue){
+      _ctl.setRequestKey(widget.monthValue);
     }
-    return MultiSliver(
-      children: [
+  }
+
+  @override
+  void dispose() {
+    _ctl.dispose();
+    _inner.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final currentMonth = ref.watch(activeMonthProvider);
+
+    if(currentMonth?.title == ''){
+      return SizedBox.shrink();
+    }
+
+    return CustomScrollView(
+      key: PageStorageKey('winner-list-${widget.monthValue}'),
+      slivers: [
+        SliverOverlapInjector(handle: NestedScrollView.sliverOverlapAbsorberHandleFor(context)),
         SliverToBoxAdapter(
           child: Padding(
             padding: EdgeInsets.symmetric(horizontal: 16.w),
             child: Align(
               alignment: Alignment.centerLeft,
               child: Text(
-                currentMonth.monthTitle,
+                currentMonth!.monthTitle,
                 style: TextStyle(
                   fontSize: context.textMd,
                   fontWeight: FontWeight.w800,
@@ -695,7 +586,7 @@ class _WinnerList extends ConsumerWidget {
           ),
         ),
         PageListViewPro<ActWinnersMonth>(
-          controller: listController,
+          controller: _ctl,
           sliverMode: true,
           itemBuilder:
               (
@@ -716,7 +607,6 @@ class _WinnerList extends ConsumerWidget {
             );
           },
         )
-
       ],
     );
   }
