@@ -257,6 +257,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.0.2"
+  extended_nested_scroll_view:
+    dependency: "direct main"
+    description:
+      name: extended_nested_scroll_view
+      sha256: "835580d40c2c62b448bd14adecd316acba469ba61f1510ef559d17668a85e777"
+      url: "https://pub.dev"
+    source: hosted
+    version: "6.2.1"
   fake_async:
     dependency: transitive
     description:
@@ -709,6 +717,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.5.0"
+  pull_to_refresh_notification:
+    dependency: "direct main"
+    description:
+      name: pull_to_refresh_notification
+      sha256: aea845cd367c158082821ff2c7ed38dbf1930aa8e15c86df74cad70fa10fd75e
+      url: "https://pub.dev"
+    source: hosted
+    version: "3.1.1"
   quiver:
     dependency: transitive
     description:

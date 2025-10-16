@@ -146,6 +146,7 @@ class PageListController<T> extends ValueNotifier<PageListState<T>> {
   }
 
   Future<void> loadFirst() async {
+
     if (_pending) return;
     _pending = true;
     _ticket++;
@@ -310,7 +311,6 @@ class PageListViewPro<T> extends StatelessWidget {
     return ValueListenableBuilder<PageListState<T>>(
       valueListenable: controller,
       builder: (context, state, _) {
-        print('state==:${state.status}');
         switch (state.status) {
           case PageStatus.loading:
             return _buildSkeleton(context);

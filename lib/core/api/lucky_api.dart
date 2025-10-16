@@ -100,7 +100,7 @@ class Api {
     
     final result = parsePageResponse(res, (e) => ActWinnersMonth.fromJson(e) );
 
-  /*  final now = DateTime.now();
+    final now = DateTime.now();
     final target = DateTime(now.year,now.month - (params.month - 1), 1);
 
     final filteredList = result.list.where((item){
@@ -110,7 +110,7 @@ class Api {
     
     result.list
       ..clear()
-      ..addAll(filteredList);*/
+      ..addAll(filteredList);
 
     return result;
   }

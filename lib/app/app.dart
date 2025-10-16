@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_app/app/routes/app_router.dart';
 import 'package:flutter_app/common.dart';
@@ -23,6 +25,7 @@ class MyApp extends StatelessWidget {
       localizationsDelegates: context.localizationDelegates,
       supportedLocales: context.supportedLocales,
       locale: context.locale,
+      scrollBehavior: const _NoScrollbarBehavior(),
       builder: (context,child){
         return DefaultTextStyle.merge(
           style: GoogleFonts.inter(
@@ -35,6 +38,23 @@ class MyApp extends StatelessWidget {
       },
     );
   }
+}
+
+/// ✅ 自定义 ScrollBehavior：关闭滚动条，但保留平台惯性与滚轮优化
+class _NoScrollbarBehavior extends MaterialScrollBehavior {
+  const _NoScrollbarBehavior();
+
+  @override
+  Widget buildScrollbar(BuildContext context, Widget child, ScrollableDetails details) {
+    return child;
+  }
+
+  @override
+  Set<PointerDeviceKind> get dragDevices => {
+    PointerDeviceKind.touch,
+    PointerDeviceKind.mouse,
+    PointerDeviceKind.trackpad,
+  };
 }
 
 ThemeData _buildTheme(bool dark) {
