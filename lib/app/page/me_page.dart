@@ -7,7 +7,39 @@ class MePage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
      appBar: AppBar(title: Text('Me')),
-      body: Center(child: Text("个人重心个人重心个人重心个人重心个人重心个人重心个人重心个人重心个人重心个人重心个人重心个人重心个人重心个人重心个人重心个人重心个人重心个人重心个人重心个人重心个人重心个人重心个人重心"),),
+      body: Demo()
+    );
+  }
+}
+
+class CounterController extends ValueNotifier<int>{
+  CounterController():super(0);
+
+  void increment() => value++;
+}
+
+class Demo extends StatelessWidget {
+  const Demo({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final controller = CounterController();
+    return Container(
+      padding: EdgeInsets.all(20),
+      child:  ValueListenableBuilder<int>(
+          valueListenable: controller,
+          builder: (_,count,__){
+            return Column(
+              children: [
+                Text('count: $count'),
+                ElevatedButton(
+                  onPressed: controller.increment,
+                  child: Text('increment')
+                )
+              ],
+            );
+          }
+      ),
     );
   }
 }

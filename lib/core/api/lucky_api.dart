@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math';
 import 'package:flutter_app/common.dart';
 
 import 'package:flutter_app/utils/helper.dart';
@@ -112,6 +113,8 @@ class Api {
       ..clear()
       ..addAll(filteredList);
 
+    int randomMs([int max = 3000]) => Random().nextInt(max);
+    await Future.delayed( Duration(milliseconds: randomMs()));
     return result;
   }
 

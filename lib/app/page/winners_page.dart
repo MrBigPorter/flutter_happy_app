@@ -507,34 +507,36 @@ class _WinnerListState extends ConsumerState<_WinnerList> {
     final currentMonth = ref.watch(activeMonthProvider);
     if (currentMonth == null) return const SizedBox.shrink();
 
-    return CustomScrollView(
-      key: PageStorageKey('winner-list-${widget.monthValue}'),
-      physics: const ClampingScrollPhysics(),
-      slivers: [
-        SliverToBoxAdapter(
-          child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.w),
-            child: Text(
-              currentMonth.monthTitle,
-              style: TextStyle(
-                fontSize: context.textMd,
-                fontWeight: FontWeight.w800,
-                color: context.textPrimary900,
+    return _ctl.wrapWithNotification(
+      child: CustomScrollView(
+        key: PageStorageKey('winner-list-${widget.monthValue}'),
+        physics: const ClampingScrollPhysics(),
+        slivers: [
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.w),
+              child: Text(
+                currentMonth.monthTitle,
+                style: TextStyle(
+                  fontSize: context.textMd,
+                  fontWeight: FontWeight.w800,
+                  color: context.textPrimary900,
+                ),
               ),
             ),
           ),
-        ),
-        PageListViewPro<ActWinnersMonth>(
-          controller: _ctl,
-          sliverMode: true,
-          itemBuilder: (context, item, index, isLast) {
-            return Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16.w),
-              child: _WinnerListItem(item: item),
-            );
-          },
-        ),
-      ],
+          PageListViewPro<ActWinnersMonth>(
+            controller: _ctl,
+            sliverMode: true,
+            itemBuilder: (context, item, index, isLast) {
+              return Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16.w),
+                child: _WinnerListItem(item: item),
+              );
+            },
+          ),
+        ],
+      )
     );
   }
 }

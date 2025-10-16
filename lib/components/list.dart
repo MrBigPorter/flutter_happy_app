@@ -34,6 +34,7 @@
 // );
 
 import 'dart:async';
+import 'package:easy_debounce/easy_debounce.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_app/components/skeleton.dart';
 import 'package:flutter_app/ui/empty.dart';
@@ -126,7 +127,7 @@ class PageListController<T> extends ValueNotifier<PageListState<T>> {
     this.pageSize = 20,
     this.scrollController,
     this.preprocess,
-    this.loadMoreTriggerOffset = 100.0,
+    this.loadMoreTriggerOffset = 0,
     Object? requestKey,
   }) : super(PageListState<T>(requestKey: requestKey)) {
     _effectiveKey = requestKey ?? request.hashCode;
@@ -146,7 +147,6 @@ class PageListController<T> extends ValueNotifier<PageListState<T>> {
   }
 
   Future<void> loadFirst() async {
-
     if (_pending) return;
     _pending = true;
     _ticket++;
@@ -172,7 +172,7 @@ class PageListController<T> extends ValueNotifier<PageListState<T>> {
 
       final bool noMoreBySize = res.list.length < pageSize;
       final bool hasMore = (res.total > 0)
-          ? (data.length < res.total)
+          ? (value.currentPage < res.total)
           : !noMoreBySize;
       _noMoreFallback = (res.total <= 0 && noMoreBySize);
 
@@ -193,43 +193,51 @@ class PageListController<T> extends ValueNotifier<PageListState<T>> {
   }
 
   Future<void> loadMore() async {
+
     if (_pending || !value.hasMore) return;
-    _pending = true;
-    _ticket++;
-    final my = _ticket;
-    if (_isDisposed) return;
 
-    value = value.copyWith(status: PageStatus.loadingMore);
+    EasyDebounce.debounce(
+      'page-list-loadMore-${_effectiveKey ?? hashCode}',
+      const Duration(milliseconds: 400),
+      () async {
+        _pending = true;
+        _ticket++;
+        final my = _ticket;
+        if (_isDisposed) return;
 
-    try {
-      final next = value.currentPage + 1;
-      final res = await request(pageSize: pageSize, current: next);
-      if (my != _ticket) return; // race drop
+        value = value.copyWith(status: PageStatus.loadingMore);
 
-      List<T> nextPage = res.list;
-      if (preprocess != null) nextPage = preprocess!(nextPage);
+        try {
+          final next = value.currentPage + 1;
+          final res = await request(pageSize: pageSize, current: next);
+          if (my != _ticket) return; // race drop
 
-      if (_isDisposed) return;
-      final merged = <T>[...value.items, ...nextPage];
-      final bool noMoreBySize = res.list.length < pageSize;
-      final bool hasMore = (res.total > 0)
-          ? (merged.length < res.total)
-          : !noMoreBySize;
-      _noMoreFallback = _noMoreFallback || (res.total <= 0 && noMoreBySize);
+          List<T> nextPage = res.list;
+          if (preprocess != null) nextPage = preprocess!(nextPage);
 
-      value = value.copyWith(
-        items: merged,
-        status: PageStatus.success,
-        hasMore: hasMore,
-        currentPage: next,
-        error: null,
-      );
-    } catch (e) {
-      if (my != _ticket) return;
-      value = value.copyWith(status: PageStatus.error, error: e);
-    } finally {
-      if (my == _ticket) _pending = false;
-    }
+          if (_isDisposed) return;
+          final merged = <T>[...value.items, ...nextPage];
+          final bool noMoreBySize = res.list.length < pageSize;
+          final bool hasMore = (res.total > 0)
+              ? (value.currentPage < res.total)
+              : !noMoreBySize;
+          _noMoreFallback = _noMoreFallback || (res.total <= 0 && noMoreBySize);
+
+          value = value.copyWith(
+            items: merged,
+            status: PageStatus.success,
+            hasMore: hasMore,
+            currentPage: next,
+            error: null,
+          );
+        } catch (e) {
+          if (my != _ticket) return;
+          value = value.copyWith(status: PageStatus.error, error: e);
+        } finally {
+          if (my == _ticket) _pending = false;
+        }
+      },
+    );
   }
 
   void _onScroll() {
@@ -255,6 +263,31 @@ class PageListController<T> extends ValueNotifier<PageListState<T>> {
     _ticket++;
     scrollController?.removeListener(_onScroll);
     super.dispose();
+  }
+}
+
+/// ✅ Extension to auto-wrap scrollable with NotificationListener for load-more
+///   (only needed if you don't use scrollController binding)
+extension PageListNotificationX<T> on PageListController<T> {
+  /// ✅ 自动包裹滚动监听层（任何 Scrollable 都可以）
+  Widget wrapWithNotification({required Widget child}) {
+    return NotificationListener<ScrollNotification>(
+      onNotification: (n) {
+        // 只有当状态正常且有更多数据时才触发
+        if (n.metrics.pixels >=
+            (n.metrics.maxScrollExtent - loadMoreTriggerOffset)) {
+          if (value.status != PageStatus.loading &&
+              value.status != PageStatus.loadingMore &&
+              value.hasMore) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (!_isDisposed) loadMore();
+            });
+          }
+        }
+        return false; // 不拦截
+      },
+      child: child,
+    );
   }
 }
 
@@ -530,6 +563,6 @@ class _BottomStatus extends StatelessWidget {
         ),
       );
     }
-    return  SizedBox(height: 10.w,);
+    return SizedBox(height: 10.w);
   }
 }
