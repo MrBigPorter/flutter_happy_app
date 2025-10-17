@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_app/ui/dot_wave_loading.dart';
 
 class MePage extends StatelessWidget {
   const MePage({super.key});
@@ -7,7 +8,7 @@ class MePage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
      appBar: AppBar(title: Text('Me')),
-      body: Demo()
+      body: DotsWaveLoading()
     );
   }
 }
