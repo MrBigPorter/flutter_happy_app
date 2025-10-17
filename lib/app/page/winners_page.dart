@@ -7,6 +7,7 @@ import 'package:flutter_app/common.dart';
 import 'package:flutter_app/components/anime_count.dart';
 import 'package:flutter_app/components/base_scaffold.dart';
 import 'package:flutter_app/components/list.dart';
+import 'package:flutter_app/components/safe_tab_bar_view.dart';
 import 'package:flutter_app/components/skeleton.dart';
 import 'package:flutter_app/components/swiper_banner.dart';
 import 'package:flutter_app/core/models/index.dart';
@@ -37,9 +38,10 @@ class WinnersPage extends ConsumerStatefulWidget {
 class _WinnersPageState extends ConsumerState<WinnersPage>
     with SingleTickerProviderStateMixin {
   final Map<int, GlobalKey<_WinnerListState>> _listKeys = {};
-  late TabController _tabController;
+   TabController? _tabController;
   List<ActMonthTab> _tabs = const [];
   DateTime _lastRefreshTime = DateTime.now();
+  bool _initialized = false;
 
   @override
   void initState() {
@@ -60,6 +62,15 @@ class _WinnersPageState extends ConsumerState<WinnersPage>
       });
     });
 
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if(!_initialized){
+      _initialized = true;
+      ref.read(actMonthNumProvider);
+    }
   }
 
   Future<void> _onRefresh() async {
@@ -88,12 +99,6 @@ class _WinnersPageState extends ConsumerState<WinnersPage>
 
   @override
   Widget build(BuildContext context) {
-    if (_tabs.isEmpty) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
-    }
-
     return BaseScaffold(
       showBack: false,
       body: PullToRefreshNotification(
@@ -101,9 +106,7 @@ class _WinnersPageState extends ConsumerState<WinnersPage>
         maxDragOffset: 100,
         armedDragUpCancel: true,
         child: ExtendedNestedScrollView(
-          physics: const BouncingScrollPhysics(
-            parent: AlwaysScrollableScrollPhysics(),
-          ),
+          physics: const ClampingScrollPhysics(),
           onlyOneScrollInBody: true,
           pinnedHeaderSliverHeightBuilder: () =>
           kToolbarHeight - 8,
@@ -134,7 +137,7 @@ class _WinnersPageState extends ConsumerState<WinnersPage>
               ),
             ),
           ],
-          body: TabBarView(
+          body: SafeTabBarView(
             controller: _tabController,
             children: _tabs.map((t) {
               return ExtendedVisibilityDetector(
@@ -514,10 +517,6 @@ class _WinnerListState extends ConsumerState<_WinnerList> {
     return _ctl.wrapWithNotification(
       child: CustomScrollView(
         key: PageStorageKey('winner-list-${widget.monthValue}'),
-        physics: const BouncingScrollPhysics(
-          parent: AlwaysScrollableScrollPhysics(),
-        ),
-        primary: true,
         slivers: [
           SliverToBoxAdapter(
             child: Padding(

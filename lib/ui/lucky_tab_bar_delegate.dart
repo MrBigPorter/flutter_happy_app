@@ -15,7 +15,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 /// ✅ 支持自定义背景色 custom background color support
 
 class LuckySliverTabBarDelegate<T> extends SliverPersistentHeaderDelegate {
-  final TabController controller; // tab 控制器 tab controller
+  final TabController? controller; // tab 控制器 tab controller
   final List<T> tabs; // tab 数据 tab data
   final Color? indicatorColor; // 指示器颜色 indicator color
   final Color? backgroundColor; // 背景颜色 background color
@@ -53,6 +53,11 @@ class LuckySliverTabBarDelegate<T> extends SliverPersistentHeaderDelegate {
     double shrinkOffset,
     bool overlapsContent,
   ) {
+
+    if(controller == null){
+      return SizedBox.shrink();
+    }
+
     return Container(
       color: backgroundColor,
       padding: EdgeInsets.symmetric(horizontal: 8.w).add(padding),
@@ -75,7 +80,7 @@ class LuckySliverTabBarDelegate<T> extends SliverPersistentHeaderDelegate {
         ),
         indicator: _LuckyIndicator(
           color: indicatorColor??context.bgBrandSolid,
-          controller: controller,
+          controller: controller!,
           height: height,
           radius: radius,
           minWidth: minWidth,
@@ -100,10 +105,10 @@ class LuckySliverTabBarDelegate<T> extends SliverPersistentHeaderDelegate {
   }
 
   @override
-  double get maxExtent => height.w;
+  double get maxExtent => height;
 
   @override
-  double get minExtent => height.w;
+  double get minExtent => height;
 
   @override
   bool shouldRebuild(covariant LuckySliverTabBarDelegate oldDelegate) {

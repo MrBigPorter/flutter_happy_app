@@ -197,6 +197,9 @@ class PageListController<T> extends ValueNotifier<PageListState<T>> {
 
     if (_pending || !value.hasMore) return;
 
+    if (_isDisposed) return;
+    value = value.copyWith(status: PageStatus.loadingMore);
+
     EasyDebounce.debounce(
       'page-list-loadMore-${_effectiveKey ?? hashCode}',
       const Duration(milliseconds: 400),
@@ -204,7 +207,6 @@ class PageListController<T> extends ValueNotifier<PageListState<T>> {
         _pending = true;
         _ticket++;
         final my = _ticket;
-        if (_isDisposed) return;
 
         value = value.copyWith(status: PageStatus.loadingMore);
 
@@ -449,7 +451,11 @@ class PageListViewPro<T> extends StatelessWidget {
     // standalone ListView rendering (single scrollable)
     return CustomScrollView(
       controller: controller.scrollController,
+      primary: false, // ✅ 非主滚动
+      shrinkWrap: true, // ✅ 自动根据内容高度适配
+      physics: const NeverScrollableScrollPhysics(),// ✅ 禁止滚动，由外层滚动容器控制
       slivers: [
+        SliverOverlapInjector(handle: NestedScrollView.sliverOverlapAbsorberHandleFor(context)),
         if (padding != null) SliverPadding(padding: padding!),
         if (itemExtent != null)
           SliverFixedExtentList(delegate: delegate, itemExtent: itemExtent!)
