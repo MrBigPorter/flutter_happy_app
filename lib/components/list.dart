@@ -37,6 +37,7 @@ import 'dart:async';
 import 'package:easy_debounce/easy_debounce.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_app/components/skeleton.dart';
+import 'package:flutter_app/ui/dot_wave_loading.dart';
 import 'package:flutter_app/ui/empty.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
@@ -540,11 +541,7 @@ class _BottomStatus extends StatelessWidget {
       return const Padding(
         padding: EdgeInsets.symmetric(vertical: 12.0),
         child: Center(
-          child: SizedBox(
-            width: 18,
-            height: 18,
-            child: CircularProgressIndicator(strokeWidth: 2),
-          ),
+          child: DotsWaveLoading(),
         ),
       );
     }

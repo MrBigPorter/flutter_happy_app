@@ -1,10 +1,21 @@
 
 import 'package:flutter/material.dart';
-import 'package:flutter_app/common.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 class DotsWaveLoading extends StatefulWidget{
-   const DotsWaveLoading({super.key});
+   final double size;
+   final double boxSize;
+   final Color startColor;
+   final Color endColor;
+   final int dotCount;
+   const DotsWaveLoading({
+     super.key,
+      this.size = 8.0,
+      this.boxSize = 20.0,
+      this.startColor = Colors.grey,
+      this.endColor = Colors.orange,
+      this.dotCount = 5,
+   });
 
    @override
     State<DotsWaveLoading> createState() => _DotsWaveLoadingState();
@@ -28,7 +39,7 @@ class _DotsWaveLoadingState extends State<DotsWaveLoading> with SingleTickerProv
     )..repeat();
 
     // 定义每个点的波动区间
-    _animations = List.generate(5, (i){
+    _animations = List.generate(widget.dotCount, (i){
       final start = i * 0.15; // 每个点延迟一点
       final end = (start + 0.6).clamp(0.0, 1.0); // 每个点持续0.6秒
       return Tween(begin: 0.0,end: -8.0 - i * 0.5).animate(
@@ -37,7 +48,7 @@ class _DotsWaveLoadingState extends State<DotsWaveLoading> with SingleTickerProv
     });
 
     // scale animation
-    _scaleAnimations = List.generate(5, (i){
+    _scaleAnimations = List.generate(widget.dotCount, (i){
       final start = i * 0.15;
       final end = (start + 0.6).clamp(0.1, 1.0);
       return Tween(begin: 1.0, end: 1.3).animate(
@@ -46,13 +57,13 @@ class _DotsWaveLoadingState extends State<DotsWaveLoading> with SingleTickerProv
     });
 
     // color animation
-    _colorAnimations = List.generate(5, (i){
+    _colorAnimations = List.generate(widget.dotCount, (i){
       final start = i * 0.15;
       final end = (start + 0.6).clamp(0.0, 1.0);
 
       return ColorTween(
-        begin: Colors.grey.shade400,
-        end: Colors.orange,
+        begin: widget.startColor,
+        end: widget.endColor,
       ).animate(
         CurvedAnimation(parent: _controller, curve: Interval(start, end, curve: Curves.easeInOutSine))
       );
@@ -60,7 +71,7 @@ class _DotsWaveLoadingState extends State<DotsWaveLoading> with SingleTickerProv
 
 
     // opacity animation
-    _opacityAnimations = List.generate(5, (i){
+    _opacityAnimations = List.generate(widget.dotCount, (i){
       final start = i * 0.15;
       final end = (start + 0.6).clamp(0.0, 1.0);
        return Tween(begin: 0.7, end:1.0).animate(
@@ -84,13 +95,13 @@ class _DotsWaveLoadingState extends State<DotsWaveLoading> with SingleTickerProv
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 20.w,
+      height: widget.boxSize.w,
       child: Row(
         mainAxisSize: MainAxisSize.min,//不占满整行
         mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.end,
         //生成5个点
-        children: List.generate(5, (i){
+        children: List.generate(widget.dotCount, (i){
           //根据数值去移动
           return AnimatedBuilder(
               animation: _controller,
@@ -104,8 +115,8 @@ class _DotsWaveLoadingState extends State<DotsWaveLoading> with SingleTickerProv
                       opacity: _opacityAnimations[i].value,
                       child: Container(
                         margin: EdgeInsets.symmetric(horizontal: 3.w),
-                        width: 8.w,
-                        height: 8.w,
+                        width: widget.size.w,
+                        height: widget.size.w,
                         decoration: BoxDecoration(
                           color: _colorAnimations[i].value,
                           shape: BoxShape.circle,
@@ -122,22 +133,3 @@ class _DotsWaveLoadingState extends State<DotsWaveLoading> with SingleTickerProv
   }
 }
 
-/// 创建组件骨架 _dot create component skeleton
-class _Dot extends StatelessWidget {
-  const _Dot();
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 3.w ),
-      child: Container(
-        width: 8.w,
-        height: 8.w,
-        decoration:  BoxDecoration(
-          color: context.bgBrandSolid,
-          shape: BoxShape.circle,
-        ),
-      ),
-    );
-  }
-}
