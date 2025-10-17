@@ -45,6 +45,9 @@ class _NoScrollbarBehavior extends MaterialScrollBehavior {
   const _NoScrollbarBehavior();
 
   @override
+  BouncingScrollPhysics getScrollPhysics(BuildContext context) =>  const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics());
+
+  @override
   Widget buildScrollbar(BuildContext context, Widget child, ScrollableDetails details) {
     return child;
   }

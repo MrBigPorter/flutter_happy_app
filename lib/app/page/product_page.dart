@@ -7,11 +7,13 @@ import 'package:flutter_app/components/tabs.dart';
 import 'package:flutter_app/components/featured_skeleton.dart';
 import 'package:flutter_app/core/providers/index.dart';
 import 'package:flutter_app/core/models/index.dart';
+import 'package:flutter_app/ui/lucky_refresh_header_pro.dart';
 import 'package:flutter_app/utils/helper.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import 'package:flutter_app/ui/empty.dart';
+import 'package:pull_to_refresh_notification/pull_to_refresh_notification.dart';
 
 /// 商品页 Product Page
 class ProductPage extends ConsumerStatefulWidget {
@@ -28,10 +30,11 @@ class ProductPage extends ConsumerStatefulWidget {
 class _ProductPageState extends ConsumerState<ProductPage> {
   late final ScrollController scrollController;
   final ValueNotifier<double> scrollProgress = ValueNotifier(0.0);
-
+  final DateTime _lastRefreshTime = DateTime.now();
   @override
   void initState() {
     super.initState();
+
 
     /// initialize scroll controller and listen to scroll events
     scrollController = ScrollController()..addListener(_onScroll);
@@ -56,60 +59,67 @@ class _ProductPageState extends ConsumerState<ProductPage> {
     final active = ref.watch(activeCategoryProvider);
     final products = ref.watch(productListProvider);
 
-    Future<void> onRefresh() async {
-      ref.invalidate(categoryProvider);
-      ref.invalidate(productListProvider);
+    Future<bool> onRefresh() async {
+      Future.wait([
+        ref.refresh(categoryProvider.future),
+        ref.refresh(productListProvider.future),
+      ]);
       await Future.delayed(const Duration(milliseconds: 400));
+      return true;
     }
 
     return BaseScaffold(
       showBack: false,
-      body: RefreshIndicator(
-        onRefresh: onRefresh,
-        child: CustomScrollView(
-          controller: scrollController,
-          physics: const AlwaysScrollableScrollPhysics(),
-          slivers: [
-            /// Tabs（吸顶固定）
-            categoryList.when(
-              data: (data) => StickyHeader.pinned(
-                minHeight: 70,
-                maxHeight: 70,
-                builder: (context, info) {
-                  return AnimatedContainer(
-                    duration: const Duration(milliseconds: 120),
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: context.bgPrimary.withAlpha(
-                        (255 * info.progress + 10).clamp(0, 255).toInt(),
-                      )
-                    ),
-                    child: Tabs<ProductCategoryItem>(
-                      data: data,
-                      activeItem: active,
-                      parentHeight: 70,
-                      renderItem: (item) => Center(child: Text(item.name)),
-                      onChangeActive: (item) {
-                        ref.read(activeCategoryProvider.notifier).state = item;
-                        if (scrollController.hasClients &&
-                            scrollProgress.value > 70) {
-                          scrollController.jumpTo(0);
-                        }
-                      },
-                    ),
-                  );
-                },
+      body: PullToRefreshNotification(
+          onRefresh: onRefresh,
+          armedDragUpCancel: true,
+          child: CustomScrollView(
+            controller: scrollController,
+            physics: const BouncingScrollPhysics(),
+            slivers: [
+              SliverToBoxAdapter(
+                child: PullToRefreshContainer((info)=>LuckyRefreshHeaderPro(info: info, lastRefreshTime: _lastRefreshTime, triggerOffset: 100,)),
               ),
-              error: (_, __) =>
-                  const SliverToBoxAdapter(child: FeaturedSkeleton()),
-              loading: () =>
-                  const SliverToBoxAdapter(child: FeaturedSkeleton()),
-            ),
+              /// Tabs（吸顶固定）
+              categoryList.when(
+                data: (data) => StickyHeader.pinned(
+                  minHeight: 70,
+                  maxHeight: 70,
+                  builder: (context, info) {
+                    return AnimatedContainer(
+                      duration: const Duration(milliseconds: 120),
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                          color: context.bgPrimary.withAlpha(
+                            (255 * info.progress + 10).clamp(0, 255).toInt(),
+                          )
+                      ),
+                      child: Tabs<ProductCategoryItem>(
+                        data: data,
+                        activeItem: active,
+                        parentHeight: 70,
+                        renderItem: (item) => Center(child: Text(item.name)),
+                        onChangeActive: (item) {
+                          ref.read(activeCategoryProvider.notifier).state = item;
+                          if (scrollController.hasClients &&
+                              scrollProgress.value > info.shrinkOffset) {
+                            scrollController.jumpTo(info.shrinkOffset - 70);
+                          }
+                        },
+                      ),
+                    );
+                  },
+                ),
+                error: (_, __) =>
+                const SliverToBoxAdapter(child: FeaturedSkeleton()),
+                loading: () =>
+                const SliverToBoxAdapter(child: FeaturedSkeleton()),
+              ),
 
-            /// 商品列表
-            _ListItem(products: products),
-          ],
-        ),
+              /// 商品列表
+              _ListItem(products: products),
+            ],
+          ),
       ),
     );
   }

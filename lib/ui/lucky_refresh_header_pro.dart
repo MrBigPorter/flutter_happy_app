@@ -17,11 +17,15 @@ class LuckyRefreshHeaderPro extends StatelessWidget {
   /// 文案颜色
   final Color textColor;
 
+  final double height;
+
   const LuckyRefreshHeaderPro({
     super.key,
     required this.info,
     required this.lastRefreshTime,
     this.triggerOffset = 100,
+    this.height = 100,
+
     this.activeColor = Colors.grey,
     this.textColor = Colors.grey,
   });
@@ -29,7 +33,7 @@ class LuckyRefreshHeaderPro extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final mode = info?.mode;
-    double offset = (info?.dragOffset ?? 0).clamp(0, 200);
+    double offset = (info?.dragOffset ?? 0).clamp(0, 100);
     final progress = (offset / triggerOffset).clamp(0.0, 1.0);
 
     // 文案
@@ -51,8 +55,16 @@ class LuckyRefreshHeaderPro extends StatelessWidget {
         tip = '';
     }
 
+    double calcHeight(double offset){
+      const double minHeight = 0;
+      const double maxHeight = 100;
+      final double t = (offset / triggerOffset).clamp(0.0, 1.0);
+
+      return minHeight + (maxHeight - minHeight) * Curves.easeInOut.transform(t);
+    }
+
     return SizedBox(
-      height: offset,
+      height: calcHeight(offset),
       child: Stack(
         fit: StackFit.expand,
         children: [

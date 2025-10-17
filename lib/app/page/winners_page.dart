@@ -99,7 +99,11 @@ class _WinnersPageState extends ConsumerState<WinnersPage>
       body: PullToRefreshNotification(
         onRefresh: _onRefreshWrapper,
         maxDragOffset: 100,
+        armedDragUpCancel: true,
         child: ExtendedNestedScrollView(
+          physics: const BouncingScrollPhysics(
+            parent: AlwaysScrollableScrollPhysics(),
+          ),
           onlyOneScrollInBody: true,
           pinnedHeaderSliverHeightBuilder: () =>
           kToolbarHeight - 8,
@@ -510,7 +514,10 @@ class _WinnerListState extends ConsumerState<_WinnerList> {
     return _ctl.wrapWithNotification(
       child: CustomScrollView(
         key: PageStorageKey('winner-list-${widget.monthValue}'),
-        physics: const ClampingScrollPhysics(),
+        physics: const BouncingScrollPhysics(
+          parent: AlwaysScrollableScrollPhysics(),
+        ),
+        primary: true,
         slivers: [
           SliverToBoxAdapter(
             child: Padding(
