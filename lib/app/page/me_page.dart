@@ -19,6 +19,7 @@ import 'package:flutter_app/utils/format_helper.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:nested_scroll_view_plus/nested_scroll_view_plus.dart';
 import 'package:pull_to_refresh_notification/pull_to_refresh_notification.dart';
 
 /// Winners Page
@@ -98,12 +99,10 @@ class _MePageState extends ConsumerState<MePage>
       body: PullToRefreshNotification(
         onRefresh: _onRefreshWrapper,
         maxDragOffset: 100,
-        armedDragUpCancel: true,
-        child: ExtendedNestedScrollView(
+        armedDragUpCancel: false,
+        child: NestedScrollViewPlus(
           physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
-          onlyOneScrollInBody: true,
-          pinnedHeaderSliverHeightBuilder: () =>
-          kToolbarHeight,
+          overscrollBehavior: OverscrollBehavior.outer,
           headerSliverBuilder: (context, _) => [
             /// ✅ 下拉刷新头 pull to refresh header
             SliverToBoxAdapter(
@@ -163,9 +162,9 @@ class RenderBeforeTabs extends ConsumerWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         banners.when(
-          data: (data) => _Banner(list: data),
-          loading: () => _Banner(list: null),
-          error: (_, __) => _Banner(list: null),
+          data: (data) => RepaintBoundary(child: _Banner(list: data),),
+          loading: () =>  RepaintBoundary(child: _Banner(list: null),),
+          error: (_, __) => RepaintBoundary(child: _Banner(list: null),),
         ),
         SizedBox(height: 32.w),
         quantity.when(
@@ -237,14 +236,16 @@ class _TotalWinners extends StatelessWidget {
           children: [
             AnimeCount(
               value: totalWinners,
-              render: (value) => Text(
-                'winner.number'.tr(namedArgs: {
-                  'number': FormatHelper.formatCompactDecimal(value),
-                }),
-                style: TextStyle(
-                  fontSize: context.textXl,
-                  color: context.fgBrandPrimary,
-                  fontWeight: FontWeight.w800,
+              render: (value) => RepaintBoundary(
+                child: Text(
+                  'winner.number'.tr(namedArgs: {
+                    'number': FormatHelper.formatCompactDecimal(value),
+                  }),
+                  style: TextStyle(
+                    fontSize: context.textXl,
+                    color: context.fgBrandPrimary,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
               ),
             ),
@@ -344,60 +345,65 @@ class _LatestWinnerSwiperItem extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 20.w),
-      child: Container(
-        decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12.w),
-            color: context.bgPrimary,
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black12,
-                blurRadius: 8.w,
-                offset: Offset(0, 4.w),
-              ),
-
-            ]
-        ),
+      // ✅ 给整张卡片做重绘隔离
+      child: RepaintBoundary(
         child: Container(
-          padding: EdgeInsets.all(16.w),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12.w),
-            border: Border.all(color: context.borderSecondary, width: 1.w),
-          ),
-          child: Column(
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(8.w),
-                /// images
-                child: CachedNetworkImage(
-                  imageUrl: proxied(item.mainImageList!.first),
-                  width: 180.w,
-                  height: 120.w,
-                  fit: BoxFit.cover,
-                  placeholder: (_, __) =>
-                      Skeleton.react(width: 180.w, height: 120.w),
-                  errorWidget: (_, __, ___) =>
-                      Skeleton.react(width: 180.w, height: 120.w),
+              borderRadius: BorderRadius.circular(12.w),
+              color: context.bgPrimary,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black12,
+                  blurRadius: 8.w,
+                  offset: Offset(0, 4.w),
                 ),
-              ),
-              SizedBox(height: 8.w),
-              /// winner name
-              Text(item.winnerName!,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                      fontSize: context.textMd,
-                      fontWeight: FontWeight.w800,
-                      color: context.textPrimary900)),
-              SizedBox(height: 8.w),
-              /// treasure name
-              Text(item.treasureName,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                      fontSize: context.textXs,
-                      fontWeight: FontWeight.w800,
-                      color: context.textPrimary900)),
-            ],
+
+              ]
+          ),
+          child: Container(
+            padding: EdgeInsets.all(16.w),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12.w),
+              border: Border.all(color: context.borderSecondary, width: 1.w),
+            ),
+            child: Column(
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8.w),
+                  /// images
+                  child: RepaintBoundary(
+                    child: CachedNetworkImage(
+                      imageUrl: proxied(item.mainImageList!.first),
+                      width: 180.w,
+                      height: 120.w,
+                      fit: BoxFit.cover,
+                      placeholder: (_, __) =>
+                          Skeleton.react(width: 180.w, height: 120.w),
+                      errorWidget: (_, __, ___) =>
+                          Skeleton.react(width: 180.w, height: 120.w),
+                    ),
+                  ),
+                ),
+                SizedBox(height: 8.w),
+                /// winner name
+                Text(item.winnerName!,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                        fontSize: context.textMd,
+                        fontWeight: FontWeight.w800,
+                        color: context.textPrimary900)),
+                SizedBox(height: 8.w),
+                /// treasure name
+                Text(item.treasureName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                        fontSize: context.textXs,
+                        fontWeight: FontWeight.w800,
+                        color: context.textPrimary900)),
+              ],
+            ),
           ),
         ),
       ),
@@ -512,6 +518,9 @@ class _WinnerListState extends ConsumerState<_WinnerList> {
 
     return _ctl.wrapWithNotification(
         child: CustomScrollView(
+          physics: const BouncingScrollPhysics(
+            parent: AlwaysScrollableScrollPhysics(),
+          ),
           key: PageStorageKey('winner-list-${widget.monthValue}'),
           slivers: [
             SliverToBoxAdapter(
@@ -543,6 +552,8 @@ class _WinnerListState extends ConsumerState<_WinnerList> {
   }
 }
 
+
+
 /// 单条中奖 item
 class _WinnerListItem extends StatelessWidget {
   final ActWinnersMonth item;
@@ -570,88 +581,90 @@ class _WinnerListItem extends StatelessWidget {
               ),
             ),
           ),
-        Container(
-          padding: EdgeInsets.only(
-            left: 8.w,
-            right: 8.w,
-            top: item.firstOfDay == true ? 16.w : 12.w,
-            bottom: item.lastOfDay == true ? 16.w : 0,
-          ),
-          decoration: BoxDecoration(
-            color: context.bgPrimary,
-            borderRadius: BorderRadius.vertical(
-              top: item.firstOfDay == true
-                  ? Radius.circular(8.w)
-                  : Radius.zero,
-              bottom: item.lastOfDay == true
-                  ? Radius.circular(8.w)
-                  : Radius.zero,
-            ),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            mainAxisAlignment: MainAxisAlignment.start,
-            children: [
-              ClipRRect(
-                clipBehavior: Clip.antiAlias,
-                borderRadius: BorderRadius.circular(8.w),
-                child: CachedNetworkImage(
-                  imageUrl: proxied(item.mainImageList!.first),
-                  width: 72.w,
-                  height: 72.w,
-                  fit: BoxFit.cover,
-                  placeholder: (_, __) {
-                    return Skeleton.react(
-                      width: 72.w,
-                      height: 72.w,
-                      borderRadius: BorderRadius.circular(8.w),
-                    );
-                  },
-                  errorWidget: (_, __, ___) {
-                    return Skeleton.react(
-                      width: 72.w,
-                      height: 72.w,
-                      borderRadius: BorderRadius.circular(8.w),
-                    );
-                  },
-                ),
-              ),
-              SizedBox(width: 4.w),
-              Expanded(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      item.treasureName,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: context.textSm,
-                        fontWeight: FontWeight.w600,
-                        color: context.textPrimary900,
-                        height: context.leadingSm,
-                      ),
-                    ),
-                    SizedBox(height: 4.w),
-                    Text(
-                      item.winnerName,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: context.textXs,
-                        fontWeight: FontWeight.w500,
-                        color: context.textSecondary700,
-                        height: context.leadingXs,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              SizedBox(width: 4.w),
-            ],
-          ),
-        ),
+         RepaintBoundary(
+           child:  Container(
+             padding: EdgeInsets.only(
+               left: 8.w,
+               right: 8.w,
+               top: item.firstOfDay == true ? 16.w : 12.w,
+               bottom: item.lastOfDay == true ? 16.w : 0,
+             ),
+             decoration: BoxDecoration(
+               color: context.bgPrimary,
+               borderRadius: BorderRadius.vertical(
+                 top: item.firstOfDay == true
+                     ? Radius.circular(8.w)
+                     : Radius.zero,
+                 bottom: item.lastOfDay == true
+                     ? Radius.circular(8.w)
+                     : Radius.zero,
+               ),
+             ),
+             child: Row(
+               mainAxisSize: MainAxisSize.min,
+               mainAxisAlignment: MainAxisAlignment.start,
+               children: [
+                 ClipRRect(
+                   clipBehavior: Clip.antiAlias,
+                   borderRadius: BorderRadius.circular(8.w),
+                   child: CachedNetworkImage(
+                     imageUrl: proxied(item.mainImageList!.first),
+                     width: 72.w,
+                     height: 72.w,
+                     fit: BoxFit.cover,
+                     placeholder: (_, __) {
+                       return Skeleton.react(
+                         width: 72.w,
+                         height: 72.w,
+                         borderRadius: BorderRadius.circular(8.w),
+                       );
+                     },
+                     errorWidget: (_, __, ___) {
+                       return Skeleton.react(
+                         width: 72.w,
+                         height: 72.w,
+                         borderRadius: BorderRadius.circular(8.w),
+                       );
+                     },
+                   ),
+                 ),
+                 SizedBox(width: 4.w),
+                 Expanded(
+                   child: Column(
+                     mainAxisSize: MainAxisSize.min,
+                     crossAxisAlignment: CrossAxisAlignment.start,
+                     children: [
+                       Text(
+                         item.treasureName,
+                         maxLines: 2,
+                         overflow: TextOverflow.ellipsis,
+                         style: TextStyle(
+                           fontSize: context.textSm,
+                           fontWeight: FontWeight.w600,
+                           color: context.textPrimary900,
+                           height: context.leadingSm,
+                         ),
+                       ),
+                       SizedBox(height: 4.w),
+                       Text(
+                         item.winnerName,
+                         maxLines: 2,
+                         overflow: TextOverflow.ellipsis,
+                         style: TextStyle(
+                           fontSize: context.textXs,
+                           fontWeight: FontWeight.w500,
+                           color: context.textSecondary700,
+                           height: context.leadingXs,
+                         ),
+                       ),
+                     ],
+                   ),
+                 ),
+                 SizedBox(width: 4.w),
+               ],
+             ),
+           ),
+         )
       ],
     );
   }

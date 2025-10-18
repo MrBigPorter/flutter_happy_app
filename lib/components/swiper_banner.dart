@@ -68,15 +68,17 @@ class SwiperBanner<T> extends StatelessWidget {
         autoplayDelay: interval.inMilliseconds,
         itemBuilder: (_,index){
          final item = banners[index];
-         return ClipRRect(
-           borderRadius: BorderRadius.circular(borderRadius.w),
-           child: GestureDetector(
-             onTap: ()=> onTapItem!(item),
-             child: ImageWidget(
-                 item: item,
-                 width: width,
-                 height: height,
-                 itemBuilder: itemBuilder
+         return RepaintBoundary(
+           child: ClipRRect(
+             borderRadius: BorderRadius.circular(borderRadius.w),
+             child: GestureDetector(
+               onTap: ()=> onTapItem!(item),
+               child: ImageWidget(
+                   item: item,
+                   width: width,
+                   height: height,
+                   itemBuilder: itemBuilder
+               ),
              ),
            ),
          );
@@ -144,18 +146,20 @@ class CustomDotPaginationBuilder extends SwiperPlugin {
 
     dots = List.generate(config.itemCount, ((i){
       bool active = config.activeIndex == i;
-      return AnimatedContainer(
-         duration: Duration(milliseconds: 300),
-         curve: Curves.easeInOut,
-         key: Key("pagination_$i"),
-         width: active ? activeSize.w : size.w,
-         height: size.w,
-         margin: EdgeInsets.symmetric(horizontal: space.w),
-         decoration: BoxDecoration(
-           color: active ? activeColor??context.buttonPrimaryBg : color??context.bgActive,
-           borderRadius: BorderRadius.circular(borderRadius.w)
-         ),
-       );
+      return RepaintBoundary(
+        child: AnimatedContainer(
+          duration: Duration(milliseconds: 300),
+          curve: Curves.easeInOut,
+          key: Key("pagination_$i"),
+          width: active ? activeSize.w : size.w,
+          height: size.w,
+          margin: EdgeInsets.symmetric(horizontal: space.w),
+          decoration: BoxDecoration(
+              color: active ? activeColor??context.buttonPrimaryBg : color??context.bgActive,
+              borderRadius: BorderRadius.circular(borderRadius.w)
+          ),
+        ),
+      );
     }) as Widget Function(int index));
 
     return Align(

@@ -63,65 +63,67 @@ class LuckyRefreshHeaderPro extends StatelessWidget {
       return minHeight + (maxHeight - minHeight) * Curves.easeInOut.transform(t);
     }
 
-    return SizedBox(
-      height: calcHeight(offset),
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          // 中心内容
-          Align(
-            alignment: Alignment.topCenter,
-            child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 180),
-              switchInCurve: Curves.easeOutBack,
-              switchOutCurve: Curves.easeIn,
-              child: Padding(
-                padding: EdgeInsets.only(top: 5.w),
-                child: _buildCenter(mode, progress),
+    return RepaintBoundary(
+      child: SizedBox(
+        height: offset,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            // 中心内容
+            Align(
+              alignment: Alignment.topCenter,
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 180),
+                switchInCurve: Curves.easeOutBack,
+                switchOutCurve: Curves.easeIn,
+                child: Padding(
+                  padding: EdgeInsets.only(top: 5.w),
+                  child: _buildCenter(mode, progress),
+                ),
               ),
             ),
-          ),
 
-          // 底部文案
-          if (offset > 18)
-            SizedBox(
-              height: offset,
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  Align(
-                    alignment: Alignment.center,
-                    child: ClipRect(
-                      child: FittedBox(
-                        fit: BoxFit.scaleDown,
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              tip,
-                              style: TextStyle(
-                                fontSize: 14.w,
-                                color: textColor,
-                                fontWeight: FontWeight.w600,
+            // 底部文案
+            if (offset > 18)
+              SizedBox(
+                height: offset,
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    Align(
+                      alignment: Alignment.center,
+                      child: ClipRect(
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                tip,
+                                style: TextStyle(
+                                  fontSize: 14.w,
+                                  color: textColor,
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
-                            ),
-                            SizedBox(height: 4),
-                            Text(
-                              'Last refreshed：${DateFormat('HH:mm:ss').format(lastRefreshTime)}',
-                              style: TextStyle(
-                                fontSize: 12.w,
-                                color: textColor,
+                              SizedBox(height: 4),
+                              Text(
+                                'Last refreshed：${DateFormat('HH:mm:ss').format(lastRefreshTime)}',
+                                style: TextStyle(
+                                  fontSize: 12.w,
+                                  color: textColor,
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-        ],
+          ],
+        ),
       ),
     );
   }

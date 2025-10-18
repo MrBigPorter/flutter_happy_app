@@ -3,6 +3,7 @@ import 'package:card_swiper/card_swiper.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:extended_nested_scroll_view/extended_nested_scroll_view.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_app/app/routes/app_router.dart';
 import 'package:flutter_app/common.dart';
 import 'package:flutter_app/components/anime_count.dart';
 import 'package:flutter_app/components/base_scaffold.dart';
@@ -570,88 +571,93 @@ class _WinnerListItem extends StatelessWidget {
               ),
             ),
           ),
-          Container(
-          padding: EdgeInsets.only(
-            left: 8.w,
-            right: 8.w,
-            top: item.firstOfDay == true ? 16.w : 12.w,
-            bottom: item.lastOfDay == true ? 16.w : 0,
-          ),
-          decoration: BoxDecoration(
-            color: context.bgPrimary,
-            borderRadius: BorderRadius.vertical(
-              top: item.firstOfDay == true
-                  ? Radius.circular(8.w)
-                  : Radius.zero,
-              bottom: item.lastOfDay == true
-                  ? Radius.circular(8.w)
-                  : Radius.zero,
+          GestureDetector(
+            onTap: (){
+              AppRouter.router.push('/winners/${item.treasureId}');
+            },
+            child: Container(
+              padding: EdgeInsets.only(
+                left: 8.w,
+                right: 8.w,
+                top: item.firstOfDay == true ? 16.w : 12.w,
+                bottom: item.lastOfDay == true ? 16.w : 0,
+              ),
+              decoration: BoxDecoration(
+                color: context.bgPrimary,
+                borderRadius: BorderRadius.vertical(
+                  top: item.firstOfDay == true
+                      ? Radius.circular(8.w)
+                      : Radius.zero,
+                  bottom: item.lastOfDay == true
+                      ? Radius.circular(8.w)
+                      : Radius.zero,
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.start,
+                children: [
+                  ClipRRect(
+                    clipBehavior: Clip.antiAlias,
+                    borderRadius: BorderRadius.circular(8.w),
+                    child: CachedNetworkImage(
+                      imageUrl: proxied(item.mainImageList!.first),
+                      width: 72.w,
+                      height: 72.w,
+                      fit: BoxFit.cover,
+                      placeholder: (_, __) {
+                        return Skeleton.react(
+                          width: 72.w,
+                          height: 72.w,
+                          borderRadius: BorderRadius.circular(8.w),
+                        );
+                      },
+                      errorWidget: (_, __, ___) {
+                        return Skeleton.react(
+                          width: 72.w,
+                          height: 72.w,
+                          borderRadius: BorderRadius.circular(8.w),
+                        );
+                      },
+                    ),
+                  ),
+                  SizedBox(width: 4.w),
+                  Expanded(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          item.treasureName,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: context.textSm,
+                            fontWeight: FontWeight.w600,
+                            color: context.textPrimary900,
+                            height: context.leadingSm,
+                          ),
+                        ),
+                        SizedBox(height: 4.w),
+                        Text(
+                          item.winnerName,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: context.textXs,
+                            fontWeight: FontWeight.w500,
+                            color: context.textSecondary700,
+                            height: context.leadingXs,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  SizedBox(width: 4.w),
+                ],
+              ),
             ),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            mainAxisAlignment: MainAxisAlignment.start,
-            children: [
-              ClipRRect(
-                clipBehavior: Clip.antiAlias,
-                borderRadius: BorderRadius.circular(8.w),
-                child: CachedNetworkImage(
-                  imageUrl: proxied(item.mainImageList!.first),
-                  width: 72.w,
-                  height: 72.w,
-                  fit: BoxFit.cover,
-                  placeholder: (_, __) {
-                    return Skeleton.react(
-                      width: 72.w,
-                      height: 72.w,
-                      borderRadius: BorderRadius.circular(8.w),
-                    );
-                  },
-                  errorWidget: (_, __, ___) {
-                    return Skeleton.react(
-                      width: 72.w,
-                      height: 72.w,
-                      borderRadius: BorderRadius.circular(8.w),
-                    );
-                  },
-                ),
-              ),
-              SizedBox(width: 4.w),
-              Expanded(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      item.treasureName,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: context.textSm,
-                        fontWeight: FontWeight.w600,
-                        color: context.textPrimary900,
-                        height: context.leadingSm,
-                      ),
-                    ),
-                    SizedBox(height: 4.w),
-                    Text(
-                      item.winnerName,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: context.textXs,
-                        fontWeight: FontWeight.w500,
-                        color: context.textSecondary700,
-                        height: context.leadingXs,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              SizedBox(width: 4.w),
-            ],
-          ),
-        ),
+          )
       ],
     );
   }
