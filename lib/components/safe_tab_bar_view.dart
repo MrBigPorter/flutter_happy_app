@@ -15,8 +15,8 @@ class SafeTabBarView extends StatelessWidget {
     required this.controller,
     required this.children,
     this.skeleton,
-    this.itemHeight = 60,
-    this.itemCount = 10,
+    this.itemHeight = 100,
+    this.itemCount = 5,
   });
 
   @override
@@ -37,12 +37,21 @@ class SafeTabBarView extends StatelessWidget {
 class _SkeletonTabBarView extends StatelessWidget {
   final double itemHeight;
   final int itemCount;
-  const _SkeletonTabBarView({this.itemHeight = 60, this.itemCount = 10});
+  const _SkeletonTabBarView({this.itemHeight = 60, this.itemCount = 5});
   @override
   Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: List.generate(itemCount, (i) => Expanded(child: Skeleton.react(width: double.infinity, height:itemHeight.w))),
+    return ListView.separated(
+      shrinkWrap: true,          // 如果外层还有滚动，配合 NeverScrollableScrollPhysics
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: itemCount,
+      separatorBuilder: (_, __) => SizedBox(height: 16.w),
+      itemBuilder: (_, __) => SizedBox(
+        height: 100.w,
+        child: Padding(
+          padding: EdgeInsets.symmetric(horizontal: 10.w),
+          child: Skeleton.react(width: double.infinity, height: itemHeight.w),
+        )
+      ),
     );
   }
 }

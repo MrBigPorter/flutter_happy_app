@@ -40,7 +40,7 @@ class ProductItem extends StatelessWidget {
 
     /// 倒计时 Countdown
 
-    return RepaintBoundary(
+    return Container(
       key: ValueKey(data.treasureId),
       child: SizedBox(
         width: cardWidth!.w,

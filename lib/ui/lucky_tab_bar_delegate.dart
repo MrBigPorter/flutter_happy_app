@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_app/common.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -29,6 +30,7 @@ class LuckySliverTabBarDelegate<T> extends SliverPersistentHeaderDelegate {
   final TextStyle? labelStyle; // 选中 tab 文字样式 selected tab text style
   final TextStyle? unselectedLabelStyle; // 未选中 tab 文字样式 unselected tab text style
   final void Function(T item)? onTap; // tab 点击事件 tab tap event
+  late final ValueListenable<double>? progress; // 是否在顶部 is at top
 
   LuckySliverTabBarDelegate({
     required this.controller,
@@ -45,6 +47,7 @@ class LuckySliverTabBarDelegate<T> extends SliverPersistentHeaderDelegate {
     this.unselectedLabelStyle,
     this.onTap,
     required this.renderItem,
+    this.progress,
   });
 
   @override
@@ -58,49 +61,61 @@ class LuckySliverTabBarDelegate<T> extends SliverPersistentHeaderDelegate {
       return SizedBox.shrink();
     }
 
-    return Container(
-      color: backgroundColor,
-      padding: EdgeInsets.symmetric(horizontal: 8.w).add(padding),
-      alignment: Alignment.centerLeft,
-      child: TabBar(
-        controller: controller,
-        isScrollable: true,
-        overlayColor: WidgetStateProperty.all(Colors.transparent),
-        labelPadding: labelPadding,
-        labelStyle: labelStyle??TextStyle(
-            fontWeight: FontWeight.w500,
-            fontSize: 14.w,
-            color: context.textPrimaryOnBrand
-        ),
-        indicatorSize: TabBarIndicatorSize.label,
-        unselectedLabelStyle: unselectedLabelStyle ?? TextStyle(
-          fontWeight: FontWeight.w500,
-          fontSize: 14.w,
-          color: context.textQuaternary500
-        ),
-        indicator: _LuckyIndicator(
-          color: indicatorColor??context.bgBrandSolid,
-          controller: controller!,
-          height: height,
-          radius: radius,
-          minWidth: minWidth,
-          itemPaddingX: itemPaddingX,
-        ),
-        dividerColor: Colors.transparent,
-        tabAlignment: TabAlignment.start,
-        splashFactory: NoSplash.splashFactory,
-        splashBorderRadius: BorderRadius.circular(0),
-        /// 禁用水波纹效果 disable ripple effect
-        enableFeedback: false,
-        onTap: (index) {
-          if (onTap != null) {
-            onTap!(tabs[index]);
-          }
-        },
-        tabs: tabs.map((item) {
-          return renderItem(item);
-        }).toList(),
-      ),
+    final ValueNotifier<double> defaultProgress = ValueNotifier<double>(0.0);
+
+    return  ValueListenableBuilder(
+      valueListenable: progress??defaultProgress,
+      builder: (_,t,___){
+
+        final base = backgroundColor ?? context.bgPrimary;
+        final t = Curves.easeOut.transform((progress?.value??defaultProgress.value).clamp(0.0, 1.0));
+        final blended = Color.lerp(Colors.transparent, base, t);
+
+        return Container(
+          color: blended,
+          padding: EdgeInsets.symmetric(horizontal: 8.w).add(padding),
+          alignment: Alignment.centerLeft,
+          child: TabBar(
+            controller: controller,
+            isScrollable: true,
+            overlayColor: WidgetStateProperty.all(Colors.transparent),
+            labelPadding: labelPadding,
+            labelStyle: labelStyle??TextStyle(
+                fontWeight: FontWeight.w500,
+                fontSize: 14.w,
+                color: context.textPrimaryOnBrand
+            ),
+            indicatorSize: TabBarIndicatorSize.label,
+            unselectedLabelStyle: unselectedLabelStyle ?? TextStyle(
+                fontWeight: FontWeight.w500,
+                fontSize: 14.w,
+                color: context.textQuaternary500
+            ),
+            indicator: _LuckyIndicator(
+              color: indicatorColor??context.bgBrandSolid,
+              controller: controller!,
+              height: height,
+              radius: radius,
+              minWidth: minWidth,
+              itemPaddingX: itemPaddingX,
+            ),
+            dividerColor: Colors.transparent,
+            tabAlignment: TabAlignment.start,
+            splashFactory: NoSplash.splashFactory,
+            splashBorderRadius: BorderRadius.circular(0),
+            /// 禁用水波纹效果 disable ripple effect
+            enableFeedback: false,
+            onTap: (index) {
+              if (onTap != null) {
+                onTap!(tabs[index]);
+              }
+            },
+            tabs: tabs.map((item) {
+              return renderItem(item);
+            }).toList(),
+          ),
+        );
+      },
     );
   }
 
@@ -111,8 +126,19 @@ class LuckySliverTabBarDelegate<T> extends SliverPersistentHeaderDelegate {
   double get minExtent => height;
 
   @override
-  bool shouldRebuild(covariant LuckySliverTabBarDelegate oldDelegate) {
-    return false;
+  bool shouldRebuild(covariant LuckySliverTabBarDelegate old) {
+    return old.progress != progress ||
+        old.controller != controller ||
+        old.tabs != tabs ||
+        old.backgroundColor != backgroundColor ||
+        old.indicatorColor != indicatorColor ||
+        old.height != height ||
+        old.radius != radius ||
+        old.minWidth != minWidth ||
+        old.itemPaddingX != itemPaddingX ||
+        old.labelPadding != labelPadding ||
+        old.labelStyle != labelStyle ||
+        old.unselectedLabelStyle != unselectedLabelStyle;
   }
 }
 

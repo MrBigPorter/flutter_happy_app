@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_app/common.dart';
 import 'package:flutter_app/components/base_scaffold.dart';
+import 'package:flutter_app/components/lucky_custom_material_indicator.dart';
 import 'package:flutter_app/components/product_item.dart';
 import 'package:flutter_app/components/sticky_header.dart';
 import 'package:flutter_app/components/tabs.dart';
 import 'package:flutter_app/components/featured_skeleton.dart';
 import 'package:flutter_app/core/providers/index.dart';
 import 'package:flutter_app/core/models/index.dart';
-import 'package:flutter_app/ui/lucky_refresh_header_pro.dart';
 import 'package:flutter_app/utils/helper.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -30,7 +30,6 @@ class ProductPage extends ConsumerStatefulWidget {
 class _ProductPageState extends ConsumerState<ProductPage> {
   late final ScrollController scrollController;
   final ValueNotifier<double> scrollProgress = ValueNotifier(0.0);
-  final DateTime _lastRefreshTime = DateTime.now();
   @override
   void initState() {
     super.initState();
@@ -70,16 +69,12 @@ class _ProductPageState extends ConsumerState<ProductPage> {
 
     return BaseScaffold(
       showBack: false,
-      body: PullToRefreshNotification(
+      body: LuckyCustomMaterialIndicator(
           onRefresh: onRefresh,
-          armedDragUpCancel: true,
           child: CustomScrollView(
             controller: scrollController,
             physics: const BouncingScrollPhysics(),
             slivers: [
-              SliverToBoxAdapter(
-                child: PullToRefreshContainer((info)=>LuckyRefreshHeaderPro(info: info, lastRefreshTime: _lastRefreshTime, triggerOffset: 100,)),
-              ),
               /// Tabs（吸顶固定）
               categoryList.when(
                 data: (data) => StickyHeader.pinned(

@@ -8,19 +8,19 @@ import 'package:flutter_app/common.dart';
 import 'package:flutter_app/components/anime_count.dart';
 import 'package:flutter_app/components/base_scaffold.dart';
 import 'package:flutter_app/components/list.dart';
+import 'package:flutter_app/components/lucky_custom_material_indicator.dart';
 import 'package:flutter_app/components/safe_tab_bar_view.dart';
 import 'package:flutter_app/components/skeleton.dart';
 import 'package:flutter_app/components/swiper_banner.dart';
 import 'package:flutter_app/core/models/index.dart';
 import 'package:flutter_app/core/providers/winners_provider.dart';
-import 'package:flutter_app/ui/lucky_refresh_header_pro.dart';
 import 'package:flutter_app/ui/lucky_tab_bar_delegate.dart';
 import 'package:flutter_app/utils/helper.dart';
 import 'package:flutter_app/utils/format_helper.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:pull_to_refresh_notification/pull_to_refresh_notification.dart';
+import 'package:nested_scroll_view_plus/nested_scroll_view_plus.dart';
 
 /// Winners Page
 /// 1. 上半部分 header 包含 banner、total winners、latest winners
@@ -41,7 +41,6 @@ class _WinnersPageState extends ConsumerState<WinnersPage>
   final Map<int, GlobalKey<_WinnerListState>> _listKeys = {};
    TabController? _tabController;
   List<ActMonthTab> _tabs = const [];
-  DateTime _lastRefreshTime = DateTime.now();
 
   @override
   void initState() {
@@ -85,7 +84,6 @@ class _WinnersPageState extends ConsumerState<WinnersPage>
     final req = ref.refresh(actWinnersMonthsProvider(cur));
     await req(pageSize: 10, current: 1); // 刷新当前 tab 列表 refresh current tab list
     await Future.delayed(const Duration(milliseconds: 500));
-    setState(() => _lastRefreshTime = DateTime.now());
   }
 
   Future<bool> _onRefreshWrapper() async {
@@ -97,25 +95,12 @@ class _WinnersPageState extends ConsumerState<WinnersPage>
   Widget build(BuildContext context) {
     return BaseScaffold(
       showBack: false,
-      body: PullToRefreshNotification(
+      body: LuckyCustomMaterialIndicator(
         onRefresh: _onRefreshWrapper,
-        maxDragOffset: 100,
-        armedDragUpCancel: true,
-        child: ExtendedNestedScrollView(
-          physics: const ClampingScrollPhysics(),
-          onlyOneScrollInBody: true,
-          pinnedHeaderSliverHeightBuilder: () =>
-          kToolbarHeight - 8,
+        child: NestedScrollViewPlus(
+          overscrollBehavior: OverscrollBehavior.outer,
+          physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
           headerSliverBuilder: (context, _) => [
-            /// ✅ 下拉刷新头 pull to refresh header
-            SliverToBoxAdapter(
-              child: PullToRefreshContainer(
-                    (info) => LuckyRefreshHeaderPro(
-                        info:info,
-                        lastRefreshTime: _lastRefreshTime,
-                    ),
-              ),
-            ),
 
             /// ✅ 全部上半部分内容都放这里 header before tabs
             SliverToBoxAdapter(child: RenderBeforeTabs()),
@@ -513,6 +498,7 @@ class _WinnerListState extends ConsumerState<_WinnerList> {
 
     return _ctl.wrapWithNotification(
       child: CustomScrollView(
+        physics: const ClampingScrollPhysics(),
         key: PageStorageKey('winner-list-${widget.monthValue}'),
         slivers: [
           SliverToBoxAdapter(

@@ -366,7 +366,7 @@ class PageListViewPro<T> extends StatelessWidget {
   Widget _buildSkeleton(BuildContext context) {
     if (sliverMode) {
       return SliverPadding(
-        padding: padding ?? EdgeInsets.zero,
+        padding: padding ?? skeletonPadding,
         sliver: SliverList.separated(
           itemCount: skeletonCount,
           separatorBuilder: (_, __) => SizedBox(height: skeletonSpace),
@@ -455,7 +455,6 @@ class PageListViewPro<T> extends StatelessWidget {
       shrinkWrap: true, // ✅ 自动根据内容高度适配
       physics: const NeverScrollableScrollPhysics(),// ✅ 禁止滚动，由外层滚动容器控制
       slivers: [
-        SliverOverlapInjector(handle: NestedScrollView.sliverOverlapAbsorberHandleFor(context)),
         if (padding != null) SliverPadding(padding: padding!),
         if (itemExtent != null)
           SliverFixedExtentList(delegate: delegate, itemExtent: itemExtent!)
@@ -544,8 +543,9 @@ class _BottomStatus extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (loadingMore) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(vertical: 12.0),
+      return  Container(
+        padding: EdgeInsets.only(top: 12.w),
+        margin: EdgeInsets.only(bottom: 30.w),
         child: Center(
           child: DotsWaveLoading(),
         ),
