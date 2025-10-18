@@ -40,7 +40,8 @@ class _SkeletonTabBarView extends StatelessWidget {
   const _SkeletonTabBarView({this.itemHeight = 60, this.itemCount = 10});
   @override
   Widget build(BuildContext context) {
-    return Row(
+    return Column(
+      mainAxisSize: MainAxisSize.min,
       children: List.generate(itemCount, (i) => Expanded(child: Skeleton.react(width: double.infinity, height:itemHeight.w))),
     );
   }

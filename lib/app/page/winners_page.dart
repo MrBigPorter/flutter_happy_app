@@ -41,36 +41,31 @@ class _WinnersPageState extends ConsumerState<WinnersPage>
    TabController? _tabController;
   List<ActMonthTab> _tabs = const [];
   DateTime _lastRefreshTime = DateTime.now();
-  bool _initialized = false;
 
   @override
   void initState() {
     super.initState();
-    ref.listenManual<AsyncValue<List<int>>>(actMonthNumProvider, (prev, next) {
-      next.whenData((months) {
-        if (months.isNotEmpty) {
-          final tabs = _buildTabs(context, months);
-          ref.read(activeMonthProvider.notifier).state = tabs.first;
-          setState(() {
-            _tabs = tabs;
-            _listKeys
-            ..clear()
-            ..addEntries(tabs.map((t) => MapEntry(t.value, GlobalKey<_WinnerListState>())));
-          });
-          _tabController = TabController(length: tabs.length, vsync: this);
-        }
-      });
+    Future.microtask(() async{
+      final months = await ref.read(actMonthNumProvider.future);
+      _initializeMonths(months);
     });
-
   }
 
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if(!_initialized){
-      _initialized = true;
-      ref.read(actMonthNumProvider);
+
+  void _initializeMonths(List<int> months){
+    if (months.isNotEmpty) {
+      final tabs = _buildTabs(context, months);
+      ref.read(activeMonthProvider.notifier).state = tabs.first;
+
+      setState(() {
+        _tabs = tabs;
+        _listKeys
+          ..clear()
+          ..addEntries(tabs.map((t) => MapEntry(t.value, GlobalKey<_WinnerListState>())));
+      });
+      _tabController = TabController(length: tabs.length, vsync: this);
     }
+
   }
 
   Future<void> _onRefresh() async {
@@ -124,6 +119,7 @@ class _WinnersPageState extends ConsumerState<WinnersPage>
             /// ✅ 全部上半部分内容都放这里 header before tabs
             SliverToBoxAdapter(child: RenderBeforeTabs()),
 
+            if(_tabController != null)
             /// ✅ Tab 吸顶区域 pinned tab bar
             SliverPersistentHeader(
               pinned: true,
