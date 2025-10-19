@@ -105,9 +105,7 @@ class _MePageState extends ConsumerState<MePage>
         onRefresh: _onRefresh,
         child: NestedScrollViewPlus(
           controller: _outerCtl,
-          physics: const BouncingScrollPhysics(
-            parent: AlwaysScrollableScrollPhysics(),
-          ),
+          physics: platformScrollPhysics(),
           // ✅外层弹性
           overscrollBehavior: OverscrollBehavior.outer,
           headerSliverBuilder: (context, _) => [
@@ -534,7 +532,7 @@ class _WinnerListState extends ConsumerState<_WinnerList> {
 
     return _ctl.wrapWithNotification(
       child: CustomScrollView(
-        physics: const ClampingScrollPhysics(),
+        physics: platformScrollPhysics(),
         key: PageStorageKey('winner-list-${widget.monthValue}'),
         slivers: [
           SliverToBoxAdapter(

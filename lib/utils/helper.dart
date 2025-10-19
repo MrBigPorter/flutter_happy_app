@@ -168,3 +168,32 @@ class ViewUtils {
     }
   );
 }
+
+
+/// Get platform-specific scroll physics
+/// - [alwaysScrollable]: Whether the scroll view should always be scrollable
+/// - Returns: Appropriate ScrollPhysics for the current platform
+/// Usage:
+/// final physics = platformScrollPhysics(alwaysScrollable: true);
+/// ```
+ScrollPhysics platformScrollPhysics({bool alwaysScrollable = true}) {
+  ScrollPhysics base;
+  if(kIsWeb){
+    base = const ClampingScrollPhysics();
+  } else {
+    switch (defaultTargetPlatform){
+      case TargetPlatform.iOS:
+      case TargetPlatform.macOS:
+        base = const BouncingScrollPhysics();
+        break;
+      case TargetPlatform.android:
+      case TargetPlatform.fuchsia:
+      case TargetPlatform.linux:
+      case TargetPlatform.windows:
+        base = const ClampingScrollPhysics();
+        break;
+      }
+  }
+
+  return alwaysScrollable ? const AlwaysScrollableScrollPhysics().applyTo(base) : base;
+}

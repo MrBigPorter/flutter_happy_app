@@ -113,7 +113,6 @@ class PageListController<T> extends ValueNotifier<PageListState<T>> {
   scrollController; // bind when used inside NestedScrollView (sliverMode)
   final List<T> Function(List<T>)? preprocess; // optional: sort/group/map
   final double loadMoreTriggerOffset; // near-bottom threshold
-
   bool _isDisposed = false;
 
   bool _pending = false; // global request lock
@@ -122,6 +121,10 @@ class PageListController<T> extends ValueNotifier<PageListState<T>> {
       false; // when total==0, rely on page size to detect no-more
 
   Object? _effectiveKey; // for auto reload on key change
+  late String _debounceTag;
+
+  String _tagFor(Object? key) =>
+      'page-list-loadMore-${key ?? hashCode}';
 
   PageListController({
     required this.request,
@@ -133,6 +136,7 @@ class PageListController<T> extends ValueNotifier<PageListState<T>> {
   }) : super(PageListState<T>(requestKey: requestKey)) {
     _effectiveKey = requestKey ?? request.hashCode;
     scrollController?.addListener(_onScroll);
+    _debounceTag = _tagFor(_effectiveKey);
     // auto first load
     // Use microtask to allow parent to finish build
     Future.microtask(loadFirst);
@@ -142,7 +146,11 @@ class PageListController<T> extends ValueNotifier<PageListState<T>> {
   void setRequestKey(Object? requestKey) {
     final nextKey = requestKey ?? request.hashCode;
     if (nextKey == _effectiveKey) return;
+    // cancel pending loadMore debounce
+    EasyDebounce.cancel(_debounceTag);
     _effectiveKey = nextKey;
+    // update debounce tag
+    _debounceTag = _tagFor(_effectiveKey);
     value = value.copyWith(requestKey: nextKey);
     loadFirst();
   }
@@ -200,8 +208,8 @@ class PageListController<T> extends ValueNotifier<PageListState<T>> {
     if (_isDisposed) return;
     value = value.copyWith(status: PageStatus.loadingMore);
 
-    EasyDebounce.debounce(
-      'page-list-loadMore-${_effectiveKey ?? hashCode}',
+     EasyDebounce.debounce(
+       _debounceTag,
       const Duration(milliseconds: 400),
       () async {
         _pending = true;
@@ -261,6 +269,7 @@ class PageListController<T> extends ValueNotifier<PageListState<T>> {
   void dispose() {
     /// Mark as disposed to avoid setState after dispose
     _isDisposed = true;
+    EasyDebounce.cancel(_debounceTag);
 
     /// Invalidate pending requests
     _ticket++;
