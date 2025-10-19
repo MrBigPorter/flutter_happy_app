@@ -2,6 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:card_swiper/card_swiper.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:extended_nested_scroll_view/extended_nested_scroll_view.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_app/app/routes/app_router.dart';
 import 'package:flutter_app/common.dart';
@@ -22,6 +23,8 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:nested_scroll_view_plus/nested_scroll_view_plus.dart';
 
+import '../../ui/button.dart';
+
 /// Winners Page
 /// 1. 上半部分 header 包含 banner、total winners、latest winners
 /// 2. 下半部分 tab 列表 winners list with tabs
@@ -40,17 +43,28 @@ class _WinnersPageState extends ConsumerState<WinnersPage>
     with SingleTickerProviderStateMixin {
   final Map<int, GlobalKey<_WinnerListState>> _listKeys = {};
    TabController? _tabController;
+  final _outerCtl = ScrollController();
+  late ({ValueListenable<double> progress, VoidCallback unbind}) _bp;
+
   List<ActMonthTab> _tabs = const [];
 
   @override
   void initState() {
     super.initState();
+    _bp = bindScrollProgress(_outerCtl);
     Future.microtask(() async{
       final months = await ref.read(actMonthNumProvider.future);
       _initializeMonths(months);
     });
   }
 
+  @override
+  void dispose() {
+    _tabController?.dispose();
+    _outerCtl.dispose();
+    _bp.unbind();
+    super.dispose();
+  }
 
   void _initializeMonths(List<int> months){
     if (months.isNotEmpty) {
@@ -86,20 +100,17 @@ class _WinnersPageState extends ConsumerState<WinnersPage>
     await Future.delayed(const Duration(milliseconds: 500));
   }
 
-  Future<bool> _onRefreshWrapper() async {
-    await _onRefresh(); // 调用你原本的刷新逻辑
-    return true; // 告诉 PullToRefresh 已完成
-  }
 
   @override
   Widget build(BuildContext context) {
     return BaseScaffold(
       showBack: false,
       body: LuckyCustomMaterialIndicator(
-        onRefresh: _onRefreshWrapper,
+        onRefresh: _onRefresh,
         child: NestedScrollViewPlus(
+          controller: _outerCtl,
           overscrollBehavior: OverscrollBehavior.outer,
-          physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+          physics: platformScrollPhysics(),
           headerSliverBuilder: (context, _) => [
 
             /// ✅ 全部上半部分内容都放这里 header before tabs
@@ -110,6 +121,8 @@ class _WinnersPageState extends ConsumerState<WinnersPage>
             SliverPersistentHeader(
               pinned: true,
               delegate: LuckySliverTabBarDelegate(
+                  height: 60,
+                  progress: _bp.progress,
                   controller: _tabController,
                   tabs: _tabs,
                   renderItem: (t) => Tab(text: t.title),
@@ -350,6 +363,7 @@ class _LatestWinnerSwiperItem extends StatelessWidget {
             border: Border.all(color: context.borderSecondary, width: 1.w),
           ),
           child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
               ClipRRect(
                 borderRadius: BorderRadius.circular(8.w),
@@ -383,6 +397,23 @@ class _LatestWinnerSwiperItem extends StatelessWidget {
                       fontSize: context.textXs,
                       fontWeight: FontWeight.w800,
                       color: context.textPrimary900)),
+              SizedBox(height: 8.w,),
+              /// details button
+              Button(
+                height: 35,
+                leading: SvgPicture.asset(
+                  'assets/images/detail.svg',
+                  width: 16.w,
+                  height: 16.w,
+                  colorFilter:
+                  ColorFilter.mode(context.fgPrimary900, BlendMode.srcIn),
+                ),
+                variant: ButtonVariant.secondary,
+                  onPressed: (){
+                    AppRouter.router.push('/winners/${item.treasureId}');
+                  },
+                  child: Text('common.details'.tr())
+              )
             ],
           ),
         ),
@@ -498,7 +529,7 @@ class _WinnerListState extends ConsumerState<_WinnerList> {
 
     return _ctl.wrapWithNotification(
       child: CustomScrollView(
-        physics: const ClampingScrollPhysics(),
+        physics: platformScrollPhysics(),
         key: PageStorageKey('winner-list-${widget.monthValue}'),
         slivers: [
           SliverToBoxAdapter(
@@ -557,93 +588,94 @@ class _WinnerListItem extends StatelessWidget {
               ),
             ),
           ),
-          GestureDetector(
-            onTap: (){
-              AppRouter.router.push('/winners/${item.treasureId}');
-            },
-            child: Container(
-              padding: EdgeInsets.only(
-                left: 8.w,
-                right: 8.w,
-                top: item.firstOfDay == true ? 16.w : 12.w,
-                bottom: item.lastOfDay == true ? 16.w : 0,
-              ),
-              decoration: BoxDecoration(
-                color: context.bgPrimary,
-                borderRadius: BorderRadius.vertical(
-                  top: item.firstOfDay == true
-                      ? Radius.circular(8.w)
-                      : Radius.zero,
-                  bottom: item.lastOfDay == true
-                      ? Radius.circular(8.w)
-                      : Radius.zero,
-                ),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                mainAxisAlignment: MainAxisAlignment.start,
-                children: [
-                  ClipRRect(
-                    clipBehavior: Clip.antiAlias,
-                    borderRadius: BorderRadius.circular(8.w),
-                    child: CachedNetworkImage(
-                      imageUrl: proxied(item.mainImageList!.first),
+        Container(
+          padding: EdgeInsets.only(
+            left: 8.w,
+            right: 8.w,
+            top: item.firstOfDay == true ? 16.w : 12.w,
+            bottom: item.lastOfDay == true ? 16.w : 0,
+          ),
+          decoration: BoxDecoration(
+            color: context.bgPrimary,
+            borderRadius: BorderRadius.vertical(
+              top: item.firstOfDay == true
+                  ? Radius.circular(8.w)
+                  : Radius.zero,
+              bottom: item.lastOfDay == true
+                  ? Radius.circular(8.w)
+                  : Radius.zero,
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.start,
+            children: [
+              ClipRRect(
+                clipBehavior: Clip.antiAlias,
+                borderRadius: BorderRadius.circular(8.w),
+                child: CachedNetworkImage(
+                  imageUrl: proxied(item.mainImageList!.first),
+                  width: 72.w,
+                  height: 72.w,
+                  fit: BoxFit.cover,
+                  placeholder: (_, __) {
+                    return Skeleton.react(
                       width: 72.w,
                       height: 72.w,
-                      fit: BoxFit.cover,
-                      placeholder: (_, __) {
-                        return Skeleton.react(
-                          width: 72.w,
-                          height: 72.w,
-                          borderRadius: BorderRadius.circular(8.w),
-                        );
-                      },
-                      errorWidget: (_, __, ___) {
-                        return Skeleton.react(
-                          width: 72.w,
-                          height: 72.w,
-                          borderRadius: BorderRadius.circular(8.w),
-                        );
-                      },
-                    ),
-                  ),
-                  SizedBox(width: 4.w),
-                  Expanded(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          item.treasureName,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: context.textSm,
-                            fontWeight: FontWeight.w600,
-                            color: context.textPrimary900,
-                            height: context.leadingSm,
-                          ),
-                        ),
-                        SizedBox(height: 4.w),
-                        Text(
-                          item.winnerName,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: context.textXs,
-                            fontWeight: FontWeight.w500,
-                            color: context.textSecondary700,
-                            height: context.leadingXs,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  SizedBox(width: 4.w),
-                ],
+                      borderRadius: BorderRadius.circular(8.w),
+                    );
+                  },
+                  errorWidget: (_, __, ___) {
+                    return Skeleton.react(
+                      width: 72.w,
+                      height: 72.w,
+                      borderRadius: BorderRadius.circular(8.w),
+                    );
+                  },
+                ),
               ),
-            ),
-          )
+              SizedBox(width: 4.w),
+              Expanded(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      item.treasureName,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: context.textSm,
+                        fontWeight: FontWeight.w600,
+                        color: context.textPrimary900,
+                        height: context.leadingSm,
+                      ),
+                    ),
+                    SizedBox(height: 4.w),
+                    Text(
+                      item.winnerName,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: context.textXs,
+                        fontWeight: FontWeight.w500,
+                        color: context.textSecondary700,
+                        height: context.leadingXs,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(width: 4.w),
+              Button(
+                onPressed: ()=>{
+                  AppRouter.router.push('/winners/${item.treasureId}')
+                },
+                child: Text('common.details'.tr()),
+              ),
+            ],
+          ),
+        )
       ],
     );
   }

@@ -3,6 +3,7 @@ import 'package:card_swiper/card_swiper.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_app/app/routes/app_router.dart';
 import 'package:flutter_app/common.dart';
 import 'package:flutter_app/components/anime_count.dart';
 import 'package:flutter_app/components/base_scaffold.dart';
@@ -12,6 +13,7 @@ import 'package:flutter_app/components/skeleton.dart';
 import 'package:flutter_app/components/swiper_banner.dart';
 import 'package:flutter_app/core/models/index.dart';
 import 'package:flutter_app/core/providers/winners_provider.dart';
+import 'package:flutter_app/ui/button.dart';
 import 'package:flutter_app/ui/lucky_tab_bar_delegate.dart';
 import 'package:flutter_app/utils/helper.dart';
 import 'package:flutter_app/utils/format_helper.dart';
@@ -665,6 +667,12 @@ class _WinnerListItem extends StatelessWidget {
                 ),
               ),
               SizedBox(width: 4.w),
+              Button(
+                onPressed: ()=>{
+                  AppRouter.router.push('/winners/${item.treasureId}')
+                },
+                child: Text('common.details'.tr()),
+              ),
             ],
           ),
         ),

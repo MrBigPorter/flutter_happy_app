@@ -140,7 +140,7 @@ class ViewUtils {
 /// Bind a ScrollController to track scroll progress (0.0 to 1.0)
 /// - [ctl]: The ScrollController to bind
 /// - Returns: A tuple containing:
-///  - progress: A ValueNotifier<double> that updates with scroll progress
+///  - progress: A ValueNotifier'<'double'>' that updates with scroll progress
 ///  - unbind: A VoidCallback to unbind the listener and dispose the notifier
 ///  Usage:
 ///  final (progress, unbind) = bindScrollProgress(scrollController);
@@ -176,10 +176,10 @@ class ViewUtils {
 /// Usage:
 /// final physics = platformScrollPhysics(alwaysScrollable: true);
 /// ```
-ScrollPhysics platformScrollPhysics({bool alwaysScrollable = true}) {
+ScrollPhysics platformScrollPhysics({bool alwaysScrollable = true, bool webBounce = true,}) {
   ScrollPhysics base;
   if(kIsWeb){
-    base = const ClampingScrollPhysics();
+    base = webBounce ? const BouncingScrollPhysics() : const ClampingScrollPhysics();
   } else {
     switch (defaultTargetPlatform){
       case TargetPlatform.iOS:

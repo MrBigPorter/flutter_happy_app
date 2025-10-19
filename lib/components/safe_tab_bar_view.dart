@@ -6,6 +6,7 @@ class SafeTabBarView extends StatelessWidget {
   final TabController? controller;
   final List<Widget> children;
   final Widget? skeleton;
+  final ScrollPhysics? physics;
 
   final double itemHeight;
   final int itemCount;
@@ -17,6 +18,7 @@ class SafeTabBarView extends StatelessWidget {
     this.skeleton,
     this.itemHeight = 100,
     this.itemCount = 5,
+    this.physics,
   });
 
   @override
@@ -28,6 +30,7 @@ class SafeTabBarView extends StatelessWidget {
       );
     }
     return TabBarView(
+      physics: physics?? const NeverScrollableScrollPhysics(),
       controller: controller,
       children: children,
     );

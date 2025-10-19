@@ -27,7 +27,7 @@ class LuckySliverTabBarDelegate<T> extends SliverPersistentHeaderDelegate {
   final double indicatorHeight; /// 指示器高度 indicator height
   final double indicatorMinWidth; /// 指示器最小宽度 indicator min width
   final double itemPaddingX; /// 指示器宽度扩展 padding indicator width padding
-  final EdgeInsetsGeometry labelPadding; // tab item 内边距 tab item padding
+  final EdgeInsetsGeometry? labelPadding; // tab item 内边距 tab item padding
   final TextStyle? labelStyle; // 选中 tab 文字样式 selected tab text style
   final TextStyle? unselectedLabelStyle; // 未选中 tab 文字样式 unselected tab text style
   final void Function(T item)? onTap; // tab 点击事件 tab tap event
@@ -39,10 +39,10 @@ class LuckySliverTabBarDelegate<T> extends SliverPersistentHeaderDelegate {
     this.indicatorColor,
     this.backgroundColor,
     this.padding = const EdgeInsets.symmetric(horizontal: 0.0),
-    this.labelPadding = const EdgeInsets.symmetric(horizontal: 20),
-    this.height = 50,
+    this.labelPadding,
+    this.height = 60,
     this.radius = 8,
-    this.indicatorMinWidth = 50,
+    this.indicatorMinWidth = 25,
     this.indicatorHeight = 40,
     this.itemPaddingX = 10,
     this.labelStyle,
@@ -51,6 +51,12 @@ class LuckySliverTabBarDelegate<T> extends SliverPersistentHeaderDelegate {
     required this.renderItem,
     this.progress,
   });
+
+  @override
+  double get maxExtent => height.h;
+
+  @override
+  double get minExtent => height.h;
 
   @override
   Widget build(
@@ -78,6 +84,7 @@ class LuckySliverTabBarDelegate<T> extends SliverPersistentHeaderDelegate {
         final blended = Color.lerp(Colors.transparent, base, t);
 
         return Container(
+          height: height.h,
           padding: EdgeInsets.symmetric(horizontal: 8.w).add(padding),
           alignment: Alignment.centerLeft,
           decoration: BoxDecoration(
@@ -95,7 +102,7 @@ class LuckySliverTabBarDelegate<T> extends SliverPersistentHeaderDelegate {
             controller: controller,
             isScrollable: true,
             overlayColor: WidgetStateProperty.all(Colors.transparent),
-            labelPadding: labelPadding,
+            labelPadding: EdgeInsets.symmetric(horizontal: 0),
             labelStyle: labelStyle??TextStyle(
                 fontWeight: FontWeight.w500,
                 fontSize: 14.w,
@@ -127,20 +134,23 @@ class LuckySliverTabBarDelegate<T> extends SliverPersistentHeaderDelegate {
                 onTap!(tabs[index]);
               }
             },
-            tabs: tabs.map((item) {
-              return renderItem(item);
-            }).toList(),
+            tabs:[
+              for (final item in tabs)
+               Tab(
+                  height: height.h,
+                  child: Padding(
+                    padding:  EdgeInsets.symmetric(horizontal:20.w, vertical: 0),
+                    child: renderItem(item),
+                  ),
+               )
+            ],
           ),
         );
       },
     );
   }
 
-  @override
-  double get maxExtent => height;
 
-  @override
-  double get minExtent => height;
 
   @override
   bool shouldRebuild(covariant LuckySliverTabBarDelegate old) {
@@ -152,6 +162,7 @@ class LuckySliverTabBarDelegate<T> extends SliverPersistentHeaderDelegate {
         old.height != height ||
         old.radius != radius ||
         old.indicatorMinWidth != indicatorMinWidth ||
+        old.indicatorHeight != indicatorHeight ||
         old.itemPaddingX != itemPaddingX ||
         old.labelPadding != labelPadding ||
         old.labelStyle != labelStyle ||
@@ -223,7 +234,8 @@ class _LuckyIndicatorPainter extends BoxPainter {
   void paint(Canvas canvas, Offset offset, ImageConfiguration configuration) {
     /// ✅ 计算当前 Tab 的位置与宽度 current tab position & width
     final rect = offset & configuration.size!;
-    final radius = Radius.circular(this.radius.w);
+    
+    final radius = Radius.circular(this.radius);
 
     /// ✅ 绘制圆角方块 draw rounded rectangle
     final paint = Paint()
@@ -260,11 +272,11 @@ class _LuckyIndicatorPainter extends BoxPainter {
 
     // ✅ 以中心为基准生成圆角方块 draw rounded rectangle centered
     final RRect rrect = RRect.fromRectAndCorners(
-      Rect.fromCenter(center: rect.center, width: pillW.w, height: indicatorHeight),
-      topLeft: radius.w,
-      topRight: radius.w,
-      bottomLeft: radius.w,
-      bottomRight: radius.w,
+      Rect.fromCenter(center: rect.center, width: (pillW/1.6), height: indicatorHeight.h),
+      topLeft: radius.r,
+      topRight: radius.r,
+      bottomLeft: radius.r,
+      bottomRight: radius.r,
     );
 
     canvas.drawRRect(rrect, paint);

@@ -5,7 +5,9 @@ import 'package:flutter_app/app/page/home_components/home_treasures.dart';
 import 'package:flutter_app/components/base_scaffold.dart';
 import 'package:flutter_app/components/featured_skeleton.dart';
 import 'package:flutter_app/components/home_banner.dart';
+import 'package:flutter_app/components/lucky_custom_material_indicator.dart';
 import 'package:flutter_app/components/skeleton.dart';
+import 'package:flutter_app/utils/helper.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_app/core/providers/index.dart';
@@ -36,10 +38,10 @@ class HomePage extends ConsumerWidget {
 
     return BaseScaffold(
       showBack: false,
-      body: RefreshIndicator(
+      body: LuckyCustomMaterialIndicator(
         onRefresh: onRefresh,
         child: CustomScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
+          physics: platformScrollPhysics(),
           slivers: [
             // 轮播图 Banner
             banners.when(

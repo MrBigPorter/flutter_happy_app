@@ -13,7 +13,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import 'package:flutter_app/ui/empty.dart';
-import 'package:pull_to_refresh_notification/pull_to_refresh_notification.dart';
 
 /// 商品页 Product Page
 class ProductPage extends ConsumerStatefulWidget {

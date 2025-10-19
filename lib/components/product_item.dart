@@ -8,7 +8,7 @@ import 'package:flutter_app/common.dart';
 import 'package:flutter_app/components/render_countdown.dart';
 import 'package:flutter_app/components/skeleton.dart';
 import 'package:flutter_app/ui/bubble_progress.dart';
-import 'package:flutter_app/ui/enter_button.dart';
+import 'package:flutter_app/ui/button.dart';
 import 'package:flutter_app/utils/format_helper.dart';
 import 'package:flutter_app/utils/helper.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -326,7 +326,7 @@ class ProductItem extends StatelessWidget {
 
                         // 底部间距 Bottom spacing
                         SizedBox(height: 8.w),
-                        EnterButton(
+                        Button(
                           child: Text('common.enter.now'.tr()),
                           onPressed: () {
                             /// 进入商品详情 Enter product details
