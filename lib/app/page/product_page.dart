@@ -8,6 +8,7 @@ import 'package:flutter_app/components/tabs.dart';
 import 'package:flutter_app/components/featured_skeleton.dart';
 import 'package:flutter_app/core/providers/index.dart';
 import 'package:flutter_app/core/models/index.dart';
+import 'package:flutter_app/ui/animated_list_item.dart';
 import 'package:flutter_app/utils/helper.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -147,7 +148,7 @@ class _ListItem extends StatelessWidget {
             ),
             delegate: SliverChildBuilderDelegate((context, index) {
               final item = list[index];
-              return ProductItem(data: item, imgHeight: 166, imgWidth: 166);
+              return AnimatedListItem(index: index, child: ProductItem(data: item, imgHeight: 166, imgWidth: 166));
             }, childCount: list.length),
           ),
         );

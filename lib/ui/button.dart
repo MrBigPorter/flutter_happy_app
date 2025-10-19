@@ -54,9 +54,9 @@ class _ButtonState extends State<Button> {
           border:  Colors.transparent,
           shadow: [
             BoxShadow(
-              color: ctx.bgPrimary,
-              offset: Offset(0, 4.h),
-              blurRadius: 12.w,
+              color: Colors.black12,
+              offset: Offset(0, 3.h),
+              blurRadius: 6.w,
             ),
           ],
         );
