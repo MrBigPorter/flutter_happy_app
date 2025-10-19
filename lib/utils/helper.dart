@@ -135,3 +135,36 @@ class ViewUtils {
   static double get dpr => view.devicePixelRatio;
   static Size get logicalSize => view.physicalSize / dpr;
 }
+
+
+/// Bind a ScrollController to track scroll progress (0.0 to 1.0)
+/// - [ctl]: The ScrollController to bind
+/// - Returns: A tuple containing:
+///  - progress: A ValueNotifier<double> that updates with scroll progress
+///  - unbind: A VoidCallback to unbind the listener and dispose the notifier
+///  Usage:
+///  final (progress, unbind) = bindScrollProgress(scrollController);
+///  // Use progress.value to get current scroll progress
+///  // Call unbind() when done to clean up
+///  ```
+({ValueNotifier<double> progress, VoidCallback unbind}) bindScrollProgress(ScrollController ctl){
+  final progress = ValueNotifier<double>(0.0);
+
+  void onScroll(){
+    if(!ctl.hasClients) return;
+    final pos = ctl.position;
+    final p = (pos.pixels / pos.maxScrollExtent).clamp(0.0, 1.0);
+    progress.value = p;
+  }
+
+  ctl.addListener(onScroll);
+  onScroll();
+
+  return (
+    progress: progress,
+    unbind: (){
+      ctl.removeListener(onScroll);
+      progress.dispose();
+    }
+  );
+}

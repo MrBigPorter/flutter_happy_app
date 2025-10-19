@@ -1,6 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:card_swiper/card_swiper.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_app/common.dart';
 import 'package:flutter_app/components/anime_count.dart';
@@ -40,21 +41,15 @@ class _MePageState extends ConsumerState<MePage>
   final Map<int, GlobalKey<_WinnerListState>> _listKeys = {};
   TabController? _tabController;
   final _outerCtl = ScrollController();
-  final shrinkOffsetProgress = ValueNotifier<double>(0);
+
+  late ({ValueListenable<double> progress, VoidCallback unbind}) _bp;
 
   List<ActMonthTab> _tabs = const [];
 
   @override
   void initState() {
     super.initState();
-    _outerCtl.addListener((){
-      if(!_outerCtl.hasClients) return;
-      final pos = _outerCtl.position;
-      final progress = (pos.pixels / pos.maxScrollExtent).clamp(0.0, 1.0);
-      if(progress != shrinkOffsetProgress.value){
-        shrinkOffsetProgress.value = progress;
-      }
-    });
+    _bp = bindScrollProgress(_outerCtl);
     Future.microtask(() async {
       final months = await ref.read(actMonthNumProvider.future);
       _initializeMonths(months);
@@ -63,8 +58,8 @@ class _MePageState extends ConsumerState<MePage>
 
   @override
   void dispose() {
+    _bp.unbind();
     _outerCtl.dispose();
-    shrinkOffsetProgress.dispose();
     super.dispose();
   }
 
@@ -112,7 +107,8 @@ class _MePageState extends ConsumerState<MePage>
           controller: _outerCtl,
           physics: const BouncingScrollPhysics(
             parent: AlwaysScrollableScrollPhysics(),
-          ), // ✅外层弹性
+          ),
+          // ✅外层弹性
           overscrollBehavior: OverscrollBehavior.outer,
           headerSliverBuilder: (context, _) => [
             /// ✅ 全部上半部分内容都放这里 header before tabs
@@ -122,7 +118,7 @@ class _MePageState extends ConsumerState<MePage>
               SliverPersistentHeader(
                 pinned: true,
                 delegate: LuckySliverTabBarDelegate(
-                  progress: shrinkOffsetProgress,
+                  progress: _bp.progress,
                   controller: _tabController,
                   tabs: _tabs,
                   renderItem: (t) => Tab(text: t.title),

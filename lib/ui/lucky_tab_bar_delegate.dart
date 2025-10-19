@@ -24,7 +24,8 @@ class LuckySliverTabBarDelegate<T> extends SliverPersistentHeaderDelegate {
   final Widget Function(T item) renderItem; // 渲染 tab item render tab item
   final double height; /// tab 高度 tab height
   final double radius; /// 指示器圆角 indicator radius
-  final double minWidth; /// 指示器最小宽度 indicator min width
+  final double indicatorHeight; /// 指示器高度 indicator height
+  final double indicatorMinWidth; /// 指示器最小宽度 indicator min width
   final double itemPaddingX; /// 指示器宽度扩展 padding indicator width padding
   final EdgeInsetsGeometry labelPadding; // tab item 内边距 tab item padding
   final TextStyle? labelStyle; // 选中 tab 文字样式 selected tab text style
@@ -39,9 +40,10 @@ class LuckySliverTabBarDelegate<T> extends SliverPersistentHeaderDelegate {
     this.backgroundColor,
     this.padding = const EdgeInsets.symmetric(horizontal: 0.0),
     this.labelPadding = const EdgeInsets.symmetric(horizontal: 20),
-    this.height = 40,
+    this.height = 50,
     this.radius = 8,
-    this.minWidth = 50,
+    this.indicatorMinWidth = 50,
+    this.indicatorHeight = 40,
     this.itemPaddingX = 10,
     this.labelStyle,
     this.unselectedLabelStyle,
@@ -68,13 +70,27 @@ class LuckySliverTabBarDelegate<T> extends SliverPersistentHeaderDelegate {
       builder: (_,t,___){
 
         final base = backgroundColor ?? context.bgPrimary;
-        final t = Curves.easeOut.transform((progress?.value??defaultProgress.value).clamp(0.0, 1.0));
+        double t = Curves.easeOut.transform((progress?.value??defaultProgress.value).clamp(0.0, 1.0));
+
+        if(t < 0.9999){
+          t = 0;
+        }
         final blended = Color.lerp(Colors.transparent, base, t);
 
         return Container(
-          color: blended,
           padding: EdgeInsets.symmetric(horizontal: 8.w).add(padding),
           alignment: Alignment.centerLeft,
+          decoration: BoxDecoration(
+            color: blended,
+            boxShadow: [
+              if (t >= 1)
+                BoxShadow(
+                  color: Colors.black.withAlpha(15),
+                  blurRadius: 10.w,
+                  offset: Offset(0, 2.w),
+                ),
+            ]
+          ),
           child: TabBar(
             controller: controller,
             isScrollable: true,
@@ -96,7 +112,8 @@ class LuckySliverTabBarDelegate<T> extends SliverPersistentHeaderDelegate {
               controller: controller!,
               height: height,
               radius: radius,
-              minWidth: minWidth,
+              indicatorMinWidth: indicatorMinWidth,
+              indicatorHeight: indicatorHeight,
               itemPaddingX: itemPaddingX,
             ),
             dividerColor: Colors.transparent,
@@ -134,7 +151,7 @@ class LuckySliverTabBarDelegate<T> extends SliverPersistentHeaderDelegate {
         old.indicatorColor != indicatorColor ||
         old.height != height ||
         old.radius != radius ||
-        old.minWidth != minWidth ||
+        old.indicatorMinWidth != indicatorMinWidth ||
         old.itemPaddingX != itemPaddingX ||
         old.labelPadding != labelPadding ||
         old.labelStyle != labelStyle ||
@@ -148,7 +165,8 @@ class _LuckyIndicator extends Decoration {
   final TabController controller;
   final double height;
   final double radius;
-  final double minWidth;
+  final double indicatorMinWidth;
+  final double indicatorHeight;
   final double itemPaddingX;
 
   const _LuckyIndicator({
@@ -156,7 +174,8 @@ class _LuckyIndicator extends Decoration {
     required this.controller,
     required this.height,
     required this.radius,
-    required this.minWidth,
+    required this.indicatorMinWidth,
+    required this.indicatorHeight,
     required this.itemPaddingX,
   });
 
@@ -167,7 +186,8 @@ class _LuckyIndicator extends Decoration {
       controller: controller,
       height: height,
       radius: radius,
-      minWidth: minWidth,
+      indicatorMinWidth: indicatorMinWidth,
+      indicatorHeight: indicatorHeight,
       itemPaddingX: itemPaddingX,
     );
   }
@@ -179,7 +199,8 @@ class _LuckyIndicatorPainter extends BoxPainter {
   final TabController controller;
   final double height;
   final double radius;
-  final double minWidth;
+  final double indicatorMinWidth;
+  final double indicatorHeight;
   final double itemPaddingX;
 
   _LuckyIndicatorPainter({
@@ -187,7 +208,8 @@ class _LuckyIndicatorPainter extends BoxPainter {
     required this.controller,
     required this.height,
     required this.radius,
-    required this.minWidth,
+    required this.indicatorMinWidth,
+    required this.indicatorHeight,
     required this.itemPaddingX,
   });
 
@@ -234,11 +256,11 @@ class _LuckyIndicatorPainter extends BoxPainter {
     final baseW = (progress <= 0.5)
         ? (_fromW ?? rect.width)
         : (_toW ?? rect.width);
-    final pillW = (baseW + itemPaddingX).clamp(minWidth, double.infinity);
+    final pillW = (baseW + itemPaddingX).clamp(indicatorMinWidth, double.infinity);
 
     // ✅ 以中心为基准生成圆角方块 draw rounded rectangle centered
     final RRect rrect = RRect.fromRectAndCorners(
-      Rect.fromCenter(center: rect.center, width: pillW.w, height: height),
+      Rect.fromCenter(center: rect.center, width: pillW.w, height: indicatorHeight),
       topLeft: radius.w,
       topRight: radius.w,
       bottomLeft: radius.w,
