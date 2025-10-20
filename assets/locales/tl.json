@@ -290,7 +290,7 @@
   "after-entering": "Ang bawat redemption code ay maaari lamang playingin ng isang beses at hindi maaaring i-withdraw.",
   "please-check": "Pagkatapos ng matagumpay na pag-redeem, maaari mong tingnan ang iyong luck wallet at Lucky Coins records batay sa uri ng code.",
   "if-service2": "Para sa tulong, makipag-ugnayan sa LUCK customer service: +639194672626.",
-  "common.active.raffle": "Mayroon kang {{number}} aktibong raffle.",
+  "common.active.raffle": "Mayroon kang {number} aktibong raffle.",
   "draw-team": "Lucky Draw Team",
   "team-list": "Listahan ng Koponan",
   "confirm-password-0": "Kumpirmahin ang Password",

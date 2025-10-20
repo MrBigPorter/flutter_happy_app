@@ -12,7 +12,13 @@ class Button extends StatefulWidget {
   final bool loading;
   final bool noPressAnimation;
   final double height;
+  final double? width;
+  final Color? backgroundColor;
+  final Color? foregroundColor;
+  final Color? borderColor;
+  final List<BoxShadow>? boxShadow;
   final EdgeInsetsGeometry padding;
+
   final double radius;
   final double gap;
   final Widget? leading;
@@ -29,6 +35,7 @@ class Button extends StatefulWidget {
     this.loading = false,
     this.noPressAnimation = false,
     this.height = 48,
+    this.width,
     this.padding = const EdgeInsets.symmetric(horizontal: 16),
     this.radius = 8,
     this.gap = 8,
@@ -36,6 +43,10 @@ class Button extends StatefulWidget {
     this.trailing,
     this.customButtonStyle,
     this.textStyle,
+    this.backgroundColor,
+    this.foregroundColor,
+    this.boxShadow,
+    this.borderColor,
   });
 
   @override
@@ -55,8 +66,8 @@ class _ButtonState extends State<Button> {
           shadow: [
             BoxShadow(
               color: Colors.black12,
-              offset: Offset(0, 3.h),
-              blurRadius: 6.w,
+              offset: Offset(0, 2),
+              blurRadius: 6,
             ),
           ],
         );
@@ -76,7 +87,7 @@ class _ButtonState extends State<Button> {
           shadow: [
             BoxShadow(
               color: ctx.bgDisabled,
-              offset: Offset(0, 5),
+              offset: Offset(0, 2),
               blurRadius: 6,
             ),
           ],
@@ -89,7 +100,7 @@ class _ButtonState extends State<Button> {
           shadow: widget.customButtonStyle?.shadow ?? [
             BoxShadow(
               color: ctx.bgDisabled,
-              offset: Offset(0, 5),
+              offset: Offset(0, 2),
               blurRadius: 6,
             ),
           ],
@@ -108,10 +119,10 @@ class _ButtonState extends State<Button> {
         ? 1.0
         : (_isPressed ? 0.92 : 1.0);
 
-    final bg = effectiveDisabled ? theme.bg.withAlpha(180) : theme.bg;
-    final fg = theme.fg;
-    final border = theme.border;
-    final shadow = effectiveDisabled ? const <BoxShadow>[] : theme.shadow;
+    final bg = effectiveDisabled ? widget.backgroundColor ?? theme.bg.withAlpha(180) : theme.bg;
+    final fg = widget.foregroundColor??theme.fg;
+    final border = widget.borderColor??theme.border;
+    final shadow = effectiveDisabled ? const <BoxShadow>[] : widget.boxShadow??theme.shadow;
 
     // Default text style
     final defaultTextStyle = TextStyle(
@@ -158,6 +169,7 @@ class _ButtonState extends State<Button> {
       duration: const Duration(milliseconds: 150),
       curve: Curves.easeOut,
       padding: widget.padding,
+      width: widget.width?.w,
       height: widget.height.w,
       decoration: BoxDecoration(
         color: bg,
