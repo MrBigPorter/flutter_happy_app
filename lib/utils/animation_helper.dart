@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/animation.dart';
 import 'package:flutter/cupertino.dart';
@@ -121,26 +122,63 @@ class ScrollSpeedTracker extends ChangeNotifier {
   // private constructor
   ScrollSpeedTracker._();
 
-  double _lastPixels = 0;
-  DateTime _latestTime = DateTime.now();
-  double _speed = 0; // pixels per millisecond
 
-  double get speed => _speed;
+  //当前滚动速度 100 => 200 => 300
+  double speed = 0; // pixels per millisecond
+  // 加速度 500 => 700 => 900 =  200 200 200
+  // 900 600 400 100 = -300 -200 -300
+  // 当前加速度（速度变化趋势）
+  double accel = 0; // pixels per millisecond squared
 
-  void update(double newPixels){
-    final now = DateTime.now();
-    final dt = now.difference(_latestTime).inMilliseconds / 1000.0;
+  double _lastPixels = 0.0;
+  double _lastSpeed = 0.0;
+   int _lastTime = DateTime.now().millisecondsSinceEpoch;
 
-    if(dt > 0){
-      // calculate speed, pixels per second, absolute value
-      //speed = (当前位置 - 上一位置) / 时间差
-      //在连续两帧之间记录
-      _speed = ((newPixels - _lastPixels).abs() / dt);
-      // update last values
-      _lastPixels = newPixels;
-      _latestTime = now;
+  int get direction{
+    if(speed > 0.5) return 1; // down go to the bottom
+    if(speed < -0.5) return -1; // up go to the top
+    return 0; // stationary
+  }
+
+
+  void update(ScrollNotification n){
+      final now = DateTime.now().millisecondsSinceEpoch;
+      final dt = (now - _lastTime).clamp(1, 1000); // in milliseconds
+     _lastTime = now;
+
+     final double delta = n.metrics.pixels - _lastPixels;
+     _lastPixels = n.metrics.pixels;
+
+     //  没有滚动或者就1px 比如 10=》1.01
+     if(delta.abs() < 0.1){
+       // 惯性结束后让速度缓慢归零（防止残留）
+       if(speed.abs() > 0.1){
+         speed *= 0.9; // friction
+         notifyListeners();
+       }
+       return;
+     }
+
+     //计算真实速度 pixels per millisecond
+     final newSpeed = delta / dt; // pixels per millisecond
+      //计算加速度 pixels per millisecond squared
+      accel = (newSpeed - _lastSpeed) / dt; // pixels per millisecond
+      _lastSpeed = newSpeed;
+
+      // notify only if speed changed significantly
+      speed = newSpeed;
+
       notifyListeners();
-    }
+  }
+
+  /// 手动重置（切换页面或重载列表时用）
+  void reset(){
+    speed = 0;
+    accel = 0;
+    _lastPixels = 0.0;
+    _lastSpeed = 0.0;
+    _lastTime = DateTime.now().millisecondsSinceEpoch;
+    notifyListeners();
   }
 }
 
@@ -200,5 +238,60 @@ class ScrollDirectionTracker extends ChangeNotifier {
       }
     }
     _lastPixels = newPixels;
+  }
+}
+
+/// Velocity Wave Delay
+/// 根据滚动速度和索引计算动画延迟时间
+/// 速度越快，延迟越小
+/// 延迟随索引呈波动变化，观感更自然
+/// 可选抖动避免同步
+/// example:
+/// int delayMs = VelocityWaveDelay.compute(
+///  index: itemIndex,
+///  baseMs: 50,
+///  speed: scrollSpeed,
+///  speedNorm: 1000.0,
+///  waveDivisor: 2.0,
+///  waveAmp: 0.5,
+///  waveBias: 0.5,
+///  jitterMs: 10.0,
+///  );
+///  note: remember to import 'dart:math' as math;
+class VelocityWaveDelay {
+  static int compute({
+    required int index,
+    required int baseMs,
+    required double speed,
+
+    // 速度归一化分母（≈多快算“很快”）
+    double speedNorm = 1000.0,
+    // 波密度：越大越平缓
+    double waveDivisor = 2.0,
+    // 波幅：0~1，越大起伏越明显
+    double waveAmp = 0.5,
+    // 波偏置：通常保持 0.5，让结果落在 0~1
+    double waveBias = 0.5,
+    // 可选：给每个 item 加一点确定性抖动，避免同步
+    double jitterMs = 0.0,
+}){
+    // 速度越大 → 延迟越小
+    //// 归一化速度 normalized speed
+    final s = ( speed.abs() / speedNorm).clamp(0.0, 1.0);
+    final delayFactor = 1.0 - s; // 速度越大，延迟因子越小
+
+    // 波动影响 wave effect
+    //// 正弦波：让延迟随 index 起伏，观感更自然
+    final waveFactor = (math.sin(index / waveDivisor) * waveAmp + waveBias).clamp(0.0, 1.0);
+    // 基础延迟 × 速度缩放 × 波形扰动
+    final base = index * baseMs * delayFactor * waveFactor;
+
+    final jitter = jitterMs == 0.0
+        ? 0.0
+        : ((index * 13) % 7) / 6.0 * jitterMs;
+
+    final ms = base + jitter;
+    return ms.isFinite ? ms.round() : 0;
+
   }
 }

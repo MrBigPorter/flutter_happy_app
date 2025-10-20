@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_app/utils/animation_helper.dart';
@@ -62,31 +63,23 @@ class _AnimatedListItemState extends State<AnimatedListItem>
 
     // 获取滚动速度 // get scroll speed
     final speed = ScrollSpeedTracker.instance.speed;
-    final dir = ScrollDirectionTracker.instance.direction;
-    final f = mapSpeedToFactor(speed);
-    // 根据速度调整动画时长 // adjust animation duration based on speed
-    Duration effectiveDuration = Duration(
-      milliseconds: (400 * f).toInt().clamp(80, 400),
-    );
+    final dir =  ScrollSpeedTracker.instance.direction;
+    final accel = ScrollSpeedTracker.instance.accel;
 
     //  速度越快 → 位移越小 // the faster the speed, the smaller the offset
-     final effectiveOffsetY = dir == ScrollDirection.down
-        ? widget.beginOffsetY * (1.0 - f) // downwards to up
-        : -widget.beginOffsetY * (1.0 - f); // upwards to down
-    // final offsetY = widget.beginOffsetY * f;
-    // 速度越快 → 透明度起始值越高 // the faster the speed, the higher the starting opacity
-    final opacityBegin = widget.fade ? (0.05 + 0.2 * f) : 1.0;
+    // -1 ≤ dir ≤ 1
+     final offsetY = widget.beginOffsetY * dir;
+     final duration = speed.abs() > 0.5 ? const Duration(milliseconds: 200) : const Duration(milliseconds: 400);
+
+     final curve = accel < 0 ? Curves.easeOutCubic : Curves.easeInOut;
 
     // 创建节拍
     _controller = AnimationController(
       vsync: this,
-      duration: effectiveDuration,
+      duration: duration,
     );
 
-    // 如果速度太快，直接跳到终点 // if speed is too fast, jump to end state
-    if(effectiveDuration == Duration.zero){
-      _controller.value = 1.0;
-    }
+
 
     _syncSub = AnimationSyncManager.instance.stream.listen((play){
       if(play){
@@ -111,27 +104,30 @@ class _AnimatedListItemState extends State<AnimatedListItem>
 
     // 定义透明度动画 0 => 1
     _opacityAnimation = Tween(
-      begin: widget.fade ? opacityBegin : 1.0,
+      begin: widget.fade ? 0.05 : 1.0,
       end: 1.0,
-    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
+    ).animate(CurvedAnimation(parent: _controller, curve: curve));
 
     // 定义位移动画 20 => 0
     _offsetAnimation = Tween(
-      begin: widget.slide ? effectiveOffsetY : 0.0,
+      begin: widget.slide ? offsetY : 0.0,
       end: 0.0,
-    ).animate(CurvedAnimation(parent: _controller, curve: widget.curve));
+    ).animate(CurvedAnimation(parent: _controller, curve: curve));
 
     // 定义缩放动画 0.95 => 1.0
     _scaleAnimation = Tween(
       begin: widget.scale ? widget.beginScale : 1.0,
       end: 1.0,
-    ).animate(CurvedAnimation(parent: _controller, curve: widget.curve));
+    ).animate(CurvedAnimation(parent: _controller, curve: curve));
 
     if (!widget.playWhenVisible) {
       // 如果有延迟，设置定时器启动动画 if there's a delay, set a timer to start the animation
+
+      final delayMs = VelocityWaveDelay.compute(index: widget.index, baseMs: widget.delayPerItem.inMilliseconds, speed: ScrollSpeedTracker.instance.speed);
+
       Future.delayed(
         Duration(
-          milliseconds: widget.index * widget.delayPerItem.inMilliseconds,
+          milliseconds: delayMs,
         ),
         _tryPlay,
       );
@@ -160,6 +156,12 @@ class _AnimatedListItemState extends State<AnimatedListItem>
     PageMotionDirection.instance.unregister(_controller);
     _syncSub.cancel();
     super.dispose();
+  }
+
+  @override
+  void didUpdateWidget(covariant AnimatedListItem oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _tryPlay();
   }
 
   // map speed to factor between 0.0 and 1.0

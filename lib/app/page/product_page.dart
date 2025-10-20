@@ -74,8 +74,7 @@ class _ProductPageState extends ConsumerState<ProductPage> {
           onRefresh: onRefresh,
           child: NotificationListener<ScrollNotification>(
             onNotification: (n){
-              ScrollSpeedTracker.instance.update(n.metrics.pixels);
-              ScrollDirectionTracker.instance.update(n.metrics.pixels);
+              ScrollSpeedTracker.instance.update(n);
               return false;
             },
             child: CustomScrollView(
