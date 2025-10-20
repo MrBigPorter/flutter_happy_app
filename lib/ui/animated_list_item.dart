@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:math';
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_app/utils/animation_helper.dart';
