@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/animation.dart';
+import 'package:flutter/cupertino.dart';
 
 /// Animation Sync Manager
 /// used to sync multiple animations
@@ -97,4 +98,107 @@ class PageMotionDirection {
     _controllers.clear();
   }
 
+}
+
+/// Scroll Speed Tracker
+/// used to track scroll speed in pixels per second
+/// singleton class
+/// use update(newPixels) to update the scroll position
+/// use speed getter to get the current scroll speed
+/// example:
+/// ScrollSpeedTracker.instance.update(newPixels);
+/// double currentSpeed = ScrollSpeedTracker.instance.speed;
+/// note: remember to import 'package:flutter/foundation.dart';
+/// this class extends ChangeNotifier, so you can listen to changes
+/// for example, using a ChangeNotifierProvider in Riverpod or Provider package
+/// you can also use addListener() method to listen to changes
+/// ScrollSpeedTracker.instance.addListener(() {
+///   double currentSpeed = ScrollSpeedTracker.instance.speed;
+///   // do something with currentSpeed
+class ScrollSpeedTracker extends ChangeNotifier {
+  // singleton instance
+  static final instance = ScrollSpeedTracker._();
+  // private constructor
+  ScrollSpeedTracker._();
+
+  double _lastPixels = 0;
+  DateTime _latestTime = DateTime.now();
+  double _speed = 0; // pixels per millisecond
+
+  double get speed => _speed;
+
+  void update(double newPixels){
+    final now = DateTime.now();
+    final dt = now.difference(_latestTime).inMilliseconds / 1000.0;
+
+    if(dt > 0){
+      // calculate speed, pixels per second, absolute value
+      //speed = (当前位置 - 上一位置) / 时间差
+      //在连续两帧之间记录
+      _speed = ((newPixels - _lastPixels).abs() / dt);
+      // update last values
+      _lastPixels = newPixels;
+      _latestTime = now;
+      notifyListeners();
+    }
+  }
+}
+
+/// Scroll Direction Tracker
+/// used to track scroll direction (up or down)
+/// singleton class
+/// use update(newPixels) to update the scroll position
+/// use direction getter to get the current scroll direction
+/// example:
+/// ScrollDirectionTracker.instance.update(newPixels);
+/// ScrollDirection dir = ScrollDirectionTracker.instance.direction;
+/// note: remember to import 'package:flutter/foundation.dart';
+/// this class extends ChangeNotifier, so you can listen to changes
+/// for example, using a ChangeNotifierProvider in Riverpod or Provider package
+/// you can also use addListener() method to listen to changes
+/// ScrollDirectionTracker.instance.addListener(() {
+///   ScrollDirection dir = ScrollDirectionTracker.instance.direction;
+///   // do something with dir
+enum ScrollDirection {
+  up,
+  down,
+}
+
+class ScrollDirectionTracker extends ChangeNotifier {
+  // singleton instance
+  static final instance = ScrollDirectionTracker._();
+  // private constructor
+  ScrollDirectionTracker._();
+
+  double _lastPixels = 0;
+  ScrollDirection _direction = ScrollDirection.down;
+  //  缓冲距离累计 buffer distance accumulation
+  double _bufferDistance = 0.0;
+  //  阈值，超过该值才改变方向 threshold, only change direction if exceeded
+  static const double _threshold = 60.0;
+
+  ScrollDirection get direction => _direction;
+
+  void update(double newPixels){
+    final delta = newPixels - _lastPixels;
+    print("ScrollDirectionTracker update: delta=$delta");
+    final newDirection = delta > 0 ? ScrollDirection.down : ScrollDirection.up;
+    // direction changed
+    if(newDirection != _direction){
+      // accumulate buffer distance
+      _bufferDistance += delta.abs();
+
+      // 超过阈值才改变方向 Only change direction if exceeded threshold
+      if(_bufferDistance >= _threshold){
+        // change direction
+        _direction = newDirection;
+        _bufferDistance = 0.0;
+        notifyListeners();
+      }else{
+        // 如果方向一致，则清零缓冲 If direction is consistent, reset buffer
+        _bufferDistance = 0;
+      }
+    }
+    _lastPixels = newPixels;
+  }
 }

@@ -53,17 +53,41 @@ class _AnimatedListItemState extends State<AnimatedListItem>
 
   late final StreamSubscription<bool> _syncSub;
 
+
   @override
   void initState() {
     super.initState();
 
     _id = 'animated-list-item-${widget.index}-${widget.key ?? UniqueKey()}';
 
+    // 获取滚动速度 // get scroll speed
+    final speed = ScrollSpeedTracker.instance.speed;
+    final dir = ScrollDirectionTracker.instance.direction;
+    final f = mapSpeedToFactor(speed);
+    // 根据速度调整动画时长 // adjust animation duration based on speed
+    Duration effectiveDuration = Duration(
+      milliseconds: (400 * f).toInt().clamp(80, 400),
+    );
+
+    //  速度越快 → 位移越小 // the faster the speed, the smaller the offset
+     final effectiveOffsetY = dir == ScrollDirection.down
+        ? widget.beginOffsetY * (1.0 - f) // downwards to up
+        : -widget.beginOffsetY * (1.0 - f); // upwards to down
+    // final offsetY = widget.beginOffsetY * f;
+    // 速度越快 → 透明度起始值越高 // the faster the speed, the higher the starting opacity
+    final opacityBegin = widget.fade ? (0.05 + 0.2 * f) : 1.0;
+
     // 创建节拍
     _controller = AnimationController(
       vsync: this,
-      duration: widget.duration,
+      duration: effectiveDuration,
     );
+
+    // 如果速度太快，直接跳到终点 // if speed is too fast, jump to end state
+    if(effectiveDuration == Duration.zero){
+      _controller.value = 1.0;
+    }
+
     _syncSub = AnimationSyncManager.instance.stream.listen((play){
       if(play){
         _tryPlay();
@@ -87,13 +111,13 @@ class _AnimatedListItemState extends State<AnimatedListItem>
 
     // 定义透明度动画 0 => 1
     _opacityAnimation = Tween(
-      begin: widget.fade ? 0.1 : 1.0,
+      begin: widget.fade ? opacityBegin : 1.0,
       end: 1.0,
     ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
 
     // 定义位移动画 20 => 0
     _offsetAnimation = Tween(
-      begin: widget.slide ? widget.beginOffsetY : 0.0,
+      begin: widget.slide ? effectiveOffsetY : 0.0,
       end: 0.0,
     ).animate(CurvedAnimation(parent: _controller, curve: widget.curve));
 
@@ -138,6 +162,17 @@ class _AnimatedListItemState extends State<AnimatedListItem>
     super.dispose();
   }
 
+  // map speed to factor between 0.0 and 1.0
+  double mapSpeedToFactor(double speed){
+    const double minSpeed = 0.0;
+    // if speed >= maxSpeed, return 0.0
+    const double maxSpeed = 20000.0;
+    double x = (1.0 - (speed - minSpeed) / (maxSpeed - minSpeed)).clamp(0.0, 1.0);
+    // use easeInCubic for better effect
+    return (1.0 - Curves.easeInCubic.transform(x));
+  }
+
+  // try to play the animation
   void _tryPlay() {
     if (_played) return;
     _played = true;

@@ -9,6 +9,7 @@ import 'package:flutter_app/components/featured_skeleton.dart';
 import 'package:flutter_app/core/providers/index.dart';
 import 'package:flutter_app/core/models/index.dart';
 import 'package:flutter_app/ui/animated_list_item.dart';
+import 'package:flutter_app/utils/animation_helper.dart';
 import 'package:flutter_app/utils/helper.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -71,49 +72,56 @@ class _ProductPageState extends ConsumerState<ProductPage> {
       showBack: false,
       body: LuckyCustomMaterialIndicator(
           onRefresh: onRefresh,
-          child: CustomScrollView(
-            controller: scrollController,
-            physics: const BouncingScrollPhysics(),
-            slivers: [
-              /// Tabs（吸顶固定）
-              categoryList.when(
-                data: (data) => StickyHeader.pinned(
-                  minHeight: 70,
-                  maxHeight: 70,
-                  builder: (context, info) {
-                    return AnimatedContainer(
-                      duration: const Duration(milliseconds: 120),
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                          color: context.bgPrimary.withAlpha(
-                            (255 * info.progress + 10).clamp(0, 255).toInt(),
-                          )
-                      ),
-                      child: Tabs<ProductCategoryItem>(
-                        data: data,
-                        activeItem: active,
-                        parentHeight: 70,
-                        renderItem: (item) => Center(child: Text(item.name)),
-                        onChangeActive: (item) {
-                          ref.read(activeCategoryProvider.notifier).state = item;
-                          if (scrollController.hasClients &&
-                              scrollProgress.value > info.shrinkOffset) {
-                            scrollController.jumpTo(info.shrinkOffset - 70);
-                          }
-                        },
-                      ),
-                    );
-                  },
+          child: NotificationListener<ScrollNotification>(
+            onNotification: (n){
+              ScrollSpeedTracker.instance.update(n.metrics.pixels);
+              ScrollDirectionTracker.instance.update(n.metrics.pixels);
+              return false;
+            },
+            child: CustomScrollView(
+              controller: scrollController,
+              physics: const BouncingScrollPhysics(),
+              slivers: [
+                /// Tabs（吸顶固定）
+                categoryList.when(
+                  data: (data) => StickyHeader.pinned(
+                    minHeight: 70,
+                    maxHeight: 70,
+                    builder: (context, info) {
+                      return AnimatedContainer(
+                        duration: const Duration(milliseconds: 120),
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                            color: context.bgPrimary.withAlpha(
+                              (255 * info.progress + 10).clamp(0, 255).toInt(),
+                            )
+                        ),
+                        child: Tabs<ProductCategoryItem>(
+                          data: data,
+                          activeItem: active,
+                          parentHeight: 70,
+                          renderItem: (item) => Center(child: Text(item.name)),
+                          onChangeActive: (item) {
+                            ref.read(activeCategoryProvider.notifier).state = item;
+                            if (scrollController.hasClients &&
+                                scrollProgress.value > info.shrinkOffset) {
+                              scrollController.jumpTo(info.shrinkOffset - 70);
+                            }
+                          },
+                        ),
+                      );
+                    },
+                  ),
+                  error: (_, __) =>
+                  const SliverToBoxAdapter(child: FeaturedSkeleton()),
+                  loading: () =>
+                  const SliverToBoxAdapter(child: FeaturedSkeleton()),
                 ),
-                error: (_, __) =>
-                const SliverToBoxAdapter(child: FeaturedSkeleton()),
-                loading: () =>
-                const SliverToBoxAdapter(child: FeaturedSkeleton()),
-              ),
 
-              /// 商品列表
-              _ListItem(products: products),
-            ],
+                /// 商品列表
+                _ListItem(products: products),
+              ],
+            ),
           ),
       ),
     );
