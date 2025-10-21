@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_app/common.dart';
+import 'package:flutter_app/ui/button/button_size.dart';
+import 'package:flutter_app/ui/button/variant.dart';
+import 'package:flutter_app/ui/button/button_visual.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
-enum ButtonVariant { secondary, primary, error,custom }
+import 'button_theme.dart';
 
 class Button extends StatefulWidget {
   final VoidCallback? onPressed;
@@ -11,20 +13,22 @@ class Button extends StatefulWidget {
   final bool disabled;
   final bool loading;
   final bool noPressAnimation;
-  final double height;
+  final double? height;
   final double? width;
   final Color? backgroundColor;
   final Color? foregroundColor;
   final Color? borderColor;
   final List<BoxShadow>? boxShadow;
-  final EdgeInsetsGeometry padding;
+  final double? paddingX;
+  final double? paddingY;
 
-  final double radius;
-  final double gap;
+  final double? radius;
+  final double? gap;
   final Widget? leading;
   final Widget? trailing;
   final ButtonVisual? customButtonStyle;
   final TextStyle? textStyle;
+  final String size;
 
   const Button({
     super.key,
@@ -34,11 +38,12 @@ class Button extends StatefulWidget {
     this.disabled = false,
     this.loading = false,
     this.noPressAnimation = false,
-    this.height = 48,
+    this.height,
     this.width,
-    this.padding = const EdgeInsets.symmetric(horizontal: 16),
-    this.radius = 8,
-    this.gap = 8,
+    this.paddingX,
+    this.paddingY,
+    this.radius,
+    this.gap,
     this.leading,
     this.trailing,
     this.customButtonStyle,
@@ -47,6 +52,7 @@ class Button extends StatefulWidget {
     this.foregroundColor,
     this.boxShadow,
     this.borderColor,
+    this.size = 'small',
   });
 
   @override
@@ -56,62 +62,20 @@ class Button extends StatefulWidget {
 class _ButtonState extends State<Button> {
   bool _isPressed = false;
 
-  ButtonVisual _resolveTheme(BuildContext ctx, ButtonVariant v) {
-    switch (v) {
-      case ButtonVariant.primary:
-        return ButtonVisual(
-          bg: ctx.buttonPrimaryBg,
-          fg: ctx.textWhite,
-          border:  Colors.transparent,
-          shadow: [
-            BoxShadow(
-              color: Colors.black12,
-              offset: Offset(0, 2),
-              blurRadius: 6,
-            ),
-          ],
-        );
-      case ButtonVariant.error:
-        return ButtonVisual(
-          bg: ctx.buttonPrimaryErrorBg,
-          fg: ctx.textWhite,
-          border: const Color(0x1FFFFFFF),
-          shadow: [
-          ],
-        );
-      case ButtonVariant.secondary:
-        return ButtonVisual(
-          bg: ctx.buttonSecondaryBg,
-          fg: ctx.textSecondary700,
-          border: ctx.buttonSecondaryBorder,
-          shadow: [
-            BoxShadow(
-              color: ctx.bgDisabled,
-              offset: Offset(0, 2),
-              blurRadius: 6,
-            ),
-          ],
-        );
-      case ButtonVariant.custom:
-        return ButtonVisual(
-          bg: widget.customButtonStyle?.bg ?? ctx.buttonSecondaryBg,
-          fg: widget.customButtonStyle?.fg ?? ctx.textSecondary700,
-          border: widget.customButtonStyle?.border ?? ctx.buttonSecondaryBorder,
-          shadow: widget.customButtonStyle?.shadow ?? [
-            BoxShadow(
-              color: ctx.bgDisabled,
-              offset: Offset(0, 2),
-              blurRadius: 6,
-            ),
-          ],
-        );
-    }
-  }
-
 
   @override
   Widget build(BuildContext context) {
-    final theme = _resolveTheme(context, widget.variant);
+    final sizeValue = resolveButtonSize(widget.size);
+
+
+    final H = widget.height ?? sizeValue.height.w;
+    final W = widget.width?.w;
+    final R = widget.radius ?? sizeValue.radius.w;
+    final pX = widget.paddingX ?? sizeValue.padding.horizontal.w;
+    final pY = widget.paddingY ?? sizeValue.padding.vertical.w;
+    final G = widget.gap ?? 8.w;
+
+    final theme = ButtonThemeResolver.resolve(context, widget.variant, widget.customButtonStyle);
     final effectiveDisabled =
         widget.disabled || widget.loading || widget.onPressed == null;
 
@@ -119,7 +83,7 @@ class _ButtonState extends State<Button> {
         ? 1.0
         : (_isPressed ? 0.92 : 1.0);
 
-    final bg = effectiveDisabled ? widget.backgroundColor ?? theme.bg.withAlpha(180) : theme.bg;
+    final bg = effectiveDisabled ? (widget.backgroundColor?.withValues(alpha: 0.8) ?? theme.bg.withValues(alpha: 0.8)) : (widget.backgroundColor??theme.bg);
     final fg = widget.foregroundColor??theme.fg;
     final border = widget.borderColor??theme.border;
     final shadow = effectiveDisabled ? const <BoxShadow>[] : widget.boxShadow??theme.shadow;
@@ -127,7 +91,7 @@ class _ButtonState extends State<Button> {
     // Default text style
     final defaultTextStyle = TextStyle(
       color: fg,
-      fontSize: 14.w,
+      fontSize: sizeValue.fontSize.w,
       fontWeight: FontWeight.w800,
     );
     //  Merge with widget text style if provided
@@ -142,7 +106,7 @@ class _ButtonState extends State<Button> {
         if (widget.loading)
           Padding(
             padding: EdgeInsets.only(
-              right: widget.child is SizedBox ? 0 : widget.gap.w,
+              right: widget.child is SizedBox ? 0 : G,
             ),
             child: SizedBox(
               width: 20.w,
@@ -152,14 +116,14 @@ class _ButtonState extends State<Button> {
           ),
         if (widget.leading != null) ...[
           widget.leading!,
-          SizedBox(width: widget.gap.w),
+          SizedBox(width: G),
         ],
         DefaultTextStyle.merge(
           style: effectiveTextStyle,
           child: widget.child,
         ),
         if (widget.trailing != null) ...[
-          SizedBox(width: widget.gap.w),
+          SizedBox(width: G),
           widget.trailing!,
         ],
       ],
@@ -168,12 +132,12 @@ class _ButtonState extends State<Button> {
     final buttonCore = AnimatedContainer(
       duration: const Duration(milliseconds: 150),
       curve: Curves.easeOut,
-      padding: widget.padding,
-      width: widget.width?.w,
-      height: widget.height.w,
+      padding: EdgeInsets.symmetric(horizontal: pX, vertical: pY),
+      width: W,
+      height: H,
       decoration: BoxDecoration(
         color: bg,
-        borderRadius: BorderRadius.circular(widget.radius.w),
+        borderRadius: BorderRadius.circular(R),
         border: Border.all(color: border, width: 1.w),
         boxShadow: shadow,
       ),
@@ -192,20 +156,34 @@ class _ButtonState extends State<Button> {
         child: InkWell(
           splashFactory: NoSplash.splashFactory,
           highlightColor: Colors.transparent,
-          borderRadius: BorderRadius.circular(widget.radius.w),
+          borderRadius: BorderRadius.circular(R),
           onTap: () async{
             await Future.delayed(const Duration(milliseconds: 50));
             if (!effectiveDisabled) {
               widget.onPressed?.call();
             }
           },
-          onHighlightChanged: ((v){
+          onTapDown: (_){
             Future.delayed(const Duration(milliseconds: 40),(){
               setState(() {
-                _isPressed = v;
+                _isPressed = true;
               });
             });
-          }),
+          },
+          onTapCancel: (){
+            Future.delayed(const Duration(milliseconds: 40),(){
+              setState(() {
+                _isPressed = false;
+              });
+            });
+          },
+          onTapUp: (_){
+            Future.delayed(const Duration(milliseconds: 40),(){
+              setState(() {
+                _isPressed = false;
+              });
+            });
+          },
           child: buttonCore,
         ),
       ),
@@ -213,32 +191,3 @@ class _ButtonState extends State<Button> {
   }
 }
 
-/// Button visual style
-/// Used for custom button variant
-/// bg: background color
-/// fg: foreground color (text and icon)
-/// border: border color
-/// shadow: box shadow
-/// Example:
-/// ```dart
-/// ButtonVisual(
-///  bg: Colors.blue,
-///  fg: Colors.white,
-///  border: Colors.blueAccent,
-///  shadow: [BoxShadow(color: Colors.black26, blurRadius: 4)],
-///  );
-/// ```
-/// Used in Button widget
-class ButtonVisual {
-  final Color bg;
-  final Color fg;
-  final Color border;
-  final List<BoxShadow> shadow;
-
-  ButtonVisual({
-    required this.bg,
-    required this.fg,
-    required this.border,
-    required this.shadow,
-  });
-}

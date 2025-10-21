@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:math';
 import 'package:flutter_app/common.dart';
+import 'package:flutter_app/core/models/coupon_threshold_data.dart';
 
 import 'package:flutter_app/utils/helper.dart';
 import 'package:flutter_app/core/models/index.dart';
@@ -118,5 +119,14 @@ class Api {
     return result;
   }
 
+  /// 优惠券门槛列表 coupon threshold list
+  /// returns list of CouponThresholdData
+  /// desc: description
+
+  static Future<CouponThresholdResponse> thresholdListApi() async {
+    final res = await HttpClient.get('/userCouponThresholdList.json');
+    final response = CouponThresholdResponse.fromJson(res);
+    return response;
+  }
 
 }

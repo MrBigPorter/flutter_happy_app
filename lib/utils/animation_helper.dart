@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:math' as math;
 
-import 'package:flutter/animation.dart';
 import 'package:flutter/cupertino.dart';
 
 /// Animation Sync Manager
@@ -219,7 +218,6 @@ class ScrollDirectionTracker extends ChangeNotifier {
 
   void update(double newPixels){
     final delta = newPixels - _lastPixels;
-    print("ScrollDirectionTracker update: delta=$delta");
     final newDirection = delta > 0 ? ScrollDirection.down : ScrollDirection.up;
     // direction changed
     if(newDirection != _direction){

@@ -1,14 +1,14 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_app/app/page/me_components/voucher.dart';
+import 'package:flutter_app/app/page/me_components/voucher_list.dart';
 import 'package:flutter_app/app/routes/app_router.dart';
 import 'package:flutter_app/common.dart';
 import 'package:flutter_app/components/base_scaffold.dart';
-import 'package:flutter_app/ui/button.dart';
+import 'package:flutter_app/ui/button/index.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:nested_scroll_view_plus/nested_scroll_view_plus.dart';
 
 class MePage extends ConsumerStatefulWidget {
   const MePage({super.key});
@@ -34,10 +34,11 @@ class _MePageState extends ConsumerState<MePage> {
                 padding: EdgeInsets.symmetric(horizontal: 16.w,vertical: 16.w),
                 child: _LoginTopArea(),
               ),
-              // wallet area
-              _WalletArea(),
               // top unlogin area
               _UnLoginTopArea(),
+              VoucherList(),
+              // wallet area
+              _WalletArea(),
               // menu area
               _MenuArea(),
             ],
@@ -99,8 +100,6 @@ class _LoginTopArea extends StatelessWidget {
 }
 
 class _Avatar extends StatelessWidget {
-  final double size;
-  const _Avatar({this.size = 48});
 
   @override
   Widget build(BuildContext context) {
@@ -111,14 +110,14 @@ class _Avatar extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Container(
-            width: size.w,
-            height: size.w,
+            width: 48.w,
+            height: 48.w,
             clipBehavior: Clip.antiAlias,
             decoration: BoxDecoration(shape: BoxShape.circle),
             child: Image.asset(
               'assets/images/Avatar01.png',
-              width: size.w,
-              height: size.w,
+              width: 48.w,
+              height: 48.w,
               fit: BoxFit.cover,
             ),
           ),

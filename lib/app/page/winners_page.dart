@@ -23,7 +23,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:nested_scroll_view_plus/nested_scroll_view_plus.dart';
 
-import '../../ui/button.dart';
+import '../../ui/button/index.dart';
 
 /// Winners Page
 /// 1. 上半部分 header 包含 banner、total winners、latest winners

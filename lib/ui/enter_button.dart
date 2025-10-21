@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_app/theme/index.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
-enum ButtonVariant { normal, error }
+enum ButtonVariant { normal, error, primary }
 
 /// 通用按钮组件 - normal / error 两种样式 + loading 状态 normal/error button with loading
 /// 主要功能：
