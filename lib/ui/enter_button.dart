@@ -115,6 +115,8 @@ class _EnterButtonState extends State<EnterButton> {
         Colors.white,
         Colors.white.withAlpha(12),
       ),
+      // TODO: Handle this case.
+      ButtonVariant.primary => throw UnimplementedError(),
     };
 
     final double scale = widget.noPressAnimation
