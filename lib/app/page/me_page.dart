@@ -5,6 +5,7 @@ import 'package:flutter_app/app/page/me_components/voucher_list.dart';
 import 'package:flutter_app/app/routes/app_router.dart';
 import 'package:flutter_app/common.dart';
 import 'package:flutter_app/components/base_scaffold.dart';
+import 'package:flutter_app/core/store/auth/auth_provider.dart';
 import 'package:flutter_app/ui/button/index.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -20,6 +21,9 @@ class MePage extends ConsumerStatefulWidget {
 class _MePageState extends ConsumerState<MePage> {
   @override
   Widget build(BuildContext context) {
+    // check if user is authenticated
+    final isAuthenticated = ref.watch(authProvider.select((s) => s.isAuthenticated));
+    
     return BaseScaffold(
       showBack: false,
       body: SingleChildScrollView(
@@ -30,13 +34,18 @@ class _MePageState extends ConsumerState<MePage> {
             mainAxisAlignment: MainAxisAlignment.start,
             children: [
               // top login area
-              Padding(
-                padding: EdgeInsets.symmetric(horizontal: 16.w,vertical: 16.w),
-                child: _LoginTopArea(),
-              ),
-              // top unlogin area
-              _UnLoginTopArea(),
-              VoucherList(),
+              if(isAuthenticated) ...[
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16.w,vertical: 16.w),
+                  child: _LoginTopArea(),
+                ),
+                // voucher list area
+                VoucherList(),
+              ] else ...[
+                // top no login area
+                _UnLoginTopArea(),
+              ],
+
               // wallet area
               _WalletArea(),
               // menu area

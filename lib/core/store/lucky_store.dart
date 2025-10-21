@@ -30,7 +30,6 @@ class LuckyState {
      userInfo: null,
       balance: Balance(realBalance: 0, coinBalance: 0),
       sysConfig: SysConfig(kycAndPhoneVerification: '1'),
-      token: null
   );
 
 
@@ -44,13 +43,11 @@ class LuckyState {
     UserInfo? userInfo,
     Balance? balance,
     SysConfig? sysConfig,
-    String? token,
   }) {
     return LuckyState(
       userInfo: userInfo ?? this.userInfo,
       balance: balance ?? this.balance,
       sysConfig: sysConfig ?? this.sysConfig,
-      token: token ?? this.token,
     );
   }
 }
@@ -62,12 +59,12 @@ class LuckyState {
 /// Parameters:
 /// - ref: Ref - Riverpod reference for dependency injection
 /// Methods:
-/// - updateUserInfo(UserInfo userInfo): Future<void> - Updates user info from API
-/// - updateWalletBalance(): Future<void> - Updates wallet balance from API
-/// - updateSysConfig(): Future<void> - Updates system config from API
-/// - refreshAll(): Future<void> - Refreshes all data from API
+/// - updateUserInfo(UserInfo userInfo): Future<'void'> - Updates user info from API
+/// - updateWalletBalance(): Future<'void'> - Updates wallet balance from API
+/// - updateSysConfig(): Future<'void'> - Updates system config from API
+/// - refreshAll(): Future<'void'> - Refreshes all data from API
 /// Provider:
-/// - luckyProvider: StateNotifierProvider<LuckyNotifier, LuckyState> - Riverpod provider
+/// - luckyProvider: StateNotifierProvider<'LuckyNotifier, LuckyState'> - Riverpod provider
 /// Usage: luckyProvider
 /// Example: final lucky = ref.watch(luckyProvider);
 /// Updates: ref.read(luckyProvider.notifier).updateUserInfo(userInfo);

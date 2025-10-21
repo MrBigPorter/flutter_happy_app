@@ -297,21 +297,24 @@ class _ButtonArea extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final backgroundColor = item.getCoupons == 2
+    final isCollectable = item.getCoupons == 2;
+
+    final backgroundColor = isCollectable
         ? context.utilityBrand500
         : context.bgPrimary;
-    final foregroundColor = item.getCoupons == 2
+
+    final foregroundColor = isCollectable
         ? context.textPrimaryOnBrand
         : context.textBrandPrimary900;
-    final text = item.getCoupons == 2
-        ? Text('coupon.collect'.tr())
-        : item.getCoupons == 3
-        ? Text('coupon.collected'.tr())
-        : Text(
-            'coupon.threshold'.tr(
-              namedArgs: {'number': '${item.buyThresholdStart}'},
-            ),
-          );
+
+    final text = switch(item.getCoupons){
+      2 => Text('coupon.collect').tr(),
+      3 => Text('coupon.collected').tr(),
+      _ => Text('coupon.threshold').tr(
+            namedArgs: {'number': '${item.buyThresholdStart}'},
+          ),
+    };
+
     return Button(
       width: 96.w,
       height: 22.w,
