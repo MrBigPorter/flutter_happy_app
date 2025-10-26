@@ -389,7 +389,7 @@ class PageListViewPro<T> extends StatelessWidget {
     return ListView.separated(
       padding: padding ?? EdgeInsets.zero,
       itemCount: skeletonCount,
-      separatorBuilder: (_, __) => SizedBox(height: separatorSpace),
+      separatorBuilder: (_, __) => SizedBox(height: separatorSpace.w),
       itemBuilder: (_, __) =>
           _DefaultSkeleton(height: skeletonHeight, padding: skeletonPadding),
     );
@@ -433,7 +433,7 @@ class PageListViewPro<T> extends StatelessWidget {
         final child = itemBuilder(ctx, item, index, isLast);
         if (separatorSpace <= 0 && padding != null) return child;
         return Padding(
-          padding: EdgeInsets.only(top: index == 0 ? 0 : separatorSpace),
+          padding: EdgeInsets.only(top: index == 0 ? 0 : separatorSpace.w),
           child: child,
         );
       },

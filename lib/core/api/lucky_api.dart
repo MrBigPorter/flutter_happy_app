@@ -129,4 +129,20 @@ class Api {
     return response;
   }
 
+  /// 订单各状态数量 order count by status
+  static Future<OrderCount> orderCountApi() async {
+    final res = await HttpClient.get('/userOrderStateCount.json');
+    return OrderCount.fromJson(res);
+  }
+
+  static Future<PageResult<OrderItem>> orderListApi(OrderListParams params) async {
+    final res = await HttpClient.get('/userOrderList.json',queryParameters: {
+      "order_state": params.orderState,
+      "current": params.current,
+      "size": params.size,
+    });
+    final result = parsePageResponse(res, (e) => OrderItem.fromJson(e) );
+    return result;
+  }
+
 }

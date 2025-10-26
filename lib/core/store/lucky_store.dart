@@ -110,11 +110,13 @@ class LuckyNotifier extends StateNotifier<LuckyState> {
      );
   }
 
-  /// Riverpod provider for LuckyNotifier
-  /// No parameters
-  /// Returns a StateNotifierProvider for LuckyNotifier
-  /// Usage: luckyProvider
-  /// Example: final lucky = ref.watch(luckyProvider);
-  /// Updates: ref.read(luckyProvider.notifier).updateUserInfo(userInfo);
-  final luckyProvider = StateNotifierProvider<LuckyNotifier,LuckyState>((ref)=> LuckyNotifier(ref));
+
 }
+
+/// Riverpod provider for LuckyNotifier
+/// No parameters
+/// Returns a StateNotifierProvider for LuckyNotifier
+/// Usage: luckyProvider
+/// Example: final lucky = ref.watch(luckyProvider);
+/// Updates: ref.read(luckyProvider.notifier).updateUserInfo(userInfo);
+final luckyProvider = StateNotifierProvider<LuckyNotifier,LuckyState>((ref)=> LuckyNotifier(ref));

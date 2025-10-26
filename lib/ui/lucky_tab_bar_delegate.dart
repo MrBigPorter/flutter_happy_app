@@ -32,6 +32,7 @@ class LuckySliverTabBarDelegate<T> extends SliverPersistentHeaderDelegate {
   final TextStyle? unselectedLabelStyle; // 未选中 tab 文字样式 unselected tab text style
   final void Function(T item)? onTap; // tab 点击事件 tab tap event
   late final ValueListenable<double>? progress; // 是否在顶部 is at top
+  final bool showPersistentBg; // 是否显示持久化背景颜色 whether to show persistent background color
 
   LuckySliverTabBarDelegate({
     required this.controller,
@@ -50,6 +51,7 @@ class LuckySliverTabBarDelegate<T> extends SliverPersistentHeaderDelegate {
     this.onTap,
     required this.renderItem,
     this.progress,
+    this.showPersistentBg = false,
   });
 
   @override
@@ -81,6 +83,11 @@ class LuckySliverTabBarDelegate<T> extends SliverPersistentHeaderDelegate {
         if(t < 0.9999){
           t = 0;
         }
+
+        if(showPersistentBg){
+          t = 1.0;
+        }
+
         final blended = Color.lerp(Colors.transparent, base, t);
 
         return Container(
@@ -90,7 +97,7 @@ class LuckySliverTabBarDelegate<T> extends SliverPersistentHeaderDelegate {
           decoration: BoxDecoration(
             color: blended,
             boxShadow: [
-              if (t >= 1)
+              if (t >= 1 && !showPersistentBg)
                 BoxShadow(
                   color: Colors.black.withAlpha(15),
                   blurRadius: 10.w,

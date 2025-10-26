@@ -6,6 +6,39 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import 'button_theme.dart';
 
+/// Button - A customizable button widget with various styles and states
+/// Parameters:
+/// - onPressed: VoidCallback? - Callback when the button is pressed
+/// - child: Widget - The content of the button
+/// - variant: ButtonVariant - The visual variant of the button
+/// - disabled: bool - Whether the button is disabled
+/// - loading: bool - Whether to show a loading indicator
+/// - noPressAnimation: bool - Disable press animation if true
+/// - height: double? - Custom height of the button
+/// - width: double? - Custom width of the button
+/// - backgroundColor: Color? - Custom background color
+/// - foregroundColor: Color? - Custom foreground color
+/// - borderColor: Color? - Custom border color
+/// - boxShadow: List<BoxShadow>? - Custom box shadow
+/// - paddingX: double? - Custom horizontal padding
+/// - paddingY: double? - Custom vertical padding
+/// - radius: double? - Custom border radius
+/// - gap: double? - Gap between leading/trailing widgets and text
+/// - leading: Widget? - Widget to display before the text
+/// - trailing: Widget? - Widget to display after the text
+/// - customButtonStyle: ButtonVisual? - Custom button visual style
+/// - textStyle: TextStyle? - Custom text style
+/// - size: String - Size of the button ('small', 'medium', 'large')
+/// Usage:
+/// ```dart
+/// Button(
+///  onPressed: () { /* Handle press */ },
+///  child: Text('Click Me'),
+///  variant: ButtonVariant.primary,
+///  loading: true,
+///  )
+///  ```
+///
 class Button extends StatefulWidget {
   final VoidCallback? onPressed;
   final Widget child;
@@ -98,6 +131,7 @@ class _ButtonState extends State<Button> {
     final effectiveTextStyle = widget.textStyle != null
         ? defaultTextStyle.merge(widget.textStyle)
         : defaultTextStyle;
+
 
     final content = Row(
       mainAxisAlignment: MainAxisAlignment.center,

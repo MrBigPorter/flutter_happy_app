@@ -12,4 +12,5 @@ export 'act_winners_month.dart';
 export 'winners_quantity.dart';
 export 'winners_lasts_item.dart';
 export 'page_request.dart';
-
+export 'order_item.dart';
+export 'address_res.dart';
