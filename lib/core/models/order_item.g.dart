@@ -65,7 +65,7 @@ OrderItem _$OrderItemFromJson(Map<String, dynamic> json) => $checkedCreate(
         'share_amount',
         (v) => (v as num?)?.toDouble(),
       ),
-      shareCoin: $checkedConvert('share_coin', (v) => (v as num?)?.toDouble()),
+      shareCoin: $checkedConvert('share_coin', (v) => (v as num?)?.toInt()),
       stockQuantity: $checkedConvert(
         'stock_quantity',
         (v) => (v as num).toDouble(),
@@ -83,7 +83,7 @@ OrderItem _$OrderItemFromJson(Map<String, dynamic> json) => $checkedCreate(
       treasureId: $checkedConvert('treasure_id', (v) => (v as num).toDouble()),
       userId: $checkedConvert('user_id', (v) => v as String?),
       userPhone: $checkedConvert('user_phone', (v) => v as String?),
-      virtual: $checkedConvert('virtual', (v) => (v as num).toDouble()),
+      virtual: $checkedConvert('virtual', (v) => (v as num).toInt()),
       virtualAccount: $checkedConvert('virtual_account', (v) => v as String?),
       virtualCode: $checkedConvert('virtual_code', (v) => v as String?),
       treasureCoverImg: $checkedConvert(
@@ -92,7 +92,7 @@ OrderItem _$OrderItemFromJson(Map<String, dynamic> json) => $checkedCreate(
       ),
       treasureName: $checkedConvert('treasure_name', (v) => v as String),
       refundReason: $checkedConvert('refund_reason', (v) => v as String?),
-      cashState: $checkedConvert('cash_state', (v) => (v as num?)?.toDouble()),
+      cashState: $checkedConvert('cash_state', (v) => (v as num?)?.toInt()),
       cashAmount: $checkedConvert(
         'cash_amount',
         (v) => (v as num?)?.toDouble(),
@@ -100,7 +100,7 @@ OrderItem _$OrderItemFromJson(Map<String, dynamic> json) => $checkedCreate(
       cashEmail: $checkedConvert('cash_email', (v) => v as String?),
       confirmState: $checkedConvert(
         'confirm_state',
-        (v) => (v as num?)?.toDouble(),
+        (v) => (v as num?)?.toInt(),
       ),
     );
     return val;

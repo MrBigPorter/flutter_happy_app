@@ -19,7 +19,7 @@ import 'button_theme.dart';
 /// - backgroundColor: Color? - Custom background color
 /// - foregroundColor: Color? - Custom foreground color
 /// - borderColor: Color? - Custom border color
-/// - boxShadow: List<BoxShadow>? - Custom box shadow
+/// - boxShadow: List<'BoxShadow'>? - Custom box shadow
 /// - paddingX: double? - Custom horizontal padding
 /// - paddingY: double? - Custom vertical padding
 /// - radius: double? - Custom border radius
@@ -41,7 +41,7 @@ import 'button_theme.dart';
 ///
 class Button extends StatefulWidget {
   final VoidCallback? onPressed;
-  final Widget child;
+  final Widget? child;
   final ButtonVariant variant;
   final bool disabled;
   final bool loading;
@@ -152,12 +152,14 @@ class _ButtonState extends State<Button> {
           widget.leading!,
           SizedBox(width: G),
         ],
+        if(widget.child is Widget)
         DefaultTextStyle.merge(
           style: effectiveTextStyle,
-          child: widget.child,
+          child: widget.child!,
         ),
         if (widget.trailing != null) ...[
-          SizedBox(width: G),
+          if(widget.child is Widget)
+            SizedBox(width: G),
           widget.trailing!,
         ],
       ],

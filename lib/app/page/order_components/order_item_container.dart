@@ -1,13 +1,16 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter_app/app/routes/app_router.dart';
 import 'package:flutter_app/common.dart';
 import 'package:flutter_app/components/skeleton.dart';
 import 'package:flutter_app/core/models/index.dart';
+import 'package:flutter_app/ui/button/index.dart';
 import 'package:flutter_app/utils/date_helper.dart';
 import 'package:flutter_app/utils/format_helper.dart';
 import 'package:flutter_app/utils/helper.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 class OrderItemContainer extends StatelessWidget {
   final OrderItem item;
@@ -70,6 +73,27 @@ class OrderItemContainer extends StatelessWidget {
                   height: context.leadingXs,
                 ),
               ),
+            ),
+          ],
+
+          if (!item.isRefunded) ...[
+            SizedBox(height: 12.w),
+
+            /// Order item actions section
+            _OrderItemActions(
+                item: item,
+                onViewFriends: () {
+                  AppRouter.router.push('/me/order/${item.id}/friends');
+                },
+                onViewRewardDetails: () {
+                  AppRouter.router.push('/me/order/${item.id}/reward-details');
+                },
+                onTeamUp: () {
+                  AppRouter.router.push('/me/order/${item.id}/team-up');
+                },
+                onClaimPrize: () {
+                  AppRouter.router.push('/me/order/${item.id}/claim-prize');
+                },
             ),
           ],
         ],
@@ -230,15 +254,131 @@ class _OrderItemInfo extends StatelessWidget {
 
 class _OrderItemActions extends StatelessWidget {
   final OrderItem item;
+  final VoidCallback? onViewFriends;
+  final VoidCallback? onViewRewardDetails;
+  final VoidCallback? onTeamUp;
+  final VoidCallback? onClaimPrize;
 
-  const _OrderItemActions({required this.item});
+  const _OrderItemActions({
+    required this.item,
+    this.onViewFriends,
+    this.onViewRewardDetails,
+    this.onTeamUp,
+    this.onClaimPrize,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Container();
+    final isStatus1Or4 = item.orderStatus == 1 && item.orderStatus == 4;
+    final showRewardDetails = !isStatus1Or4;
+
+    List<Widget> right = [
+      Button(
+        paddingX: 20.w,
+        height: 44.w,
+        variant: ButtonVariant.outline,
+        onPressed: () {
+          if(onViewFriends != null){
+            onViewFriends!();
+          }
+        },
+        child: Text('common.view.friends'.tr()),
+      ),
+      if (showRewardDetails)
+        Button(
+          paddingX: 20.w,
+          variant: ButtonVariant.outline,
+          height: 44.w,
+          onPressed: () {
+            if(onViewRewardDetails != null){
+              onViewRewardDetails!();
+            }
+          },
+          child: Text('common.award.details').tr(),
+        )
+      else
+        Button(
+          height: 44.w,
+          trailing: SvgPicture.asset(
+            'assets/images/team-up.svg',
+            width: 20.w,
+            height: 20.w,
+            colorFilter: ColorFilter.mode(
+              context.fgTertiary600,
+              BlendMode.srcIn,
+            ),
+          ),
+          onPressed: () {
+            if(onTeamUp != null){
+              onTeamUp!();
+            }
+          },
+          child: Text('common.team.up').tr(),
+        ),
+
+      if (item.isWon) ... [
+        Button(
+          paddingX: 12.w,
+          height: 44.w,
+          variant: ButtonVariant.primary,
+          trailing: SvgPicture.asset(
+            'assets/images/team-up.svg',
+            width: 20.w,
+            height: 20.w,
+            colorFilter: ColorFilter.mode(context.textWhite, BlendMode.srcIn),
+          ),
+          onPressed: () {
+            if(onTeamUp != null){
+              onTeamUp!();
+            }
+          },
+          child: null,
+        ),
+        if(item.isRewardPending) ...[
+          Button(
+              width: double.infinity,
+              onPressed: (){
+                if(onClaimPrize != null){
+                  onClaimPrize!();
+                }
+              },
+              child: Text('confirm.win.receive.award'.tr())
+          )
+        ],
+        if((item.isRewardClaim||item.isRewardCashOut)&&item.isPhysical||(item.isRewardCashOut&&item.isVirtual)) ...[
+          Button(
+              width: double.infinity,
+              onPressed: (){
+                AppRouter.router.push('/me/confirm-win/${item.id}');
+              },
+              child: Text('confirm.win.check.award.information'.tr())
+          )
+        ]
+
+      ]
+    ];
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.end,
+      children: [
+        Flexible(
+          child: Wrap(
+              spacing: 8.w,
+              runSpacing: 8.w,
+              alignment: WrapAlignment.end,
+              children: right
+          ),
+        )
+      ],
+    );
   }
 }
 
+/// Order item group success section
+/// 显示订单的拼团成功信息和中奖信息
+/// Displays group success information and winning information about the order.
+/// Used in order list and order details pages.
+/// Only shown when the order is part of a group purchase or has won a prize.
 class _OrderItemGroupSuccess extends StatelessWidget {
   final OrderItem item;
 
@@ -338,7 +478,7 @@ class _OrderItemGroupSuccess extends StatelessWidget {
               Column(
                 children: [
                   Text(
-                    '${item.shareCoin} ${'common.treasureCoins'.tr()}',
+                    '${item.shareCoin ?? 0} ${'common.treasureCoins'.tr()}',
                     style: TextStyle(
                       fontWeight: FontWeight.w800,
                       color: context.textBrandSecondary700,
@@ -384,8 +524,8 @@ class _OrderItemRefundInfo extends StatefulWidget {
   State<StatefulWidget> createState() => _OrderItemRefundInfoState();
 }
 
-class _OrderItemRefundInfoState extends State<_OrderItemRefundInfo> with SingleTickerProviderStateMixin {
-
+class _OrderItemRefundInfoState extends State<_OrderItemRefundInfo>
+    with SingleTickerProviderStateMixin {
   bool isOpen = false;
 
   @override
@@ -395,7 +535,7 @@ class _OrderItemRefundInfoState extends State<_OrderItemRefundInfo> with SingleT
       children: [
         GestureDetector(
           behavior: HitTestBehavior.opaque,
-          onTap: ()=> setState(()=> isOpen = !isOpen),
+          onTap: () => setState(() => isOpen = !isOpen),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -422,24 +562,24 @@ class _OrderItemRefundInfoState extends State<_OrderItemRefundInfo> with SingleT
           ),
         ),
         AnimatedCrossFade(
-            firstChild: Padding(
-              padding: EdgeInsets.only(
-                top: 8.w
-              ),
-              child: Text(
-                widget.item.refundReason ?? '----',
-                style: TextStyle(
-                  fontSize: context.textSm,
-                  fontWeight: FontWeight.w600,
-                  color: context.textPrimary900,
-                  height: context.leadingSm,
-                ),
+          firstChild: Padding(
+            padding: EdgeInsets.only(top: 8.w),
+            child: Text(
+              widget.item.refundReason ?? '----',
+              style: TextStyle(
+                fontSize: context.textSm,
+                fontWeight: FontWeight.w600,
+                color: context.textPrimary900,
+                height: context.leadingSm,
               ),
             ),
-            secondChild: const SizedBox.shrink(),
-            crossFadeState: isOpen ? CrossFadeState.showFirst : CrossFadeState.showSecond,
-            duration: const Duration(milliseconds: 200),
-        )
+          ),
+          secondChild: const SizedBox.shrink(),
+          crossFadeState: isOpen
+              ? CrossFadeState.showFirst
+              : CrossFadeState.showSecond,
+          duration: const Duration(milliseconds: 200),
+        ),
       ],
     );
   }

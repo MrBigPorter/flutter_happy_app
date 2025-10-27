@@ -59,7 +59,7 @@ class OrderItem {
   @JsonKey(name: 'share_amount')
   final double? shareAmount;
   @JsonKey(name: 'share_coin')
-  final double? shareCoin;
+  final int? shareCoin;
   @JsonKey(name: 'stock_quantity')
   final double stockQuantity;
   @JsonKey(name: 'ticket_list')
@@ -73,7 +73,7 @@ class OrderItem {
   @JsonKey(name: 'user_phone')
   final String? userPhone;
   @JsonKey(name: 'virtual')
-  final double virtual;
+  final int virtual;
   @JsonKey(name: 'virtual_account')
   final String? virtualAccount;
   @JsonKey(name: 'virtual_code')
@@ -85,13 +85,13 @@ class OrderItem {
   @JsonKey(name: 'refund_reason')
   final String? refundReason;
   @JsonKey(name: 'cash_state')
-  final double? cashState;
+  final int? cashState;
   @JsonKey(name: 'cash_amount')
   final double? cashAmount;
   @JsonKey(name: 'cash_email')
   final String? cashEmail;
   @JsonKey(name: 'confirm_state')
-  final double? confirmState;
+  final int? confirmState;
 
   const OrderItem({
     required this.addressId,
@@ -237,19 +237,48 @@ extension OrderItemExtension on OrderItem {
   OrderStatus get orderStatusEnum => parseOrderStatus(orderStatus);
 
   bool get isPending => orderStatusEnum == OrderStatus.pending;
-  /// ✅是否中奖
+  /// 是否中奖
   bool get isWon => orderStatusEnum == OrderStatus.won;
-  /// ✅是否已经退款
+  /// 是否已经退款
   bool get isRefunded => orderStatusEnum == OrderStatus.refunded;
-  /// ✅是否拼团成功
+  /// 是否拼团成功
   bool get isGroupSuccess => orderStatusEnum == OrderStatus.groupSuccess;
   bool get isEnded => orderStatusEnum == OrderStatus.ended;
 
-  /// ✅订单显示逻辑
+  /// 订单显示逻辑
   bool get showGroupSuccessSection =>
       isGroupSuccess || isWon;
 
-  /// ✅赠品/中奖逻辑统一封装
-  String get luckyNumber => myTicket ?? friendTicket ?? '-----';
+  // 是否实物订单
+  bool get isPhysical => virtual == 1;
+  // 是否虚拟订单
+  bool get isVirtual => virtual == 2;
 
+  /// 奖励状态语义
+  bool get isRewardClaim => confirmState == 2;
+  bool get isRewardCashOut => confirmState == 3;
+  bool get isRewardPending => confirmState == 1;
+
+
+  /// 处理状态语义
+  bool get isHandlePending => handleStatus == 1;
+  bool get isHandleConfirmed => handleStatus == 2;
+  bool get isHandleProcessed => handleStatus == 3;
+  bool get isHandleShipped => handleStatus == 4;
+  bool get isHandleDelivered => handleStatus == 5;
+  bool get isHandleCanceled => handleStatus == 6;
+
+  /// 物流状态语义
+  bool get isShipping => currentStatus == 3 || currentStatus == 4;
+  bool get isCurrentDelivered => currentStatus == 5;
+  bool get isCurrentCanceled => currentStatus == 7;
+  bool get isShippingFailed => currentStatus == 6;
+
+  /// 配送方式
+  //bool get isSelfPickup => deliveryWay== 1;
+  //bool get isExpress => deliveryWay == 2;
+
+  /// 合并（强业务逻辑）
+  //bool get shouldShowTracking =>
+  //    isExpress && isHandleShipped && !isCurrentDelivered;
 }
