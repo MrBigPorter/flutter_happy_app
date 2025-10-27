@@ -4,21 +4,23 @@ import 'package:flutter_app/components/list.dart';
 import 'package:flutter_app/core/models/index.dart';
 import 'package:flutter_app/utils/helper.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
 
-import '../../../core/providers/me_provider.dart';
+import 'package:flutter_app/core/providers/me_provider.dart';
 
-class OrderList extends ConsumerStatefulWidget{
-
-  const OrderList({super.key});
+class OrderList extends ConsumerStatefulWidget {
+  final int status;
+  const OrderList({super.key,required this.status});
 
   @override
   ConsumerState<OrderList> createState() => _OrderListState();
 }
 
-class _OrderListState extends ConsumerState<OrderList>{
-
+class _OrderListState extends ConsumerState<OrderList> with AutomaticKeepAliveClientMixin{
   late final PageListController<OrderItem> _ctl;
+
+  //  切换不重建 no rebuild on switch
+  @override
+  bool get wantKeepAlive => true;
 
   @override
   void initState() {
@@ -26,8 +28,8 @@ class _OrderListState extends ConsumerState<OrderList>{
 
     _ctl = PageListController<OrderItem>(
       request: ({required int pageSize, required int current}) {
-        // Replace 'all' with the desired status or make it dynamic
-        return ref.read(orderListProvider('all'))(
+        //  用入参 status，不依赖外部 provider no rely on external provider
+        return ref.read(orderListProvider(widget.status))(
           pageSize: pageSize,
           current: current,
         );
@@ -36,19 +38,30 @@ class _OrderListState extends ConsumerState<OrderList>{
   }
 
   @override
+  void dispose() {
+    _ctl.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return CustomScrollView(
-      physics: platformScrollPhysics(),
-      slivers: [
-        PageListViewPro<OrderItem>(
+    super.build(context);
+    return _ctl.wrapWithNotification(
+      child: CustomScrollView(
+        key: PageStorageKey('order_list_${widget.status}'),//记住滚动位置 remember scroll position
+        physics: platformScrollPhysics(),
+        cacheExtent: 600, // CustomScrollView 加 cacheExtent，在视窗外提前布局一些像素：
+        slivers: [
+          PageListViewPro<OrderItem>(
             controller: _ctl,
             sliverMode: true,
             separatorSpace: 16,
             itemBuilder: (context, item, index, isLast) {
               return OrderItemContainer(item: item, isLast: isLast);
-            }
-        )
-      ],
+            },
+          ),
+        ],
+      )
     );
   }
 }

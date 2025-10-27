@@ -122,6 +122,11 @@ class _OrderItemHeader extends StatelessWidget {
             width: 80.w,
             height: 80.w,
             fit: BoxFit.cover,
+            //CachedNetworkImage 默认会按原图解码，80×80 的视图没必要解 1000px 原图,按像素密度下采样
+            memCacheWidth: (80.w * MediaQuery.of(context).devicePixelRatio).round(),
+            memCacheHeight: (80.w * MediaQuery.of(context).devicePixelRatio).round(),
+            fadeInDuration: const Duration(milliseconds: 120),
+            fadeOutDuration: const Duration(milliseconds: 120),
             errorWidget: (_, __, ___) => Container(
               width: 80.w,
               height: 80.w,
@@ -269,7 +274,7 @@ class _OrderItemActions extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isStatus1Or4 = item.orderStatus == 1 && item.orderStatus == 4;
+    final isStatus1Or4 = item.orderStatus == 1 || item.orderStatus == 4;
     final showRewardDetails = !isStatus1Or4;
 
     List<Widget> right = [

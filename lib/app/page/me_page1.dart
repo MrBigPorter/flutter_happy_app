@@ -93,19 +93,14 @@ class _MePageState extends ConsumerState<MePage>
                 ),
               ),
             ),
-            if (isAuthenticated) ...[
+            if (isAuthenticated)
               SliverToBoxAdapter(
                 child: const RepaintBoundary(child: VoucherList()),
               ),
-              SliverToBoxAdapter(child: SizedBox(height: 8.w,)),
-            ],
-
             SliverToBoxAdapter(
               child: RepaintBoundary(child: _WalletArea(balance: balance)),
             ),
-            SliverToBoxAdapter(child: SizedBox(height: 8.w,)),
             SliverToBoxAdapter(child: RepaintBoundary(child: _MenuArea())),
-            SliverToBoxAdapter(child: SizedBox(height: 8.w,)),
             SliverToBoxAdapter(
               child: RepaintBoundary(
                 child: _OrderArea(isAuthenticated: isAuthenticated),
@@ -255,7 +250,7 @@ class _MenuArea extends StatelessWidget {
       child: GridView(
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
-        padding: EdgeInsets.only(top: 15.w, left: 15.w, right: 15.w),
+        padding: EdgeInsets.only(top: 30.w, left: 15.w, right: 15.w),
         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: 4,
           crossAxisSpacing: 15.w,

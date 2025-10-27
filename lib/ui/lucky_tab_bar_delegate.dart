@@ -33,6 +33,7 @@ class LuckySliverTabBarDelegate<T> extends SliverPersistentHeaderDelegate {
   final void Function(T item)? onTap; // tab 点击事件 tab tap event
   late final ValueListenable<double>? progress; // 是否在顶部 is at top
   final bool showPersistentBg; // 是否显示持久化背景颜色 whether to show persistent background color
+  final bool enableUnderLine; // 是否启用下划线 whether to enable underline
 
   LuckySliverTabBarDelegate({
     required this.controller,
@@ -52,6 +53,7 @@ class LuckySliverTabBarDelegate<T> extends SliverPersistentHeaderDelegate {
     required this.renderItem,
     this.progress,
     this.showPersistentBg = false,
+    this.enableUnderLine = false,
   });
 
   @override
@@ -121,7 +123,7 @@ class LuckySliverTabBarDelegate<T> extends SliverPersistentHeaderDelegate {
                 fontSize: 14.w,
                 color: context.textQuaternary500
             ),
-            indicator: _LuckyIndicator(
+            indicator: enableUnderLine ? null : _LuckyIndicator(
               color: indicatorColor??context.bgBrandSolid,
               controller: controller!,
               height: height,
@@ -134,6 +136,7 @@ class LuckySliverTabBarDelegate<T> extends SliverPersistentHeaderDelegate {
             tabAlignment: TabAlignment.start,
             splashFactory: NoSplash.splashFactory,
             splashBorderRadius: BorderRadius.circular(0),
+            indicatorColor: indicatorColor ?? context.bgBrandSolid,
             /// 禁用水波纹效果 disable ripple effect
             enableFeedback: false,
             onTap: (index) {

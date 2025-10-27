@@ -180,17 +180,30 @@ class OrderCount {
     required this.refundCount,
   });
 
+  Map<String,int> asMap(){
+    return {
+      'active_count': activeCount.toInt(),
+      'end_count': endCount.toInt(),
+      'refund_count': refundCount.toInt(),
+    };
+  }
+
   factory OrderCount.fromJson(Map<String, dynamic> json) =>
       _$OrderCountFromJson(json);
 
   Map<String, dynamic> toJson() => _$OrderCountToJson(this);
+
+  @override
+  String toString() {
+    return toJson().toString();
+  }
 }
 
 
 @JsonSerializable(checked: true)
 class OrderListParams {
   @JsonKey(name: 'order_state')
-  final String orderState;
+  final int orderState;
   @JsonKey(name: 'current')
   final int current;
   @JsonKey(name: 'size')
@@ -210,10 +223,25 @@ class OrderListParams {
 /// model for tab item in order screen
 class TabItem {
   final String name;
-  final double value;
-  final double total;
+  final int value;
+  final int total;
+  final String key;
 
-  TabItem({required this.name, required this.value, required this.total});
+  TabItem({required this.name, required this.value, required this.total, required this.key});
+
+  TabItem copyWith({
+    String? name,
+    int? value,
+    int? total,
+    String? key,
+  }) {
+    return TabItem(
+      name: name ?? this.name,
+      value: value ?? this.value,
+      total: total ?? this.total,
+      key: key ?? this.key,
+    );
+  }
 }
 
 enum OrderStatus {

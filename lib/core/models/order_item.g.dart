@@ -239,7 +239,7 @@ Map<String, dynamic> _$OrderCountToJson(OrderCount instance) =>
 OrderListParams _$OrderListParamsFromJson(Map<String, dynamic> json) =>
     $checkedCreate('OrderListParams', json, ($checkedConvert) {
       final val = OrderListParams(
-        orderState: $checkedConvert('order_state', (v) => v as String),
+        orderState: $checkedConvert('order_state', (v) => (v as num).toInt()),
         current: $checkedConvert('current', (v) => (v as num).toInt()),
         size: $checkedConvert('size', (v) => (v as num).toInt()),
       );
