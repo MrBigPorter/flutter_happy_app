@@ -309,7 +309,7 @@ class _OrderItemActions extends StatelessWidget {
             width: 20.w,
             height: 20.w,
             colorFilter: ColorFilter.mode(
-              context.fgTertiary600,
+              context.textWhite,
               BlendMode.srcIn,
             ),
           ),

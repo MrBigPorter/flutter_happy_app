@@ -45,13 +45,13 @@ class Api {
   /// 钱包余额 wallet balance
   static Future<Balance> getWalletBalance() async {
     final res = await HttpClient.get('/balance.json');
-    return Balance.fromJson(jsonDecode(res));
+    return Balance.fromJson(res);
   }
 
   /// 系统配置 sys config
   static Future<SysConfig> getSysConfig() async {
     final res = await HttpClient.get('/sysConfigGet.json');
-    return SysConfig.fromJson(jsonDecode(res));
+    return SysConfig.fromJson(res);
   }
 
   /// 商品分类 product category tabs

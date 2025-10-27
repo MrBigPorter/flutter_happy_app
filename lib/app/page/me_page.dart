@@ -1,4 +1,5 @@
 import 'package:easy_localization/easy_localization.dart';
+import 'package:extended_nested_scroll_view/extended_nested_scroll_view.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_app/app/page/me_components/voucher.dart';
 import 'package:flutter_app/app/page/me_components/voucher_list.dart';
@@ -48,7 +49,10 @@ class _MePageState extends ConsumerState<MePage>
   }
 
   Future<void> _onRefresh() async {
-    //ref.refresh(luckyProvider.notifier).updateWalletBalance();
+    Future.wait([
+      ref.refresh(luckyProvider.notifier).updateWalletBalance(),
+      ref.refresh(orderCountProvider.future),
+    ]);
   }
 
   @override
@@ -134,7 +138,10 @@ class _MePageState extends ConsumerState<MePage>
           body: SafeTabBarView(
             controller: _tabController,
             children: tabs.map((item) {
-              return OrderList(status: item.value);
+              return ExtendedVisibilityDetector(
+                  uniqueKey: Key('order_list_tab_${item.value}'),
+                  child: OrderList(status: item.value),
+              );
             }).toList(),
           ),
         ),
@@ -259,7 +266,6 @@ class _MenuArea extends StatelessWidget {
         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: 4,
           crossAxisSpacing: 15.w,
-          mainAxisSpacing: 15.w,
           childAspectRatio: 1,
         ),
         children: menuItems.map((item) {

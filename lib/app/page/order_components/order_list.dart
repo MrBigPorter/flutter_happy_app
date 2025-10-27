@@ -15,21 +15,24 @@ class OrderList extends ConsumerStatefulWidget {
   ConsumerState<OrderList> createState() => _OrderListState();
 }
 
-class _OrderListState extends ConsumerState<OrderList> with AutomaticKeepAliveClientMixin{
+class _OrderListState extends ConsumerState<OrderList> {
   late final PageListController<OrderItem> _ctl;
 
-  //  切换不重建 no rebuild on switch
+/*  //  切换不重建 no rebuild on switch
   @override
-  bool get wantKeepAlive => true;
+  bool get wantKeepAlive => true;*/
+
 
   @override
   void initState() {
     super.initState();
 
     _ctl = PageListController<OrderItem>(
+      requestKey: widget.status,
       request: ({required int pageSize, required int current}) {
         //  用入参 status，不依赖外部 provider no rely on external provider
-        return ref.read(orderListProvider(widget.status))(
+        final tab = ref.read(activeOrderTabProvider.notifier).state;
+        return ref.read(orderListProvider(tab.value))(
           pageSize: pageSize,
           current: current,
         );
@@ -45,7 +48,7 @@ class _OrderListState extends ConsumerState<OrderList> with AutomaticKeepAliveCl
 
   @override
   Widget build(BuildContext context) {
-    super.build(context);
+    //super.build(context);
     return _ctl.wrapWithNotification(
       child: CustomScrollView(
         key: PageStorageKey('order_list_${widget.status}'),//记住滚动位置 remember scroll position
