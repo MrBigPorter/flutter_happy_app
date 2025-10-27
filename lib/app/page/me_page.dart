@@ -6,6 +6,7 @@ import 'package:flutter_app/app/page/me_components/voucher_list.dart';
 import 'package:flutter_app/app/routes/app_router.dart';
 import 'package:flutter_app/common.dart';
 import 'package:flutter_app/components/base_scaffold.dart';
+import 'package:flutter_app/components/lucky_custom_material_indicator.dart';
 import 'package:flutter_app/components/safe_tab_bar_view.dart';
 import 'package:flutter_app/core/models/index.dart';
 import 'package:flutter_app/core/providers/me_provider.dart';
@@ -15,6 +16,7 @@ import 'package:flutter_app/ui/button/index.dart';
 import 'package:flutter_app/ui/empty.dart';
 import 'package:flutter_app/ui/lucky_tab_bar_delegate.dart';
 import 'package:flutter_app/utils/format_helper.dart';
+import 'package:flutter_app/utils/helper.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -53,6 +55,10 @@ class _MePageState extends ConsumerState<MePage>
     });
   }
 
+  Future<void> _onRefresh() async {
+    //ref.refresh(luckyProvider.notifier).updateWalletBalance();
+  }
+
   @override
   Widget build(BuildContext context) {
     // check if user is authenticated
@@ -65,59 +71,66 @@ class _MePageState extends ConsumerState<MePage>
 
     return BaseScaffold(
       showBack: false,
-      body: NestedScrollViewPlus(
-        headerSliverBuilder: (context, _) => [
-          SliverToBoxAdapter(
-            child: Column(
-              children: [
-                // top login area
-                if (isAuthenticated) ...[
-                  Padding(
-                    padding: EdgeInsets.only(
-                      top: 16.w,
-                      left: 16.w,
-                      right: 16.w,
-                    ),
-                    child: _LoginTopArea(),
-                  ),
-                  // voucher list area
-                  VoucherList(),
-                  SizedBox(height: 8.w),
-                ] else ...[
-                  // top no login area
-                  _UnLoginTopArea(),
-                ],
-                // wallet area
-                _WalletArea(balance: balance),
-                SizedBox(height: 8.w),
-                // menu area
-                _MenuArea(),
-                SizedBox(height: 8.w),
-                _OrderArea(isAuthenticated: isAuthenticated),
-              ],
-            ),
-          ),
-          if (isAuthenticated) ...[
-            SliverPersistentHeader(
-              pinned: true,
-              delegate: LuckySliverTabBarDelegate(
-                showPersistentBg: true,
-                controller: _tabController,
-                tabs: _tabs,
-                renderItem: (item) => Text(item.name.tr()),
+      body: LuckyCustomMaterialIndicator(
+          onRefresh: _onRefresh,
+          child: NestedScrollViewPlus(
+            physics: platformScrollPhysics(),
+            headerSliverBuilder: (context, _) => [
+              SliverToBoxAdapter(
+                child: Column(
+                  children: [
+                    // top login area
+                    if (isAuthenticated) ...[
+                      Padding(
+                        padding: EdgeInsets.only(
+                          top: 16.w,
+                          left: 16.w,
+                          right: 16.w,
+                        ),
+                        child: _LoginTopArea(),
+                      ),
+                      // voucher list area
+                      VoucherList(),
+                      SizedBox(height: 8.w),
+                    ] else ...[
+                      // top no login area
+                      _UnLoginTopArea(),
+                    ],
+                    // wallet area
+                    _WalletArea(balance: balance),
+                    SizedBox(height: 8.w),
+                    // menu area
+                    _MenuArea(),
+                    SizedBox(height: 8.w),
+                    _OrderArea(isAuthenticated: isAuthenticated),
+                  ],
+                ),
               ),
+              if (isAuthenticated) ...[
+                SliverPersistentHeader(
+                  pinned: true,
+                  delegate: LuckySliverTabBarDelegate(
+                    showPersistentBg: true,
+                    controller: _tabController,
+                    tabs: _tabs,
+                    onTap: (item) {
+                      ref.read(activeOrderTabProvider.notifier).state = item;
+                    },
+                    renderItem: (item) => Text(item.name.tr()),
+                  ),
+                ),
+              ],
+            ],
+            body: SafeTabBarView(
+              controller: _tabController,
+              children: _tabs.map((item) {
+                return ExtendedVisibilityDetector(
+                  uniqueKey: Key('OrderList_${item.value}'),
+                  child: OrderList(),
+                );
+              }).toList(),
             ),
-          ],
-        ],
-        body: SafeTabBarView(
-          controller: _tabController,
-          children: _tabs.map((item) {
-            return ExtendedVisibilityDetector(
-                uniqueKey: Key('OrderList_${item.value}'),
-                child: OrderList(),
-            );
-          }).toList(),
-        ),
+          )
       ),
     );
   }

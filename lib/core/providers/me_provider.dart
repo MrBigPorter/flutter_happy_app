@@ -25,3 +25,11 @@ final orderListProvider = Provider.family((ref, String status){
 final orderCountProvider = FutureProvider((ref) async {
   return Api.orderCountApi();
 });
+
+final activeOrderTabProvider = StateProvider<TabItem>((ref) {
+  return TabItem(
+    name: 'common.active',
+    value: 1,
+    total: 0
+  );
+});
