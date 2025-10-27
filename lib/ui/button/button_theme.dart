@@ -47,10 +47,16 @@ class ButtonThemeResolver {
         );
       case ButtonVariant.outline:
         return ButtonVisual(
-          bg: Colors.transparent,
-          fg: ctx.textPrimary900,
-          border: ctx.borderBrand,
-          shadow: [],
+          bg: ctx.buttonSecondaryBg,
+          fg: ctx.buttonSecondaryFg,
+          border: ctx.borderSecondary,
+          shadow: [
+            BoxShadow(
+              color: ctx.bgDisabled,
+              offset: Offset(0, 2),
+              blurRadius: 6,
+            )
+          ],
         );
       case ButtonVariant.ghost:
         return ButtonVisual(

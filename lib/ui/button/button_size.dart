@@ -22,23 +22,23 @@ ButtonSizeValue resolveButtonSize(String size) {
       return ButtonSizeValue(
         height: 48.w,
         fontSize: 14.w,
-        padding: EdgeInsets.symmetric(horizontal: 8.w),
-        radius: 4.w,
+        padding: EdgeInsets.symmetric(horizontal: 4.w),
+        radius: 8.w,
       );
     case 'large':
       return ButtonSizeValue(
         height: 56.w,
-        fontSize: 18.w,
-        padding: EdgeInsets.symmetric(horizontal: 12.w),
-        radius: 8.w,
+        fontSize: 14.w,
+        padding: EdgeInsets.symmetric(horizontal: 10.w),
+        radius: 12.w,
       );
     case 'medium':
     default:
       return ButtonSizeValue(
         height: 52.w,
-        fontSize: 16.w,
-        padding: EdgeInsets.symmetric(horizontal: 10.w),
-        radius: 6.w,
+        fontSize: 14.w,
+        padding: EdgeInsets.symmetric(horizontal: 8.w),
+        radius: 10.w,
       );
   }
 }

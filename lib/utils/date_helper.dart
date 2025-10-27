@@ -19,7 +19,6 @@ class DateFormatHelper {
   /// int 秒 or 毫秒时间戳、String 时间、DateTime 本身
   static DateTime? _parse(dynamic time) {
     if (time == null) return null;
-    print('time: $time, type: ${time.runtimeType}');
 
     if (time is int) {
 

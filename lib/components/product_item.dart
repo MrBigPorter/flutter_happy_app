@@ -327,6 +327,7 @@ class ProductItem extends StatelessWidget {
                         // 底部间距 Bottom spacing
                         SizedBox(height: 8.w),
                         Button(
+                          height: 46.w,
                           child: Text('common.enter.now'.tr()),
                           onPressed: () {
                             /// 进入商品详情 Enter product details

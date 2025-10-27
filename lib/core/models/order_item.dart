@@ -232,3 +232,24 @@ OrderStatus parseOrderStatus(int status) {
     default: return OrderStatus.pending;
   }
 }
+
+extension OrderItemExtension on OrderItem {
+  OrderStatus get orderStatusEnum => parseOrderStatus(orderStatus);
+
+  bool get isPending => orderStatusEnum == OrderStatus.pending;
+  /// ✅是否中奖
+  bool get isWon => orderStatusEnum == OrderStatus.won;
+  /// ✅是否已经退款
+  bool get isRefunded => orderStatusEnum == OrderStatus.refunded;
+  /// ✅是否拼团成功
+  bool get isGroupSuccess => orderStatusEnum == OrderStatus.groupSuccess;
+  bool get isEnded => orderStatusEnum == OrderStatus.ended;
+
+  /// ✅订单显示逻辑
+  bool get showGroupSuccessSection =>
+      isGroupSuccess || isWon;
+
+  /// ✅赠品/中奖逻辑统一封装
+  String get luckyNumber => myTicket ?? friendTicket ?? '-----';
+
+}

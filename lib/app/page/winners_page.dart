@@ -400,7 +400,7 @@ class _LatestWinnerSwiperItem extends StatelessWidget {
               SizedBox(height: 8.w,),
               /// details button
               Button(
-                height: 35,
+                height: 35.w,
                 leading: SvgPicture.asset(
                   'assets/images/detail.svg',
                   width: 16.w,
@@ -668,6 +668,9 @@ class _WinnerListItem extends StatelessWidget {
               ),
               SizedBox(width: 4.w),
               Button(
+                variant: ButtonVariant.outline,
+                radius: 8.w,
+                height: 36.w,
                 onPressed: ()=>{
                   AppRouter.router.push('/winners/${item.treasureId}')
                 },

@@ -316,7 +316,7 @@ class _ButtonArea extends StatelessWidget {
     };
 
     return Button(
-      width: 96.w,
+      width: 85.w,
       height: 22.w,
       borderColor: context.borderBrand,
       radius: context.radiusXs,

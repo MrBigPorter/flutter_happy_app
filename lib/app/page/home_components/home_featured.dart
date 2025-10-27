@@ -280,6 +280,7 @@ class ProductInfoCardBottom extends StatelessWidget {
           ),
           Spacer(),
           Button(
+            height: 46.w,
             child: Text('common.enter.now'.tr()),
             onPressed: ()=>{
               AppRouter.router.push('/product/${item.treasureId}')
