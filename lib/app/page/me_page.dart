@@ -138,10 +138,7 @@ class _MePageState extends ConsumerState<MePage>
           body: SafeTabBarView(
             controller: _tabController,
             children: tabs.map((item) {
-              return ExtendedVisibilityDetector(
-                  uniqueKey: Key('order_list_tab_${item.value}'),
-                  child: OrderList(status: item.value),
-              );
+              return OrderList(status: item.value);
             }).toList(),
           ),
         ),

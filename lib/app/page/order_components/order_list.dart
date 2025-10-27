@@ -1,3 +1,4 @@
+import 'package:extended_nested_scroll_view/extended_nested_scroll_view.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_app/app/page/order_components/order_item_container.dart';
 import 'package:flutter_app/components/list.dart';
@@ -15,13 +16,12 @@ class OrderList extends ConsumerStatefulWidget {
   ConsumerState<OrderList> createState() => _OrderListState();
 }
 
-class _OrderListState extends ConsumerState<OrderList> {
+class _OrderListState extends ConsumerState<OrderList> with AutomaticKeepAliveClientMixin{
   late final PageListController<OrderItem> _ctl;
 
-/*  //  切换不重建 no rebuild on switch
+  //  切换不重建 no rebuild on switch
   @override
-  bool get wantKeepAlive => true;*/
-
+  bool get wantKeepAlive => true;
 
   @override
   void initState() {
@@ -48,22 +48,25 @@ class _OrderListState extends ConsumerState<OrderList> {
 
   @override
   Widget build(BuildContext context) {
-    //super.build(context);
+    super.build(context);
     return _ctl.wrapWithNotification(
-      child: CustomScrollView(
-        key: PageStorageKey('order_list_${widget.status}'),//记住滚动位置 remember scroll position
-        physics: platformScrollPhysics(),
-        cacheExtent: 600, // CustomScrollView 加 cacheExtent，在视窗外提前布局一些像素：
-        slivers: [
-          PageListViewPro<OrderItem>(
-            controller: _ctl,
-            sliverMode: true,
-            separatorSpace: 16,
-            itemBuilder: (context, item, index, isLast) {
-              return OrderItemContainer(item: item, isLast: isLast);
-            },
-          ),
-        ],
+      child: ExtendedVisibilityDetector(
+        uniqueKey: Key('order_list_visibility_${widget.status}'),
+        child: CustomScrollView(
+          key: PageStorageKey('order_list_${widget.status}'),//记住滚动位置 remember scroll position
+          physics: platformScrollPhysics(),
+          cacheExtent: 600, // CustomScrollView 加 cacheExtent，在视窗外提前布局一些像素：
+          slivers: [
+            PageListViewPro<OrderItem>(
+              controller: _ctl,
+              sliverMode: true,
+              separatorSpace: 16,
+              itemBuilder: (context, item, index, isLast) {
+                return OrderItemContainer(item: item, isLast: isLast);
+              },
+            ),
+          ],
+        ),
       )
     );
   }
