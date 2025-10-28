@@ -1,18 +1,28 @@
 import 'dart:async';
-
-import 'package:flutter/cupertino.dart';
-import 'package:flutter_app/utils/animation_helper.dart';
+import 'package:flutter/widgets.dart';
 import 'package:visibility_detector/visibility_detector.dart';
+import 'package:flutter_app/utils/animation_helper.dart';
 
 class AnimatedListItem extends StatefulWidget {
   final Widget child;
   final int index;
+
   final Duration delayPerItem;
   final Duration duration;
-  final bool fade, slide, scale;
-  final double beginOffsetY, beginScale;
-  final Curve curve, scaleCurve;
+
+  final bool fade;
+  final bool slide;
+  final bool scale;
+  final double beginOffsetY;
+  final double beginScale;
+
+  final Curve defaultCurve;
+  final Curve scaleCurve;
+
+  /// 进入可见才播放（建议保持为 true）
   final bool playWhenVisible;
+
+  /// 离开是否反向
   final bool fadeOutWhenLeave;
 
   const AnimatedListItem({
@@ -26,7 +36,7 @@ class AnimatedListItem extends StatefulWidget {
     this.scale = true,
     this.beginOffsetY = 20.0,
     this.beginScale = 0.9,
-    this.curve = Curves.easeOutCubic,
+    this.defaultCurve = Curves.easeOutCubic,
     this.scaleCurve = Curves.elasticOut,
     this.playWhenVisible = true,
     this.fadeOutWhenLeave = false,
@@ -39,187 +49,172 @@ class AnimatedListItem extends StatefulWidget {
 class _AnimatedListItemState extends State<AnimatedListItem>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
-  late Animation<double> _opacityAnimation;
-  late Animation<double> _offsetAnimation;
-  late Animation<double> _scaleAnimation;
 
-  // cached played keys
-  static final Set<String> _playedKeys = {};
+  late Animation<double> _opacity;
+  late Animation<double> _offsetY;
+  late Animation<double> _scale;
 
-  // already played animation
-  bool _played = false;
-  // unique id for this item
-  late final String _id;
+  // 本次“可见周期”是否已经播过（离开视口会重置为 false）
+  bool _playedThisVisibility = false;
+
+  // 可见后安排的延迟计时器，离开时要取消
+  Timer? _delayTimer;
 
   late final StreamSubscription<bool> _syncSub;
-
 
   @override
   void initState() {
     super.initState();
 
-    _id = 'animated-list-item-${widget.index}-${widget.key ?? UniqueKey()}';
+    _controller = AnimationController(vsync: this, duration: widget.duration);
+    _configure(); // 首帧先初始化，避免 LateInitializationError
 
-    // 获取滚动速度 // get scroll speed
-    final speed = ScrollSpeedTracker.instance.speed;
-    final dir =  ScrollSpeedTracker.instance.direction;
-    final accel = ScrollSpeedTracker.instance.accel;
-
-    //  速度越快 → 位移越小 // the faster the speed, the smaller the offset
-    // -1 ≤ dir ≤ 1
-     final offsetY = widget.beginOffsetY * dir;
-     final duration = speed.abs() > 0.5 ? const Duration(milliseconds: 200) : const Duration(milliseconds: 400);
-
-     final curve = accel < 0 ? Curves.easeOutCubic : Curves.easeInOut;
-
-    // 创建节拍
-    _controller = AnimationController(
-      vsync: this,
-      duration: duration,
-    );
-
-
-
-    _syncSub = AnimationSyncManager.instance.stream.listen((play){
-      if(play){
-        _tryPlay();
-      }else{
-        if(mounted){
-          try {
-            _controller.reset();
-            _played = false;
-            _playedKeys.remove(_id);
-          }catch(_){}
-        }
+    // 外部同步（保持你的原有设计）
+    _syncSub = AnimationSyncManager.instance.stream.listen((play) {
+      if (!mounted) return;
+      if (play) {
+        _playNow(); // 立刻按当前滚动状态播放一次
+      } else {
+        _controller.reset();
+        _playedThisVisibility = false;
       }
     });
     PageMotionDirection.instance.register(_controller);
 
-    // already played before, set to end state
-    if(_playedKeys.contains(_id)){
-      _controller.value = 1.0;
-      _played = true;
-    }
-
-    // 定义透明度动画 0 => 1
-    _opacityAnimation = Tween(
-      begin: widget.fade ? 0.05 : 1.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(parent: _controller, curve: curve));
-
-    // 定义位移动画 20 => 0
-    _offsetAnimation = Tween(
-      begin: widget.slide ? offsetY : 0.0,
-      end: 0.0,
-    ).animate(CurvedAnimation(parent: _controller, curve: curve));
-
-    // 定义缩放动画 0.95 => 1.0
-    _scaleAnimation = Tween(
-      begin: widget.scale ? widget.beginScale : 1.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(parent: _controller, curve: curve));
-
-    if (!widget.playWhenVisible) {
-      // 如果有延迟，设置定时器启动动画 if there's a delay, set a timer to start the animation
-
-      final delayMs = VelocityWaveDelay.compute(index: widget.index, baseMs: widget.delayPerItem.inMilliseconds, speed: ScrollSpeedTracker.instance.speed);
-
-      Future.delayed(
-        Duration(
-          milliseconds: delayMs,
-        ),
-        _tryPlay,
-      );
-    }else{
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-       final renderBox = context.findRenderObject() as RenderBox?;
-       // first check if the widget is already visible on screen
-       // avoid empty  page not playing animation issue
-       if(renderBox != null && renderBox.hasSize){
-         final size = renderBox.size;
-         final pos = renderBox.localToGlobal(Offset.zero);
-         final screenHeight = MediaQuery.of(context).size.height;
-         final visible = pos.dy < screenHeight && pos.dy + size.height > 0;
-         if(visible) {
-           _tryPlay();
-         }
-       }
-      });
+    // 首帧可见检查（避免空屏不播）
+    if (widget.playWhenVisible) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _checkAndMaybeQueue());
+    } else {
+      // 不关心可见性时，进场就按序排队
+      _queuePlayWithDelay();
     }
   }
 
   @override
   void dispose() {
+    _delayTimer?.cancel();
     _controller.dispose();
-    VisibilityDetectorController.instance.forget(Key(_id));
     PageMotionDirection.instance.unregister(_controller);
     _syncSub.cancel();
     super.dispose();
   }
 
-  @override
-  void didUpdateWidget(covariant AnimatedListItem oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    _tryPlay();
+  // 根据当前滚动状态，动态配置本次动画参数（方向/时长/曲线）
+  void _configure() {
+    final speed = ScrollSpeedTracker.instance.speed;      // -∞..+∞
+    final dir   = ScrollSpeedTracker.instance.direction;  // -1..+1
+    final accel = ScrollSpeedTracker.instance.accel;
+
+    final offsetY = widget.slide ? widget.beginOffsetY * dir : 0.0;
+
+    _controller.duration =
+    speed.abs() > 0.6 ? const Duration(milliseconds: 200) : widget.duration;
+
+    final curve = accel < 0 ? Curves.easeOutCubic : Curves.easeInOutCubic;
+    final curved = CurvedAnimation(parent: _controller, curve: curve);
+
+    _opacity = Tween<double>(
+      begin: widget.fade ? 0.1 : 1.0,
+      end: 1.0,
+    ).animate(curved);
+
+    _offsetY = Tween<double>(
+      begin: offsetY,
+      end: 0.0,
+    ).animate(curved);
+
+    _scale = Tween<double>(
+      begin: widget.scale ? widget.beginScale : 1.0,
+      end: 1.0,
+    ).animate(curved);
   }
 
-  // map speed to factor between 0.0 and 1.0
-  double mapSpeedToFactor(double speed){
-    const double minSpeed = 0.0;
-    // if speed >= maxSpeed, return 0.0
-    const double maxSpeed = 20000.0;
-    double x = (1.0 - (speed - minSpeed) / (maxSpeed - minSpeed)).clamp(0.0, 1.0);
-    // use easeInCubic for better effect
-    return (1.0 - Curves.easeInCubic.transform(x));
+  // 首帧检查：如果已经在屏幕内，就安排一次延迟播放
+  void _checkAndMaybeQueue() {
+    if (!mounted) return;
+    final box = context.findRenderObject() as RenderBox?;
+    if (box == null || !box.hasSize) return;
+
+    final size = box.size;
+    final pos = box.localToGlobal(Offset.zero);
+    final screenH = MediaQuery.of(context).size.height;
+    final visible = pos.dy < screenH && pos.dy + size.height > 0;
+
+    if (visible) _queuePlayWithDelay();
   }
 
-  // try to play the animation
-  void _tryPlay() {
-    if (_played) return;
-    _played = true;
-    _playedKeys.add(_id);
-    _controller.forward();
+  // 可见后：根据 index 和速度排队延迟，再播放
+  void _queuePlayWithDelay() {
+    if (_playedThisVisibility) return;
+
+    _delayTimer?.cancel();
+
+    if (ScrollSpeedTracker.instance.speed.abs() > 0.9) {
+      _playedThisVisibility = true;
+      _controller.value = 1.0;
+      return;
+    }
+
+    final delayMs = VelocityWaveDelay.compute(
+      index: widget.index,
+      baseMs: widget.delayPerItem.inMilliseconds,
+      speed: ScrollSpeedTracker.instance.speed,
+    ).clamp(0, 300);
+    final boundedDelay = delayMs.clamp(0, 200);
+    _delayTimer = Timer(Duration(milliseconds: boundedDelay), () {
+      if (!mounted || _playedThisVisibility) return;
+      _playNow();
+    });
+  }
+
+  // 真正触发播放：先按“当前滚动状态”配置，再 forward
+  void _playNow() {
+    if (_playedThisVisibility) return;
+    _configure();
+    _playedThisVisibility = true;
+    _controller.forward(from: 0.0);
   }
 
   @override
   Widget build(BuildContext context) {
-    final content =  AnimatedBuilder(
+    final content = AnimatedBuilder(
       animation: _controller,
-      builder: (context, child) {
+      builder: (_, child) {
         Widget w = child!;
-        if (widget.scale) {
-          w = Transform.scale(scale: _scaleAnimation.value, child: w);
-        }
-        if (widget.slide) {
-          w = Transform.translate(
-            offset: Offset(0, _offsetAnimation.value),
-            child: w,
-          );
-        }
-        if (widget.fade) {
-          w = Opacity(opacity: _opacityAnimation.value, child: w);
-        }
+        if (widget.scale)  w = Transform.scale(scale: _scale.value, child: w);
+        if (widget.slide)  w = Transform.translate(offset: Offset(0, _offsetY.value), child: w);
+        if (widget.fade)   w = Opacity(opacity: _opacity.value, child: w);
         return w;
       },
       child: widget.child,
     );
 
-    return widget.playWhenVisible ? VisibilityDetector(
-        key: ValueKey('list-item-${widget.index}'),
-        onVisibilityChanged: (info){
-          if(!mounted) return;
-          final visible = info.visibleFraction > 0.05;
-          if(visible){
-            _tryPlay();
-          }else{
-            if(_played && mounted && !_controller.isDismissed && widget.fadeOutWhenLeave){
-             try {
-               _controller.reverse();
-             }catch (_){}
+    if (!widget.playWhenVisible) return content;
+
+    return VisibilityDetector(
+      key: ValueKey('ali-${widget.index}'),
+      onVisibilityChanged: (info) {
+        if (!mounted) return;
+
+        final visible = info.visibleFraction > 0.1;
+
+        if (visible) {
+          // 进入视口：安排一次延迟→播放
+          if (!_playedThisVisibility) _queuePlayWithDelay();
+        } else {
+          // 离开视口：允许下次再播；可选反向
+          _delayTimer?.cancel();
+          if (_playedThisVisibility) {
+            _playedThisVisibility = false;
+            if (widget.fadeOutWhenLeave && !_controller.isDismissed) {
+              _controller.reverse();
+            } else {
+              _controller.reset();
             }
           }
-        },
-        child: content,
-    ) : content;
+        }
+      },
+      child: content,
+    );
   }
 }
