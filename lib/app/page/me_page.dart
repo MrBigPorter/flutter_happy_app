@@ -17,6 +17,7 @@ import 'package:flutter_app/ui/empty.dart';
 import 'package:flutter_app/ui/lucky_tab_bar_delegate.dart';
 import 'package:flutter_app/ui/modal/modal_service.dart';
 import 'package:flutter_app/ui/modal/radix_sheet.dart';
+import 'package:flutter_app/ui/modal/sheet_props.dart';
 import 'package:flutter_app/utils/format_helper.dart';
 import 'package:flutter_app/utils/helper.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -52,7 +53,7 @@ class _MePageState extends ConsumerState<MePage>
     WidgetsBinding.instance.addPostFrameCallback((_){
       RadixSheet.show<bool>(
         showClose: true,
-        clickBgToClose: false,
+        clickBgToClose: true,
         builder: (context, close) {
           return Container(
             padding: EdgeInsets.all(16.w),
