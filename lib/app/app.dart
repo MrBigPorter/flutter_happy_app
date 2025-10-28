@@ -19,6 +19,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp.router(
       title: 'Lucky App',
       routerConfig: AppRouter.router,
+
       themeMode: themeProvider.themeMode,
       theme: _buildTheme(false),
       darkTheme: _buildTheme(true),

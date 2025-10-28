@@ -13,6 +13,7 @@ import 'app/app.dart';
 
 
 Future<void> main() async {
+
   bool errorHandlerRegistered = false;
 
   WidgetsFlutterBinding.ensureInitialized();

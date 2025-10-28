@@ -15,6 +15,8 @@ import 'package:flutter_app/core/store/lucky_store.dart';
 import 'package:flutter_app/ui/button/index.dart';
 import 'package:flutter_app/ui/empty.dart';
 import 'package:flutter_app/ui/lucky_tab_bar_delegate.dart';
+import 'package:flutter_app/ui/modal/modal_service.dart';
+import 'package:flutter_app/ui/modal/radix_sheet.dart';
 import 'package:flutter_app/utils/format_helper.dart';
 import 'package:flutter_app/utils/helper.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -46,6 +48,28 @@ class _MePageState extends ConsumerState<MePage>
 
     // 首屏拉一次数量，orderCountProvider 只负责更新 totals
     Future.microtask(() => ref.refresh(orderCountProvider));
+
+    WidgetsBinding.instance.addPostFrameCallback((_){
+      RadixSheet.show<bool>(
+        showClose: true,
+        clickBgToClose: false,
+        builder: (context, close) {
+          return Container(
+            padding: EdgeInsets.all(16.w),
+            child: Text(
+              'me.welcome.modal.content'.tr(),
+              style: TextStyle(
+                fontSize: context.textMd,
+                fontWeight: FontWeight.w500,
+                color: context.textPrimary900,
+                height: context.leadingMd,
+              ),
+            ),
+          );
+        },
+      );
+    });
+
   }
 
   Future<void> _onRefresh() async {
