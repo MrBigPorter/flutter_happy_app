@@ -7,6 +7,8 @@ enum CloseButtonAlignment {
   topCenter,
 }
 
+typedef FooterBuilder<T> = Widget Function(void Function([Object? result]) close);
+
 class ModalSheetConfig {
   final ModalSheetTheme theme;
   final double borderRadius;
@@ -22,6 +24,7 @@ class ModalSheetConfig {
 
   final Widget? customHeader;
   final Widget? headerActions;
+  final FooterBuilder? footerBuilder;
   final double? headerHeight;
 
   // 业务动画风格声明
@@ -47,6 +50,7 @@ class ModalSheetConfig {
 
     this.customHeader,
     this.headerActions,
+    this.footerBuilder,
     this.headerHeight,
   });
 
@@ -67,6 +71,7 @@ class ModalSheetConfig {
 
     Widget? customHeader,
     Widget? headerActions,
+    FooterBuilder? footerBuilder,
     double? headerHeight,
   }) {
     return ModalSheetConfig(
@@ -86,6 +91,7 @@ class ModalSheetConfig {
 
       customHeader: customHeader ?? this.customHeader,
       headerActions: headerActions ?? this.headerActions,
+      footerBuilder: footerBuilder ?? this.footerBuilder,
       headerHeight: headerHeight ?? this.headerHeight,
     );
   }

@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_app/ui/modal/modal_auto_close_observer.dart';
+import 'package:flutter_app/ui/modal/nav_hub.dart';
 import 'animated_sheet_wrapper.dart';
 import 'animation_policy_config.dart';
 import 'animation_policy_resolver.dart';
@@ -25,7 +27,7 @@ import 'sheet_surface.dart';
 /// );
 /// ```
 /// ------------------------------------------------------------------
-class ModalService with RouteAware {
+class ModalService{
   ModalService._();
   static final ModalService instance = ModalService._();
 
@@ -33,7 +35,7 @@ class ModalService with RouteAware {
   AnimationPolicyConfig? globalPolicy;
 
   /// 用于 showModalBottomSheet 全局挂载
-  final navigatorKey = GlobalKey<NavigatorState>();
+  GlobalKey<NavigatorState> get navigatorKey => NavHub.key;
 
   /// 路由观察，用于当 push 新页面时自动关闭当前弹窗
   final routeObserver = RouteObserver<ModalRoute>();
@@ -119,6 +121,8 @@ class ModalService with RouteAware {
             }
           }
 
+          ModalManager.instance.bind(()=> finish());
+
           // ----------------------------------------------------------------
           // 🧮 高度计算与布局
           // ----------------------------------------------------------------
@@ -183,11 +187,5 @@ class ModalService with RouteAware {
     _sheetFuture = null;
     _sheetContext = null;
   }
-
-  // ------------------------------------------------------------------
-  // 🚫 当有新页面 push 时自动关闭当前弹窗
-  // ------------------------------------------------------------------
-  @override
-  void didPushNext() => close();
 }
 

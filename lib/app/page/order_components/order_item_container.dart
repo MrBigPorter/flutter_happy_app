@@ -12,6 +12,8 @@ import 'package:flutter_app/utils/helper.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
+import '../../../ui/modal/radix_sheet.dart';
+
 class OrderItemContainer extends StatelessWidget {
   final OrderItem item;
   final bool isLast;
@@ -83,7 +85,15 @@ class OrderItemContainer extends StatelessWidget {
             _OrderItemActions(
                 item: item,
                 onViewFriends: () {
-                  AppRouter.router.push('/me/order/${item.id}/friends');
+                  RadixSheet.show(
+                    builder: (ctx, close) => SizedBox(
+                      width: double.infinity,
+                      height: 200.w,
+                      child: Center(
+                        child: Text('This is a sheet dialog'),
+                      ),
+                    ),
+                  );
                 },
                 onViewRewardDetails: () {
                   AppRouter.router.push('/me/order/${item.id}/reward-details');

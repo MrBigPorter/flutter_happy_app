@@ -2,7 +2,9 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_app/app/page/wallet_detail_page.dart';
 import 'package:flutter_app/app/routes/transitions.dart';
+import 'package:flutter_app/ui/modal/modal_auto_close_observer.dart';
 import 'package:flutter_app/ui/modal/modal_service.dart';
+import 'package:flutter_app/ui/modal/nav_hub.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../components/lucky_tab_bar.dart';
@@ -20,11 +22,12 @@ class AppRouter {
   static final GoRouter router = GoRouter(
     //让全局弹层系统使用同一个 Navigator：
     // allow the global modal system to use the same Navigator:
-    navigatorKey: ModalService.instance.navigatorKey,
+    navigatorKey: NavHub.key,
     // 监听路由变化以关闭弹层：
     // observe route changes to close modals:
     observers: [
-      ModalService.instance.routeObserver
+      ModalManager.instance,
+      ModalAutoCloseObserver()
     ],
     initialLocation: '/home',
     routes: [
@@ -35,6 +38,9 @@ class AppRouter {
 
       ShellRoute(
         navigatorKey: _shellKey,
+        observers: [
+          ModalAutoCloseObserver()
+        ],
         builder: (context, state, child) => LuckyTabBar(child: child),
         routes: [
           GoRoute(
