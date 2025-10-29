@@ -20,6 +20,10 @@ class ModalSheetConfig {
   final bool showCloseButton;
   final CloseButtonAlignment closeAlignment;
 
+  final Widget? customHeader;
+  final Widget? headerActions;
+  final double? headerHeight;
+
   // 业务动画风格声明
   final AnimationStyleConfig animationStyleConfig;
 
@@ -32,7 +36,7 @@ class ModalSheetConfig {
     this.maxWidth = double.infinity,
     this.minWidth = double.infinity,
     this.minHeight = 100,
-    this.maxHeightFactor = 0.9,
+    this.maxHeightFactor = 0.7,
     this.contentPadding = const EdgeInsets.fromLTRB(16, 20, 16, 20),
     this.enableDragToClose = true,
     this.dragToCloseThreshold = 40,
@@ -40,6 +44,10 @@ class ModalSheetConfig {
     this.closeAlignment = CloseButtonAlignment.topRight,
     this.animationStyleConfig = AnimationStyleConfig.minimal,
     this.allowBackgroundCloseOverride,
+
+    this.customHeader,
+    this.headerActions,
+    this.headerHeight,
   });
 
   ModalSheetConfig copyWith({
@@ -56,6 +64,10 @@ class ModalSheetConfig {
     CloseButtonAlignment? closeAlignment,
     AnimationStyleConfig? animationStyleConfig,
     bool? allowBackgroundCloseOverride,
+
+    Widget? customHeader,
+    Widget? headerActions,
+    double? headerHeight,
   }) {
     return ModalSheetConfig(
       theme: theme ?? this.theme,
@@ -71,6 +83,10 @@ class ModalSheetConfig {
       closeAlignment: closeAlignment ?? this.closeAlignment,
       animationStyleConfig: animationStyleConfig ?? this.animationStyleConfig,
       allowBackgroundCloseOverride: allowBackgroundCloseOverride ?? this.allowBackgroundCloseOverride,
+
+      customHeader: customHeader ?? this.customHeader,
+      headerActions: headerActions ?? this.headerActions,
+      headerHeight: headerHeight ?? this.headerHeight,
     );
   }
 }

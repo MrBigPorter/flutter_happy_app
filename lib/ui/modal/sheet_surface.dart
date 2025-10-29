@@ -26,11 +26,17 @@ class SheetSurface extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
+        config.customHeader ??
         _SheetHeader(
           onClose: onClose,
           showClose: config.showCloseButton,
           paddingTop: top,
         ),
+        if(config.headerActions != null)
+          SizedBox(
+            height: config.headerHeight ?? 40.w,
+            child: config.headerActions,
+          ),
         Expanded(child: child),
       ],
     );

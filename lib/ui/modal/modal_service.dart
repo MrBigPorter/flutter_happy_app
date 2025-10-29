@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'animated_sheet_wrapper.dart';
 import 'animation_policy_config.dart';
 import 'animation_policy_resolver.dart';
 import 'sheet_props.dart';
@@ -148,11 +149,14 @@ class ModalService with RouteAware {
                 ),
               ),
               constraints: BoxConstraints(maxHeight: maxHeight),
-              child: SheetSurface(
-                isFullScreen: isFullScreen,
-                config: config,
-                onClose: () => finish(),
-                child: builder(modalContext, finish),
+              child: AnimatedSheetWrapper(
+                policy:policy,
+                child:SheetSurface(
+                  isFullScreen: isFullScreen,
+                  config: config,
+                  onClose: () => finish(),
+                  child: builder(modalContext, finish),
+                )
               ),
             ),
           );
@@ -186,3 +190,4 @@ class ModalService with RouteAware {
   @override
   void didPushNext() => close();
 }
+

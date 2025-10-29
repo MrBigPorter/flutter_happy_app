@@ -53,9 +53,19 @@ class _MePageState extends ConsumerState<MePage>
     WidgetsBinding.instance.addPostFrameCallback((_){
       RadixSheet.show(
         config: ModalSheetConfig(
-            enableDragToClose: true,
-          animationStyleConfig: AnimationStyleConfig.celebration,
-            maxHeightFactor:0.99,
+          customHeader: Container(
+            height: 56.w,
+            alignment: Alignment.center,
+            child: Text(
+              'Test Sheet',
+              style: TextStyle(
+                fontSize: context.textLg,
+                fontWeight: FontWeight.w600,
+                color: context.textPrimary900,
+                height: context.leadingLg,
+              ),
+            ),
+          )
         ),
         builder: (ctx, close) => SingleChildScrollView(
           child: Column(
