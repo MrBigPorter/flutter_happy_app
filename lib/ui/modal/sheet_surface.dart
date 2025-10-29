@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_app/utils/helper.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'sheet_props.dart';
 
@@ -6,48 +7,85 @@ class SheetSurface extends StatelessWidget {
   final ModalSheetConfig config;
   final VoidCallback onClose;
   final Widget child;
+  final bool isFullScreen;
 
   const SheetSurface({
     super.key,
     required this.config,
     required this.onClose,
     required this.child,
+    required this.isFullScreen,
   });
 
   @override
   Widget build(BuildContext context) {
-    final mq = MediaQuery.of(context);
 
-    Widget closeBtn() => IconButton(onPressed: onClose, icon: Icon(Icons.close, size: 24.w));
 
-    Widget? positionedClose;
-    if (config.showCloseButton) {
-      switch (config.closeAlignment) {
-        case CloseButtonAlignment.topRight:
-          positionedClose = Positioned(top: 8, right: 8, child: closeBtn());
-          break;
-        case CloseButtonAlignment.topCenter:
-          positionedClose = Positioned(top: 8, left: 0, right: 0, child: Center(child: closeBtn()));
-          break;
-        case CloseButtonAlignment.topLeft:
-          positionedClose = Positioned(top: 8, left: 8, child: closeBtn());
-          break;
-      }
-    }
+    final double top = isFullScreen ? ViewUtils.statusBarHeight : 8.w;
 
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _SheetHeader(
+          onClose: onClose,
+          showClose: config.showCloseButton,
+          paddingTop: top,
+        ),
+        Expanded(child: child),
+      ],
+    );
+  }
+}
+
+class _SheetHeader extends StatelessWidget {
+  final VoidCallback onClose;
+  final bool showClose;
+  final double paddingTop;
+
+  const _SheetHeader({
+    required this.onClose,
+    required this.showClose,
+    this.paddingTop = 8,
+  });
+
+  @override
+  Widget build(BuildContext context) {
     return Padding(
-      // 只在内部追加底部安全区，视觉保持贴底（外层不再叠加 SafeArea）
-      padding: config.contentPadding.add(EdgeInsets.only(bottom: mq.padding.bottom)),
-      child: Stack(
-        children: [
-          Padding(
-            padding: EdgeInsets.only(top: config.showCloseButton ? 10.w : 0),
-            child: child,
-          ),
-          if (positionedClose != null) positionedClose,
-        ],
+      padding: EdgeInsets.only(top: paddingTop),
+      child: SizedBox(
+        width: double.infinity,
+        height: 32.w,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            Container(
+              width: 40.w,
+              height: 5.w,
+              decoration: BoxDecoration(
+                  color: Colors.grey.withValues(alpha: 0.5),
+                  borderRadius: BorderRadius.circular(3.w)
+              ),
+            ),
+            if(showClose)
+             Positioned(
+               right: 10.w,
+               child: InkResponse(
+                 onTap: onClose,
+                 child: Container(
+                   width: 32,
+                   height: 32,
+                   decoration: BoxDecoration(
+                       color: Colors.black26,
+                       shape: BoxShape.circle
+                   ),
+                   alignment: Alignment.center,
+                   child: const Icon(Icons.close, size: 18, color: Colors.white),
+                 ),
+               ),
+             )
+          ],
+        ),
       ),
     );
-
   }
 }

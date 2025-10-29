@@ -1,5 +1,5 @@
-
-import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
+import 'animation_policy_config.dart';
 
 enum CloseButtonAlignment {
   topRight,
@@ -10,17 +10,24 @@ enum CloseButtonAlignment {
 class ModalSheetConfig {
   final ModalSheetTheme theme;
   final double borderRadius;
-  final double maxWidth;
+  final double maxWidth;           // 目前系统弹窗宽度按全屏处理，保留字段便于后续横屏/平板适配
   final double minWidth;
-  final double minHeight;
-  final double maxHeightFactor; // height = screenHeight * factor
+  final double minHeight;          // 用来推算 Draggable 的 minChildSize
+  final double maxHeightFactor;    // 推算 Draggable 的 maxChildSize
   final EdgeInsets contentPadding;
-  final bool enableDragToClose;
-  final double dragToCloseThreshold; // drag offset
+  final bool? enableDragToClose;    // 映射到 showModalBottomSheet.enableDrag
+  final double dragToCloseThreshold; // 系统实现不需要，保留字段
   final bool showCloseButton;
   final CloseButtonAlignment closeAlignment;
 
+  // 业务动画风格声明
+  final AnimationStyleConfig animationStyleConfig;
+
+  // 允许覆盖“是否点击背景可关闭”
+  final bool? allowBackgroundCloseOverride;
+
   const ModalSheetConfig({
+    this.theme = const ModalSheetTheme(),
     this.borderRadius = 16,
     this.maxWidth = double.infinity,
     this.minWidth = double.infinity,
@@ -31,7 +38,8 @@ class ModalSheetConfig {
     this.dragToCloseThreshold = 40,
     this.showCloseButton = true,
     this.closeAlignment = CloseButtonAlignment.topRight,
-    this.theme = const ModalSheetTheme(),
+    this.animationStyleConfig = AnimationStyleConfig.minimal,
+    this.allowBackgroundCloseOverride,
   });
 
   ModalSheetConfig copyWith({
@@ -46,6 +54,8 @@ class ModalSheetConfig {
     double? dragToCloseThreshold,
     bool? showCloseButton,
     CloseButtonAlignment? closeAlignment,
+    AnimationStyleConfig? animationStyleConfig,
+    bool? allowBackgroundCloseOverride,
   }) {
     return ModalSheetConfig(
       theme: theme ?? this.theme,
@@ -59,6 +69,8 @@ class ModalSheetConfig {
       dragToCloseThreshold: dragToCloseThreshold ?? this.dragToCloseThreshold,
       showCloseButton: showCloseButton ?? this.showCloseButton,
       closeAlignment: closeAlignment ?? this.closeAlignment,
+      animationStyleConfig: animationStyleConfig ?? this.animationStyleConfig,
+      allowBackgroundCloseOverride: allowBackgroundCloseOverride ?? this.allowBackgroundCloseOverride,
     );
   }
 }
@@ -67,8 +79,5 @@ class ModalSheetTheme {
   final Color? barrierColor; // 背景遮罩
   final Color? surfaceColor; // 面板背景色
 
-  const ModalSheetTheme({
-    this.barrierColor,
-    this.surfaceColor,
-  });
+  const ModalSheetTheme({ this.barrierColor, this.surfaceColor });
 }

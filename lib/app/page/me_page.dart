@@ -15,7 +15,7 @@ import 'package:flutter_app/core/store/lucky_store.dart';
 import 'package:flutter_app/ui/button/index.dart';
 import 'package:flutter_app/ui/empty.dart';
 import 'package:flutter_app/ui/lucky_tab_bar_delegate.dart';
-import 'package:flutter_app/ui/modal/modal_service.dart';
+import 'package:flutter_app/ui/modal/animation_policy_config.dart';
 import 'package:flutter_app/ui/modal/radix_sheet.dart';
 import 'package:flutter_app/ui/modal/sheet_props.dart';
 import 'package:flutter_app/utils/format_helper.dart';
@@ -51,23 +51,17 @@ class _MePageState extends ConsumerState<MePage>
     Future.microtask(() => ref.refresh(orderCountProvider));
 
     WidgetsBinding.instance.addPostFrameCallback((_){
-      RadixSheet.show<bool>(
-        showClose: true,
-        clickBgToClose: true,
-        builder: (context, close) {
-          return Container(
-            padding: EdgeInsets.all(16.w),
-            child: Text(
-              'me.welcome.modal.content'.tr(),
-              style: TextStyle(
-                fontSize: context.textMd,
-                fontWeight: FontWeight.w500,
-                color: context.textPrimary900,
-                height: context.leadingMd,
-              ),
-            ),
-          );
-        },
+      RadixSheet.show(
+        config: ModalSheetConfig(
+            enableDragToClose: true,
+          animationStyleConfig: AnimationStyleConfig.celebration,
+            maxHeightFactor:0.99,
+        ),
+        builder: (ctx, close) => SingleChildScrollView(
+          child: Column(
+            children: List.generate(80, (i) => ListTile(title: Text('Row $i'))),
+          ),
+        ),
       );
     });
 

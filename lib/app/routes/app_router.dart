@@ -11,6 +11,7 @@ import '../page/product_page.dart';
 import '../page/winners_page.dart';
 import '../page/me_page.dart';
 import '../page/login_page.dart';
+import '../page/product_detail_page.dart';
 
 final _shellKey = GlobalKey<NavigatorState>(debugLabel: 'shell');
 
@@ -65,6 +66,16 @@ class AppRouter {
             );
           }
       ),
+      GoRoute(
+        path: '/product/:id',
+        pageBuilder: (ctx, state) {
+          return fxPage(
+            key: state.pageKey,
+            child: ProductDetailPage(),
+            fx: RouteFx.sharedScale,
+          );
+        }
+      )
     ],
   );
 }
