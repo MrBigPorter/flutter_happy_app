@@ -75,8 +75,10 @@ class ModalSheetService {
     // ✅ Start microtask to ensure context is used at safe time
     _sheetFuture = Future.microtask(() {
       final nav = navigatorKey.currentState;
-      if (nav == null) throw Exception(
+      if (nav == null) {
+        throw Exception(
           'ModalSheetService: Navigator not ready.');
+      }
 
       // ✅ Ensure current context is mounted
       if (!nav.mounted) return null;

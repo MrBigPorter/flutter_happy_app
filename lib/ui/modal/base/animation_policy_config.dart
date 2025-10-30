@@ -3,10 +3,15 @@ import 'package:flutter/material.dart';
 /// Animation style configuration for modal sheets
 enum AnimationStyleConfig {
   /// Minimal animation style with basic transitions
-  minimal,
-
+  minimal, // 平滑淡入
   /// Celebration animation style with particles and enhanced effects
-  celebration,
+  celebration,// 丰富动画效果
+  fadeScale, // 淡入放大
+  dropDown, // 从顶部下落
+  bounce, // 弹性放大
+  flip3D, // 3D翻转
+  shake, // 左右震动
+  slam,//  重击落下 回弹
 }
 
 /// Configuration for modal sheet animations and behavior
@@ -40,14 +45,14 @@ class AnimationPolicyConfig {
 
   /// Creates an animation policy configuration
   const AnimationPolicyConfig({
-    this.style = AnimationStyleConfig.minimal,
+    this.style = AnimationStyleConfig.dropDown,
     this.inDuration = const Duration(milliseconds: 300),
     this.outDuration = const Duration(milliseconds: 200),
     this.inCurve = Curves.easeOut,
     this.outCurve = Curves.easeIn,
     this.allowBackgroundClose = true,
     this.enableDragToClose = true,
-    this.blurSigma = 0.0,
+    this.blurSigma = 12.0,
     this.enableParticles = false,
   });
 
@@ -78,10 +83,10 @@ class AnimationPolicyConfig {
 }
 
 extension _Merge on AnimationPolicyConfig {
-  AnimationPolicyConfig mergeGlobal(AnimationPolicyConfig? g){
-    if(g == null) return this;
+  AnimationPolicyConfig mergeGlobal(AnimationPolicyConfig? g) {
+    if (g == null) return this;
     // 仅当全局的 style 与当前一致时，才用它来微调参数；避免把庆祝改成极简或反之
-    if(g.style != style) return this;
+    if (g.style != style) return this;
     return copyWith(
       inDuration: g.inDuration,
       outDuration: g.outDuration,

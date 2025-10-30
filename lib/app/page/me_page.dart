@@ -14,8 +14,9 @@ import 'package:flutter_app/core/store/lucky_store.dart';
 import 'package:flutter_app/ui/button/index.dart';
 import 'package:flutter_app/ui/empty.dart';
 import 'package:flutter_app/ui/lucky_tab_bar_delegate.dart';
+import 'package:flutter_app/ui/modal/base/animation_policy_config.dart';
 import 'package:flutter_app/ui/modal/dialog/modal_dialog_config.dart';
-import 'package:flutter_app/ui/modal/base/index.dart';
+import 'package:flutter_app/ui/modal/index.dart';
 import 'package:flutter_app/utils/format_helper.dart';
 import 'package:flutter_app/utils/helper.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -52,6 +53,7 @@ class _MePageState extends ConsumerState<MePage>
 
       RadixModal.show(
         config: ModalDialogConfig(
+          animationStyleConfig: AnimationStyleConfig.fadeScale,
           headerHeight: 60.w,
           headerBuilder: (close) => Row(
             mainAxisAlignment: MainAxisAlignment.end,

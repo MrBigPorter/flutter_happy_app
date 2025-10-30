@@ -1,7 +1,6 @@
-import 'dart:ui';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_app/ui/modal/base/animation_policy_config.dart';
+import 'package:flutter_app/ui/modal/base/animation_effects.dart';
 import 'package:flutter_app/ui/modal/dialog/modal_dialog_config.dart';
 import 'package:flutter_app/ui/modal/dialog/modal_dialog_surface.dart';
 import 'package:flutter_app/ui/modal/base/modal_auto_close_observer.dart';
@@ -95,6 +94,7 @@ class RadixModal {
       globalPolicy: null,
     );
 
+
     final allowBgClose =
         (config.allowBackgroundCloseOverride ?? policy.allowBackgroundClose) &&
         clickBgToClose;
@@ -108,44 +108,17 @@ class RadixModal {
       context: ctx,
       barrierDismissible: allowBgClose,
       barrierLabel: allowBgClose ? MaterialLocalizations.of(ctx).modalBarrierDismissLabel : null,
-      barrierColor: barrierColor,
       transitionDuration: policy.inDuration,
+      barrierColor: Colors.transparent,
       transitionBuilder: (ctx, anim, secAnim, child) {
-        // 归一化动画值 normalized animation value
-        final normalized = AlwaysStoppedAnimation<double>(
-          anim.value.clamp(0.0, 1.0)
-        );
-        //所有 CurvedAnimation 的 parent 用 normalized（而不是 anim）
-        final fade = CurvedAnimation(
-          parent: normalized,
-          curve: policy.inCurve,
-          reverseCurve: policy.outCurve,
-        );
-
-        //二次曲线也基于 fade，避免链式再次喂入“可能越界”的源
-        final scale = CurvedAnimation(
-          parent: normalized,
-          curve: policy.style == AnimationStyleConfig.celebration
-              ? Curves.elasticOut
-              : Curves.easeOutCubic,
-        );
-        return Stack(
-          children: [
-            BackdropFilter(
-              filter: ImageFilter.blur(
-                sigmaX: policy.blurSigma,
-                sigmaY: policy.blurSigma,
-              ),
-              child: Container(color: Colors.black.withValues(alpha: 0)),
-            ),
-            FadeTransition(
-              opacity: fade,
-              child: ScaleTransition(
-                scale: Tween(begin: 0.9, end: 1.0).animate(scale),
-                child: child,
-              ),
-            ),
-          ],
+        return buildModalTransition(
+            anim,
+            child,
+            policy.style,
+            allowBgClose: allowBgClose,
+            barrierColor: barrierColor,
+            blurSigma: policy.blurSigma,
+            context: ctx,
         );
       },
       pageBuilder: (ctx, anima1, anima2) {

@@ -1,33 +1,34 @@
 import 'package:flutter/animation.dart';
 import 'package:flutter_app/ui/modal/base/animation_policy_config.dart';
 
-/// Animation policy resolver for modal UI components.
-/// Resolves animation and behavior configuration based on style and global policy.
 class AnimationPolicyResolver {
-  /// Resolves the final animation policy config by combining business style and global policy.
-  ///
-  /// Parameters:
-  /// - [businessStyle] - The animation style specific to business logic
-  /// - [globalPolicy] - The global animation policy configuration
-  ///
-  /// Returns an [AnimationPolicyConfig] with resolved settings.
   static AnimationPolicyConfig resolve({
     AnimationStyleConfig? businessStyle,
     AnimationPolicyConfig? globalPolicy,
   }) {
-    final style =
-        businessStyle ?? globalPolicy?.style ?? AnimationStyleConfig.minimal;
+    final style = businessStyle ?? globalPolicy?.style ?? AnimationStyleConfig.minimal;
     switch (style) {
       case AnimationStyleConfig.celebration:
         return _celebration();
+      case AnimationStyleConfig.bounce:
+      case AnimationStyleConfig.flip3D:
+        return AnimationPolicyConfig(
+          inDuration: const Duration(milliseconds: 500),
+          outDuration: const Duration(milliseconds: 250),
+          style: businessStyle ?? AnimationStyleConfig.bounce,
+          blurSigma: 12.0
+        );
       case AnimationStyleConfig.minimal:
         return _minimal();
+        default:
+          return AnimationPolicyConfig(
+            inDuration: const Duration(milliseconds: 300),
+            outDuration: const Duration(milliseconds: 200),
+            style: businessStyle ?? AnimationStyleConfig.minimal,
+          );
     }
   }
 
-  /// Creates minimal animation policy configuration with subtle animations.
-  ///
-  /// Features shorter durations and simple curves for a clean, functional feel.
   static AnimationPolicyConfig _minimal() => const AnimationPolicyConfig(
     style: AnimationStyleConfig.minimal,
     inDuration: Duration(milliseconds: 280),
@@ -40,9 +41,6 @@ class AnimationPolicyResolver {
     enableParticles: false,
   );
 
-  /// Creates celebration animation policy configuration with dramatic animations.
-  ///
-  /// Features longer durations, elastic curves and visual effects for celebratory moments.
   static AnimationPolicyConfig _celebration() => const AnimationPolicyConfig(
     style: AnimationStyleConfig.celebration,
     inDuration: Duration(milliseconds: 600),
@@ -55,3 +53,4 @@ class AnimationPolicyResolver {
     enableParticles: true,
   );
 }
+
