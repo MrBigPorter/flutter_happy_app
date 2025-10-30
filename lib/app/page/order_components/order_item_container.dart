@@ -12,7 +12,7 @@ import 'package:flutter_app/utils/helper.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
-import '../../../ui/modal/radix_sheet.dart';
+import '../../../ui/modal/sheet/radix_sheet.dart';
 
 class OrderItemContainer extends StatelessWidget {
   final OrderItem item;

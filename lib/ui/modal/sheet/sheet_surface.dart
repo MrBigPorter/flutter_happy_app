@@ -1,12 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_app/utils/helper.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'sheet_props.dart';
+import 'modal_sheet_config.dart';
 
-class SheetSurface extends StatelessWidget {
+/// Widget that renders the surface of a modal sheet
+/// This includes the sheet header and content
+class SheetSurface<T> extends StatelessWidget {
+  /// Configuration object for the modal sheet
   final ModalSheetConfig config;
+
+  /// Callback function to close the sheet
   final VoidCallback onClose;
+
+  /// Child widget to display in the sheet body
   final Widget child;
+
+  /// Whether the sheet takes up full screen height
   final bool isFullScreen;
 
   const SheetSurface({
@@ -19,24 +28,23 @@ class SheetSurface extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-
-
     final double top = isFullScreen ? ViewUtils.statusBarHeight : 8.w;
 
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        config.customHeader ??
+        config.headerBuilder != null ?
+        SizedBox(
+          height: config.headerHeight,
+          child: config.headerBuilder!.call(
+                  ([result]) => onClose()
+          ),
+        ) :
         _SheetHeader(
           onClose: onClose,
           showClose: config.showCloseButton,
           paddingTop: top,
         ),
-        if(config.headerActions != null)
-          SizedBox(
-            height: config.headerHeight ?? 40.w,
-            child: config.headerActions,
-          ),
         Expanded(child: child),
       ],
     );

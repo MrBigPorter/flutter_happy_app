@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 /// NavHub
-/// 全局 NavigatorKey，用于统一弹层、路由、对话框、BottomSheet 的根导航。
+/// Global NavigatorKey for unified management of overlays, routes, dialogs, and BottomSheets.
 class NavHub {
   static final key = GlobalKey<NavigatorState>();
 }

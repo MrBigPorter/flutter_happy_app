@@ -1,15 +1,15 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'animation_policy_config.dart';
+import '../base/animation_policy_config.dart';
 
 /// AnimatedSheetWrapper
 /// ------------------------------------------------------------------
-/// 底部弹窗动画包装组件 bottom sheet animation wrapper
-/// - 支持淡入淡出 + 滑动动画 support fade + slide animation
-/// - 支持自定义动画时长与曲线 support custom duration and curve
-/// - 支持模糊背景与粒子特效（可选） support blur background and particle effects (optional)
+/// A bottom sheet animation wrapper component with the following features:
+/// - Support fade + slide animation
+/// - Support custom duration and curve
+/// - Support blur background and particle effects (optional)
 /// ------------------------------------------------------------------
-/// 用法：
+/// Usage:
 /// ```dart
 /// AnimatedSheetWrapper(
 ///  policy: animationPolicy,
@@ -53,11 +53,11 @@ class AnimatedSheetWrapperState extends State<AnimatedSheetWrapper>
     );
 
     _slide = Tween<Offset>(
-      begin: const Offset(0, 0.04), // 从下往上滑入
+      begin: const Offset(0, 0.04), // Slide in from bottom
       end: Offset.zero,
     ).animate(_fade);
 
-    // 延迟执行，避开系统动画启动阶段
+    // Delayed execution to avoid system animation startup phase
     Future.delayed(const Duration(milliseconds: 160), () {
       if (mounted) _controller.forward();
     });
@@ -82,7 +82,7 @@ class AnimatedSheetWrapperState extends State<AnimatedSheetWrapper>
       ),
     );
 
-    // 模糊层 + 粒子层（仅当策略开启）
+    // Blur layer + particle layer (only when enabled in policy)
     if (enableBlur || enableParticles) {
       animated = Stack(
         children: [
@@ -106,7 +106,7 @@ class AnimatedSheetWrapperState extends State<AnimatedSheetWrapper>
 }
 
 /// ------------------------------------------------------------------
-/// 简易粒子层（仅视觉增强，低成本）
+/// Simple particle layer (visual enhancement only, low cost)
 /// ------------------------------------------------------------------
 class _ParticleLayer extends StatefulWidget {
   const _ParticleLayer();
@@ -125,7 +125,8 @@ class _ParticleLayerState extends State<_ParticleLayer>
     _ctrl = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 3),
-    )..repeat(reverse: true);
+    )
+      ..repeat(reverse: true);
   }
 
   @override
@@ -152,11 +153,13 @@ class _ParticleLayerState extends State<_ParticleLayer>
 
 class _ParticlePainter extends CustomPainter {
   final double progress;
+
   _ParticlePainter(this.progress);
 
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()..color = Colors.white.withOpacity(0.1 + 0.15 * (1 - progress));
+    final paint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.1 + 0.15 * (1 - progress));
     for (int i = 0; i < 20; i++) {
       final dx = (size.width / 20) * i + (progress * 10);
       final dy = (size.height / 10) * (i % 10) * (1 - progress);

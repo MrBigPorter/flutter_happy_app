@@ -1,5 +1,4 @@
 import 'package:easy_localization/easy_localization.dart';
-import 'package:extended_nested_scroll_view/extended_nested_scroll_view.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_app/app/page/me_components/voucher.dart';
 import 'package:flutter_app/app/page/me_components/voucher_list.dart';
@@ -15,7 +14,8 @@ import 'package:flutter_app/core/store/lucky_store.dart';
 import 'package:flutter_app/ui/button/index.dart';
 import 'package:flutter_app/ui/empty.dart';
 import 'package:flutter_app/ui/lucky_tab_bar_delegate.dart';
-import 'package:flutter_app/ui/modal/radix_sheet.dart';
+import 'package:flutter_app/ui/modal/dialog/modal_dialog_config.dart';
+import 'package:flutter_app/ui/modal/base/index.dart';
 import 'package:flutter_app/utils/format_helper.dart';
 import 'package:flutter_app/utils/helper.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -23,7 +23,6 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:nested_scroll_view_plus/nested_scroll_view_plus.dart';
 
-import '../../ui/modal/radix_modal.dart';
 import 'order_components/order_list.dart';
 
 class MePage extends ConsumerStatefulWidget {
@@ -51,15 +50,39 @@ class _MePageState extends ConsumerState<MePage>
 
     WidgetsBinding.instance.addPostFrameCallback((_){
 
-      /*RadixModal.show(
-        builder: (ctx, close) => SizedBox(
+      RadixModal.show(
+        config: ModalDialogConfig(
+          headerHeight: 60.w,
+          headerBuilder: (close) => Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              Button(
+                onPressed: () {
+                 close();
+                },
+                height: 40.w,
+                paddingX: 12.w,
+                child: Text(
+                  'common.close'.tr(),
+                  style: TextStyle(
+                    fontSize: context.textSm,
+                    fontWeight: FontWeight.w500,
+                    height: context.leadingSm,
+                    color: context.textPrimary900,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+         builder: (ctx, close) => SizedBox(
           width: double.infinity,
           height: 200.w,
           child: Center(
-            child: Text('This is a modal dialog'),
+            child: Text('This is a modal sheet'),
           ),
         ),
-      );*/
+      );
     });
 
   }

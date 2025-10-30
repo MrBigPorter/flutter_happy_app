@@ -1,21 +1,44 @@
 import 'package:flutter/material.dart';
 
+/// Animation style configuration for modal sheets
 enum AnimationStyleConfig {
+  /// Minimal animation style with basic transitions
   minimal,
+
+  /// Celebration animation style with particles and enhanced effects
   celebration,
 }
 
+/// Configuration for modal sheet animations and behavior
 class AnimationPolicyConfig {
+  /// The animation style to use (minimal or celebration)
   final AnimationStyleConfig style;
+
+  /// Duration for the sheet entrance animation
   final Duration inDuration;
+
+  /// Duration for the sheet exit animation
   final Duration outDuration;
+
+  /// Curve for the entrance animation
   final Curve inCurve;
+
+  /// Curve for the exit animation
   final Curve outCurve;
+
+  /// Whether tapping the background closes the sheet
   final bool allowBackgroundClose;
+
+  /// Whether dragging down can close the sheet
   final bool enableDragToClose;
+
+  /// Blur sigma value for background effects
   final double blurSigma;
+
+  /// Whether to show celebration particle effects
   final bool enableParticles;
 
+  /// Creates an animation policy configuration
   const AnimationPolicyConfig({
     this.style = AnimationStyleConfig.minimal,
     this.inDuration = const Duration(milliseconds: 300),
@@ -28,6 +51,7 @@ class AnimationPolicyConfig {
     this.enableParticles = false,
   });
 
+  /// Creates a copy with some fields replaced with new values
   AnimationPolicyConfig copyWith({
     AnimationStyleConfig? style,
     Duration? inDuration,

@@ -1,10 +1,8 @@
-// app/routes/app_router.dart
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_app/app/page/wallet_detail_page.dart';
 import 'package:flutter_app/app/routes/transitions.dart';
-import 'package:flutter_app/ui/modal/modal_auto_close_observer.dart';
-import 'package:flutter_app/ui/modal/modal_service.dart';
-import 'package:flutter_app/ui/modal/nav_hub.dart';
+import 'package:flutter_app/ui/modal/base/modal_auto_close_observer.dart';
+import 'package:flutter_app/ui/modal/base/nav_hub.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../components/lucky_tab_bar.dart';

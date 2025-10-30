@@ -66,7 +66,7 @@ class _ProductDetailPageState extends State<ProductDetailPage>
     final sheetH = h * _maxHeightFactor;
 
     final barrierColor =
-    Theme.of(context).colorScheme.scrim.withOpacity(0.45);
+    Theme.of(context).colorScheme.scrim.withValues(alpha: 0.45);
     final surfaceColor = Theme.of(context).colorScheme.surface;
 
     return Scaffold(
@@ -101,7 +101,7 @@ class _ProductDetailPageState extends State<ProductDetailPage>
                 child: Material(
                   color: surfaceColor,
                   elevation: 16,
-                  shadowColor: Colors.black.withOpacity(0.25),
+                  shadowColor: Colors.black.withValues(alpha: 0.25),
                   borderRadius:
                   const BorderRadius.vertical(top: Radius.circular(_radius)),
                   child: GestureDetector(
