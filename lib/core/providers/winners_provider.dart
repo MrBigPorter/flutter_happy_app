@@ -35,11 +35,11 @@ final activeMonthProvider = StateProvider<ActMonthTab?>((ref){
 /// Winners request provider with pagination
 final actWinnersMonthsProvider =
 Provider.family<PageRequest<ActWinnersMonth>, int>((ref, month) {
-  return ({required int pageSize, required int current}) {
+  return ({required int pageSize, required int page}) {
     return Api.winnersMonthApi(
       ActWinnersMonthParams(
         month: month,
-        current: current,
+        page: page,
         size: pageSize,
       ),
     );

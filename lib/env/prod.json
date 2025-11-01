@@ -1,0 +1,1 @@
+{ "FLAVOR": "prod", "API_BASE": "https://api.example.com", "LOG_HTTP": "false" }

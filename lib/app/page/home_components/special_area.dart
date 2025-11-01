@@ -62,7 +62,7 @@ class SpecialArea extends StatelessWidget {
             itemBuilder: (context, index) {
               final item = list![index];
               return AnimatedListItem(
-                id: item.treasureId,
+                id: int.parse(item.treasureId),
                 child: Padding(
                   padding: EdgeInsets.symmetric(vertical: 12.2),
                   child: Column(
@@ -74,7 +74,7 @@ class SpecialArea extends StatelessWidget {
                           ClipRRect(
                             borderRadius: BorderRadius.circular(8.r),
                             child: CachedNetworkImage(
-                              imageUrl: proxied(item.treasureCoverImg),
+                              imageUrl: proxied(item.treasureCoverImg!),
                               width: 80.w,
                               height: 80.w,
                               fit: BoxFit.cover,

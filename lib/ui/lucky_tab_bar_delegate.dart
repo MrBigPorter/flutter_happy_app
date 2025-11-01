@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_app/common.dart';
+import 'package:flutter_app/components/skeleton.dart';
+import 'package:flutter_app/utils/helper.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// 可用于 SliverPersistentHeader 的 TabBar 委托
@@ -70,7 +72,18 @@ class LuckySliverTabBarDelegate<T> extends SliverPersistentHeaderDelegate {
   ) {
 
     if(controller == null){
-      return SizedBox.shrink();
+      return SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        physics: platformScrollPhysics(),
+        child: Row(
+          children: List.generate(6, (index){
+            return Padding(
+              padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 10.w),
+              child: Skeleton.react(width: 60.w, height: height),
+            );
+          }),
+        ),
+      );
     }
 
     final ValueNotifier<double> defaultProgress = ValueNotifier<double>(0.0);
@@ -242,23 +255,23 @@ class _LuckyIndicatorPainter extends BoxPainter {
 
   @override
   void paint(Canvas canvas, Offset offset, ImageConfiguration configuration) {
-    /// ✅ 计算当前 Tab 的位置与宽度 current tab position & width
+    /// 计算当前 Tab 的位置与宽度 current tab position & width
     final rect = offset & configuration.size!;
     
     final radius = Radius.circular(this.radius);
 
-    /// ✅ 绘制圆角方块 draw rounded rectangle
+    ///绘制圆角方块 draw rounded rectangle
     final paint = Paint()
       ..color = color
       ..style = PaintingStyle.fill;
 
-    /// ✅ 计算动画进度 calculate animation progress
+    /// 计算动画进度 calculate animation progress
     final value = controller.animation?.value ?? controller.index.toDouble();
     final from = value.floor();
     final progress = value % 1; // 0.0 ~ 1.0
     final to = (value.round()).clamp(0, controller.length - 1);
 
-    /// ✅ 计算宽度 calculate width
+    /// 计算宽度 calculate width
     if (_from != from || _to != to) {
       _from = from;
       _to = to;
@@ -266,7 +279,7 @@ class _LuckyIndicatorPainter extends BoxPainter {
       _toW = null;
     }
 
-    /// ✅ 计算宽度 calculate width (仅计算一次 only calculate once)
+    /// 计算宽度 calculate width (仅计算一次 only calculate once)
     if (progress < 0.05) {
       _fromW = rect.width;
     }
@@ -274,13 +287,13 @@ class _LuckyIndicatorPainter extends BoxPainter {
       _toW = rect.width;
     }
 
-    /// ✅ 计算宽度 calculate width
+    /// 计算宽度 calculate width
     final baseW = (progress <= 0.5)
         ? (_fromW ?? rect.width)
         : (_toW ?? rect.width);
     final pillW = (baseW + itemPaddingX).clamp(indicatorMinWidth, double.infinity);
 
-    // ✅ 以中心为基准生成圆角方块 draw rounded rectangle centered
+    //  以中心为基准生成圆角方块 draw rounded rectangle centered
     final RRect rrect = RRect.fromRectAndCorners(
       Rect.fromCenter(center: rect.center, width: (pillW/1.6), height: indicatorHeight.h),
       topLeft: radius.r,

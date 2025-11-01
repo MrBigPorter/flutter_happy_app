@@ -1,20 +1,19 @@
+import 'package:extended_nested_scroll_view/extended_nested_scroll_view.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_app/common.dart';
 import 'package:flutter_app/components/base_scaffold.dart';
+import 'package:flutter_app/components/list.dart';
 import 'package:flutter_app/components/lucky_custom_material_indicator.dart';
 import 'package:flutter_app/components/product_item.dart';
-import 'package:flutter_app/components/sticky_header.dart';
-import 'package:flutter_app/components/tabs.dart';
-import 'package:flutter_app/components/featured_skeleton.dart';
+import 'package:flutter_app/components/safe_tab_bar_view.dart';
 import 'package:flutter_app/core/providers/index.dart';
 import 'package:flutter_app/core/models/index.dart';
 import 'package:flutter_app/ui/animated_list_item.dart';
-import 'package:flutter_app/utils/animation_helper.dart';
+import 'package:flutter_app/ui/lucky_tab_bar_delegate.dart';
 import 'package:flutter_app/utils/helper.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
-import 'package:flutter_app/ui/empty.dart';
+import 'package:nested_scroll_view_plus/nested_scroll_view_plus.dart';
 
 /// 商品页 Product Page
 class ProductPage extends ConsumerStatefulWidget {
@@ -28,22 +27,34 @@ class ProductPage extends ConsumerStatefulWidget {
 /// use CustomScrollView with Slivers to achieve app bar fade out on scroll
 /// and tabs stick to top
 /// and product list below tabs
-class _ProductPageState extends ConsumerState<ProductPage> {
+class _ProductPageState extends ConsumerState<ProductPage> with SingleTickerProviderStateMixin {
   late final ScrollController scrollController;
   final ValueNotifier<double> scrollProgress = ValueNotifier(0.0);
+  TabController? _tabController;
+  List<ProductCategoryItem> _tabs = const [];
+
   @override
   void initState() {
     super.initState();
 
+    Future.microtask(() async{
+      final category = await ref.read(categoryProvider.future);
+      _initializeCategory(category);
+    });
 
-    /// initialize scroll controller and listen to scroll events
-    scrollController = ScrollController()..addListener(_onScroll);
+
   }
 
-  void _onScroll() {
-    final offset = scrollController.offset;
-    scrollProgress.value = offset.clamp(0.0, double.infinity);
+  void _initializeCategory(List<ProductCategoryItem> category){
+    if (category.isNotEmpty) {
+      setState(() {
+        _tabs = category;
+      });
+      _tabController = TabController(length: category.length, vsync: this);
+    }
+
   }
+
 
   @override
   void dispose() {
@@ -55,14 +66,11 @@ class _ProductPageState extends ConsumerState<ProductPage> {
   @override
   Widget build(BuildContext context) {
     final ref = this.ref;
-    final categoryList = ref.watch(categoryProvider);
-    final active = ref.watch(activeCategoryProvider);
-    final products = ref.watch(productListProvider);
 
     Future<bool> onRefresh() async {
       Future.wait([
         ref.refresh(categoryProvider.future),
-        ref.refresh(productListProvider.future),
+        //ref.refresh(productListProvider.future),
       ]);
       await Future.delayed(const Duration(milliseconds: 400));
       return true;
@@ -72,96 +80,100 @@ class _ProductPageState extends ConsumerState<ProductPage> {
       showBack: false,
       body: LuckyCustomMaterialIndicator(
           onRefresh: onRefresh,
-          child: NotificationListener<ScrollNotification>(
-            onNotification: (n){
-              ScrollSpeedTracker.instance.update(n);
-              return false;
-            },
-            child: CustomScrollView(
-              controller: scrollController,
-              physics: const BouncingScrollPhysics(),
-              slivers: [
-                /// Tabs（吸顶固定）
-                categoryList.when(
-                  data: (data) => StickyHeader.pinned(
-                    minHeight: 70,
-                    maxHeight: 70,
-                    builder: (context, info) {
-                      return AnimatedContainer(
-                        duration: const Duration(milliseconds: 120),
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                            color: context.bgPrimary.withAlpha(
-                              (255 * info.progress + 10).clamp(0, 255).toInt(),
-                            )
-                        ),
-                        child: Tabs<ProductCategoryItem>(
-                          data: data,
-                          activeItem: active,
-                          parentHeight: 70,
-                          renderItem: (item) => Center(child: Text(item.name)),
-                          onChangeActive: (item) {
-                            ref.read(activeCategoryProvider.notifier).state = item;
-                            if (scrollController.hasClients &&
-                                scrollProgress.value > info.shrinkOffset) {
-                              scrollController.jumpTo(info.shrinkOffset - 70);
-                            }
-                          },
-                        ),
-                      );
+          child: NestedScrollViewPlus(
+              overscrollBehavior: OverscrollBehavior.outer,
+              physics: platformScrollPhysics(),
+              headerSliverBuilder: (context,_)=>[
+                SliverPersistentHeader(
+                  pinned: true,
+                  delegate: LuckySliverTabBarDelegate(
+                    showPersistentBg: true,
+                    height: 60,
+                    tabs: _tabs,
+                    renderItem: (t) => Tab(text: t.name),
+                    controller: _tabController,
+                    onTap: (item){
+                      ref.read(activeCategoryProvider.notifier).state = item;
                     },
                   ),
-                  error: (_, __) =>
-                  const SliverToBoxAdapter(child: FeaturedSkeleton()),
-                  loading: () =>
-                  const SliverToBoxAdapter(child: FeaturedSkeleton()),
-                ),
+                )
 
-                /// 商品列表
-                _ListItem(products: products),
               ],
-            ),
-          ),
+              body: SafeTabBarView(
+                  controller: _tabController,
+                  children: _tabs.map((tab) {
+                    return ExtendedVisibilityDetector(
+                      uniqueKey: Key('product_list_${tab.id}'),
+                      child: _List(categoryId: tab.id,),
+                    );
+                  }).toList()
+              ),
+          )
       ),
     );
   }
 }
 
+class _List extends ConsumerStatefulWidget {
+  final int categoryId;
+
+  const _List({required this.categoryId});
+
+  @override
+  ConsumerState<_List> createState() => _ListState();
+}
 
 /// 商品列表
-class _ListItem extends StatelessWidget {
-  final AsyncValue<List<ProductListItem>> products;
+class _ListState extends ConsumerState<_List> {
+  late final PageListController<ProductListItem> _ctl;
 
-  const _ListItem({required this.products});
+  @override
+  void initState() {
+    super.initState();
+
+    _ctl = PageListController<ProductListItem>(
+        request: ({required int pageSize, required int page}) {
+          final req = ref.read(productListProvider(widget.categoryId));
+          return req(
+            pageSize: pageSize,
+            page: page,
+          );
+        },
+        requestKey: widget.categoryId
+    );
+  }
+
+
+  @override
+  void dispose() {
+    _ctl.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    return products.when(
-      data: (list) {
-        if (list.isNullOrEmpty) {
-          return const SliverFillRemaining(
-            hasScrollBody: false,
-            child: Empty(),
-          );
-        }
-        return SliverPadding(
-          padding: EdgeInsets.all(16.w),
-          sliver: SliverGrid(
+
+    return CustomScrollView(
+      physics: platformScrollPhysics(),
+      key: PageStorageKey<String>('product_list_${widget.categoryId}'),
+      slivers: [
+        PageListViewPro(
+            controller: _ctl,
+            sliverMode: true,
+            padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 20.w),
             gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 2,
-              mainAxisSpacing: 16.w,
+              mainAxisSpacing: 22.w,
               crossAxisSpacing: 16.w,
-              childAspectRatio: 166.w / 365.w,
+              childAspectRatio: 166 / 365,
             ),
-            delegate: SliverChildBuilderDelegate((context, index) {
-              final item = list[index];
+            itemBuilder: (context, item, index, isLast){
               return AnimatedListItem(index: index, child: ProductItem(data: item, imgHeight: 166, imgWidth: 166));
-            }, childCount: list.length),
-          ),
-        );
-      },
-      error: (_, __) => const SliverToBoxAdapter(child: FeaturedSkeleton()),
-      loading: () => const SliverToBoxAdapter(child: FeaturedSkeleton()),
+            }
+        ),
+
+      ],
     );
+
   }
 }

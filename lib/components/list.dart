@@ -40,7 +40,7 @@ import 'package:flutter_app/components/skeleton.dart';
 import 'package:flutter_app/ui/dot_wave_loading.dart';
 import 'package:flutter_app/ui/empty.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-
+import 'package:sliver_tools/sliver_tools.dart';
 import '../core/models/page_request.dart';
 
 // If you already have PageResult / PageRequest in your project, keep those and remove the typedef below.
@@ -105,7 +105,7 @@ class PageListState<T> {
 class PageListController<T> extends ValueNotifier<PageListState<T>> {
   final Future<PageResult<T>> Function({
     required int pageSize,
-    required int current,
+    required int page,
   })
   request;
   final int pageSize;
@@ -173,7 +173,7 @@ class PageListController<T> extends ValueNotifier<PageListState<T>> {
     _noMoreFallback = false;
 
     try {
-      final res = await request(pageSize: pageSize, current: 1);
+      final res = await request(pageSize: pageSize, page: 1);
       if (my != _ticket || _isDisposed) return; // race drop
 
       List<T> data = res.list;
@@ -220,7 +220,7 @@ class PageListController<T> extends ValueNotifier<PageListState<T>> {
 
         try {
           final next = value.currentPage + 1;
-          final res = await request(pageSize: pageSize, current: next);
+          final res = await request(pageSize: pageSize, page: next);
           if (my != _ticket) return; // race drop
 
           List<T> nextPage = res.list;
@@ -278,10 +278,9 @@ class PageListController<T> extends ValueNotifier<PageListState<T>> {
   }
 }
 
-/// ✅ Extension to auto-wrap scrollable with NotificationListener for load-more
+/// Extension to auto-wrap scrollable with NotificationListener for load-more
 ///   (only needed if you don't use scrollController binding)
 extension PageListNotificationX<T> on PageListController<T> {
-  /// ✅ 自动包裹滚动监听层（任何 Scrollable 都可以）
   Widget wrapWithNotification({required Widget child}) {
     return NotificationListener<ScrollNotification>(
       onNotification: (n) {
@@ -329,6 +328,8 @@ class PageListViewPro<T> extends StatelessWidget {
   final double skeletonHeight;
   final double skeletonSpace;
   final EdgeInsetsGeometry skeletonPadding;
+  final SliverGridDelegate? gridDelegate;
+  final bool fillRemainingWhenShort;
 
   const PageListViewPro({
     super.key,
@@ -346,6 +347,8 @@ class PageListViewPro<T> extends StatelessWidget {
     this.skeletonHeight = 100,
     this.skeletonSpace = 12,
     this.skeletonPadding = const EdgeInsets.symmetric(horizontal: 10),
+    this.gridDelegate,
+    this.fillRemainingWhenShort = true,
   }) : assert(
          itemExtent == null || prototypeItem == null,
          'Provide either itemExtent or prototypeItem.',
@@ -373,18 +376,17 @@ class PageListViewPro<T> extends StatelessWidget {
   // ── UI builders ──────────────────────────────────────────────────────────────
 
   Widget _buildSkeleton(BuildContext context) {
-    if (sliverMode) {
-      return SliverPadding(
-        padding: padding ?? skeletonPadding,
-        sliver: SliverList.separated(
-          itemCount: skeletonCount,
-          separatorBuilder: (_, __) => SizedBox(height: skeletonSpace),
-          itemBuilder: (_, __) => _DefaultSkeleton(
-            height: skeletonHeight,
-            padding: skeletonPadding,
-          ),
+    if (gridDelegate != null) {
+      final grid = SliverGrid(
+        gridDelegate: gridDelegate!,
+        delegate: SliverChildBuilderDelegate(
+              (_, __) => _DefaultSkeleton(height: skeletonHeight, padding: EdgeInsets.zero),
+          childCount: skeletonCount,
         ),
       );
+      return padding != null
+          ? SliverPadding(padding: padding!, sliver: grid)
+          : grid;
     }
     return ListView.separated(
       padding: padding ?? EdgeInsets.zero,
@@ -410,24 +412,77 @@ class PageListViewPro<T> extends StatelessWidget {
   Widget _buildList(BuildContext context, PageListState<T> state) {
     final list = state.items;
 
-    // +1 bottom status if hasMore OR currently loadingMore
+    // 是否显示底部状态（loadingMore / error / hasMore）
     final bool showBottom =
         state.hasMore ||
-        state.status == PageStatus.loadingMore ||
-        state.status == PageStatus.error;
-    final totalCount = list.length + (showBottom ? 1 : 0);
+            state.status == PageStatus.loadingMore ||
+            state.status == PageStatus.error;
+
+    // ========== A) Grid 模式 ==========
+    if (gridDelegate != null) {
+      final grid = SliverGrid(
+        gridDelegate: gridDelegate!,
+        delegate: SliverChildBuilderDelegate(
+              (ctx, index) {
+            final item = list[index];
+            final isLast = index == list.length - 1;
+            return itemBuilder(ctx, item, index, isLast);
+          },
+          childCount: list.length,
+          addAutomaticKeepAlives: false,
+          addRepaintBoundaries: false,
+          addSemanticIndexes: false,
+        ),
+      );
+
+      //  底部状态整行显示 + 不足一屏填满
+      final tail = <Widget>[
+        if (showBottom)
+          SliverToBoxAdapter(
+            child: _BottomStatus(
+              loadingMore: state.status == PageStatus.loadingMore,
+              hasMore: state.hasMore,
+              onRetry: controller.loadMore,
+              isError: state.status == PageStatus.error,
+            ),
+          ),
+        if (fillRemainingWhenShort)
+          const SliverFillRemaining(hasScrollBody: false, child: SizedBox()),
+      ];
+
+      if (sliverMode) {
+        final gridCore = padding != null
+            ? SliverPadding(padding: padding!, sliver: grid)
+            : grid;
+
+        return MultiSliver(children: [
+          gridCore,
+          ...tail,
+        ]);
+      }
+
+
+      Widget listCore = CustomScrollView(
+        controller: controller.scrollController,
+        primary: false,
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        slivers: [
+          if (padding != null) SliverPadding(padding: padding!),
+          grid,
+        ],
+      );
+      if (controller.scrollController == null) {
+        listCore = controller.wrapWithNotification(child: listCore);
+      }
+      return listCore;
+    }
+
+    final bool showBottomList = showBottom;
+    final totalCount = list.length;
 
     final delegate = SliverChildBuilderDelegate(
-      (ctx, index) {
-        if (index == list.length) {
-          // bottom status
-          return _BottomStatus(
-            loadingMore: state.status == PageStatus.loadingMore,
-            hasMore: state.hasMore,
-            onRetry: controller.loadMore,
-            isError: state.status == PageStatus.error,
-          );
-        }
+          (ctx, index) {
         final item = list[index];
         final isLast = index == list.length - 1;
         final child = itemBuilder(ctx, item, index, isLast);
@@ -447,31 +502,31 @@ class PageListViewPro<T> extends StatelessWidget {
       final core = itemExtent != null
           ? SliverFixedExtentList(delegate: delegate, itemExtent: itemExtent!)
           : (prototypeItem != null
-                ? SliverPrototypeExtentList(
-                    delegate: delegate,
-                    prototypeItem: prototypeItem!,
-                  )
-                : SliverList(delegate: delegate));
+          ? SliverPrototypeExtentList(
+          delegate: delegate, prototypeItem: prototypeItem!)
+          : SliverList(delegate: delegate));
+      if (fillRemainingWhenShort) {
+        return MultiSliver(children: [
+          padding != null ? SliverPadding(padding: padding!, sliver: core) : core,
+          const SliverFillRemaining(hasScrollBody: false, child: SizedBox()),
+        ]);
+      }
       return padding != null
           ? SliverPadding(padding: padding!, sliver: core)
           : core;
     }
 
-    // standalone ListView rendering (single scrollable)
     return CustomScrollView(
       controller: controller.scrollController,
-      primary: false, // ✅ 非主滚动
-      shrinkWrap: true, // ✅ 自动根据内容高度适配
-      physics: const NeverScrollableScrollPhysics(),// ✅ 禁止滚动，由外层滚动容器控制
+      primary: false,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
       slivers: [
         if (padding != null) SliverPadding(padding: padding!),
         if (itemExtent != null)
           SliverFixedExtentList(delegate: delegate, itemExtent: itemExtent!)
         else if (prototypeItem != null)
-          SliverPrototypeExtentList(
-            delegate: delegate,
-            prototypeItem: prototypeItem!,
-          )
+          SliverPrototypeExtentList(delegate: delegate, prototypeItem: prototypeItem!)
         else
           SliverList(delegate: delegate),
       ],

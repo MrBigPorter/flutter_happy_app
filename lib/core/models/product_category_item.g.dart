@@ -9,12 +9,9 @@ part of 'product_category_item.dart';
 ProductCategoryItem _$ProductCategoryItemFromJson(Map<String, dynamic> json) =>
     ProductCategoryItem(
       name: json['name'] as String,
-      productsCategoryId: (json['products_category_id'] as num).toInt(),
+      id: (json['id'] as num).toInt(),
     );
 
 Map<String, dynamic> _$ProductCategoryItemToJson(
   ProductCategoryItem instance,
-) => <String, dynamic>{
-  'name': instance.name,
-  'products_category_id': instance.productsCategoryId,
-};
+) => <String, dynamic>{'name': instance.name, 'id': instance.id};

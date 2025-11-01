@@ -1,20 +1,17 @@
-# flutter_app
+# Android 模拟器（访问宿主机用 10.0.2.2）
+flutter run -d android \
+--dart-define=FLAVOR=dev \
+--dart-define=API_BASE=http://10.0.2.2:3000 \
+--dart-define=LOG_HTTP=true
 
-A new Flutter project.
+# iOS 模拟器（可直接 localhost/127.0.0.1）
+flutter run -d ios \
+--dart-define=FLAVOR=dev \
+--dart-define=API_BASE=http://127.0.0.1:3000 \
+--dart-define=LOG_HTTP=true
 
-## Getting Started
-
-This project is a starting point for a Flutter application.
-
-A few resources to get you started if this is your first Flutter project:
-
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
-
-- create theme 
-- IDEA auto suggestion 
--  dart run tool/gen_tw_hints.dart assets/figma-tokens.tokens.json lib/tw/tw_hints_tokens.g.dart
+# 真机（用你电脑的局域网 IP）
+flutter run \
+--dart-define=FLAVOR=dev \
+--dart-define=API_BASE=http://192.168.x.x:3000 \
+--dart-define=LOG_HTTP=true

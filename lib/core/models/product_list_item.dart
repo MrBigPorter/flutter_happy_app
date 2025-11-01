@@ -5,33 +5,33 @@ part 'product_list_item.g.dart';
 @JsonSerializable(checked: true)
 class ProductListItem{
   @JsonKey(name:'buy_quantity_rate')
-  final String buyQuantityRate;
+  final double buyQuantityRate;
   @JsonKey(name:'cost_amount')
-  final int costAmount;
+  final int? costAmount;
   @JsonKey(name:'img_style_type')
-  final int imgStyleType;
+  final int? imgStyleType;
   @JsonKey(name:'lottery_mode')
-  final int lotteryMode;
+  final int? lotteryMode;
   @JsonKey(name:'lottery_time')
-  final int lotteryTime;
+  final int? lotteryTime;
   @JsonKey(name:'main_image_list')
   final List<String>? mainImageList;
   @JsonKey(name:'min_buy_quantity')
-  final int minBuyQuantity;
+  final int? minBuyQuantity;
   @JsonKey(name:'product_name')
   final String productName;
   @JsonKey(name:'seq_buy_quantity')
-  final int seqBuyQuantity;
+  final int? seqBuyQuantity;
   @JsonKey(name:'seq_shelves_quantity')
-  final int seqShelvesQuantity;
+  final int? seqShelvesQuantity;
   @JsonKey(name:'treasure_id')
-  final int treasureId;
+  final String treasureId;
   @JsonKey(name:'treasure_name')
   final String treasureName;
   @JsonKey(name:'unit_amount')
   final int unitAmount;
   @JsonKey(name:'treasure_cover_img')
-  final String treasureCoverImg;
+  final String? treasureCoverImg;
   @JsonKey(name: 'rate')
   final int? rate;
 
@@ -54,4 +54,18 @@ class ProductListItem{
   });
 
   factory ProductListItem.fromJson(Map<String,dynamic> json) => _$ProductListItemFromJson(json);
+}
+
+
+
+class ProductListParams{
+  final int categoryId;
+  final int page;
+  final int pageSize;
+
+  ProductListParams({
+    required this.categoryId,
+    required this.page,
+    required this.pageSize,
+  });
 }

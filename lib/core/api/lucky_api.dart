@@ -11,13 +11,13 @@ class Api {
 
   /// 首页轮播图 type 1: banner 2: 广告 home banner
   static Future<List<Banners>> bannersApi(int type) async {
-    final res = await HttpClient.get("/bannersList.json?type=$type");
+    final res = await Http.get("/bannersList.json?type=$type");
     return parseList<Banners>(res, (e) => Banners.fromJson(e));
   }
 
   /// 首页宝藏推荐  home treasures
   static Future<List<IndexTreasureItem>> indexTreasuresApi() async {
-    final res = await HttpClient.get("/treasuresList.json");
+    final res = await Http.get("/treasuresList.json");
 
    return parseList<IndexTreasureItem>(res, (e) => IndexTreasureItem.fromJson(e));
 
@@ -25,38 +25,38 @@ class Api {
 
   /// 首页广告 type 1: banner 2: 广告 home ad
   static Future<List<AdRes>> indexAdApi(int type) async {
-    final res = await HttpClient.get("/advertiseList.json?type=$type");
+    final res = await Http.get("/advertiseList.json?type=$type");
      return parseList<AdRes>(res, (e) => AdRes.fromJson(e));
   }
 
   /// 首页统计数据 home statistics
   static Future<IndexStatistics> indexStatisticsApi() async {
-    final res = await HttpClient.get("/homepageStatisticalData.json");
+    final res = await Http.get("/homepageStatisticalData.json");
       return IndexStatistics.fromJson(res);
   }
 
 
   /// 用户信息 user info
   static Future<UserInfo> getUserInfo() async {
-    final res = await HttpClient.get("user/info");
+    final res = await Http.get("user/info");
       return UserInfo.fromJson(jsonDecode(res));
   }
 
   /// 钱包余额 wallet balance
   static Future<Balance> getWalletBalance() async {
-    final res = await HttpClient.get('/balance.json');
+    final res = await Http.get('/balance.json');
     return Balance.fromJson(res);
   }
 
   /// 系统配置 sys config
   static Future<SysConfig> getSysConfig() async {
-    final res = await HttpClient.get('/sysConfigGet.json');
+    final res = await Http.get('/sysConfigGet.json');
     return SysConfig.fromJson(res);
   }
 
   /// 商品分类 product category tabs
   static Future<List<ProductCategoryItem>> getProductCategoryList() async {
-    final res = await HttpClient.get('/productCategoryList.json');
+    final res = await Http.get('/api/v1/categories');
     return parseList<ProductCategoryItem>(res, (e)=> ProductCategoryItem.fromJson(e));
   }
 
@@ -64,28 +64,30 @@ class Api {
   /// products_category_id 0: all
   /// products_category_id 1: hot
   /// products_category_id 2: tech
-  static Future<List<ProductListItem>> getProductList(int productsCategoryId) async {
-      final res = await HttpClient.get('/productList.json',queryParameters: {
-      "products_category_id": productsCategoryId
+  static Future<PageResult<ProductListItem>> getProductList(ProductListParams params) async {
+      final res = await Http.get('/api/v1/treasure',queryParameters: {
+        'page':params.page,
+        'pageSize':params.pageSize,
+        "categoryId": params.categoryId
     });
-    return parseList<ProductListItem>(res, (e)=> ProductListItem.fromJson(e));
+    return parsePageResponse(res, (e) => ProductListItem.fromJson(e));
   }
 
   /// 中奖总人数 total winners quantity
   static Future<WinnersQuantity> winnersQuantityApi() async {
-    final res = await HttpClient.get('/actWinnersQuantity.json');
+    final res = await Http.get('/actWinnersQuantity.json');
     return WinnersQuantity.fromJson(res);
   }
 
   /// 最新中奖名单 latest winners list
   static Future<List<WinnersLastsItem>> winnersLastsApi() async {
-    final res = await HttpClient.get('/actWinnersLasts.json');
+    final res = await Http.get('/actWinnersLasts.json');
     return parseList<WinnersLastsItem>(res, (e) => WinnersLastsItem.fromJson(e));
   }
 
   /// 月度活动数据 monthly activity data
   static Future<List<int>> actMonthNumApi() async {
-    final res = await HttpClient.get('/actMonthNum.json');
+    final res = await Http.get('/actMonthNum.json');
     return (res as List).map((e) => e as int).toList();
   }
 
@@ -93,9 +95,9 @@ class Api {
   /// returns paginated result
 
   static Future<PageResult<ActWinnersMonth>> winnersMonthApi(ActWinnersMonthParams params) async {
-    final res = await HttpClient.get('/actWinnersMonth.json',queryParameters: {
+    final res = await Http.get('/actWinnersMonth.json',queryParameters: {
       "month": params.month,
-      "current": params.current,
+      "page": params.page,
       "size": params.size,
     });
 
@@ -124,21 +126,21 @@ class Api {
   /// desc: description
 
   static Future<CouponThresholdResponse> thresholdListApi() async {
-    final res = await HttpClient.get('/userCouponThresholdList.json');
+    final res = await Http.get('/userCouponThresholdList.json');
     final response = CouponThresholdResponse.fromJson(res);
     return response;
   }
 
   /// 订单各状态数量 order count by status
   static Future<OrderCount> orderCountApi() async {
-    final res = await HttpClient.get('/userOrderStateCount.json');
+    final res = await Http.get('/userOrderStateCount.json');
     return OrderCount.fromJson(res);
   }
 
   static Future<PageResult<OrderItem>> orderListApi(OrderListParams params) async {
-    final res = await HttpClient.get('/userOrderList.json',queryParameters: {
+    final res = await Http.get('/userOrderList.json',queryParameters: {
       "order_state": params.orderState,
-      "current": params.current,
+      "page": params.page,
       "size": params.size,
     });
     final result = parsePageResponse(res, (e) => OrderItem.fromJson(e) );

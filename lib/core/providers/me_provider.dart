@@ -10,11 +10,11 @@ final thresholdListProvider = FutureProvider((ref) async {
 
 /// Order list request provider with pagination and status filter
 final orderListProvider = Provider.family((ref, int status){
-  return ({required int pageSize, required int current}) {
+  return ({required int pageSize, required int page}) {
     return Api.orderListApi(
       OrderListParams(
         orderState: status,
-        current: current,
+        page: page,
         size: pageSize,
       ),
     );

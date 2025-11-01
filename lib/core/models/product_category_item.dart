@@ -7,12 +7,12 @@ part 'product_category_item.g.dart';
 class ProductCategoryItem {
   @JsonKey(name: 'name')
   final String name;
-  @JsonKey(name: 'products_category_id')
-  final int productsCategoryId;
+  @JsonKey(name: 'id')
+  final int id;
 
   ProductCategoryItem({
       required this.name,
-      required this.productsCategoryId,
+      required this.id,
   });
 
   factory ProductCategoryItem.fromJson(Map<String, dynamic> json) => _$ProductCategoryItemFromJson(json);

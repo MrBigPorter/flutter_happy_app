@@ -2,21 +2,30 @@ import 'package:flutter_app/common.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_app/core/models/index.dart';
 /// Product category provider, includes "all" category
-final categoryProvider = FutureProvider((ref) async {
+final categoryProvider = FutureProvider.autoDispose((ref) async {
  final res =  await Api.getProductCategoryList();
   return [
-    ProductCategoryItem(name: "all", productsCategoryId: 0),
+    ProductCategoryItem(name: "all", id: 0),
     ...res
   ];
 });
 
 /// Active category state provider
 final activeCategoryProvider = StateProvider<ProductCategoryItem>((ref) {
-  return ProductCategoryItem(name: "all", productsCategoryId: 0);
+  return ProductCategoryItem(name: "all", id: 0);
 });
 
 /// Product list provider
-final productListProvider = FutureProvider((ref) async {
-  final id = ref.watch(activeCategoryProvider).productsCategoryId;
-  return Api.getProductList(id);
+
+final productListProvider =
+Provider.family<PageRequest<ProductListItem>, int>((ref, id) {
+  return ({required int pageSize, required int page}) {
+    return Api.getProductList(
+      ProductListParams(
+        categoryId: id,
+        page: page,
+        pageSize: pageSize,
+      ),
+    );
+  };
 });

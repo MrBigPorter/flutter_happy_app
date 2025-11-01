@@ -83,12 +83,12 @@ class ActWinnersMonth {
 /// size: Number of items per page
 class ActWinnersMonthParams {
   final int month;
-  final int current;
+  final int page;
   final int size;
 
   const ActWinnersMonthParams({
     required this.month,
-    required this.current,
+    required this.page,
     required this.size,
   });
 }

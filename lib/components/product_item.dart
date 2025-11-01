@@ -60,7 +60,7 @@ class ProductItem extends StatelessWidget {
                       top: Radius.circular(8.w),
                     ),
                     child: CachedNetworkImage(
-                      imageUrl: proxied(data.treasureCoverImg),
+                      imageUrl: proxied(data.treasureCoverImg!),
                       fit: BoxFit.cover,
                       placeholder: (_, __) => Skeleton.react(
                         width: double.infinity,

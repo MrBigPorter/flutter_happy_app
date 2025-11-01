@@ -15,7 +15,7 @@ datasource db {
 // 用户体系 - User System
 // ============================================
 
-/// 用户表 - 存储用户基本信息
+/// 用户表 - 存储用户基本信息 ✅已完成 大半
 model User {
   id        BigInt   @id @default(autoincrement()) @map("id") /// 用户ID（雪花ID - 使用PostgreSQL BIGSERIAL）
   createdAt DateTime @default(now()) @map("created_at") /// 创建时间
@@ -127,7 +127,7 @@ model WalletTransaction {
 // 登录与认证 - Authentication System
 // ============================================
 
-/// 用户登录日志表 - 记录所有登录行为
+/// 用户登录日志表 - 记录所有登录行为 ✅已完成
 model UserLoginLog {
   id        BigInt   @id @default(autoincrement()) @map("log_id")
   userId    BigInt   @map("user_id")
@@ -165,7 +165,7 @@ model UserLoginLog {
   @@map("user_login_logs")
 }
 
-/// 第三方登录账户表 - 存储OAuth账户绑定信息
+/// 第三方登录账户表 - 存储OAuth账户绑定信息 ✅已完成
 model OauthAccount {
   id        BigInt   @id @default(autoincrement()) @map("oauth_id")
   userId    BigInt   @map("user_id")
@@ -202,7 +202,7 @@ model OauthAccount {
   @@map("oauth_accounts")
 }
 
-/// 短信验证码表 - 存储短信验证码记录
+/// 短信验证码表 - 存储短信验证码记录 ✅已完成
 model SmsVerificationCode {
   id        BigInt   @id @default(autoincrement()) @map("code_id")
   createdAt DateTime @default(now()) @map("created_at")

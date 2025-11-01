@@ -204,14 +204,14 @@ class OrderCount {
 class OrderListParams {
   @JsonKey(name: 'order_state')
   final int orderState;
-  @JsonKey(name: 'current')
-  final int current;
+  @JsonKey(name: 'page')
+  final int page;
   @JsonKey(name: 'size')
   final int size;
 
   const OrderListParams({
     required this.orderState,
-    required this.current,
+    required this.page,
     required this.size,
   });
 

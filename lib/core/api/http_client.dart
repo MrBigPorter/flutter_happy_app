@@ -1,133 +1,258 @@
-
+// lib/app/network/http_client.dart
 import 'package:dio/dio.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
 import 'package:flutter_app/app/routes/app_router.dart';
+import 'env.dart';
 
-/// A singleton HTTP client using Dio with interceptors for request and response handling.
-/// Includes methods for GET, POST, PUT, DELETE requests.
-/// Handles token management and error responses globally.
-/// Usage:
-///   Api.dio.get('/path');
-///   Api.get('/path');
-///   Api.post('/path', data: {...});
-///   Api.put('/path', data: {...});
-///   Api.delete('/path', data: {...});
-class HttpClient {
-  // Base URL for the API
-  // static const String baseUrl = 'https://api.example.com';
-  static const String baseUrl = 'http://127.0.0.1:5173';
-  // Success and token error codes
-  static const List<int> successCodes = [10000];
-  // Codes indicating token issues
-  static const List<int> tokenErrorCodes = [20062, 92000, 14004];
+typedef FromJson<T> = T Function(dynamic json);
 
-  static final Dio _dio = Dio(BaseOptions(
-    baseUrl: baseUrl,
-    connectTimeout: const Duration(seconds: 20),
-    receiveTimeout: const Duration(seconds: 20),
-    headers: {
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
-      "Cache-Control": "no-cache",
-    },
-  ))
-    ..interceptors.add(InterceptorsWrapper(
-      onRequest: (options, handler) async {
-        // Add common headers
-        options.headers["signature_nonce"] = DateTime.now().millisecondsSinceEpoch.toString();
-        options.headers["currentTime"] = DateTime.now().millisecondsSinceEpoch.toString();
-        options.headers["device"] = "web";
-        options.headers["lang"] = "en";
-
-        final prefs = await SharedPreferences.getInstance();
-        options.headers["authorization"] = prefs.getString('__t__') ?? '';
-        return handler.next(options);
+class Http {
+  Http._();
+  static final Dio _dio = Dio(
+    BaseOptions(
+      baseUrl: Env.apiBaseEffective,               // <- 用 final 值，不要 const
+      connectTimeout: const Duration(seconds: 20),
+      receiveTimeout: const Duration(seconds: 20),
+      responseType: ResponseType.json,
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Cache-Control': 'no-cache',
       },
-      onResponse: (response, handler) {
-        final data = response.data;
-        final code = data['code'] as int;
-        final message = data['message'] as String? ?? 'Unknown error';
-        final resData = data['data'];
+      // 我们自己根据 code 判断成败
+      validateStatus: (_) => true,
+      receiveDataWhenStatusError: true,
+    ),
+  );
 
-        if(!successCodes.contains(code)){
-          final errorMsg = data['errorMsg'] as String?;
+  static const _kTokenKey = '__t__';
+  static const _successCodes = <int>[10000];
+  static const _tokenErrorCodes = <int>[20062, 92000, 14004]; // 按你后端定义
+  static bool _navigatingToLogin = false;
 
-          // token is invalid
-          if(tokenErrorCodes.contains(code)){
-            response.requestOptions.extra = {'noErrorToast': true};
-            // clear token and redirect to login
-            _clearToken();
-            AppRouter.router.replace("/login");
+  static String? _tokenCache;
+
+  static Future<void> init() async {
+    // 日志（仅在 dev / 需要时打开）
+   /* if (Env.logHttp) {
+      _dio.interceptors.add(LogInterceptor(
+        requestBody: true,
+        responseBody: true,
+      ));
+    }*/
+
+    _dio.interceptors.add(
+      InterceptorsWrapper(
+        onRequest: (options, handler) async {
+          // 通用头
+          final now = DateTime.now().millisecondsSinceEpoch.toString();
+          options.headers['signature_nonce'] = now;
+          options.headers['currentTime'] = now;
+          options.headers['device'] = 'flutter';
+          options.headers['lang'] = 'en';
+
+          // 注入 token（除非显式标记 noAuth）
+          final noAuth = options.extra['noAuth'] == true;
+          if (!noAuth) {
+            final token = await _getToken();
+            if (token != null && token.isNotEmpty) {
+              options.headers['Authorization'] = 'Bearer $token';
+            }
           }
 
-          // no address found, redirect to settings
-          if(code == 92001){
-            response.requestOptions.extra = {'noErrorToast': true};
-            AppRouter.router.push("/me/setting");
+          handler.next(options);
+        },
+        onResponse: (response, handler) async {
+          // HTTP 非 2xx 也允许走到这里，由我们按后端 code 统一处理
+          final data = response.data;
+          if (data is! Map) {
+            // 非标准信封，直接当错误抛
+            return handler.reject(_asDioError(
+              response,
+              'Invalid response shape',
+            ));
           }
 
-          // no kyc found, redirect to kyc
-          if(code == 93001){
-            response.requestOptions.extra = {'noErrorToast': true};
-            AppRouter.router.push("/me/kyc/verify");
+          final code = data['code'] as int?;
+          final message = (data['message'] as String?) ?? 'Unknown error';
+          final resData = data['data'];
+
+          if (code == null) {
+            return handler.reject(_asDioError(response, 'Missing code'));
           }
 
-          // phone not bound, redirect to bind phone
-          if(code == 18023){
-            response.requestOptions.extra = {'noErrorToast': true};
-             AppRouter.router.push("/me/bind-phone");
+          if (_successCodes.contains(code)) {
+            response.data = resData; // 成功：把 data 透给调用方
+            return handler.next(response);
           }
 
-          // show error toast
-          if(!(response.requestOptions.extra['noErrorToast'] == true)){
-            Fluttertoast.showToast(msg: errorMsg ?? message);
+          // 处理需要跳转的业务码
+          final noToast = response.requestOptions.extra['noErrorToast'] == true;
+
+          if (_tokenErrorCodes.contains(code)) {
+            // token 失效：清除并跳登录（防抖）
+            await _clearToken();
+            if (!_navigatingToLogin) {
+              _navigatingToLogin = true;
+              AppRouter.router.replace('/login');
+              Future.delayed(const Duration(seconds: 1), () {
+                _navigatingToLogin = false;
+              });
+            }
+          } else if (code == 92001) {
+            // 无地址
+            AppRouter.router.push('/me/setting');
+          } else if (code == 93001) {
+            // 未完成 KYC
+            AppRouter.router.push('/me/kyc/verify');
+          } else if (code == 18023) {
+            // 未绑定手机
+            AppRouter.router.push('/me/bind-phone');
           }
 
-          return handler.reject(DioException(
-            requestOptions: response.requestOptions,
-            response: response,
-            type: DioExceptionType.badResponse,
-            message: "code $code, msg: $message",
+          if (!noToast) {
+            final errorMsg = (data['errorMsg'] as String?) ?? message;
+            Fluttertoast.showToast(msg: errorMsg);
+          }
+
+          return handler.reject(_asDioError(
+            response,
+            'code $code, msg: $message',
           ));
-        }
+        },
+        onError: (e, handler) {
+          // 统一网络错误提示（可由 noErrorToast 关闭）
+          final noToast = e.requestOptions.extra['noErrorToast'] == true;
+          if (!noToast) {
+            Fluttertoast.showToast(msg: e.message ?? 'Network error');
+          }
+          handler.next(e);
+        },
+      ),
+    );
+  }
 
-        response.data = resData;
-        return handler.next(response);
-
-      },
-      onError: (DioException e, handler) {
-        // Handle errors globally
-        Fluttertoast.showToast(msg: e.message ?? "Network error");
-        return handler.next(e);
-      },
-    ));
-
+  /// ---- 对外暴露的 Dio（必要时可直接用） ----
   static Dio get dio => _dio;
 
+  /// ---- 便捷请求：支持 fromJson 类型安全解析 ----
+  static Future<T> get<T>(
+      String path, {
+        Map<String, dynamic>? query,
+        Map<String, dynamic>? queryParameters,
+        Options? options,
+        CancelToken? cancelToken,
+        ProgressCallback? onReceiveProgress,
+        FromJson<T>? fromJson,
+      }) async {
+    final resp = await _dio.get(
+      path,
+      queryParameters: query ?? queryParameters,
+      options: options,
+      cancelToken: cancelToken,
+      onReceiveProgress: onReceiveProgress,
+    );
+    return _decode<T>(resp.data, fromJson);
+  }
+
+  static Future<T> post<T>(
+      String path, {
+        dynamic data,
+        Map<String, dynamic>? query,
+        Options? options,
+        CancelToken? cancelToken,
+        ProgressCallback? onSendProgress,
+        ProgressCallback? onReceiveProgress,
+        FromJson<T>? fromJson,
+      }) async {
+    final resp = await _dio.post(
+      path,
+      data: data,
+      queryParameters: query,
+      options: options,
+      cancelToken: cancelToken,
+      onSendProgress: onSendProgress,
+      onReceiveProgress: onReceiveProgress,
+    );
+    return _decode<T>(resp.data, fromJson);
+  }
+
+  static Future<T> put<T>(
+      String path, {
+        dynamic data,
+        Map<String, dynamic>? query,
+        Options? options,
+        CancelToken? cancelToken,
+        ProgressCallback? onSendProgress,
+        ProgressCallback? onReceiveProgress,
+        FromJson<T>? fromJson,
+      }) async {
+    final resp = await _dio.put(
+      path,
+      data: data,
+      queryParameters: query,
+      options: options,
+      cancelToken: cancelToken,
+      onSendProgress: onSendProgress,
+      onReceiveProgress: onReceiveProgress,
+    );
+    return _decode<T>(resp.data, fromJson);
+  }
+
+  static Future<T> delete<T>(
+      String path, {
+        dynamic data,
+        Map<String, dynamic>? query,
+        Options? options,
+        CancelToken? cancelToken,
+        FromJson<T>? fromJson,
+      }) async {
+    final resp = await _dio.delete(
+      path,
+      data: data,
+      queryParameters: query,
+      options: options,
+      cancelToken: cancelToken,
+    );
+    return _decode<T>(resp.data, fromJson);
+  }
+
+  /// ---- Token 管理 ----
+  static Future<void> setToken(String token) async {
+    _tokenCache = token;
+    final sp = await SharedPreferences.getInstance();
+    await sp.setString(_kTokenKey, token);
+  }
+
+  static Future<void> clearToken() => _clearToken();
+
+  static Future<String?> _getToken() async {
+    if (_tokenCache != null) return _tokenCache;
+    final sp = await SharedPreferences.getInstance();
+    final t = sp.getString(_kTokenKey);
+    _tokenCache = t;
+    return t;
+  }
+
   static Future<void> _clearToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('__t__',"");
+    _tokenCache = null;
+    final sp = await SharedPreferences.getInstance();
+    await sp.remove(_kTokenKey);
   }
 
-  static Future<T> get<T>(String path, {Map<String, dynamic>? queryParameters, Options? options, CancelToken? cancelToken, ProgressCallback? onReceiveProgress}) async {
-    final response = await _dio.get<T>(path, queryParameters: queryParameters, options: options, cancelToken: cancelToken, onReceiveProgress: onReceiveProgress);
-    return response.data as T;
+  /// ---- 工具 ----
+  static DioException _asDioError(Response resp, String message) {
+    return DioException(
+      requestOptions: resp.requestOptions,
+      response: resp,
+      type: DioExceptionType.badResponse,
+      message: message,
+    );
   }
 
-  static Future<T> post<T>(String path, {data, Map<String, dynamic>? queryParameters, Options? options, CancelToken? cancelToken, ProgressCallback? onSendProgress, ProgressCallback? onReceiveProgress}) async {
-    final response = await _dio.post<T>(path, data: data, queryParameters: queryParameters, options: options, cancelToken: cancelToken, onSendProgress: onSendProgress, onReceiveProgress: onReceiveProgress);
-    return response.data as T;
-  }
-
-  static Future<T> put<T>(String path, {data, Map<String, dynamic>? queryParameters, Options? options, CancelToken? cancelToken, ProgressCallback? onSendProgress, ProgressCallback? onReceiveProgress}) async {
-    final response = await _dio.put<T>(path, data: data, queryParameters: queryParameters, options: options, cancelToken: cancelToken, onSendProgress: onSendProgress, onReceiveProgress: onReceiveProgress);
-    return response.data as T;
-  }
-
-  static Future<T> delete<T>(String path, {data, Map<String, dynamic>? queryParameters, Options? options, CancelToken? cancelToken}) async {
-    final response = await _dio.delete<T>(path, data: data, queryParameters: queryParameters, options: options, cancelToken: cancelToken);
-    return response.data as T;
+  static T _decode<T>(dynamic raw, FromJson<T>? parse) {
+    if (parse != null) return parse(raw);
+    return raw as T;
   }
 }

@@ -6,7 +6,7 @@
 /// final pageResult = PageResult<ItemType>(
 ///  list: [...],
 ///  total: 100,
-///  current: 1,
+///  page: 1,
 ///  pageSize: 10,
 ///  );
 /// ```
@@ -28,5 +28,5 @@ class PageResult<T> {
 
 /// Description: A class to encapsulate a paginated request function.
 /// It takes a function that accepts page size and current page as parameters
-typedef PageRequest<T> = Future<PageResult<T>> Function({required int pageSize, required int current});
+typedef PageRequest<T> = Future<PageResult<T>> Function({required int pageSize, required int page});
 

@@ -240,7 +240,7 @@ OrderListParams _$OrderListParamsFromJson(Map<String, dynamic> json) =>
     $checkedCreate('OrderListParams', json, ($checkedConvert) {
       final val = OrderListParams(
         orderState: $checkedConvert('order_state', (v) => (v as num).toInt()),
-        current: $checkedConvert('current', (v) => (v as num).toInt()),
+        page: $checkedConvert('page', (v) => (v as num).toInt()),
         size: $checkedConvert('size', (v) => (v as num).toInt()),
       );
       return val;
@@ -249,6 +249,6 @@ OrderListParams _$OrderListParamsFromJson(Map<String, dynamic> json) =>
 Map<String, dynamic> _$OrderListParamsToJson(OrderListParams instance) =>
     <String, dynamic>{
       'order_state': instance.orderState,
-      'current': instance.current,
+      'page': instance.page,
       'size': instance.size,
     };

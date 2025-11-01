@@ -29,12 +29,12 @@ class _OrderListState extends ConsumerState<OrderList> with AutomaticKeepAliveCl
 
     _ctl = PageListController<OrderItem>(
       requestKey: widget.status,
-      request: ({required int pageSize, required int current}) {
+      request: ({required int pageSize, required int page}) {
         //  用入参 status，不依赖外部 provider no rely on external provider
         final tab = ref.read(activeOrderTabProvider.notifier).state;
         return ref.read(orderListProvider(tab.value))(
           pageSize: pageSize,
-          current: current,
+          page: page,
         );
       },
     );

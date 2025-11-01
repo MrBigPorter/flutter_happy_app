@@ -96,7 +96,7 @@ class _WinnersPageState extends ConsumerState<WinnersPage>
     ]);
 
     final req = ref.refresh(actWinnersMonthsProvider(cur));
-    await req(pageSize: 10, current: 1); // 刷新当前 tab 列表 refresh current tab list
+    await req(pageSize: 10, page: 1); // 刷新当前 tab 列表 refresh current tab list
     await Future.delayed(const Duration(milliseconds: 500));
   }
 
@@ -507,9 +507,9 @@ class _WinnerListState extends ConsumerState<_WinnerList> {
   void initState() {
     super.initState();
     _ctl = PageListController<ActWinnersMonth>(
-      request: ({required int pageSize, required int current}) {
+      request: ({required int pageSize, required int page}) {
         final req = ref.read(actWinnersMonthsProvider(widget.monthValue));
-        return req(pageSize: pageSize, current: current);
+        return req(pageSize: pageSize, page: page);
       },
       preprocess: preProcessWinnersData,
       requestKey: widget.monthValue,

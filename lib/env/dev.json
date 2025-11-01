@@ -1,0 +1,1 @@
+{ "FLAVOR": "dev", "API_BASE": "http://localhost:3000", "LOG_HTTP": "true" }
