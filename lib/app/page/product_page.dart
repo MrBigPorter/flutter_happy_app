@@ -33,6 +33,11 @@ class _ProductPageState extends ConsumerState<ProductPage> with SingleTickerProv
   TabController? _tabController;
   List<ProductCategoryItem> _tabs = const [];
 
+  final Map<int, GlobalKey<_ListState>> _listKeys = {};
+  GlobalKey<_ListState> _getListKey(int categoryId) {
+    return _listKeys.putIfAbsent(categoryId, () => GlobalKey<_ListState>());
+  }
+
   @override
   void initState() {
     super.initState();
@@ -49,6 +54,9 @@ class _ProductPageState extends ConsumerState<ProductPage> with SingleTickerProv
     if (category.isNotEmpty) {
       setState(() {
         _tabs = category;
+        _listKeys
+        ..clear()
+        ..addEntries(category.map((e) => MapEntry(e.id, GlobalKey<_ListState>())));
       });
       _tabController = TabController(length: category.length, vsync: this);
     }
@@ -68,10 +76,14 @@ class _ProductPageState extends ConsumerState<ProductPage> with SingleTickerProv
     final ref = this.ref;
 
     Future<bool> onRefresh() async {
+
+      final cur = ref.read(activeCategoryProvider.notifier).state;
+
       Future.wait([
         ref.refresh(categoryProvider.future),
-        //ref.refresh(productListProvider.future),
       ]);
+      final req = ref.refresh(productListProvider(cur.id));
+      req(pageSize: 20, page: 1);
       await Future.delayed(const Duration(milliseconds: 400));
       return true;
     }
@@ -127,6 +139,10 @@ class _List extends ConsumerStatefulWidget {
 class _ListState extends ConsumerState<_List> {
   late final PageListController<ProductListItem> _ctl;
 
+  void refreshList(){
+    _ctl.refresh();
+  }
+
   @override
   void initState() {
     super.initState();
@@ -168,7 +184,7 @@ class _ListState extends ConsumerState<_List> {
               childAspectRatio: 166 / 365,
             ),
             itemBuilder: (context, item, index, isLast){
-              return AnimatedListItem(index: index, child: ProductItem(data: item, imgHeight: 166, imgWidth: 166));
+              return RepaintBoundary(child: AnimatedListItem(index: index, child: ProductItem(data: item, imgHeight: 166, imgWidth: 166)),);
             }
         ),
 

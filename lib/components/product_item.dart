@@ -56,11 +56,17 @@ class ProductItem extends StatelessWidget {
                 AspectRatio(
                   aspectRatio: 1,
                   child: ClipRRect(
+                    clipBehavior: Clip.hardEdge,
                     borderRadius: BorderRadius.vertical(
                       top: Radius.circular(8.w),
                     ),
                     child: CachedNetworkImage(
                       imageUrl: proxied(data.treasureCoverImg!),
+                      memCacheHeight: (imgHeight!.w * MediaQuery.of(context).devicePixelRatio).round(),
+                      memCacheWidth: (imgWidth!.w * MediaQuery.of(context).devicePixelRatio).round(),
+                      fadeInDuration:  Duration.zero,
+                      fadeOutDuration: Duration.zero,
+                      placeholderFadeInDuration: Duration.zero,
                       fit: BoxFit.cover,
                       placeholder: (_, __) => Skeleton.react(
                         width: double.infinity,
