@@ -23,6 +23,7 @@ class HomePage extends ConsumerWidget {
     final treasures = ref.watch(homeTreasuresProvider);
     final ads = ref.watch(homeAdProvider);
     final statistics = ref.watch(homeStatisticsProvider);
+    
 
     /// 下拉刷新 refresh handler
     Future<void> onRefresh() async {

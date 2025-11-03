@@ -4,7 +4,7 @@ part 'banners.g.dart';
 
 @JsonSerializable(checked: true)
 class Banners implements ClickableResource {
-  final int id;
+  final String id;
   @JsonKey(name: "banner_cate")
   final int? bannerCate;
   @JsonKey(name: "banner_img_url")
@@ -17,13 +17,14 @@ class Banners implements ClickableResource {
   final int jumpCate;
   @override
   @JsonKey(name: "related_title_id")
-  final int relatedTitleId;
+  final String? relatedTitleId;
+  @JsonKey(name: "state")
   final int state;
   @JsonKey(name: "sort_order")
   final int sortOrder;
   @override
   @JsonKey(name: "jump_url")
-  final String jumpUrl;
+  final String? jumpUrl;
 
    Banners({
     required this.id,
@@ -39,4 +40,9 @@ class Banners implements ClickableResource {
 
    factory Banners.fromJson(Map<String, dynamic> json) => _$BannersFromJson(json);
    Map<String, dynamic> toJson() => _$BannersToJson(this);
+
+   @override
+    String toString() {
+     return toJson().toString();
+   }
 }

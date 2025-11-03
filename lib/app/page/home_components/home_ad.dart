@@ -19,15 +19,11 @@ class HomeAd extends StatelessWidget {
   Widget build(BuildContext context) {
     if (list.isEmpty) return const SizedBox.shrink();
 
-    final openAds = list.where((item) => item.state == 1).toList();
     return Column(
-      children: openAds.map((item) {
+      children: list.map((item) {
+
         /// sortType 1 单图广告 single-image ad
         if (item.sortType == 1) {
-          /*return Padding(
-            padding: EdgeInsets.only(bottom: 0.h),
-            child: SingleAd(ad: item),
-          );*/
           return SingleAd(ad: item);
         } else {
           /// sortType 2 三图广告 three-image ad
@@ -106,7 +102,7 @@ class SingleAd extends StatelessWidget {
   @override
   build(BuildContext context){
     return AdImage(
-      src: ad!.img,
+      src: ad!.img!,
       width: double.infinity,
       height: 114,
       relatedTitleId: ad!.relatedTitleId,
@@ -122,7 +118,7 @@ class AdImage extends StatelessWidget {
   final String src;
   final double width;
   final double height;
-  final int? relatedTitleId;
+  final String? relatedTitleId;
   final int? jumpCate;
   final String? jumpUrl;
   final String? videoUrl;

@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 /// Home page banner provider
 final homeBannerProvider = FutureProvider((ref) async{
-  return Api.bannersApi(1);
+  return Api.bannersApi(bannerCate: 1);
 });
 
 /// Home page treasures provider
@@ -13,7 +13,9 @@ final homeTreasuresProvider = FutureProvider((ref) async{
 
 /// Home page ad provider
 final homeAdProvider = FutureProvider((ref) async{
-  return Api.indexAdApi(1);
+  return Api.indexAdApi(
+    adPosition: 1,
+  );
 });
 
 /// Home page statistics provider

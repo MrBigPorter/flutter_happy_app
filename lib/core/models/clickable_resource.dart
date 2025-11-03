@@ -3,7 +3,7 @@
 abstract class ClickableResource {
   int? get jumpCate;
   String? get jumpUrl;
-  int? get relatedTitleId;
+  String? get relatedTitleId;
   String? get videoUrl;
 }
 
@@ -14,7 +14,7 @@ class DefaultClickableResource implements ClickableResource {
   @override
   final String? jumpUrl;
   @override
-  final int? relatedTitleId;
+  final String? relatedTitleId;
   @override
   final String? videoUrl;
   DefaultClickableResource({
@@ -30,7 +30,7 @@ class DefaultClickableResource implements ClickableResource {
     return DefaultClickableResource(
       jumpCate: json['jump_cate'] as int?,
       jumpUrl: json['jump_url'] as String?,
-      relatedTitleId: json['related_title_id'] as int?,
+      relatedTitleId: json['related_title_id'] as String?,
       videoUrl: json['video_url'] as String?,
     );
   }

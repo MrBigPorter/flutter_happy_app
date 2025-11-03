@@ -11,18 +11,15 @@ Banners _$BannersFromJson(Map<String, dynamic> json) => $checkedCreate(
   json,
   ($checkedConvert) {
     final val = Banners(
-      id: $checkedConvert('id', (v) => (v as num).toInt()),
+      id: $checkedConvert('id', (v) => v as String),
       bannerCate: $checkedConvert('banner_cate', (v) => (v as num?)?.toInt()),
       bannerImgUrl: $checkedConvert('banner_img_url', (v) => v as String),
       videoUrl: $checkedConvert('video_url', (v) => v as String?),
       jumpCate: $checkedConvert('jump_cate', (v) => (v as num).toInt()),
-      relatedTitleId: $checkedConvert(
-        'related_title_id',
-        (v) => (v as num).toInt(),
-      ),
+      relatedTitleId: $checkedConvert('related_title_id', (v) => v as String?),
       state: $checkedConvert('state', (v) => (v as num).toInt()),
       sortOrder: $checkedConvert('sort_order', (v) => (v as num).toInt()),
-      jumpUrl: $checkedConvert('jump_url', (v) => v as String),
+      jumpUrl: $checkedConvert('jump_url', (v) => v as String?),
     );
     return val;
   },

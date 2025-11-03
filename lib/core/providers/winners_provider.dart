@@ -8,7 +8,7 @@ import '../models/act_winners_month.dart';
 
 /// Winners banner provider
 final winnersBannerProvider = FutureProvider((ref) async {
-  return Api.bannersApi(2);
+  return Api.bannersApi(bannerCate: 2);
 });
 
 /// Winners quantity provider
