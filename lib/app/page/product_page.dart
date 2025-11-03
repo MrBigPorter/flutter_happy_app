@@ -28,7 +28,6 @@ class ProductPage extends ConsumerStatefulWidget {
 /// and tabs stick to top
 /// and product list below tabs
 class _ProductPageState extends ConsumerState<ProductPage> with SingleTickerProviderStateMixin {
-  late final ScrollController scrollController;
   final ValueNotifier<double> scrollProgress = ValueNotifier(0.0);
   TabController? _tabController;
   List<ProductCategoryItem> _tabs = const [];
@@ -66,7 +65,6 @@ class _ProductPageState extends ConsumerState<ProductPage> with SingleTickerProv
 
   @override
   void dispose() {
-    scrollController.dispose();
     scrollProgress.dispose();
     super.dispose();
   }
