@@ -32,7 +32,9 @@ class Api {
 
   /// 首页宝藏推荐  home treasures
   static Future<List<IndexTreasureItem>> indexTreasuresApi() async {
-    final res = await Http.get("/treasuresList.json");
+    final res = await Http.get("/api/v1/home/sections",query: {
+      'limit': 10,
+    });
 
     return parseList<IndexTreasureItem>(
       res,
