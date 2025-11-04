@@ -110,7 +110,7 @@
   "common.to.address": "Delivery Address",
   "common.add.address.tip": "Mangyaring ilagay ang iyong address bago mag-checkout",
   "common.persons": "bawat tao",
-  "common.cash.value": "Cash Value : ₱ {{number}}",
+  "common.cash.value": "Cash Value",
   "common.luck.draw": "Lucky Draw",
   "common.node.group": "Bumuo nang iyong Team para manalo ng Fortune Bag!",
   "common.pagination": "Pahina {{current}} ng {{totalPage}}",

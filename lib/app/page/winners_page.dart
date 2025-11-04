@@ -410,7 +410,7 @@ class _LatestWinnerSwiperItem extends StatelessWidget {
                 ),
                 variant: ButtonVariant.secondary,
                   onPressed: (){
-                    AppRouter.router.push('/winners/${item.treasureId}');
+                    appRouter.go('/winners/${item.treasureId}');
                   },
                   child: Text('common.details'.tr())
               )
@@ -672,7 +672,7 @@ class _WinnerListItem extends StatelessWidget {
                 radius: 8.w,
                 height: 36.w,
                 onPressed: ()=>{
-                  AppRouter.router.push('/winners/${item.treasureId}')
+                  appRouter.go('/winners/${item.treasureId}')
                 },
                 child: Text('common.details'.tr()),
               ),

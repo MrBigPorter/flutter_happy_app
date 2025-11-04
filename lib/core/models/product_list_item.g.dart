@@ -49,6 +49,23 @@ ProductListItem _$ProductListItemFromJson(
         (v) => v as String?,
       ),
       rate: $checkedConvert('rate', (v) => (v as num?)?.toInt()),
+      ruleContent: $checkedConvert('rule_content', (v) => v as String?),
+      desc: $checkedConvert('desc', (v) => v as String?),
+      maxUnitCoins: $checkedConvert(
+        'max_unit_coins',
+        (v) => (v as num?)?.toInt(),
+      ),
+      maxUnitAmount: $checkedConvert(
+        'max_unit_amount',
+        (v) => (v as num?)?.toInt(),
+      ),
+      maxPerBuyQuantity: $checkedConvert(
+        'max_per_buy_quantity',
+        (v) => (v as num?)?.toInt(),
+      ),
+      charityAmount: $checkedConvert('charity_amount', (v) => v as String?),
+      treasureSeq: $checkedConvert('treasure_seq', (v) => v as String?),
+      cashState: $checkedConvert('cash_state', (v) => (v as num?)?.toInt()),
     );
     return val;
   },
@@ -67,6 +84,13 @@ ProductListItem _$ProductListItemFromJson(
     'treasureName': 'treasure_name',
     'unitAmount': 'unit_amount',
     'treasureCoverImg': 'treasure_cover_img',
+    'ruleContent': 'rule_content',
+    'maxUnitCoins': 'max_unit_coins',
+    'maxUnitAmount': 'max_unit_amount',
+    'maxPerBuyQuantity': 'max_per_buy_quantity',
+    'charityAmount': 'charity_amount',
+    'treasureSeq': 'treasure_seq',
+    'cashState': 'cash_state',
   },
 );
 
@@ -87,4 +111,12 @@ Map<String, dynamic> _$ProductListItemToJson(ProductListItem instance) =>
       'unit_amount': instance.unitAmount,
       'treasure_cover_img': instance.treasureCoverImg,
       'rate': instance.rate,
+      'rule_content': instance.ruleContent,
+      'desc': instance.desc,
+      'max_unit_coins': instance.maxUnitCoins,
+      'max_unit_amount': instance.maxUnitAmount,
+      'max_per_buy_quantity': instance.maxPerBuyQuantity,
+      'charity_amount': instance.charityAmount,
+      'treasure_seq': instance.treasureSeq,
+      'cash_state': instance.cashState,
     };

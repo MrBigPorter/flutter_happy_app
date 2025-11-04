@@ -218,7 +218,7 @@ class SpecialArea extends StatelessWidget {
                             height: 46.w,
                             child: Text('common.enter.now'.tr()),
                             onPressed: () => {
-                              AppRouter.router.push(
+                              appRouter.push(
                                 '/product/${item.treasureId}',
                               ),
                             },

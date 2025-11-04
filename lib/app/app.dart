@@ -1,8 +1,8 @@
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_app/app/routes/app_router.dart';
 import 'package:flutter_app/common.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:easy_localization/easy_localization.dart';
@@ -11,15 +11,20 @@ import '../../theme/theme_provider.dart';
 
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  final GoRouter router;
+  const MyApp({super.key, required this.router});
 
   @override
   Widget build(BuildContext context) {
     final themeProvider = context.watch<ThemeProvider>();
     return MaterialApp.router(
       title: 'Lucky App',
-      routerConfig: AppRouter.router,
-
+      // 显式接入 GoRouter 的四件套，确保会写浏览器地址栏
+      /*routeInformationProvider: router.routeInformationProvider,
+      routeInformationParser: router.routeInformationParser,
+      routerDelegate: router.routerDelegate,
+      backButtonDispatcher: router.backButtonDispatcher,*/
+      routerConfig: router,
       themeMode: themeProvider.themeMode,
       theme: _buildTheme(false),
       darkTheme: _buildTheme(true),

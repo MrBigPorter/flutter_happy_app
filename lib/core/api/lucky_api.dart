@@ -108,6 +108,15 @@ class Api {
     return parsePageResponse(res, (e) => ProductListItem.fromJson(e));
   }
 
+
+  /// 商品详情 product detail
+  static Future<ProductListItem> getProductDetail(String productId) async {
+    final res = await Http.get(
+      '/api/v1/treasure/$productId',
+    );
+    return ProductListItem.fromJson(res);
+  }
+
   /// 中奖总人数 total winners quantity
   static Future<WinnersQuantity> winnersQuantityApi() async {
     final res = await Http.get('/actWinnersQuantity.json');

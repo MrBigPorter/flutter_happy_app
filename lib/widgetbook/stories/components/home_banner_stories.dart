@@ -20,10 +20,10 @@ WidgetbookComponent buildHomeBannerStories() {
           final darkMode = context.knobs.boolean(label: 'Dark Mode',initialValue: false);
           final sampleImages = List.generate(count, (index) => 'https://picsum.photos/800/400?random=$index');
           final banners = List.generate(sampleImages.length, (i)=> Banners(
-             id: i,
+             id: '${i}',
              bannerImgUrl: sampleImages[i],
              jumpCate: 0,
-             relatedTitleId: 0,
+             relatedTitleId: '0',
              state: 1,
              sortOrder: i,
              jumpUrl: '',

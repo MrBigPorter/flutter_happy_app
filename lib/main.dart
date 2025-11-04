@@ -7,7 +7,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart' as riverpod;
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:url_strategy/url_strategy.dart';
 
+import 'app/routes/app_router.dart';
 import 'theme/theme_provider.dart';
 import 'app/app.dart';
 
@@ -15,6 +17,8 @@ import 'app/app.dart';
 
 Future<void> main() async {
 
+  // 1) set URL strategy for web
+  setPathUrlStrategy();
   bool errorHandlerRegistered = false;
 
   WidgetsFlutterBinding.ensureInitialized();
@@ -46,6 +50,9 @@ Future<void> main() async {
   final themeProvider = ThemeProvider();
   await themeProvider.ready; // 在 ThemeProvider 里暴露一个 ready Future，见下
 
+  //2) 创建并赋值全局实例
+  appRouter = AppRouter.create();
+
   runApp(
     riverpod.ProviderScope(
         child: EasyLocalization(
@@ -60,7 +67,8 @@ Future<void> main() async {
                   minTextAdapt: true,
                   splitScreenMode: true,
                   builder: (_,__){
-                    return MyApp();
+                    //3) 传给 MaterialApp.router
+                    return MyApp(router: appRouter);
                   }
               )
           ),

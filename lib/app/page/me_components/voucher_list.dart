@@ -51,9 +51,9 @@ class _VoucherListState extends ConsumerState<VoucherList> {
           GestureDetector(
             onTap: () {
               if (widget.showRuleLink) {
-                AppRouter.router.push('/me/voucher/rules');
+                appRouter.go('/me/voucher/rules');
               } else {
-                AppRouter.router.push('/me/voucher');
+                appRouter.go('/me/voucher');
               }
             },
             child: Padding(

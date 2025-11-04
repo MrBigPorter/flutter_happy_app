@@ -33,9 +33,6 @@ class _ProductPageState extends ConsumerState<ProductPage> with SingleTickerProv
   List<ProductCategoryItem> _tabs = const [];
 
   final Map<int, GlobalKey<_ListState>> _listKeys = {};
-  GlobalKey<_ListState> _getListKey(int categoryId) {
-    return _listKeys.putIfAbsent(categoryId, () => GlobalKey<_ListState>());
-  }
 
   @override
   void initState() {

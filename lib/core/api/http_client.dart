@@ -95,20 +95,20 @@ class Http {
             await _clearToken();
             if (!_navigatingToLogin) {
               _navigatingToLogin = true;
-              AppRouter.router.replace('/login');
+             appRouter.replace('/login');
               Future.delayed(const Duration(seconds: 1), () {
                 _navigatingToLogin = false;
               });
             }
           } else if (code == 92001) {
             // 无地址
-            AppRouter.router.push('/me/setting');
+            appRouter.go('/me/setting');
           } else if (code == 93001) {
             // 未完成 KYC
-            AppRouter.router.push('/me/kyc/verify');
+            appRouter.go('/me/kyc/verify');
           } else if (code == 18023) {
             // 未绑定手机
-            AppRouter.router.push('/me/bind-phone');
+            appRouter.go('/me/bind-phone');
           }
 
           if (!noToast) {

@@ -58,13 +58,13 @@ WidgetbookComponent buildProductItemStories() {
               : 0;
 
           final mockData = ProductListItem(
-            treasureId: 12345,
+            treasureId: '12345',
             treasureName: 'Wireless Bluetooth Headset',
             treasureCoverImg:
             'https://picsum.photos/id/1011/400/400', // mock 图
             unitAmount: price,
             costAmount: costAmount,
-            buyQuantityRate: rate.toString(),
+            buyQuantityRate: rate,
             imgStyleType: 1,
             lotteryMode: 1,
             minBuyQuantity: 1,

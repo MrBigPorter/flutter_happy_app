@@ -22,7 +22,7 @@ class Voucher extends StatelessWidget {
       ),
       child: GestureDetector(
         onTap: (){
-          AppRouter.router.push('/me/voucher');
+          appRouter.push('/me/voucher');
         },
         child: Row(
           mainAxisAlignment: MainAxisAlignment.start,

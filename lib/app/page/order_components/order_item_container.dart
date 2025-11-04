@@ -96,13 +96,13 @@ class OrderItemContainer extends StatelessWidget {
                   );
                 },
                 onViewRewardDetails: () {
-                  AppRouter.router.push('/me/order/${item.id}/reward-details');
+                  appRouter.go('/me/order/${item.id}/reward-details');
                 },
                 onTeamUp: () {
-                  AppRouter.router.push('/me/order/${item.id}/team-up');
+                  appRouter.go('/me/order/${item.id}/team-up');
                 },
                 onClaimPrize: () {
-                  AppRouter.router.push('/me/order/${item.id}/claim-prize');
+                  appRouter.go('/me/order/${item.id}/claim-prize');
                 },
             ),
           ],
@@ -364,7 +364,7 @@ class _OrderItemActions extends StatelessWidget {
           Button(
               width: double.infinity,
               onPressed: (){
-                AppRouter.router.push('/me/confirm-win/${item.id}');
+                appRouter.go('/me/confirm-win/${item.id}');
               },
               child: Text('confirm.win.check.award.information'.tr())
           )

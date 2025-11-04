@@ -260,7 +260,7 @@ class _MenuArea extends StatelessWidget {
         children: menuItems.map((item) {
           return InkWell(
             onTap: () {
-              AppRouter.router.push(item.path);
+              appRouter.go(item.path);
             },
             child: Column(
               children: [
@@ -335,7 +335,7 @@ class _WalletArea extends StatelessWidget {
                   color: context.textPrimary900,
                 ),
                 onPressed: () {
-                  AppRouter.router.push('/me/wallet/treasure-coins/redeem');
+                  appRouter.go('/me/wallet/treasure-coins/redeem');
                 },
                 child: Text(
                   'redemption.code'.tr(),
@@ -354,7 +354,7 @@ class _WalletArea extends StatelessWidget {
               Expanded(
                 child: InkWell(
                   onTap: () {
-                    AppRouter.router.push('/me/wallet');
+                    appRouter.go('/me/wallet');
                   },
                   child: Container(
                     padding: EdgeInsets.symmetric(
@@ -427,7 +427,7 @@ class _WalletArea extends StatelessWidget {
               Expanded(
                 child: InkWell(
                   onTap: () {
-                    AppRouter.router.push('/me/wallet');
+                    appRouter.go('/me/wallet');
                   },
                   child: Container(
                     padding: EdgeInsets.symmetric(
@@ -667,7 +667,7 @@ class _UnLoginTopArea extends StatelessWidget {
               Button(
                 width: 110,
                 height: 40,
-                onPressed: () => AppRouter.router.push('/login'),
+                onPressed: () => appRouter.go('/login'),
                 child: Text('common.login'.tr()),
               ),
               SizedBox(width: 8.w),
@@ -675,7 +675,7 @@ class _UnLoginTopArea extends StatelessWidget {
                 width: 110,
                 height: 40,
                 variant: ButtonVariant.secondary,
-                onPressed: () => AppRouter.router.push('/register'),
+                onPressed: () => appRouter.go('/register'),
                 child: Text('common.register'.tr()),
               ),
             ],
@@ -739,7 +739,7 @@ class _OrderArea extends StatelessWidget {
               Button(
                 variant: ButtonVariant.text,
                 onPressed: () {
-                  AppRouter.router.push('/me/order');
+                  appRouter.go('/me/order');
                 },
                 height: 20.w,
                 paddingX: 0,

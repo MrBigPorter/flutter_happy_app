@@ -51,8 +51,9 @@ class SwiperBanner<T> extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
 
+
     if(banners.isNullOrEmpty){
-      return Skeleton.react(width: width, height: height,borderRadius: BorderRadius.circular(borderRadius.w));
+      return Skeleton.react(width: width, height: height,borderRadius: BorderRadius.circular(borderRadius));
     }
 
     return Container(
@@ -60,7 +61,7 @@ class SwiperBanner<T> extends StatelessWidget {
       width: double.infinity,
       height: height,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(borderRadius.w),
+        borderRadius: BorderRadius.circular(borderRadius),
       ),
       child: Swiper(
        itemCount: banners.length,
@@ -69,7 +70,7 @@ class SwiperBanner<T> extends StatelessWidget {
         itemBuilder: (_,index){
          final item = banners[index];
          return ClipRRect(
-           borderRadius: BorderRadius.circular(borderRadius.w),
+           borderRadius: BorderRadius.circular(borderRadius),
            child: GestureDetector(
              onTap: ()=> onTapItem!(item),
              child: ImageWidget(
@@ -148,12 +149,12 @@ class CustomDotPaginationBuilder extends SwiperPlugin {
         duration: Duration(milliseconds: 300),
         curve: Curves.easeInOut,
         key: Key("pagination_$i"),
-        width: active ? activeSize.w : size.w,
-        height: size.w,
-        margin: EdgeInsets.symmetric(horizontal: space.w),
+        width: active ? activeSize : size,
+        height: size,
+        margin: EdgeInsets.symmetric(horizontal: space),
         decoration: BoxDecoration(
             color: active ? activeColor??context.buttonPrimaryBg : color??context.bgActive,
-            borderRadius: BorderRadius.circular(borderRadius.w)
+            borderRadius: BorderRadius.circular(borderRadius)
         ),
       );
     }) as Widget Function(int index));
@@ -193,12 +194,19 @@ class ImageWidget<T> extends StatelessWidget {
       return itemBuilder!(item);
     }
 
+    String url = '';
+    if(item is String){
+      url = item.toString();
+    }else {
+      url = item?.bannerImgUrl;
+    }
+
     return CachedNetworkImage(
-        imageUrl: proxied(item?.bannerImgUrl),
+        imageUrl: proxied(url),
         width: width,
         height: height,
         fit: BoxFit.cover,
-        placeholder: (_,__)=>Skeleton.react(width: width.w, height: height.w),
+        placeholder: (_,__)=>Skeleton.react(width: width, height: height),
         errorWidget: (_,__,___)=>Container(
           width: width,
           height: height,

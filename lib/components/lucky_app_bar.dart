@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_app/common.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
+import '../app/routes/app_router.dart';
+
 /// A custom AppBar widget
 /// if title is null or empty, show logo
 /// else show title text
@@ -115,7 +117,13 @@ class _BackIcon  extends StatelessWidget {
         icon: backIconPath != null
             ? Image.asset(backIconPath!)
             : Icon(Icons.chevron_left, size: 24.h),
-        onPressed: () => Navigator.pop(context),
+        onPressed: (){
+          if (appRouter.canPop()) {
+            appRouter.pop();
+          } else {
+            appRouter.go('/home');
+          }
+        },
       );
     }
 }

@@ -28,18 +28,18 @@ class JumHelper {
       if (item.relatedTitleId != null) {
         // jumpCate = 4 新人活动
         if (jump == 4) {
-          AppRouter.router.push('/new-user-promo?coupon_id=${item.relatedTitleId}');
+          appRouter.go('/new-user-promo?coupon_id=${item.relatedTitleId}');
           return;
         }
 
         // jumpCate = 5 其它映射，暂时也指向 product
         if (jump == 5) {
-          AppRouter.router.push('/product/${item.relatedTitleId}');
+          appRouter.go('/product/${item.relatedTitleId}');
           return;
         }
 
         // 兜底：只要有 relatedTitleId 默认进产品页
-        AppRouter.router.push('/product/${item.relatedTitleId}');
+        appRouter.go('/product/${item.relatedTitleId}');
         return;
       }
 

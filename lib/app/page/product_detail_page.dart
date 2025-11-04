@@ -1,234 +1,397 @@
+import 'package:easy_localization/easy_localization.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_app/common.dart';
+import 'package:flutter_app/components/base_scaffold.dart';
+import 'package:flutter_app/components/safe_tab_bar_view.dart';
+import 'package:flutter_app/components/swiper_banner.dart';
+import 'package:flutter_app/core/models/index.dart';
+import 'package:flutter_app/core/providers/index.dart';
+import 'package:flutter_app/ui/bubble_progress.dart';
+import 'package:flutter_app/ui/button/button.dart';
+import 'package:flutter_app/ui/lucky_tab_bar_delegate.dart';
+import 'package:flutter_app/utils/format_helper.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:nested_scroll_view_plus/nested_scroll_view_plus.dart';
+import 'package:sliver_tools/sliver_tools.dart';
 
-class ProductDetailPage extends StatefulWidget {
-  const ProductDetailPage({super.key});
-  @override
-  State<ProductDetailPage> createState() => _ProductDetailPageState();
+class ProductDetailTab {
+  final String title;
+
+  ProductDetailTab({required this.title});
 }
 
-class _ProductDetailPageState extends State<ProductDetailPage>
-    with TickerProviderStateMixin {
-  // ====== 配置（可按需改）======
-  static const double _maxHeightFactor = 0.90; // 高度占屏比
-  static const double _radius = 16.0;          // 顶部圆角
-  static const bool _clickBgToClose = true;    // 点击遮罩关闭
-  static const bool _showClose = true;         // 右上角关闭按钮
-  static const Duration _inDur = Duration(milliseconds: 280);
-  static const Duration _outDur = Duration(milliseconds: 220);
+class ProductDetailPage extends ConsumerStatefulWidget {
+  final String productId;
 
-  late final AnimationController _ctl;
+  const ProductDetailPage({super.key, required this.productId});
 
-  double _startY = 0, _startVal = 1;
-  bool _draggingSheet = false; // 当前手势是否交给外层 Sheet
-  bool _isAtTop = true;        // 内容是否滚到顶
-  final ScrollController _scrollCtl = ScrollController();
+  @override
+  ConsumerState<ProductDetailPage> createState() => _ProductDetailPageState();
+}
 
-  Future<void> _animateOpen() async {
-    await _ctl.animateTo(1.0, duration: _inDur, curve: Curves.easeOutCubic);
-  }
-
-  Future<void> _animateClose() async {
-    await _ctl.animateBack(0.0, duration: _outDur, curve: Curves.easeInCubic);
-  }
+class _ProductDetailPageState extends ConsumerState<ProductDetailPage>
+    with SingleTickerProviderStateMixin {
+  TabController? _tabController;
+  final List<ProductDetailTab> _tabs = [
+    ProductDetailTab(title: 'common.details'.tr()),
+    ProductDetailTab(title: 'raffle-rules'.tr()),
+  ];
 
   @override
   void initState() {
     super.initState();
-    _ctl = AnimationController(
-      vsync: this,
-      lowerBound: 0,
-      upperBound: 1,
-      value: 0,
-      duration: _inDur,
-    );
-
-    WidgetsBinding.instance.addPostFrameCallback((_) => _animateOpen());
-
-    _scrollCtl.addListener(() {
-      final atTop = _scrollCtl.positions.isNotEmpty
-          ? _scrollCtl.position.pixels <= 0.0
-          : true;
-      if (atTop != _isAtTop) setState(() => _isAtTop = atTop);
-    });
-  }
-
-  @override
-  void dispose() {
-    _ctl.dispose();
-    _scrollCtl.dispose();
-    super.dispose();
+    _tabController = TabController(length: _tabs.length, vsync: this);
   }
 
   @override
   Widget build(BuildContext context) {
-    final media = MediaQuery.of(context);
-    final h = media.size.height;
-    final sheetH = h * _maxHeightFactor;
+    final detail = ref.watch(productDetailProvider(widget.productId));
+    print(detail.toString());
 
-    final barrierColor =
-    Theme.of(context).colorScheme.scrim.withValues(alpha: 0.45);
-    final surfaceColor = Theme.of(context).colorScheme.surface;
-
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: Stack(
-        children: [
-          // 遮罩
-          AnimatedBuilder(
-            animation: _ctl,
-            builder: (_, __) => Opacity(
-              opacity: _ctl.value.clamp(0.0, 1.0),
-              child: GestureDetector(
-                behavior: HitTestBehavior.translucent,
-                onTap: _clickBgToClose ? () async { await _animateClose(); if (mounted) Navigator.of(context).maybePop(); } : null,
-                child: Container(color: barrierColor),
-              ),
-            ),
-          ),
-
-          // 面板
-          AnimatedBuilder(
-            animation: _ctl,
-            builder: (_, child) {
-              final dy = (1 - _ctl.value) * sheetH;
-              return Transform.translate(offset: Offset(0, dy), child: child);
-            },
-            child: Align(
-              alignment: Alignment.bottomCenter,
-              child: SizedBox(
-                width: double.infinity,
-                height: sheetH, // 贴底满宽，内部再做 SafeArea
-                child: Material(
-                  color: surfaceColor,
-                  elevation: 16,
-                  shadowColor: Colors.black.withValues(alpha: 0.25),
-                  borderRadius:
-                  const BorderRadius.vertical(top: Radius.circular(_radius)),
-                  child: GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-
-                    // 开始：只有在顶部才把手势交给外层
-                    onVerticalDragStart: (d) {
-                      _draggingSheet = _isAtTop;
-                      if (_draggingSheet) {
-                        _startY = d.globalPosition.dy;
-                        _startVal = _ctl.value;
-                      }
-                    },
-
-                    // 更新：向下拖时驱动外层；向上且内容能滚时还权给内部
-                    onVerticalDragUpdate: (d) {
-                      if (!_draggingSheet) return;
-                      final dy = d.globalPosition.dy - _startY;
-
-                      if (dy < 0 &&
-                          _scrollCtl.hasClients &&
-                          !_scrollCtl.position.atEdge) {
-                        _draggingSheet = false;
-                        setState(() {});
-                        return;
-                      }
-
-                      final v = (_startVal - dy / sheetH).clamp(0.0, 1.0);
-                      _ctl.value = v;
-                    },
-
-                    // 结束：判定关闭或复位
-                    onVerticalDragEnd: (d) async {
-                      if (_draggingSheet) {
-                        final v = d.velocity.pixelsPerSecond.dy;
-                        final shouldClose = v > 900 || _ctl.value < 0.6;
-                        if (shouldClose) {
-                          await _animateClose();
-                          if (mounted) Navigator.of(context).maybePop();
-                        } else {
-                          await _ctl.forward();
-                        }
-                      }
-                      _draggingSheet = false;
-                    },
-
-                    child: ClipRRect(
-                      borderRadius: const BorderRadius.vertical(
-                          top: Radius.circular(_radius)),
-                      child: SafeArea(
-                        top: false, // 贴底，内部给底部安全区
-                        child: NotificationListener<ScrollNotification>(
-                          onNotification: (n) {
-                            final atTop = n.metrics.pixels <= 0;
-                            if (atTop != _isAtTop) _isAtTop = atTop;
-
-                            // 下拉越界时交给外层
-                            final isPullingDown = n.metrics.pixels < 0;
-                            if (isPullingDown && _isAtTop) {
-                              _draggingSheet = true;
-                              setState(() {});
-                              return true;
-                            }
-                            return false;
-                          },
-                          child: Stack(
-                            children: [
-                              // 可滚内容
-                              AbsorbPointer(
-                                absorbing: _draggingSheet,
-                                child: ListView.builder(
-                                  controller: _scrollCtl,
-                                  physics: _draggingSheet
-                                      ? const NeverScrollableScrollPhysics()
-                                      : const BouncingScrollPhysics(),
-                                  padding: const EdgeInsets.fromLTRB(
-                                      16, 32, 16, 16 + 12), // 顶部留给抓手/关闭
-                                  itemCount: 100,
-                                  itemBuilder: (_, i) =>
-                                      ListTile(title: Text('内容项 #$i')),
-                                ),
-                              ),
-
-                              // 顶部抓手
-                              Positioned(
-                                top: 8,
-                                left: 0,
-                                right: 0,
-                                child: Center(
-                                  child: Container(
-                                    width: 48,
-                                    height: 5,
-                                    decoration: BoxDecoration(
-                                      color: Colors.grey[400],
-                                      borderRadius: BorderRadius.circular(4),
-                                    ),
-                                  ),
-                                ),
-                              ),
-
-                              // 右上角关闭
-                              if (_showClose)
-                                Positioned(
-                                  top: 4,
-                                  right: 4,
-                                  child: IconButton(
-                                    icon: const Icon(Icons.close, size: 22),
-                                    onPressed: () async {
-                                      await _animateClose();
-                                      if (mounted) {
-                                        Navigator.of(context).maybePop();
-                                      }
-                                    },
-                                  ),
-                                ),
-                            ],
-                          ),
+    return BaseScaffold(
+      title: 'common.details'.tr(),
+      body: NestedScrollViewPlus(
+        headerSliverBuilder: (_, __) {
+          return [
+            detail.when(
+              data: (detail) {
+                return MultiSliver(
+                  children: [
+                    _BannerSection(banners: detail.mainImageList),
+                    _TopTreasureSection(item: detail),
+                    //_CouponSection(),
+                    SliverPersistentHeader(
+                      pinned: true,
+                      delegate: LuckySliverTabBarDelegate(
+                        height: 38,
+                        labelStyle: TextStyle(
+                          color: context.textBrandSecondary700,
                         ),
+                        enableUnderLine: true,
+                        showPersistentBg: true,
+                        controller: _tabController,
+                        tabs: _tabs,
+                        renderItem: (item) => Tab(text: item.title),
                       ),
                     ),
+                    _ProductInfoSection(
+                      tabs: _tabs,
+                      tabController: _tabController!,
+                    ),
+                    _JoinTreasureSection(),
+                  ],
+                );
+              },
+              error: (_, __) => SliverToBoxAdapter(
+                child: Center(child: Text('Error loading product, details')),
+              ),
+              loading: () => SliverToBoxAdapter(
+                child: Center(child: CircularProgressIndicator()),
+              ),
+            ),
+          ];
+        },
+        body: SafeTabBarView(
+          controller: _tabController,
+          children: _tabs.map((tab) {
+            return Center(child: Text('Content for ${tab.title}'));
+          }).toList(),
+        ),
+      ),
+    );
+  }
+}
+
+class _BannerSection extends StatelessWidget {
+  final List<String>? banners;
+
+  const _BannerSection({required this.banners});
+
+  @override
+  Widget build(BuildContext context) {
+    if (banners == null || banners!.isEmpty) {
+      return SizedBox.shrink();
+    }
+    return SwiperBanner(height: 250, borderRadius: 0, banners: banners!);
+  }
+}
+
+class _TopTreasureSection extends StatelessWidget {
+  final ProductListItem item;
+
+  const _TopTreasureSection({required this.item});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.w),
+      child: Container(
+        width: double.infinity,
+        height: 220.w,
+        decoration: BoxDecoration(
+          color: context.bgPrimary,
+          border: Border.all(color: context.borderPrimary, width: 1),
+          borderRadius: BorderRadius.all(Radius.circular(context.radiusMd)),
+        ),
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            Positioned(
+              top: 8.w,
+              right: 8.w,
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () {},
+                child: SvgPicture.asset(
+                  'assets/images/product_detail/share.svg',
+                  width: 20.w,
+                  height: 20.w,
+                  colorFilter: ColorFilter.mode(
+                    context.fgPrimary900,
+                    BlendMode.srcIn,
                   ),
                 ),
               ),
             ),
-          ),
-        ],
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.w),
+              child: Column(
+                children: [
+                  Text(
+                    item.treasureName,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: context.textMd,
+                      fontWeight: FontWeight.w800,
+                      color: context.fgPrimary900,
+                    ),
+                  ),
+                  SizedBox(height: 8.w),
+                  Button(
+                    height: 22.w,
+                    radius: context.radiusXs,
+                    noPressAnimation: true,
+                    onPressed: () {},
+                    child: Text(
+                      FormatHelper.formatCurrency(item.unitAmount),
+                      style: TextStyle(fontWeight: FontWeight.w800),
+                    ),
+                  ),
+                  SizedBox(height: 16.w),
+                  BubbleProgress(value: item.buyQuantityRate),
+                  SizedBox(height: 2.w),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        '0',
+                        style: TextStyle(
+                          fontSize: context.text2xs,
+                          color: context.textSecondary700,
+                          height: context.leading2xs,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      Text(
+                        '${item.seqBuyQuantity}${'entries-sold'.tr()}',
+                        style: TextStyle(
+                          fontSize: context.text2xs,
+                          color: context.textSecondary700,
+                          height: context.leading2xs,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      Text(
+                        '${item.seqShelvesQuantity}',
+                        style: TextStyle(
+                          fontSize: context.text2xs,
+                          color: context.textSecondary700,
+                          height: context.leading2xs,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 20.w),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            CupertinoIcons.person_circle,
+                            size: 24.w,
+                            color: context.fgPrimary900,
+                          ),
+                          SizedBox(height: 8.w),
+                          Text(
+                            '${item.maxPerBuyQuantity ?? 0}Max',
+                            style: TextStyle(
+                              fontSize: context.text2xs,
+                              color: context.textSecondary700,
+                              height: context.leading2xs,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          SizedBox(height: 4.w),
+                          Text(
+                            'common.persons'.tr(),
+                            style: TextStyle(
+                              fontSize: context.text2xs,
+                              color: context.textSecondary700,
+                              height: context.leading2xs,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                      Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          FaIcon(
+                            FontAwesomeIcons.calendar,
+                            size: 24.w,
+                            color: context.fgPrimary900,
+                          ),
+                          SizedBox(height: 8.w),
+                          Text(
+                            '${item.maxPerBuyQuantity ?? 0}Max',
+                            style: TextStyle(
+                              fontSize: context.text2xs,
+                              color: context.textSecondary700,
+                              height: context.leading2xs,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          SizedBox(height: 4.w),
+                          Text(
+                            'common.persons'.tr(),
+                            style: TextStyle(
+                              fontSize: context.text2xs,
+                              color: context.textSecondary700,
+                              height: context.leading2xs,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                      Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          SvgPicture.asset(
+                            'assets/images/product_detail/wallet.svg',
+                            width: 24.w,
+                            height: 24.w,
+                            colorFilter: ColorFilter.mode(
+                              context.fgPrimary900,
+                              BlendMode.srcIn,
+                            ),
+                          ),
+                          SizedBox(height: 8.w),
+                          Text(
+                              FormatHelper.formatCurrency(item.costAmount ?? 0),
+                            style: TextStyle(
+                              fontSize: context.text2xs,
+                              color: context.textSecondary700,
+                              height: context.leading2xs,
+                              fontWeight: FontWeight.w600,
+                            )
+                          ),
+                          SizedBox(height: 4.w),
+                          Text(
+                            'common.cash.value'.tr(),
+                            style: TextStyle(
+                              fontSize: context.text2xs,
+                              color: context.textSecondary700,
+                              height: context.leading2xs,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
+                      Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          FaIcon(
+                              FontAwesomeIcons.handHoldingHeart,
+                              size: 24,
+                             color: context.fgPrimary900,
+                          ),
+                          SizedBox(height: 8.w),
+                          Text(
+                            'common.charity.value'.tr(),
+                            style: TextStyle(
+                              fontSize: context.text2xs,
+                              color: context.textSecondary700,
+                              height: context.leading2xs,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          SizedBox(height: 4.w),
+                          Text(
+                            FormatHelper.formatCurrency(num.parse(item.charityAmount??'0')),
+                            style: TextStyle(
+                              fontSize: context.text2xs,
+                              color: context.textSecondary700,
+                              height: context.leading2xs,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
+    );
+  }
+}
+
+class _CouponSection extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 100,
+      color: Colors.grey[200],
+      child: Center(child: Text('Coupon Section')),
+    );
+  }
+}
+
+class _ProductInfoSection extends StatelessWidget {
+  final List<ProductDetailTab> tabs;
+  final TabController tabController;
+
+  const _ProductInfoSection({required this.tabs, required this.tabController});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 150,
+      color: Colors.grey[300],
+      child: Center(child: Text('Product Info Section')),
+    );
+  }
+}
+
+class _JoinTreasureSection extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 100,
+      color: Colors.grey[200],
+      child: Center(child: Text('Join Treasure Section')),
     );
   }
 }
