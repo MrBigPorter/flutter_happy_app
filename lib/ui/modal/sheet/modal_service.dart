@@ -10,14 +10,14 @@ import 'sheet_surface.dart';
 
 /// ModalSheetService
 /// ------------------------------------------------------------------
-/// 🔹 Global bottom sheet management service (Core of RadixSheet)
+///  Global bottom sheet management service (Core of RadixSheet)
 ///
 /// Features:
-/// ✅ Unified management of showModalBottomSheet display, closing, and animation strategies
-/// ✅ Automatically inherits theme and border radius configuration
-/// ✅ Supports closing by clicking background / dragging / maximum height control
-/// ✅ Avoids BuildContext async warning
-/// ✅ Integrates with global animation strategy AnimationPolicyConfig
+///  Unified management of showModalBottomSheet display, closing, and animation strategies
+///  Automatically inherits theme and border radius configuration
+///  Supports closing by clicking background / dragging / maximum height control
+///  Avoids BuildContext async warning
+///  Integrates with global animation strategy AnimationPolicyConfig
 ///
 /// Usage:
 /// ```dart
@@ -51,7 +51,7 @@ class ModalSheetService {
   bool get isShowing => _sheetFuture != null;
 
   // ------------------------------------------------------------------
-  // 🧩 Show Sheet
+  // Show Sheet
   // ------------------------------------------------------------------
   Future<T?> showSheet<T>({
     /// Sheet content builder function
@@ -63,16 +63,16 @@ class ModalSheetService {
     /// Sheet configuration (border radius, height, drag, animation strategy etc.)
     ModalSheetConfig config = const ModalSheetConfig(),
   }) async {
-    // ✅ If sheet is showing, close it first
+    //  If sheet is showing, close it first
     if (isShowing) await close();
 
-    // ✅ Parse strategy early (avoid context async issues)
+    //  Parse strategy early (avoid context async issues)
     final policy = AnimationPolicyResolver.resolve(
       businessStyle: config.animationStyleConfig,
       globalPolicy: globalPolicy,
     );
 
-    // ✅ Start microtask to ensure context is used at safe time
+    //  Start microtask to ensure context is used at safe time
     _sheetFuture = Future.microtask(() {
       final nav = navigatorKey.currentState;
       if (nav == null) {
@@ -80,14 +80,14 @@ class ModalSheetService {
           'ModalSheetService: Navigator not ready.');
       }
 
-      // ✅ Ensure current context is mounted
+      //  Ensure current context is mounted
       if (!nav.mounted) return null;
 
       final ctx = nav.context;
       final theme = Theme.of(ctx);
 
       // ----------------------------------------------------------------
-      // 🎛️ Config priority:
+      // Config priority:
       // config > policy > defaults
       // ----------------------------------------------------------------
 
@@ -105,20 +105,20 @@ class ModalSheetService {
           theme.colorScheme.scrim.withValues(alpha: 0.45);
 
       // ----------------------------------------------------------------
-      // 🚀 Show BottomSheet
+      //  Show BottomSheet
       // ----------------------------------------------------------------
       return showModalBottomSheet<T>(
         context: ctx,
         isScrollControlled: true,
-        // ✅ Can fill entire screen (supports tall content)
+        //  Can fill entire screen (supports tall content)
         backgroundColor: Colors.transparent,
-        // ✅ Remove default white background
+        //  Remove default white background
         useSafeArea: false,
         barrierColor: barrierColor,
         isDismissible: allowBgClose,
-        // ✅ Whether background click closes
+        //  Whether background click closes
         enableDrag: enableDrag,
-        // ✅ Whether drag to close is enabled
+        //  Whether drag to close is enabled
         builder: (modalContext) {
           _sheetContext = modalContext;
 
@@ -132,9 +132,9 @@ class ModalSheetService {
           ModalManager.instance.bind(() => finish());
 
           // ----------------------------------------------------------------
-          // 🧮 Height calculation and layout
+          // Height calculation and layout
           // ----------------------------------------------------------------
-          // ✅ Dynamically calculate max height (supports fullscreen)
+          //  Dynamically calculate max height (supports fullscreen)
           final double maxHeightFactor = config.maxHeightFactor.clamp(0.0, 1.0);
           // If set to 1.0 (or > 0.98), consider as fullscreen
           final bool isFullScreen = maxHeightFactor >= 0.99;
@@ -154,7 +154,7 @@ class ModalSheetService {
                       .surface;
 
           // ----------------------------------------------------------------
-          // 🎨 Final content container (with border radius, max height, adaptive content)
+          //  Final content container (with border radius, max height, adaptive content)
           // ----------------------------------------------------------------
           return MediaQuery.removePadding(
             context: modalContext,
@@ -192,7 +192,7 @@ class ModalSheetService {
   }
 
   // ------------------------------------------------------------------
-  // ❌ Actively close sheet
+  //  Actively close sheet
   // ------------------------------------------------------------------
   Future<void> close<T>([T? value]) async {
     if (_sheetContext != null && Navigator.of(_sheetContext!).canPop()) {

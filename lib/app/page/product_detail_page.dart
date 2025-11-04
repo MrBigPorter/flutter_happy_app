@@ -14,14 +14,16 @@ import 'package:flutter_app/utils/format_helper.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:nested_scroll_view_plus/nested_scroll_view_plus.dart';
 import 'package:sliver_tools/sliver_tools.dart';
 
 class ProductDetailTab {
   final String title;
+  final String tabId;
 
-  ProductDetailTab({required this.title});
+  ProductDetailTab({required this.title, required this.tabId});
 }
 
 class ProductDetailPage extends ConsumerStatefulWidget {
@@ -37,8 +39,8 @@ class _ProductDetailPageState extends ConsumerState<ProductDetailPage>
     with SingleTickerProviderStateMixin {
   TabController? _tabController;
   final List<ProductDetailTab> _tabs = [
-    ProductDetailTab(title: 'common.details'.tr()),
-    ProductDetailTab(title: 'raffle-rules'.tr()),
+    ProductDetailTab(title: 'common.details'.tr(), tabId: 'details'),
+    ProductDetailTab(title: 'raffle-rules'.tr(), tabId: 'rules'),
   ];
 
   @override
@@ -50,57 +52,147 @@ class _ProductDetailPageState extends ConsumerState<ProductDetailPage>
   @override
   Widget build(BuildContext context) {
     final detail = ref.watch(productDetailProvider(widget.productId));
-    print(detail.toString());
+
+    final desc =
+        "\u003cp\u003e\u003cimg src=\"https://prod-pesolucky.s3.ap-east-1.amazonaws.com/rule/20250819154125141c3746-11dd-48cd-bc3b-0c10294513ab.png\" width=\"750\" height=\"500\"\u003erealme Buds T300（Global Version）：\u003cbr\u003ePort charge\u003c/p\u003e\u003cul\u003e\u003cli\u003eUSB Type-C\u003c/li\u003e\u003c/ul\u003e\u003cp\u003eCharging\u003c/p\u003e\u003cul\u003e\u003cli\u003eUSB Type C wired charging\u003c/li\u003e\u003c/ul\u003e\u003cp\u003eBluetooth Version\u003c/p\u003e\u003cul\u003e\u003cli\u003eBluetooth 5.3\u003c/li\u003e\u003c/ul\u003e\u003cp\u003e\u003cbr\u003eAudio codecs\u003c/p\u003e\u003cul\u003e\u003cli\u003eAAC, SBC\u003c/li\u003e\u003c/ul\u003e\u003cp\u003eWireless Range\u003c/p\u003e\u003cul\u003e\u003cli\u003e10m\u003c/li\u003e\u003c/ul\u003e\u003cp\u003eSize of sound\u003c/p\u003e\u003cul\u003e\u003cli\u003e12,4mm\u003c/li\u003e\u003c/ul\u003e\u003cp\u003eBattery capacity\u003c/p\u003e\u003cul\u003e\u003cli\u003eCharging case:460mAh; Single earbud: 43mAh\u003cbr\u003eCharging Time\u003c/li\u003e\u003cli\u003eCharging Case + Buds:10mins Charging for 7hrs Playback (50% Volume,ANC OFF)\u003c/li\u003e\u003c/ul\u003e\u003cp\u003eWaterproof Rating\u003c/p\u003e\u003cul\u003e\u003cli\u003eIP55 (earphones only)\u003c/li\u003e\u003c/ul\u003e\u003cp\u003eNoise Cancelling Features\u003c/p\u003e\u003cul\u003e\u003cli\u003e30dB Active Noise Cancelling, Environment Noise Cancelling\u003c/li\u003e\u003c/ul\u003e\u003cp\u003eBattery (Charging case + Buds)\u003c/p\u003e\u003cul\u003e\u003cli\u003eMusic playback 40hrs (50% Volume,ANC OFF); Music playback 30hrs (50% Volume,ANC ON)\u003c/li\u003e\u003c/ul\u003e\u003cp\u003eBattery (Earbuds Alone)\u003c/p\u003e\u003cul\u003e\u003cli\u003e8hrs Music Playback (50% Volume,ANC OFF); 6hrs Music Playback (50% Volume,ANC ON); 4hrs Calling Time (50% Volume,ANC OFF/ON)\u003c/li\u003e\u003c/ul\u003e\u003cp\u003eInside the box\u003c/p\u003e\u003cul\u003e\u003cli\u003eRealme Buds T300 x 1\u003c/li\u003e\u003cli\u003eCharging Cable Type C x 1\u003c/li\u003e\u003cli\u003eInformation Card x1/\u003c/li\u003e\u003cli\u003eS/M/L Silicone Eartips x 2\u003c/li\u003e\u003c/ul\u003e";
 
     return BaseScaffold(
       title: 'common.details'.tr(),
-      body: NestedScrollViewPlus(
-        headerSliverBuilder: (_, __) {
-          return [
-            detail.when(
-              data: (detail) {
-                return MultiSliver(
-                  children: [
-                    _BannerSection(banners: detail.mainImageList),
-                    _TopTreasureSection(item: detail),
-                    //_CouponSection(),
-                    SliverPersistentHeader(
-                      pinned: true,
-                      delegate: LuckySliverTabBarDelegate(
-                        height: 38,
-                        labelStyle: TextStyle(
-                          color: context.textBrandSecondary700,
-                        ),
-                        enableUnderLine: true,
-                        showPersistentBg: true,
-                        controller: _tabController,
-                        tabs: _tabs,
-                        renderItem: (item) => Tab(text: item.title),
-                      ),
-                    ),
-                    _ProductInfoSection(
-                      tabs: _tabs,
-                      tabController: _tabController!,
-                    ),
-                    _JoinTreasureSection(),
-                  ],
-                );
-              },
-              error: (_, __) => SliverToBoxAdapter(
-                child: Center(child: Text('Error loading product, details')),
+      body: DefaultTabController(
+        length: 2,
+        child: CustomScrollView(
+          slivers: [
+            SliverToBoxAdapter(
+              child: _BannerSection(banners: detail.value?.mainImageList),
+            ),
+            // SliverToBoxAdapter(child: _TopTreasureSection(item: detail.value!)),
+            SliverToBoxAdapter(child: _JoinTreasureSection()),
+            _DetailContentSection(content: desc),
+            SliverToBoxAdapter(child: _JoinTreasureSection()),
+            SliverToBoxAdapter(child: SizedBox(height: 50.w)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// 选项卡项 tab item
+class TabItem {
+  final String text;
+  final String? content;
+
+  TabItem({required this.text, this.content});
+}
+
+/// 详情内容区 detail content section
+class _DetailContentSection extends StatefulWidget {
+  final String? content;
+
+  const _DetailContentSection({this.content});
+
+  @override
+  State<_DetailContentSection> createState() => _DetailContentSectionState();
+}
+
+class _DetailContentSectionState extends State<_DetailContentSection>
+    with SingleTickerProviderStateMixin {
+  List<TabItem> get tabs => [
+    TabItem(text: 'common.details', content: widget.content),
+    TabItem(text: 'raffle-rules', content: widget.content),
+  ];
+
+  late TabController _tabController;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _tabController = TabController(length: tabs.length, vsync: this);
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SliverPadding(
+      padding: EdgeInsets.symmetric(horizontal: 16.w),
+      sliver: MultiSliver(
+        children: [
+          // tabBar 和 tabBarView 结合使用时，需要加固定高度的容器包裹 tabBarView，或者使用 SliverFillRemaining
+          SliverToBoxAdapter(
+            child: Container(
+              padding: EdgeInsets.symmetric(horizontal: 16.w),
+              decoration: BoxDecoration(
+                color: context.bgPrimary,
+                borderRadius: BorderRadius.vertical(
+                  top: Radius.circular(context.radiusMd),
+                  bottom: Radius.circular(0),
+                ),
+                border: Border(
+                  top: BorderSide(
+                    color: context.borderPrimary,
+                    width: 1.w,
+                  ),
+                  left: BorderSide(
+                    color: context.borderPrimary,
+                    width: 1.w,
+                  ),
+                  right: BorderSide(
+                    color: context.borderPrimary,
+                    width: 1.w,
+                  ),
+                )
               ),
-              loading: () => SliverToBoxAdapter(
-                child: Center(child: CircularProgressIndicator()),
+              child: TabBar(
+                labelColor: context.textBrandSecondary700,
+                unselectedLabelColor: context.textQuaternary500,
+                indicatorColor: context.buttonPrimaryBg,
+               indicatorSize: TabBarIndicatorSize.tab,
+               indicatorWeight: 2.w,
+               dividerColor: Colors.transparent,
+               dividerHeight: 1.w,
+                tabs: tabs.map((tab) {
+                  return Tab(text: tab.text.tr());
+                }).toList(),
               ),
             ),
-          ];
-        },
-        body: SafeTabBarView(
-          controller: _tabController,
-          children: _tabs.map((tab) {
-            return Center(child: Text('Content for ${tab.title}'));
-          }).toList(),
-        ),
+          ),
+          SliverFillRemaining(
+            hasScrollBody: true,
+            child: Container(
+              padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 16.w),
+              decoration: BoxDecoration(
+                  color: context.bgPrimary,
+                  borderRadius: BorderRadius.vertical(
+                    bottom: Radius.circular(context.radiusMd),
+                    top: Radius.circular(0),
+                  ),
+                  border: Border.fromBorderSide(
+                    BorderSide(
+                      color: context.borderPrimary,
+                      width: 1.w,
+                    ),
+                  )
+              ),
+              child: TabBarView(
+                children: tabs.map((tab) {
+                  return SingleChildScrollView(
+                    physics: NeverScrollableScrollPhysics(),
+                    child: HtmlWidget(
+                        tab.content ?? '',
+
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -296,13 +388,13 @@ class _TopTreasureSection extends StatelessWidget {
                           ),
                           SizedBox(height: 8.w),
                           Text(
-                              FormatHelper.formatCurrency(item.costAmount ?? 0),
+                            FormatHelper.formatCurrency(item.costAmount ?? 0),
                             style: TextStyle(
                               fontSize: context.text2xs,
                               color: context.textSecondary700,
                               height: context.leading2xs,
                               fontWeight: FontWeight.w600,
-                            )
+                            ),
                           ),
                           SizedBox(height: 4.w),
                           Text(
@@ -320,9 +412,9 @@ class _TopTreasureSection extends StatelessWidget {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           FaIcon(
-                              FontAwesomeIcons.handHoldingHeart,
-                              size: 24,
-                             color: context.fgPrimary900,
+                            FontAwesomeIcons.handHoldingHeart,
+                            size: 24,
+                            color: context.fgPrimary900,
                           ),
                           SizedBox(height: 8.w),
                           Text(
@@ -336,7 +428,9 @@ class _TopTreasureSection extends StatelessWidget {
                           ),
                           SizedBox(height: 4.w),
                           Text(
-                            FormatHelper.formatCurrency(num.parse(item.charityAmount??'0')),
+                            FormatHelper.formatCurrency(
+                              num.parse(item.charityAmount ?? '0'),
+                            ),
                             style: TextStyle(
                               fontSize: context.text2xs,
                               color: context.textSecondary700,
@@ -369,29 +463,9 @@ class _CouponSection extends StatelessWidget {
   }
 }
 
-class _ProductInfoSection extends StatelessWidget {
-  final List<ProductDetailTab> tabs;
-  final TabController tabController;
-
-  const _ProductInfoSection({required this.tabs, required this.tabController});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 150,
-      color: Colors.grey[300],
-      child: Center(child: Text('Product Info Section')),
-    );
-  }
-}
-
 class _JoinTreasureSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: 100,
-      color: Colors.grey[200],
-      child: Center(child: Text('Join Treasure Section')),
-    );
+    return Text('1111');
   }
 }
