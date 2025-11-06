@@ -116,7 +116,7 @@
   "common.pagination": "Page {{current}} of {{totalPage}}",
   "common.node.use.up": "Use up to {{number}} on your entries.",
   "common.unit": "₱",
-  "common.users": "{{number}} teams",
+  "common.users": "{number} teams",
   "common.join.group": "Join the Team",
   "common.form.group": "Enter the Draw",
   "common.ticket": "ticket",

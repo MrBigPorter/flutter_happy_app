@@ -120,3 +120,83 @@ Map<String, dynamic> _$ProductListItemToJson(ProductListItem instance) =>
       'treasure_seq': instance.treasureSeq,
       'cash_state': instance.cashState,
     };
+
+GroupItem _$GroupItemFromJson(Map<String, dynamic> json) => $checkedCreate(
+  'GroupItem',
+  json,
+  ($checkedConvert) {
+    final val = GroupItem(
+      groupId: $checkedConvert('group_id', (v) => v as String),
+      joinedNum: $checkedConvert('joined_num', (v) => (v as num).toInt()),
+      leaderUsername: $checkedConvert('leader_username', (v) => v as String),
+      leaderAvatar: $checkedConvert('leader_avatar', (v) => v as String),
+      luckyWinnersCount: $checkedConvert(
+        'lucky_winners_count',
+        (v) => (v as num).toInt(),
+      ),
+      totalWinningTimes: $checkedConvert(
+        'total_winning_times',
+        (v) => (v as num).toInt(),
+      ),
+      users: $checkedConvert(
+        'users',
+        (v) => (v as List<dynamic>)
+            .map((e) => GroupUser.fromJson(e as Map<String, dynamic>))
+            .toList(),
+      ),
+    );
+    return val;
+  },
+  fieldKeyMap: const {
+    'groupId': 'group_id',
+    'joinedNum': 'joined_num',
+    'leaderUsername': 'leader_username',
+    'leaderAvatar': 'leader_avatar',
+    'luckyWinnersCount': 'lucky_winners_count',
+    'totalWinningTimes': 'total_winning_times',
+  },
+);
+
+Map<String, dynamic> _$GroupItemToJson(GroupItem instance) => <String, dynamic>{
+  'group_id': instance.groupId,
+  'joined_num': instance.joinedNum,
+  'leader_username': instance.leaderUsername,
+  'leader_avatar': instance.leaderAvatar,
+  'lucky_winners_count': instance.luckyWinnersCount,
+  'total_winning_times': instance.totalWinningTimes,
+  'users': instance.users,
+};
+
+GroupUser _$GroupUserFromJson(Map<String, dynamic> json) => $checkedCreate(
+  'GroupUser',
+  json,
+  ($checkedConvert) {
+    final val = GroupUser(
+      userId: $checkedConvert('user_id', (v) => v as String),
+      username: $checkedConvert('username', (v) => v as String),
+      avatar: $checkedConvert('avatar', (v) => v as String),
+      createdAt: $checkedConvert(
+        'created_at',
+        (v) => DateTime.parse(v as String),
+      ),
+      leaderUserId: $checkedConvert('leader_user_id', (v) => v as String),
+      leaderUsername: $checkedConvert('leader_username', (v) => v as String),
+    );
+    return val;
+  },
+  fieldKeyMap: const {
+    'userId': 'user_id',
+    'createdAt': 'created_at',
+    'leaderUserId': 'leader_user_id',
+    'leaderUsername': 'leader_username',
+  },
+);
+
+Map<String, dynamic> _$GroupUserToJson(GroupUser instance) => <String, dynamic>{
+  'user_id': instance.userId,
+  'username': instance.username,
+  'avatar': instance.avatar,
+  'created_at': instance.createdAt.toIso8601String(),
+  'leader_user_id': instance.leaderUserId,
+  'leader_username': instance.leaderUsername,
+};

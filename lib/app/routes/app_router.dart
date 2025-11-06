@@ -24,7 +24,7 @@ class AppRouter {
       debugLogDiagnostics: true,
       //让全局弹层系统使用同一个 Navigator：
       // allow the global modal system to use the same Navigator:
-     // navigatorKey: NavHub.key,
+      navigatorKey: NavHub.key,
       // 监听路由变化以关闭弹层：
       // observe route changes to close modals:
       observers: [
@@ -34,8 +34,9 @@ class AppRouter {
       initialLocation: '/home',
       routes: [
         GoRoute(
+            name:"login",
             path: '/login',
-            builder: (context, state) =>  const LoginPage(id: '1')
+            builder: (context, state) =>   LoginPage()
         ),
 
         ShellRoute(
@@ -86,7 +87,7 @@ class AppRouter {
                 fx: RouteFx.sharedScale,
               );
             }
-        )
+        ),
       ],
     );
   }

@@ -108,3 +108,67 @@ class ProductListParams {
     required this.pageSize,
   });
 }
+
+@JsonSerializable(checked: true)
+class GroupItem {
+  @JsonKey(name: 'group_id')
+  final String groupId;
+  @JsonKey(name: 'joined_num')
+  final int joinedNum;
+  @JsonKey(name: 'leader_username')
+  final String leaderUsername;
+  @JsonKey(name: 'leader_avatar')
+  final String leaderAvatar;
+  @JsonKey(name: 'lucky_winners_count')
+  final int luckyWinnersCount;
+  @JsonKey(name: 'total_winning_times')
+  final int totalWinningTimes;
+  @JsonKey(name: 'users')
+  final List<GroupUser> users;
+
+  GroupItem({
+    required this.groupId,
+    required this.joinedNum,
+    required this.leaderUsername,
+    required this.leaderAvatar,
+    required this.luckyWinnersCount,
+    required this.totalWinningTimes,
+    required this.users,
+  });
+}
+
+@JsonSerializable(checked: true)
+class GroupUser {
+  @JsonKey(name: 'user_id')
+  final String userId;
+  @JsonKey(name: 'username')
+  final String username;
+  @JsonKey(name: 'avatar')
+  final String avatar;
+  @JsonKey(name: 'created_at')
+  final DateTime createdAt;
+  @JsonKey(name: 'leader_user_id')
+  final String leaderUserId;
+  @JsonKey(name: 'leader_username')
+  final String leaderUsername;
+
+
+  GroupUser({
+    required this.userId,
+    required this.username,
+    required this.avatar,
+    required this.createdAt,
+    required this.leaderUserId,
+    required this.leaderUsername,
+  });
+
+  factory GroupUser.fromJson(Map<String, dynamic> json) =>
+      _$GroupUserFromJson(json);
+
+  Map<String, dynamic> toJson() => _$GroupUserToJson(this);
+
+  @override
+  String toString() {
+    return toJson().toString();
+  }
+}

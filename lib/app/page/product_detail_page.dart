@@ -65,9 +65,9 @@ class _ProductDetailPageState extends ConsumerState<ProductDetailPage>
             SliverToBoxAdapter(
               child: _BannerSection(banners: detail.value?.mainImageList),
             ),
-            // SliverToBoxAdapter(child: _TopTreasureSection(item: detail.value!)),
-            SliverToBoxAdapter(child: _JoinTreasureSection()),
-            _DetailContentSection(content: desc),
+             SliverToBoxAdapter(child: _TopTreasureSection(item: detail.value!)),
+            SliverToBoxAdapter(child: _GroupSection()),
+            SliverFillRemaining(child: _DetailContentSection(content: desc)),
             SliverToBoxAdapter(child: _JoinTreasureSection()),
             SliverToBoxAdapter(child: SizedBox(height: 50.w)),
           ],
@@ -119,7 +119,56 @@ class _DetailContentSectionState extends State<_DetailContentSection>
 
   @override
   Widget build(BuildContext context) {
-    return SliverPadding(
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: 16.w),
+      child: Container(
+        clipBehavior: Clip.antiAlias,
+        padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 16.w),
+        decoration: BoxDecoration(
+          color: context.bgPrimary,
+          borderRadius: BorderRadius.all(Radius.circular(context.radiusMd)),
+          border: Border.fromBorderSide(
+            BorderSide(
+              color: context.borderPrimary,
+              width: 1.w,
+            ),
+          ),
+        ),
+        child: DefaultTabController(
+            length: 2,
+            child: Column(
+              children: [
+                TabBar(
+                  labelColor: context.textBrandSecondary700,
+                  unselectedLabelColor: context.textQuaternary500,
+                  indicatorColor: context.buttonPrimaryBg,
+                  indicatorSize: TabBarIndicatorSize.tab,
+                  indicatorWeight: 2.w,
+                  dividerColor: context.borderSecondary,
+                  tabs: tabs.map((tab) {
+                    return Tab(text: tab.text.tr());
+                  }).toList(),
+                ),
+                SizedBox(height: 8.w),
+                Expanded(
+                    child: TabBarView(
+                      children: tabs.map((tab) {
+                        return SingleChildScrollView(
+                          physics: NeverScrollableScrollPhysics(),
+                          child: HtmlWidget(
+                            tab.content ?? '',
+                          ),
+                        );
+                      }).toList(
+                      ),
+                    )
+                )
+              ],
+            )
+        ),
+      ),
+    );
+    /*return SliverPadding(
       padding: EdgeInsets.symmetric(horizontal: 16.w),
       sliver: MultiSliver(
         children: [
@@ -162,39 +211,36 @@ class _DetailContentSectionState extends State<_DetailContentSection>
               ),
             ),
           ),
-          SliverFillRemaining(
-            hasScrollBody: true,
-            child: Container(
-              padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 16.w),
-              decoration: BoxDecoration(
-                  color: context.bgPrimary,
-                  borderRadius: BorderRadius.vertical(
-                    bottom: Radius.circular(context.radiusMd),
-                    top: Radius.circular(0),
+          Container(
+            padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 16.w),
+            decoration: BoxDecoration(
+                color: context.bgPrimary,
+                borderRadius: BorderRadius.vertical(
+                  bottom: Radius.circular(context.radiusMd),
+                  top: Radius.circular(0),
+                ),
+                border: Border.fromBorderSide(
+                  BorderSide(
+                    color: context.borderPrimary,
+                    width: 1.w,
                   ),
-                  border: Border.fromBorderSide(
-                    BorderSide(
-                      color: context.borderPrimary,
-                      width: 1.w,
-                    ),
-                  )
-              ),
-              child: TabBarView(
-                children: tabs.map((tab) {
-                  return SingleChildScrollView(
-                    physics: NeverScrollableScrollPhysics(),
-                    child: HtmlWidget(
-                        tab.content ?? '',
-
-                    ),
-                  );
-                }).toList(),
-              ),
+                )
             ),
-          ),
+            child: TabBarView(
+              children: tabs.map((tab) {
+                return SingleChildScrollView(
+                  physics: NeverScrollableScrollPhysics(),
+                  child: HtmlWidget(
+                    tab.content ?? '',
+
+                  ),
+                );
+              }).toList(),
+            ),
+          )
         ],
       ),
-    );
+    );*/
   }
 }
 
@@ -459,6 +505,89 @@ class _CouponSection extends StatelessWidget {
       height: 100,
       color: Colors.grey[200],
       child: Center(child: Text('Coupon Section')),
+    );
+  }
+}
+
+class _GroupSection extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: 16.w),
+      child: Container(
+        width: double.infinity,
+        padding: EdgeInsets.symmetric(horizontal: 16.w,vertical: 16.w),
+        decoration: BoxDecoration(
+          color: context.bgPrimary,
+          border: Border.all(color: context.borderPrimary, width: 1),
+          borderRadius: BorderRadius.all(Radius.circular(context.radiusMd)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'common.group.for.treasures'.tr(),
+                        style: TextStyle(
+                          fontSize: context.textMd,
+                          fontWeight: FontWeight.w800,
+                          color: context.fgPrimary900,
+                          height: context.leadingMd,
+                        ),
+                      ),
+                      SizedBox(height: 10.w),
+                      Container(
+                        padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 2.w),
+                        decoration: BoxDecoration(
+                          color: context.utilityBrand50,
+                          borderRadius: BorderRadius.all(Radius.circular(context.radiusFull)),
+                          border: Border.fromBorderSide(
+                            BorderSide(
+                              color: context.utilityBrand200,
+                              width: 1.w,
+                            ),
+                          ),
+                        ),
+                        child: Text(
+                          'common.users'.tr(
+                            namedArgs: {
+                              'number': '1234',
+                            }
+                          ),
+                          style: TextStyle(
+                            fontSize: context.text2xs,
+                            color: context.utilityBrand700,
+                            fontWeight: FontWeight.w500,
+                            height: context.leadingXs,
+                          ),
+                        ),
+                      )
+                    ],
+                  ),
+                  GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    child:  SvgPicture.asset(
+                        'assets/images/product_detail/goto.svg',
+                        width: 16.w,
+                        height: 16.w,
+                        colorFilter: ColorFilter.mode(
+                          context.fgPrimary900,
+                          BlendMode.srcIn,
+                        )
+                    ),
+                  )
+                ],
+              )
+          ],
+        ),
+      ),
     );
   }
 }

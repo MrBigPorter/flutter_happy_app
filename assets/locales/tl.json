@@ -116,7 +116,7 @@
   "common.pagination": "Pahina {{current}} ng {{totalPage}}",
   "common.node.use.up": "Gumamit ng hanggang {{number}} coin sa iyong entry.",
   "common.unit": "₱",
-  "common.users": "{{number}} mga teams",
+  "common.users": "{number} mga teams",
   "common.join.group": "Sumali sa grupo",
   "common.form.group": "Sumali sa Raffle",
   "common.ticket": "ticket",

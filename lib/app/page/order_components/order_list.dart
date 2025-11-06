@@ -7,6 +7,7 @@ import 'package:flutter_app/utils/helper.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:flutter_app/core/providers/me_provider.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 class OrderList extends ConsumerStatefulWidget {
   final int status;
@@ -61,6 +62,11 @@ class _OrderListState extends ConsumerState<OrderList> with AutomaticKeepAliveCl
               controller: _ctl,
               sliverMode: true,
               separatorSpace: 16,
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 1,
+                mainAxisSpacing: 16.w,
+                childAspectRatio: 375.w / 120.w,
+              ),
               itemBuilder: (context, item, index, isLast) {
                 return OrderItemContainer(item: item, isLast: isLast);
               },
