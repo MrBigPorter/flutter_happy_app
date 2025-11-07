@@ -77,8 +77,8 @@ class AppRouter {
         ),
         GoRoute(
             name: 'productDetail',
-            path: '/productDetail/:id',
-            // parentNavigatorKey: NavHub.key,
+            path: '/product/:id',
+            parentNavigatorKey: NavHub.key,
             pageBuilder: (ctx, state) {
               final id = state.pathParameters['id']!;
               return fxPage(

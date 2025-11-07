@@ -9,15 +9,12 @@ import 'package:flutter_app/core/models/index.dart';
 import 'package:flutter_app/core/providers/index.dart';
 import 'package:flutter_app/ui/bubble_progress.dart';
 import 'package:flutter_app/ui/button/button.dart';
-import 'package:flutter_app/ui/lucky_tab_bar_delegate.dart';
 import 'package:flutter_app/utils/format_helper.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import 'package:nested_scroll_view_plus/nested_scroll_view_plus.dart';
-import 'package:sliver_tools/sliver_tools.dart';
 
 class ProductDetailTab {
   final String title;
@@ -65,7 +62,7 @@ class _ProductDetailPageState extends ConsumerState<ProductDetailPage>
             SliverToBoxAdapter(
               child: _BannerSection(banners: detail.value?.mainImageList),
             ),
-             SliverToBoxAdapter(child: _TopTreasureSection(item: detail.value!)),
+           //  SliverToBoxAdapter(child: _TopTreasureSection(item: detail.value!)),
             SliverToBoxAdapter(child: _GroupSection()),
             SliverFillRemaining(child: _DetailContentSection(content: desc)),
             SliverToBoxAdapter(child: _JoinTreasureSection()),

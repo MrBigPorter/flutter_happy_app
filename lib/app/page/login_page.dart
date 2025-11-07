@@ -54,7 +54,6 @@ class LoginPage extends StatelessWidget {
                   keyboardType: TextInputType.phone,
                   filled: true,
                   fillColor: context.bgPrimaryAlt,
-                  textAlignVertical: TextAlignVertical.center,
                   prefixIcon: Padding(
                     padding: EdgeInsets.only(left: 12, right: 8),
                     child: Text('+1'),

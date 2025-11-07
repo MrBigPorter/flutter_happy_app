@@ -1,45 +1,37 @@
+
 import 'package:flutter/material.dart';
 import 'package:reactive_forms/reactive_forms.dart';
-import '../ui_min.dart';
-import 'lf_borders.dart';
-import 'lf_core.dart';
-import 'lf_defaults.dart';
 
-typedef Vm = Map<String, String Function(Object?)>;
-typedef LfDecorationBuilder = InputDecoration Function(
-    BuildContext context,
-    InputDecoration base,
-    );
+import '../ui_min.dart';
+
+enum LfLabelMode { external, builtInText, builtInWidget }
 
 class LfField<T> extends StatelessWidget {
   final String name;
+
+  // 文案
   final String? label, hint, helper;
   final LfLabelMode labelMode;
-  final Vm? validationMessages;
+  final Map<String, String Function(Object?)>? validationMessages;
+  final Widget? labelWidget;
 
-  // 视觉
-  final bool shadow;
-  final LfShadowSet? shadows;
-  final InputBorder? border, focusedBorder, errorBorder, disabledBorder;
+  // 输入装饰可覆盖项（字段级）
   final Widget? prefix, suffix, prefixIcon, suffixIcon;
-  final String? prefixText, suffixText;
-  final TextStyle? inputStyle, hintStyle;
+  final TextStyle? inputStyle, hintStyle, labelStyle;
   final EdgeInsetsGeometry? contentPadding;
   final bool? filled;
   final Color? fillColor;
+  final InputBorder? border, focusedBorder, errorBorder, disabledBorder;
 
-  // label
-  final Widget? labelWidget;
+  // 可选：容器级阴影（需要就传；不传不生效）
+  final List<BoxShadow>? boxShadow;
+  final BorderRadius? containerRadius;
 
-  // 具体控件
-  final Widget Function(
-      BuildContext ctx,
-      InputDecoration decoration,
-      TextStyle? inputStyle,
-      ) builder;
+  // 具体字段构建
+  final Widget Function(BuildContext ctx, InputDecoration decoration, TextStyle? inputStyle) builder;
 
-  // 单字段装饰二次加工
-  final LfDecorationBuilder? decorationBuilder;
+  // 单字段装饰再加工
+  final InputDecoration Function(BuildContext ctx, InputDecoration base)? decorationBuilder;
 
   const LfField({
     super.key,
@@ -50,153 +42,124 @@ class LfField<T> extends StatelessWidget {
     this.helper,
     this.labelMode = LfLabelMode.external,
     this.validationMessages,
-    this.shadow = true,
-    this.shadows,
-    this.border,
-    this.focusedBorder,
-    this.errorBorder,
-    this.disabledBorder,
-    this.prefix,
-    this.suffix,
-    this.prefixIcon,
-    this.suffixIcon,
-    this.prefixText,
-    this.suffixText,
-    this.inputStyle,
-    this.hintStyle,
-    this.contentPadding,
-    this.filled,
-    this.fillColor,
     this.labelWidget,
+
+    // 覆盖项
+    this.prefix, this.suffix, this.prefixIcon, this.suffixIcon,
+    this.inputStyle, this.hintStyle, this.labelStyle,
+    this.contentPadding, this.filled, this.fillColor,
+    this.border, this.focusedBorder, this.errorBorder, this.disabledBorder,
+    this.boxShadow, this.containerRadius,
     this.decorationBuilder,
   });
 
-  // ✅ 正确拿到当前表单里的 control(name)
+  // —— 拿到当前 ReactiveForm 里的 control（支持 'a.b.c' 路径）
   AbstractControl<dynamic>? _controlOf(BuildContext context) {
     final root = ReactiveForm.of(context);
-    if (root is FormGroup) {
-      return root.control(name);
-    }
-    // 如需支持数组/路径，可在此扩展
-    return null;
+    return (root is FormGroup) ? root.control(name) : null;
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final shared = LfDefaults.of(context);
-    final t = formThemeOf(context);
-    final theme = Theme.of(context);
-    final control = _controlOf(context);
+  // —— 把 prefix/suffix 规范成垂直居中的 *Icon 版本，并去掉 48 的默认宽
+  InputDecoration _normalizeAffixes(InputDecoration d) {
+    final pad = d.contentPadding;
+    final edge = pad is EdgeInsets ? pad : const EdgeInsets.symmetric(horizontal: 12, vertical: 12);
 
-    // 1) 边框（含可选阴影）
-    final borders = resolvedBorders(
-      context,
-      border: border,
-      focusedBorder: focusedBorder,
-      errorBorder: errorBorder,
-      disabledBorder: disabledBorder,
-      shadows: shadow ? (shadows ?? LfShadowSet.subtle) : const LfShadowSet(),
-    );
-
-    // 2) 基础装饰（字段入参 > 共享 > 主题）
-    InputDecoration deco = buildLfDecoration(
-      context,
-      labelMode: labelMode,
-      labelText: label,
-      labelWidget: labelWidget,
-      hint: hint,
-      helper: helper,
-      prefix: prefix,
-      suffix: suffix,
-      prefixIcon: prefixIcon,
-      suffixIcon: suffixIcon,
-      hintStyle: hintStyle ?? shared.hintStyle,
-      contentPadding: contentPadding ?? shared.contentPadding,
-      filled: filled ?? shared.filled,
-      fillColor: fillColor ?? shared.fillColor,
-    );
-
-    // 2.0 prefix/suffix → prefixIcon/suffixIcon（垂直居中 + 去掉48默认宽）
-    final pad = deco.contentPadding;
-    final edge = pad is EdgeInsets
-        ? pad
-        : const EdgeInsets.symmetric(horizontal: 12, vertical: 12);
-
-    if (prefix != null && prefixIcon == null) {
+    var deco = d;
+    if (deco.prefix != null && deco.prefixIcon == null) {
       deco = deco.copyWith(
-        prefixIcon: Padding(
-          padding: EdgeInsets.only(left: edge.left),
-          child: Center(child: prefix!),
-        ),
+        prefixIcon: Padding(padding: EdgeInsets.only(left: edge.left), child: Center(child: deco.prefix!)),
         prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
         prefix: null,
       );
     }
-    if (suffix != null && suffixIcon == null) {
+    if (deco.suffix != null && deco.suffixIcon == null) {
       deco = deco.copyWith(
-        suffixIcon: Padding(
-          padding: EdgeInsets.only(right: edge.right),
-          child: Center(child: suffix!),
-        ),
+        suffixIcon: Padding(padding: EdgeInsets.only(right: edge.right), child: Center(child: deco.suffix!)),
         suffixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
         suffix: null,
       );
     }
+    return deco;
+  }
 
-    // 2.1 共享二次加工（全局统一规则）
-    if (shared.decorationBuilder != null) {
-      deco = shared.decorationBuilder!(context, deco);
-    }
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final d  = runtimeDefault(context);        // ← 直接拿运行时默认
+    final control = _controlOf(context);
 
-    // 2.2 最终边框落地
-    deco = deco.copyWith(
-      prefixText: prefixText,
-      suffixText: suffixText,
-      border: borders.enabled,
-      enabledBorder: borders.enabled,
-      focusedBorder: borders.focused,
-      errorBorder: borders.error,
-      disabledBorder: borders.disabled,
+    // 合成装饰：字段入参 > 运行时默认
+    InputDecoration deco = InputDecoration(
+      labelText:   labelMode == LfLabelMode.builtInText ? label : null,
+      label:       labelMode == LfLabelMode.builtInWidget ? labelWidget : null,
+      hintText:    hint,
+      helperText:  helper,
+
+      // ← 先看字段是否传入，否则落到 runtimeDefault
+      contentPadding: contentPadding ?? d.contentPadding,
+      filled:         filled ?? d.filled,
+      fillColor:      fillColor ?? d.fillColor,
+
+      hintStyle:      hintStyle ?? d.hintStyle ?? theme.textTheme.bodySmall,
+
+      prefix: prefix, suffix: suffix,
+      prefixIcon: prefixIcon, suffixIcon: suffixIcon,
+
+      // 边框统一吃 runtimeDefault（可被字段级覆盖）
+      border:         border         ?? d.border,
+      enabledBorder:  border         ?? d.border,
+      focusedBorder:  focusedBorder  ?? d.focusedBorder ?? d.border,
+      errorBorder:    errorBorder    ?? d.errorBorder   ?? d.border,
+      disabledBorder: disabledBorder ?? d.disabledBorder?? d.border,
+
+      floatingLabelBehavior: labelMode == LfLabelMode.external
+          ? null
+          : FloatingLabelBehavior.auto,
     );
 
-    // 2.3 单字段再加工
+    deco = _normalizeAffixes(deco);    // 垂直居中 prefix/suffix, 去掉 48 宽
+
+    // 单字段装饰二次加工（可选）
     if (decorationBuilder != null) {
       deco = decorationBuilder!(context, deco);
     }
 
-    // 2.4 异步校验 pending → 自动加菊花（前提：没有自定义 suffixIcon）
+    // pending 自动菊花（未自定义 suffixIcon 时）
     final isPending = control?.status == ControlStatus.pending;
     if (isPending && deco.suffixIcon == null) {
       deco = deco.copyWith(
         suffixIcon: const Padding(
           padding: EdgeInsets.only(right: 8),
-          child: SizedBox(
-            width: 16, height: 16,
-            child: CircularProgressIndicator(strokeWidth: 2),
-          ),
+          child: SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
         ),
         suffixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
       );
     }
 
-    // 3) 字体：字段 > 共享 > 主题扩展 > 系统主题
-    final resolvedStyle =
-        inputStyle ?? shared.inputStyle ?? t.inputStyle ?? theme.textTheme.titleMedium;
+    // 字体：字段 > runtimeDefault > 主题
+    final resolvedStyle = inputStyle ?? d.inputStyle ?? theme.textTheme.titleMedium;
 
-    // 4) 具体字段
-    final field = builder(context, deco, resolvedStyle);
+    // 构建子字段
+    Widget field = builder(context, deco, resolvedStyle);
 
-    // 5) 外部 label 包装（支持必填星号；不再依赖 shared.asteriskStyle）
-    return wrapExternalLabel(
-      context,
-      mode: labelMode,
-      label: label,
-      field: field,
-      control: control,                         // 让 wrapExternalLabel 能判断 required/requiredTrue
-      gap: shared.labelGap ?? t.spacing,
-      labelStyle: shared.labelStyle ?? t.labelStyle,
-      asteriskStyle: (t.errorStyle ?? theme.textTheme.bodySmall)
-          ?.copyWith(color: theme.colorScheme.error),
-    );
+    // 外部 label（带 *）
+    if (labelMode == LfLabelMode.external && label != null) {
+      final required = control?.hasError(ValidationMessage.required) == true
+          || control?.hasError(ValidationMessage.requiredTrue) == true;
+      field = Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(mainAxisSize: MainAxisSize.min, children: [
+            Text(label!, style: labelStyle ?? d.labelStyle ?? theme.textTheme.bodySmall),
+            if (required) Text(' *', style: theme.textTheme.bodySmall?.copyWith(color: cs.error)),
+          ]),
+          SizedBox(height: d.spacing),
+          field,
+        ],
+      );
+    }
+
+    return field;
   }
 }

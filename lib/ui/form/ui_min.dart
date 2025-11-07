@@ -5,7 +5,7 @@ import 'package:flutter_app/common.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:reactive_forms/reactive_forms.dart';
 
-import 'core/lf_borders.dart';
+import 'core/shadow_outline_input_border.dart';
 
 @immutable
 class LuckyFormTheme extends ThemeExtension<LuckyFormTheme> {
@@ -241,6 +241,17 @@ extension LuckyFormThemeApply on LuckyFormTheme {
 }
 
 /// ⑤ 局部作用域：挂 Patch
+/// 用于局部覆盖全局主题 used to provide local overrides to the global theme
+/// （可选）局部覆盖主题 (Local Override Theme)
+/// 将局部 Patch 挂在树上，供子树使用 used to provide local overrides to the global theme
+/// Usage:
+/// ```dart
+/// LuckyFormThemePatch(
+///  labelStyle: TextStyle(...),
+///  )
+///  child: ...,
+///  );
+/// ```
 class LuckyFormThemeScope extends InheritedWidget {
   final LuckyFormThemePatch patch;
 
@@ -263,9 +274,13 @@ class LuckyFormThemeScope extends InheritedWidget {
 
 /// ⑥ 一行拿到“合并后的最终主题”（默认 → 全局 → 局部Patch）
 LuckyFormTheme formThemeOf(BuildContext context) {
+  // Theme.of(context).extension<LuckyFormTheme>()
+  // 从全局themeData extensions中获取配置的主题
+  //runtimeDefault 从默认值中取配置的
   final base =
       Theme.of(context).extension<LuckyFormTheme>() ?? runtimeDefault(context);
   final patch = LuckyFormThemeScope.mayOf(context);
+
   return base.applyPatch(patch);
 }
 

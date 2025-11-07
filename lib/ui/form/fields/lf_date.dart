@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:reactive_forms/reactive_forms.dart';
 import '../core/lf_field.dart';
-import '../core/lf_core.dart';
 
 class LfDate extends StatelessWidget {
   final String name;
@@ -24,7 +23,10 @@ class LfDate extends StatelessWidget {
   Widget build(BuildContext context) {
     return LfField<DateTime?>(
       name: name,
-      label: label, hint: hint, helper: helper, labelMode: labelMode,
+      label: label,
+      hint: hint,
+      helper: helper,
+      labelMode: labelMode,
       validationMessages: validationMessages,
       builder: (ctx, decoration, textStyle) {
         return ReactiveDatePicker<DateTime>(
@@ -32,22 +34,19 @@ class LfDate extends StatelessWidget {
           firstDate: firstDate,
           lastDate: lastDate,
           builder: (context, picker, child) {
-            final value = picker.value;
-            final str = value == null
+            final v = picker.value;
+            final str = v == null
                 ? ''
-                : MaterialLocalizations.of(context).formatMediumDate(value);
+                : MaterialLocalizations.of(context).formatMediumDate(v);
 
-            // 用 InputDecorator 复用统一的边框/阴影/图标
             final input = InputDecorator(
               isFocused: false,
               isEmpty: str.isEmpty,
               decoration: decoration.copyWith(
                 suffixIcon: const Icon(Icons.calendar_today, size: 18),
+                suffixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
               ),
-              child: Text(
-                str,
-                style: textStyle,
-              ),
+              child: Text(str, style: textStyle),
             );
 
             return InkWell(onTap: picker.showPicker, child: input);

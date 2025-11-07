@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:reactive_forms/reactive_forms.dart';
-import '../core/lf_core.dart';
 import '../core/lf_field.dart';
-import '../ui_min.dart'; // formThemeOf()
+import '../ui_min.dart';
 
 typedef Vm = Map<String, String Function(Object?)>;
 typedef LfSelectOption<T> = ({String text, T value, bool disabled});
@@ -10,22 +9,17 @@ typedef LfSelectOption<T> = ({String text, T value, bool disabled});
 class LfSelect<T> extends StatelessWidget {
   final String name;
   final String? label;
-
-  /// 输入框上的说明（下方 helper 走 LuckyFormTheme）
-  final String? helper;
-
-  /// 按钮里的占位提示（Dropdown 的 hint，显示在未选择时）
-  final String? buttonHint;
-
+  final String? helper;         // 输入下方辅助文案
+  final String? buttonHint;     // 输入框里的占位提示（未选择时）
   final LfLabelMode labelMode;
 
-  /// 两种传参方式：要么给 items（原生），要么给 options（简写）
+  /// 二选一：给 items（原生）或给 options（简写）
   final List<DropdownMenuItem<T>>? items;
   final List<LfSelectOption<T>>? options;
 
   final Vm? validationMessages;
 
-  /// 外观细节
+  /// 外观细节（原生 Dropdown 的属性，按需用）
   final bool isExpanded;
   final double? menuMaxHeight;
   final BorderRadius? menuRadius;
@@ -53,7 +47,7 @@ class LfSelect<T> extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = formThemeOf(context);
+    final d = runtimeDefault(context);
     final theme = Theme.of(context);
 
     return LfField<T>(
@@ -71,28 +65,25 @@ class LfSelect<T> extends StatelessWidget {
             enabled: !o.disabled,
             child: Text(
               o.text,
-              style: textStyle ?? t.inputStyle ?? theme.textTheme.titleMedium,
+              style: textStyle ?? theme.textTheme.titleMedium,
             ),
           );
         }).toList()
-            : (items ??  <DropdownMenuItem<T>>[]);
+            : (items ?? <DropdownMenuItem<T>>[]);
 
-        // 按钮里的占位 Widget
         final hintWidget = buttonHint == null
             ? null
             : Text(
           buttonHint!,
-          style: t.hintStyle ?? theme.textTheme.bodyMedium?.copyWith(
-            color: theme.hintColor,
-          ),
+          style: theme.inputDecorationTheme.hintStyle ??
+              theme.textTheme.bodyMedium?.copyWith(color: theme.hintColor),
         );
 
-        // 选中项文字样式用 style，外观走 decoration（来自 Lucky 主题）
         return ReactiveDropdownField<T>(
           formControlName: name,
           items: builtItems,
           isExpanded: isExpanded,
-          style: textStyle ?? t.inputStyle ?? theme.textTheme.titleMedium,
+          style: textStyle ?? theme.textTheme.titleMedium,
           hint: hintWidget,
           validationMessages: validationMessages,
           decoration: decoration,
@@ -100,7 +91,7 @@ class LfSelect<T> extends StatelessWidget {
           borderRadius: menuRadius,
           dropdownColor: dropdownColor,
           icon: icon,
-          iconSize: iconSize??12,
+          iconSize: iconSize ?? 18,
         );
       },
     );

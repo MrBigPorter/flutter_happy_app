@@ -1,13 +1,15 @@
 // main.dart
 import 'dart:ui';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_app/common.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart' as riverpod;
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:easy_localization/easy_localization.dart';
-import 'package:url_strategy/url_strategy.dart';
+import 'package:flutter_web_plugins/url_strategy.dart';
 
 import 'app/routes/app_router.dart';
 import 'theme/theme_provider.dart';
@@ -17,8 +19,11 @@ import 'app/app.dart';
 
 Future<void> main() async {
 
-  // 1) set URL strategy for web
-  setPathUrlStrategy();
+  // Web 去掉 #，其它平台无影响
+  if (kIsWeb) usePathUrlStrategy();
+  //  让 push 也同步 URL
+  GoRouter.optionURLReflectsImperativeAPIs = true;
+
   bool errorHandlerRegistered = false;
 
   WidgetsFlutterBinding.ensureInitialized();
@@ -31,7 +36,7 @@ Future<void> main() async {
 
 
   void registerGlobalErrorHandler() {
-    if (errorHandlerRegistered) return; // 避免重复注册
+    if (errorHandlerRegistered) return;
     errorHandlerRegistered = true;
 
     FlutterError.onError = (details) {
@@ -39,7 +44,7 @@ Future<void> main() async {
     };
 
     PlatformDispatcher.instance.onError = (error, stack) {
-      debugPrint('❌ Platform error: $error\n$stack');
+      debugPrint('Platform error: $error\n$stack');
       return true;
     };
   }

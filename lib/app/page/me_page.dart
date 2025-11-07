@@ -717,7 +717,7 @@ class _UnLoginTopArea extends StatelessWidget {
               Button(
                 width: 110,
                 height: 40,
-                onPressed: () => appRouter.go('/login'),
+                onPressed: () => appRouter.push('/login'),
                 child: Text('common.login'.tr()),
               ),
               SizedBox(width: 8.w),
@@ -725,7 +725,7 @@ class _UnLoginTopArea extends StatelessWidget {
                 width: 110,
                 height: 40,
                 variant: ButtonVariant.secondary,
-                onPressed: () => appRouter.go('/register'),
+                onPressed: () => appRouter.push('/register'),
                 child: Text('common.register'.tr()),
               ),
             ],

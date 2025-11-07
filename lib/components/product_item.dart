@@ -337,10 +337,7 @@ class ProductItem extends StatelessWidget {
                           height: 46.w,
                           child: Text('common.enter.now'.tr()),
                           onPressed: () {
-                            appRouter.pushNamed(
-                              'productDetail',
-                              pathParameters: {'id': '${data.treasureId}'},
-                            );
+                            appRouter.pushNamed('productDetail', pathParameters: {'id': data.treasureId});
                           },
                         ),
                       ],
