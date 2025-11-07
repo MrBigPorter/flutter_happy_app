@@ -1,7 +1,11 @@
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_app/common.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:reactive_forms/reactive_forms.dart';
+
+import 'core/lf_borders.dart';
 
 @immutable
 class LuckyFormTheme extends ThemeExtension<LuckyFormTheme> {
@@ -9,23 +13,40 @@ class LuckyFormTheme extends ThemeExtension<LuckyFormTheme> {
   final TextStyle? labelStyle;
   final TextStyle? helperStyle;
   final TextStyle? errorStyle;
+  final TextStyle? hintStyle;
+  final TextStyle? prefixStyle;
+  final TextStyle? suffixStyle;
+  final TextStyle? counterStyle;
+  final TextStyle? inputStyle;
 
   final bool? isDense;
   final EdgeInsetsGeometry? contentPadding;
   final InputBorder? border;
   final InputBorder? focusedBorder;
   final InputBorder? errorBorder;
+  final InputBorder? disabledBorder;
+  final Color? fillColor;
+  final bool filled;
 
   const LuckyFormTheme({
     this.spacing = 6,
     this.labelStyle,
     this.helperStyle,
     this.errorStyle,
+    this.hintStyle,
+    this.prefixStyle,
+    this.suffixStyle,
+    this.counterStyle,
+    this.inputStyle,
+
     this.isDense,
     this.contentPadding,
     this.border,
     this.focusedBorder,
     this.errorBorder,
+    this.disabledBorder,
+    this.fillColor,
+    this.filled = true,
   });
 
   @override
@@ -34,22 +55,41 @@ class LuckyFormTheme extends ThemeExtension<LuckyFormTheme> {
     TextStyle? labelStyle,
     TextStyle? errorStyle,
     TextStyle? helperStyle,
+    TextStyle? hintStyle,
+    TextStyle? prefixStyle,
+    TextStyle? suffixStyle,
+    TextStyle? counterStyle,
+    TextStyle? inputStyle,
+
     bool? isDense,
     EdgeInsetsGeometry? contentPadding,
     InputBorder? border,
     InputBorder? focusedBorder,
     InputBorder? errorBorder,
+    InputBorder? disabledBorder,
+    Color? fillColor,
+    bool? filled,
   }) {
     return LuckyFormTheme(
       spacing: spacing ?? this.spacing,
       labelStyle: labelStyle ?? this.labelStyle,
       errorStyle: errorStyle ?? this.errorStyle,
       helperStyle: helperStyle ?? this.helperStyle,
+      hintStyle: hintStyle ?? this.hintStyle,
+      prefixStyle: prefixStyle ?? this.prefixStyle,
+      suffixStyle: suffixStyle ?? this.suffixStyle,
+      counterStyle: counterStyle ?? this.counterStyle,
+      inputStyle: inputStyle ?? this.inputStyle,
+
       isDense: isDense ?? this.isDense,
       contentPadding: contentPadding ?? this.contentPadding,
       border: border ?? this.border,
       focusedBorder: focusedBorder ?? this.focusedBorder,
       errorBorder: errorBorder ?? this.errorBorder,
+      disabledBorder: disabledBorder ?? this.disabledBorder,
+
+      fillColor: fillColor ?? this.fillColor,
+      filled: filled ?? this.filled,
     );
   }
 
@@ -63,25 +103,76 @@ class LuckyFormTheme extends ThemeExtension<LuckyFormTheme> {
       labelStyle: TextStyle.lerp(labelStyle, other.labelStyle, t),
       helperStyle: TextStyle.lerp(helperStyle, other.helperStyle, t),
       errorStyle: TextStyle.lerp(errorStyle, other.errorStyle, t),
+      hintStyle: TextStyle.lerp(hintStyle, other.hintStyle, t),
+      prefixStyle: TextStyle.lerp(prefixStyle, other.prefixStyle, t),
+      suffixStyle: TextStyle.lerp(suffixStyle, other.suffixStyle, t),
+      counterStyle: TextStyle.lerp(counterStyle, other.counterStyle, t),
+      inputStyle: TextStyle.lerp(inputStyle, other.inputStyle, t),
+
       isDense: other.isDense ?? isDense,
       contentPadding: other.contentPadding ?? contentPadding,
       border: other.border ?? border,
       focusedBorder: other.focusedBorder ?? focusedBorder,
       errorBorder: other.errorBorder ?? errorBorder,
+      disabledBorder: other.disabledBorder ?? disabledBorder,
+
+      fillColor: Color.lerp(fillColor, other.fillColor, t),
+      filled: other.filled,
     );
   }
 }
 
 /// 内置默认主题 default theme
-const kLuckyFormThemeDefault = LuckyFormTheme(
-  labelStyle: TextStyle(fontSize: 14, color: Colors.black87),
-  helperStyle: TextStyle(fontSize: 12, color: Colors.grey),
-  errorStyle: TextStyle(fontSize: 12, color: Colors.red),
-  border: OutlineInputBorder(
-    borderSide: BorderSide(color: Colors.grey),
-  ),
-
-);
+LuckyFormTheme runtimeDefault(BuildContext context) {
+  return LuckyFormTheme(
+    labelStyle: TextStyle(
+      fontSize: context.textSm,
+      fontWeight: FontWeight.w500,
+      color: context.textSecondary700,
+    ),
+    errorStyle: TextStyle(
+      fontSize: context.textSm,
+      height: context.leadingSm,
+      color: context.textErrorPrimary600,
+    ),
+    helperStyle: TextStyle(
+      fontSize: context.textSm,
+      height: context.leadingSm,
+      color: context.textSecondary700,
+    ),
+    filled: true,
+    fillColor: context.bgPrimary,
+    contentPadding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 12.w),
+    border: ShadowOutlineInputBorder(
+      borderRadius: BorderRadius.circular(8.w),
+      borderSide: BorderSide(color: context.borderPrimary, width: 1.w),
+      shadowColor: context.shadowXs,
+      shadowBlur: 1.w,
+      shadowSpread: 0,
+    ),
+    focusedBorder: ShadowOutlineInputBorder(
+      borderRadius: BorderRadius.circular(8.w),
+      borderSide: BorderSide(color: context.borderBrand, width: 1.w),
+      shadowColor: context.shadowXs,
+      shadowBlur: 1.w,
+      shadowSpread: 0,
+    ),
+    errorBorder: ShadowOutlineInputBorder(
+      borderRadius: BorderRadius.circular(8.w),
+      borderSide: BorderSide(color: context.borderError, width: 1.w),
+      shadowColor: context.shadowXs,
+      shadowBlur: 1.w,
+      shadowSpread: 0,
+    ),
+    disabledBorder: ShadowOutlineInputBorder(
+      borderRadius: BorderRadius.circular(8.w),
+      borderSide: BorderSide(color: context.borderDisabled, width: 1.w),
+      shadowColor: context.shadowXs,
+      shadowBlur: 1.w,
+      shadowSpread: 0,
+    ),
+  );
+}
 
 /// ③ 局部 Patch（只写想改的，没写就是 null，不覆盖）
 @immutable
@@ -96,6 +187,8 @@ class LuckyFormThemePatch {
   final InputBorder? border;
   final InputBorder? focusedBorder;
   final InputBorder? errorBorder;
+  final Color? fillColor;
+  final bool? filled;
 
   const LuckyFormThemePatch({
     this.spacing,
@@ -107,6 +200,8 @@ class LuckyFormThemePatch {
     this.border,
     this.focusedBorder,
     this.errorBorder,
+    this.fillColor,
+    this.filled,
   });
 
   bool get isEmpty {
@@ -118,7 +213,9 @@ class LuckyFormThemePatch {
         contentPadding == null &&
         border == null &&
         focusedBorder == null &&
-        errorBorder == null;
+        errorBorder == null &&
+        fillColor == null &&
+        filled == null;
   }
 }
 
@@ -137,6 +234,8 @@ extension LuckyFormThemeApply on LuckyFormTheme {
       border: patch.border ?? border,
       focusedBorder: patch.focusedBorder ?? focusedBorder,
       errorBorder: patch.errorBorder ?? errorBorder,
+      filled: patch.filled ?? filled,
+      fillColor: patch.fillColor ?? fillColor,
     );
   }
 }
@@ -165,7 +264,7 @@ class LuckyFormThemeScope extends InheritedWidget {
 /// ⑥ 一行拿到“合并后的最终主题”（默认 → 全局 → 局部Patch）
 LuckyFormTheme formThemeOf(BuildContext context) {
   final base =
-      Theme.of(context).extension<LuckyFormTheme>() ?? kLuckyFormThemeDefault;
+      Theme.of(context).extension<LuckyFormTheme>() ?? runtimeDefault(context);
   final patch = LuckyFormThemeScope.mayOf(context);
   return base.applyPatch(patch);
 }
@@ -179,6 +278,7 @@ InputDecoration lfDecoration(
   TextStyle? floatingLabelStyle,
   TextStyle? helperStyleOverride,
   TextStyle? errorStyleOverride,
+  TextStyle? hintStyle,
   FloatingLabelBehavior? floatingLabelBehavior,
   Widget? prefix,
   Widget? suffix,
@@ -191,6 +291,8 @@ InputDecoration lfDecoration(
   InputBorder? border,
   InputBorder? focusedBorder,
   InputBorder? errorBorder,
+  Color? fillColor,
+  bool? filled,
 }) {
   final t = formThemeOf(context);
   final theme = Theme.of(context);
@@ -241,6 +343,8 @@ InputDecoration lfDecoration(
     suffixIconConstraints:
         suffixIconConstraints ??
         const BoxConstraints(minWidth: 28, minHeight: 28),
+    fillColor: fillColor ?? t.fillColor,
+    filled: filled ?? t.filled,
   );
 }
 
