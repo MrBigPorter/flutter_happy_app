@@ -94,7 +94,7 @@ class LfRadioGroup<T> extends StatelessWidget {
                           opacity: disabled ? 0.6 : 1,
                           child: Text(
                             o.text,
-                            style: formThemeOf(context).inputStyle
+                            style: formThemeOf(context).textStyle
                                 ?? Theme.of(context).textTheme.titleMedium,
                           ),
                         ),

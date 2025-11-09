@@ -45,7 +45,7 @@ class LfSwitch extends StatelessWidget {
         final value = field.value ?? false;
 
         final textStyle =
-            t.inputStyle ?? theme.textTheme.titleMedium;
+            t.textStyle ?? theme.textTheme.titleMedium;
         final helperStyle =
             t.helperStyle ?? theme.textTheme.bodySmall;
         final errorStyle =

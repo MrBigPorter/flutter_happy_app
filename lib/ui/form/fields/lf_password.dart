@@ -12,7 +12,7 @@ class LfPassword extends StatefulWidget {
   final Map<String, String Function(Object?)>? validationMessages;
 
   // 样式覆盖直传
-  final TextStyle? inputStyle, hintStyle, labelStyle;
+  final TextStyle? textStyle, hintStyle, labelStyle;
   final EdgeInsetsGeometry? contentPadding;
   final bool? filled;
   final Color? fillColor;
@@ -24,7 +24,7 @@ class LfPassword extends StatefulWidget {
     this.label, this.hint,
     this.labelMode = LfLabelMode.external,
     this.validationMessages,
-    this.inputStyle, this.hintStyle, this.labelStyle,
+    this.textStyle, this.hintStyle, this.labelStyle,
     this.contentPadding, this.filled, this.fillColor,
     this.border, this.focusedBorder, this.errorBorder, this.disabledBorder,
   });
@@ -45,7 +45,7 @@ class _LfPasswordState extends State<LfPassword> {
       labelMode: widget.labelMode,
       validationMessages: widget.validationMessages,
 
-      inputStyle: widget.inputStyle,
+      textStyle: widget.textStyle,
       hintStyle: widget.hintStyle,
       labelStyle: widget.labelStyle,
       contentPadding: widget.contentPadding,

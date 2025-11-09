@@ -14,7 +14,7 @@ class LfField<T> extends StatelessWidget {
   final Widget? labelWidget;
 
   final Widget? prefix, suffix, prefixIcon, suffixIcon;
-  final TextStyle? inputStyle, hintStyle, labelStyle;
+  final TextStyle? textStyle, hintStyle, labelStyle;
   final EdgeInsetsGeometry? contentPadding;
   final bool? filled;
   final Color? fillColor;
@@ -26,7 +26,7 @@ class LfField<T> extends StatelessWidget {
   final Widget Function(
     BuildContext ctx,
     InputDecoration decoration,
-    TextStyle? inputStyle,
+    TextStyle? textStyle,
   )
   builder;
 
@@ -48,7 +48,7 @@ class LfField<T> extends StatelessWidget {
     this.suffix,
     this.prefixIcon,
     this.suffixIcon,
-    this.inputStyle,
+    this.textStyle,
     this.hintStyle,
     this.labelStyle,
     this.contentPadding,
@@ -163,7 +163,7 @@ class LfField<T> extends StatelessWidget {
 
     // 字体：字段 > runtimeDefault > 主题
     final resolvedStyle =
-        inputStyle ?? d.inputStyle ?? theme.textTheme.titleMedium;
+        textStyle ?? d.textStyle ?? theme.textTheme.titleMedium;
 
     // 构建子字段
     Widget field = builder(context, deco, resolvedStyle);

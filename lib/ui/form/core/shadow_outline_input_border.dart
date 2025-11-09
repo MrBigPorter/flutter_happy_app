@@ -49,11 +49,11 @@ class ShadowOutlineInputBorder extends OutlineInputBorder {
       }) {
     final RRect outer = borderRadius.resolve(textDirection).toRRect(rect);
 
-
     if (enableShadow && shadowBlur > 0 && shadowColor.alpha != 0) {
       final Paint shadowPaint = Paint()
         ..color = shadowColor
-        ..maskFilter = MaskFilter.blur(BlurStyle.normal, shadowBlur);
+        ..maskFilter = MaskFilter.blur(BlurStyle.normal, shadowBlur)
+        ..blendMode = BlendMode.dstOver;
       final RRect spread = outer.inflate(shadowSpread);
       canvas.drawRRect(spread, shadowPaint);
     }

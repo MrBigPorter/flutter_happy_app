@@ -31,7 +31,7 @@ class LfCheckbox extends StatelessWidget {
               formControlName: name,
             ),
             const SizedBox(width: 8),
-            Expanded(child: Text(label, style: t.inputStyle ?? theme.textTheme.titleMedium)),
+            Expanded(child: Text(label, style: t.textStyle ?? theme.textTheme.titleMedium)),
           ],
         ),
         if (helper != null) ...[

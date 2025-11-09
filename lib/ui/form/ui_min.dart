@@ -17,7 +17,7 @@ class LuckyFormTheme extends ThemeExtension<LuckyFormTheme> {
   final TextStyle? prefixStyle;
   final TextStyle? suffixStyle;
   final TextStyle? counterStyle;
-  final TextStyle? inputStyle;
+  final TextStyle? textStyle;
 
   final bool? isDense;
   final EdgeInsetsGeometry? contentPadding;
@@ -37,7 +37,7 @@ class LuckyFormTheme extends ThemeExtension<LuckyFormTheme> {
     this.prefixStyle,
     this.suffixStyle,
     this.counterStyle,
-    this.inputStyle,
+    this.textStyle,
 
     this.isDense,
     this.contentPadding,
@@ -59,7 +59,7 @@ class LuckyFormTheme extends ThemeExtension<LuckyFormTheme> {
     TextStyle? prefixStyle,
     TextStyle? suffixStyle,
     TextStyle? counterStyle,
-    TextStyle? inputStyle,
+    TextStyle? textStyle,
 
     bool? isDense,
     EdgeInsetsGeometry? contentPadding,
@@ -79,7 +79,7 @@ class LuckyFormTheme extends ThemeExtension<LuckyFormTheme> {
       prefixStyle: prefixStyle ?? this.prefixStyle,
       suffixStyle: suffixStyle ?? this.suffixStyle,
       counterStyle: counterStyle ?? this.counterStyle,
-      inputStyle: inputStyle ?? this.inputStyle,
+      textStyle: textStyle ?? this.textStyle,
 
       isDense: isDense ?? this.isDense,
       contentPadding: contentPadding ?? this.contentPadding,
@@ -107,7 +107,7 @@ class LuckyFormTheme extends ThemeExtension<LuckyFormTheme> {
       prefixStyle: TextStyle.lerp(prefixStyle, other.prefixStyle, t),
       suffixStyle: TextStyle.lerp(suffixStyle, other.suffixStyle, t),
       counterStyle: TextStyle.lerp(counterStyle, other.counterStyle, t),
-      inputStyle: TextStyle.lerp(inputStyle, other.inputStyle, t),
+      textStyle: TextStyle.lerp(textStyle, other.textStyle, t),
 
       isDense: other.isDense ?? isDense,
       contentPadding: other.contentPadding ?? contentPadding,
@@ -125,6 +125,16 @@ class LuckyFormTheme extends ThemeExtension<LuckyFormTheme> {
 /// 内置默认主题 default theme
 LuckyFormTheme runtimeDefault(BuildContext context) {
   return LuckyFormTheme(
+    textStyle: TextStyle(
+      fontSize: context.textMd,
+      height: context.leadingMd,
+      color: context.textPrimary900,
+    ),
+    hintStyle: TextStyle(
+      fontSize: context.textMd,
+      height: context.leadingMd,
+      color: context.textSecondary700,
+    ),
     labelStyle: TextStyle(
       fontSize: context.textSm,
       fontWeight: FontWeight.w500,

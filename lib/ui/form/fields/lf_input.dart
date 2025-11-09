@@ -15,7 +15,7 @@ class LfInput<T> extends StatelessWidget {
   final List<TextInputFormatter>? inputFormatters;
 
   final Widget? prefix, suffix, prefixIcon, suffixIcon;
-  final TextStyle? inputStyle, hintStyle, labelStyle;
+  final TextStyle? textStyle, hintStyle, labelStyle;
   final EdgeInsetsGeometry? contentPadding;
   final bool? filled;
   final Color? fillColor;
@@ -43,7 +43,7 @@ class LfInput<T> extends StatelessWidget {
     this.suffix,
     this.prefixIcon,
     this.suffixIcon,
-    this.inputStyle,
+    this.textStyle,
     this.hintStyle,
     this.labelStyle,
     this.contentPadding,
@@ -72,7 +72,7 @@ class LfInput<T> extends StatelessWidget {
       suffix: suffix,
       prefixIcon: prefixIcon,
       suffixIcon: suffixIcon,
-      inputStyle: inputStyle,
+      textStyle: textStyle,
       hintStyle: hintStyle,
       labelStyle: labelStyle,
       contentPadding: contentPadding,
