@@ -52,8 +52,6 @@ class LoginPage extends StatelessWidget {
                   hint: 'Enter your phone number',
                   helper: 'We will send a verification code to this number',
                   keyboardType: TextInputType.phone,
-                  filled: true,
-                  fillColor: context.bgPrimaryAlt,
                   prefixIcon: Padding(
                     padding: EdgeInsets.only(left: 12, right: 8),
                     child: Text('+1'),

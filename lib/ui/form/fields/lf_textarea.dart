@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:reactive_forms/reactive_forms.dart';
 import '../core/lf_field.dart';
 
@@ -67,6 +68,7 @@ class LfTextArea extends StatelessWidget {
         final int? resolvedMax = useExpands ? null : (autoGrow ? (maxLines ?? null) : (maxLines ?? 6));
 
         return ReactiveTextField<String>(
+
           formControlName: name,
           keyboardType: TextInputType.multiline,
           textInputAction: textInputAction ?? TextInputAction.newline,

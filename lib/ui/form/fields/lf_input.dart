@@ -1,6 +1,5 @@
-// lf_input.dart
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart'; // ← 为 TextInputFormatter
+import 'package:flutter/services.dart';
 import 'package:reactive_forms/reactive_forms.dart';
 import '../core/lf_field.dart';
 
@@ -10,13 +9,11 @@ class LfInput<T> extends StatelessWidget {
   final LfLabelMode labelMode;
   final Map<String, String Function(Object?)>? validationMessages;
 
-  // 常用输入项
   final TextInputType? keyboardType;
   final bool obscureText;
   final int? maxLines, minLines;
   final List<TextInputFormatter>? inputFormatters;
 
-  // 样式覆盖（直接丢给 LfField）
   final Widget? prefix, suffix, prefixIcon, suffixIcon;
   final TextStyle? inputStyle, hintStyle, labelStyle;
   final EdgeInsetsGeometry? contentPadding;
@@ -25,25 +22,39 @@ class LfInput<T> extends StatelessWidget {
   final InputBorder? border, focusedBorder, errorBorder, disabledBorder;
   final List<BoxShadow>? boxShadow;
   final BorderRadius? containerRadius;
-  final InputDecoration Function(BuildContext, InputDecoration)? decorationBuilder;
+  final InputDecoration Function(BuildContext, InputDecoration)?
+  decorationBuilder;
 
   const LfInput({
     super.key,
     required this.name,
-    this.label, this.hint, this.helper,
+    this.label,
+    this.hint,
+    this.helper,
     this.labelMode = LfLabelMode.external,
     this.validationMessages,
     this.keyboardType,
     this.obscureText = false,
-    this.maxLines = 1, this.minLines,
+    this.maxLines = 1,
+    this.minLines,
     this.inputFormatters,
 
-    // 覆盖样式
-    this.prefix, this.suffix, this.prefixIcon, this.suffixIcon,
-    this.inputStyle, this.hintStyle, this.labelStyle,
-    this.contentPadding, this.filled, this.fillColor,
-    this.border, this.focusedBorder, this.errorBorder, this.disabledBorder,
-    this.boxShadow, this.containerRadius,
+    this.prefix,
+    this.suffix,
+    this.prefixIcon,
+    this.suffixIcon,
+    this.inputStyle,
+    this.hintStyle,
+    this.labelStyle,
+    this.contentPadding,
+    this.filled,
+    this.fillColor,
+    this.border,
+    this.focusedBorder,
+    this.errorBorder,
+    this.disabledBorder,
+    this.boxShadow,
+    this.containerRadius,
     this.decorationBuilder,
   });
 
@@ -51,16 +62,28 @@ class LfInput<T> extends StatelessWidget {
   Widget build(BuildContext context) {
     return LfField<T>(
       name: name,
-      label: label, hint: hint, helper: helper,
+      label: label,
+      hint: hint,
+      helper: helper,
       labelMode: labelMode,
       validationMessages: validationMessages,
 
-      // 样式覆盖，想传就传；不传即用内部默认
-      prefix: prefix, suffix: suffix, prefixIcon: prefixIcon, suffixIcon: suffixIcon,
-      inputStyle: inputStyle, hintStyle: hintStyle, labelStyle: labelStyle,
-      contentPadding: contentPadding, filled: filled, fillColor: fillColor,
-      border: border, focusedBorder: focusedBorder, errorBorder: errorBorder, disabledBorder: disabledBorder,
-      boxShadow: boxShadow, containerRadius: containerRadius,
+      prefix: prefix,
+      suffix: suffix,
+      prefixIcon: prefixIcon,
+      suffixIcon: suffixIcon,
+      inputStyle: inputStyle,
+      hintStyle: hintStyle,
+      labelStyle: labelStyle,
+      contentPadding: contentPadding,
+      filled: filled,
+      fillColor: fillColor,
+      border: border,
+      focusedBorder: focusedBorder,
+      errorBorder: errorBorder,
+      disabledBorder: disabledBorder,
+      boxShadow: boxShadow,
+      containerRadius: containerRadius,
       decorationBuilder: decorationBuilder,
 
       builder: (ctx, decoration, textStyle) => ReactiveTextField<T>(

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:reactive_forms/reactive_forms.dart';
 import '../core/lf_field.dart';
 
@@ -43,7 +44,10 @@ class LfDate extends StatelessWidget {
               isFocused: false,
               isEmpty: str.isEmpty,
               decoration: decoration.copyWith(
-                suffixIcon: const Icon(Icons.calendar_today, size: 18),
+                suffixIcon: Padding(
+                  padding: EdgeInsets.only(right: 10.w),
+                  child:  Icon(Icons.calendar_today, size: 18.w),
+                ),
                 suffixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
               ),
               child: Text(str, style: textStyle),
