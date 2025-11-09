@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:reactive_forms/reactive_forms.dart';
 import '../core/lf_field.dart';
+import '../core/types.dart';
 
 class LfDate extends StatelessWidget {
   final String name;

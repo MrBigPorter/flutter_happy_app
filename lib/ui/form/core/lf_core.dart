@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_app/ui/form/core/shadow_outline_input_border.dart';
+import 'package:flutter_app/ui/form/core/types.dart';
 import 'package:flutter_app/ui/form/ui_min.dart';
 import 'package:reactive_forms/reactive_forms.dart';
 
 import 'lf_borders.dart';
 
-enum LfLabelMode { external, builtInText, builtInWidget }
+
 
 InputBorder _withShadow(InputBorder b, List<BoxShadow> s) {
   if (s.isEmpty) return b;

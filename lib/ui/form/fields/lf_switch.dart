@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:reactive_forms/reactive_forms.dart';
+import '../core/types.dart';
 import '../ui_min.dart'; // formThemeOf()
 
-typedef Vm = Map<String, String Function(Object?)>;
 
 class LfSwitch extends StatelessWidget {
   final String name;

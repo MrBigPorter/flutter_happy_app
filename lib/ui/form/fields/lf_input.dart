@@ -2,17 +2,20 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:reactive_forms/reactive_forms.dart';
 import '../core/lf_field.dart';
+import '../core/types.dart';
 
 class LfInput<T> extends StatelessWidget {
   final String name;
   final String? label, hint, helper;
   final LfLabelMode labelMode;
+  final bool? required;
   final Map<String, String Function(Object?)>? validationMessages;
 
   final TextInputType? keyboardType;
   final bool obscureText;
   final int? maxLines, minLines;
   final List<TextInputFormatter>? inputFormatters;
+  final bool Function(AbstractControl<Object?> control)? showErrors;
 
   final Widget? prefix, suffix, prefixIcon, suffixIcon;
   final TextStyle? textStyle, hintStyle, labelStyle;
@@ -38,6 +41,8 @@ class LfInput<T> extends StatelessWidget {
     this.maxLines = 1,
     this.minLines,
     this.inputFormatters,
+    this.showErrors,
+    this.required,
 
     this.prefix,
     this.suffix,
@@ -63,6 +68,7 @@ class LfInput<T> extends StatelessWidget {
     return LfField<T>(
       name: name,
       label: label,
+      required: required,
       hint: hint,
       helper: helper,
       labelMode: labelMode,
@@ -86,10 +92,12 @@ class LfInput<T> extends StatelessWidget {
       containerRadius: containerRadius,
       decorationBuilder: decorationBuilder,
 
+
       builder: (ctx, decoration, textStyle) => ReactiveTextField<T>(
         formControlName: name,
         keyboardType: keyboardType,
         obscureText: obscureText,
+        showErrors: showErrors,
         maxLines: maxLines,
         minLines: minLines,
         inputFormatters: inputFormatters,

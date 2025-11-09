@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:reactive_forms/reactive_forms.dart';
+import '../core/lf_core.dart';
 import '../core/lf_field.dart';
+import '../core/types.dart';
 import '../ui_min.dart';
 
-typedef Vm = Map<String, String Function(Object?)>;
 typedef LfSelectOption<T> = ({String text, T value, bool disabled});
 
 class LfSelect<T> extends StatelessWidget {

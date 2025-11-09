@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:math';
 import 'package:flutter_app/common.dart';
+import 'package:flutter_app/core/models/auth.dart';
 import 'package:flutter_app/core/models/coupon_threshold_data.dart';
 
 import 'package:flutter_app/utils/helper.dart';
@@ -23,18 +24,13 @@ class Api {
       'position': position,
     }..removeWhere((key, value) => value == null);
 
-    final res = await Http.get(
-      "/api/v1/banners",
-      query: query
-    );
+    final res = await Http.get("/api/v1/banners", query: query);
     return parseList<Banners>(res, (e) => Banners.fromJson(e));
   }
 
   /// 首页宝藏推荐  home treasures
   static Future<List<IndexTreasureItem>> indexTreasuresApi() async {
-    final res = await Http.get("/api/v1/home/sections",query: {
-      'limit': 10,
-    });
+    final res = await Http.get("/api/v1/home/sections", query: {'limit': 10});
 
     return parseList<IndexTreasureItem>(
       res,
@@ -47,13 +43,10 @@ class Api {
     required int adPosition,
     int? status,
     int? limit = 2,
-}) async {
-    final query = {
-      'adPosition': adPosition,
-      'status': status,
-      'limit': limit,
-    }..removeWhere((key, value) => value == null);
-    final res = await Http.get("/api/v1/ads",query: query);
+  }) async {
+    final query = {'adPosition': adPosition, 'status': status, 'limit': limit}
+      ..removeWhere((key, value) => value == null);
+    final res = await Http.get("/api/v1/ads", query: query);
     return parseList<AdRes>(res, (e) => AdRes.fromJson(e));
   }
 
@@ -108,12 +101,9 @@ class Api {
     return parsePageResponse(res, (e) => ProductListItem.fromJson(e));
   }
 
-
   /// 商品详情 product detail
   static Future<ProductListItem> getProductDetail(String productId) async {
-    final res = await Http.get(
-      '/api/v1/treasure/$productId',
-    );
+    final res = await Http.get('/api/v1/treasure/$productId');
     return ProductListItem.fromJson(res);
   }
 
@@ -203,5 +193,38 @@ class Api {
     );
     final result = parsePageResponse(res, (e) => OrderItem.fromJson(e));
     return result;
+  }
+
+  // otp request
+  static Future<OtpRequest> otpRequestApi(int phone) async {
+    final res = await Http.post('/api/v1/otp/request', data: {'phone': phone});
+    return OtpRequest.fromJson(res);
+  }
+
+  // verify otp
+  static Future<void> optVerifyApi({
+    required int phone,
+    required String code,
+}) async {
+    return await Http.post(
+      '/api/v1/otp/verify',
+      data: {'phone': phone, 'code': code},
+    );
+  }
+
+  // login with otp
+  static Future<AuthLoginOtp> loginWithOtpApi({required phone,int? inviteCode, int? countryCode}) async {
+    final res = await Http.post('/api/v1/auth/login/otp',data: {
+      'phone': phone,
+      'inviteCode': inviteCode,
+      'countryCode': countryCode,
+    });
+    return AuthLoginOtp.fromJson(res);
+  }
+
+  // profile
+  static Future<Profile> profileApi() async {
+    final res = await Http.get('/api/v1/auth/profile');
+    return Profile.fromJson(res);
   }
 }

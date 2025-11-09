@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_app/ui/form/core/types.dart';
 import 'package:reactive_forms/reactive_forms.dart';
 
 import '../ui_min.dart';
 
-enum LfLabelMode { external, builtInText, builtInWidget }
+
 
 class LfField<T> extends StatelessWidget {
   final String name;
@@ -14,11 +15,12 @@ class LfField<T> extends StatelessWidget {
   final Widget? labelWidget;
 
   final Widget? prefix, suffix, prefixIcon, suffixIcon;
-  final TextStyle? textStyle, hintStyle, labelStyle;
+  final TextStyle? textStyle, hintStyle, labelStyle,errorStyle;
   final EdgeInsetsGeometry? contentPadding;
-  final bool? filled;
+  final bool? filled,required;
   final Color? fillColor;
   final InputBorder? border, focusedBorder, errorBorder, disabledBorder;
+  final int? errorMaxLines;
 
   final List<BoxShadow>? boxShadow;
   final BorderRadius? containerRadius;
@@ -43,6 +45,9 @@ class LfField<T> extends StatelessWidget {
     this.labelMode = LfLabelMode.external,
     this.validationMessages,
     this.labelWidget,
+    this.errorMaxLines,
+    this.required,
+
 
     this.prefix,
     this.suffix,
@@ -51,6 +56,7 @@ class LfField<T> extends StatelessWidget {
     this.textStyle,
     this.hintStyle,
     this.labelStyle,
+    this.errorStyle,
     this.contentPadding,
     this.filled,
     this.fillColor,
@@ -71,30 +77,21 @@ class LfField<T> extends StatelessWidget {
 
   // —— 把 prefix/suffix 规范成垂直居中的 *Icon 版本，并去掉 48 的默认宽
   InputDecoration _normalizeAffixes(InputDecoration d) {
-    final pad = d.contentPadding;
-    final edge = pad is EdgeInsets
-        ? pad
-        : const EdgeInsets.symmetric(horizontal: 12, vertical: 12);
 
     var deco = d;
-    if (deco.prefix != null && deco.prefixIcon == null) {
+
+    if (deco.prefix != null || deco.prefixIcon != null) {
       deco = deco.copyWith(
-        prefixIcon: Padding(
-          padding: EdgeInsets.only(left: edge.left),
-          child: Center(child: deco.prefix!),
-        ),
+        prefixIcon: deco.prefixIcon,
         prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
-        prefix: null,
+        prefix: deco.prefix,
       );
     }
-    if (deco.suffix != null && deco.suffixIcon == null) {
+    if (deco.suffix != null || deco.suffixIcon == null) {
       deco = deco.copyWith(
-        suffixIcon: Padding(
-          padding: EdgeInsets.only(right: edge.right),
-          child: Center(child: deco.suffix!),
-        ),
+        suffixIcon: deco.suffix,
         suffixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
-        suffix: null,
+        suffix: deco.suffix,
       );
     }
     return deco;
@@ -120,6 +117,7 @@ class LfField<T> extends StatelessWidget {
       fillColor: fillColor ?? d.fillColor,
 
       hintStyle: hintStyle ?? d.hintStyle ?? theme.textTheme.bodySmall,
+      errorStyle: errorStyle ?? d.errorStyle ?? theme.textTheme.bodySmall?.copyWith(color: cs.error),
 
       prefix: prefix,
       suffix: suffix,
@@ -129,9 +127,11 @@ class LfField<T> extends StatelessWidget {
       // 边框统一吃 runtimeDefault（可被字段级覆盖）
       border: border ?? d.border,
       enabledBorder: border ?? d.border,
-      focusedBorder: focusedBorder ?? d.focusedBorder ?? d.border,
-      errorBorder: errorBorder ?? d.errorBorder ?? d.border,
-      disabledBorder: disabledBorder ?? d.disabledBorder ?? d.border,
+      focusedBorder: focusedBorder ?? d.focusedBorder,
+      focusedErrorBorder: errorBorder ?? d.errorBorder,
+      errorBorder: errorBorder ?? d.errorBorder,
+      disabledBorder: disabledBorder ?? d.disabledBorder,
+      errorMaxLines: errorMaxLines ?? d.errorMaxLines,
 
       floatingLabelBehavior: labelMode == LfLabelMode.external
           ? null
@@ -170,9 +170,7 @@ class LfField<T> extends StatelessWidget {
 
     // 外部 label（带 *）
     if (labelMode == LfLabelMode.external && label != null) {
-      final required =
-          control?.hasError(ValidationMessage.required) == true ||
-          control?.hasError(ValidationMessage.requiredTrue) == true;
+
       field = Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -183,7 +181,7 @@ class LfField<T> extends StatelessWidget {
                 label!,
                 style: labelStyle ?? d.labelStyle ?? theme.textTheme.bodySmall,
               ),
-              if (required)
+              if (required??false)
                 Text(
                   ' *',
                   style: theme.textTheme.bodySmall?.copyWith(color: cs.error),

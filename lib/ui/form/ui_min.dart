@@ -27,6 +27,7 @@ class LuckyFormTheme extends ThemeExtension<LuckyFormTheme> {
   final InputBorder? disabledBorder;
   final Color? fillColor;
   final bool filled;
+  final int? errorMaxLines;
 
   const LuckyFormTheme({
     this.spacing = 6,
@@ -47,6 +48,7 @@ class LuckyFormTheme extends ThemeExtension<LuckyFormTheme> {
     this.disabledBorder,
     this.fillColor,
     this.filled = true,
+    this.errorMaxLines
   });
 
   @override
@@ -69,6 +71,7 @@ class LuckyFormTheme extends ThemeExtension<LuckyFormTheme> {
     InputBorder? disabledBorder,
     Color? fillColor,
     bool? filled,
+    int? errorMaxLines,
   }) {
     return LuckyFormTheme(
       spacing: spacing ?? this.spacing,
@@ -90,6 +93,7 @@ class LuckyFormTheme extends ThemeExtension<LuckyFormTheme> {
 
       fillColor: fillColor ?? this.fillColor,
       filled: filled ?? this.filled,
+      errorMaxLines: errorMaxLines ?? this.errorMaxLines
     );
   }
 
@@ -118,6 +122,7 @@ class LuckyFormTheme extends ThemeExtension<LuckyFormTheme> {
 
       fillColor: Color.lerp(fillColor, other.fillColor, t),
       filled: other.filled,
+      errorMaxLines: other.errorMaxLines ?? errorMaxLines,
     );
   }
 }
@@ -125,6 +130,7 @@ class LuckyFormTheme extends ThemeExtension<LuckyFormTheme> {
 /// 内置默认主题 default theme
 LuckyFormTheme runtimeDefault(BuildContext context) {
   return LuckyFormTheme(
+    errorMaxLines: 2,
     textStyle: TextStyle(
       fontSize: context.textMd,
       height: context.leadingMd,
@@ -146,8 +152,8 @@ LuckyFormTheme runtimeDefault(BuildContext context) {
       color: context.textErrorPrimary600,
     ),
     helperStyle: TextStyle(
-      fontSize: context.textSm,
-      height: context.leadingSm,
+      fontSize: context.textMd,
+      height: context.leadingMd,
       color: context.textSecondary700,
     ),
     filled: true,
