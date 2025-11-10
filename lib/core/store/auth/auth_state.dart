@@ -1,4 +1,4 @@
-
+/// 登录状态
 /// Represents the authentication state of the user.
 class AuthState {
   final String? accessToken;

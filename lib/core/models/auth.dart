@@ -139,7 +139,7 @@ class Profile {
 }
 
 class OtpVerifyParams {
-  final int phone;
+  final String phone;
   final String code;
 
   OtpVerifyParams({

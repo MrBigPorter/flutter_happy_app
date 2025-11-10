@@ -113,7 +113,11 @@ class Http {
 
           if (!noToast) {
             final errorMsg = (data['errorMsg'] as String?) ?? message;
-            Fluttertoast.showToast(msg: errorMsg);
+            Fluttertoast.showToast(
+                msg: errorMsg,
+                toastLength: Toast.LENGTH_LONG,
+                gravity: ToastGravity.TOP
+            );
           }
 
           return handler.reject(_asDioError(
@@ -125,7 +129,11 @@ class Http {
           // 统一网络错误提示（可由 noErrorToast 关闭）
           final noToast = e.requestOptions.extra['noErrorToast'] == true;
           if (!noToast) {
-            Fluttertoast.showToast(msg: e.message ?? 'Network error');
+            Fluttertoast.showToast(
+                msg: e.message ?? 'Network error',
+                toastLength: Toast.LENGTH_LONG,
+                gravity: ToastGravity.TOP
+            );
           }
           handler.next(e);
         },

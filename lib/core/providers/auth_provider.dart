@@ -3,7 +3,7 @@ import 'package:flutter_app/core/models/auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 /// OTP Request Provider
-final otpRequestProvider = FutureProvider.family<OtpRequest, int> ((ref,phone){
+final otpRequestProvider = FutureProvider.family<OtpRequest, String> ((ref,phone){
   return Api.otpRequestApi(phone);
 });
 

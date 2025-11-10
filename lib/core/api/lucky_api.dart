@@ -196,14 +196,14 @@ class Api {
   }
 
   // otp request
-  static Future<OtpRequest> otpRequestApi(int phone) async {
+  static Future<OtpRequest> otpRequestApi(String phone) async {
     final res = await Http.post('/api/v1/otp/request', data: {'phone': phone});
     return OtpRequest.fromJson(res);
   }
 
   // verify otp
   static Future<void> optVerifyApi({
-    required int phone,
+    required String phone,
     required String code,
 }) async {
     return await Http.post(

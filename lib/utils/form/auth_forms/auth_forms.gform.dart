@@ -610,7 +610,7 @@ class LoginOtpModelForm implements FormModel<LoginOtpModel, LoginOtpModel> {
             touched: false),
         otpControlName: FormControl<String>(
             value: loginOtpModel?.otp,
-            validators: [OtpLen(4)],
+            validators: [OtpLen(6)],
             asyncValidators: [],
             asyncValidatorsDebounceTime: 250,
             disabled: false,

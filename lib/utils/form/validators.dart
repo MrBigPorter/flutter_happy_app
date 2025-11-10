@@ -36,7 +36,7 @@ class CountryCode extends Validator<dynamic> {
 
 class OtpLen extends Validator<dynamic> {
   final int length;
-  const OtpLen([this.length = 4]);
+  const OtpLen([this.length = 6]);
   @override
   Map<String, dynamic>? validate(AbstractControl<dynamic> control) {
     final v = (control.value ?? '').toString();

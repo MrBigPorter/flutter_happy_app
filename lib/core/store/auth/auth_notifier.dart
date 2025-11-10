@@ -1,7 +1,7 @@
 import 'package:flutter_app/core/store/auth/auth_state.dart';
 import 'package:flutter_app/core/store/token/token_storage.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
+/// 改变登录状态的 Notifier
 /// AuthNotifier - StateNotifier for authentication state management
 /// Manages AuthState and handles login, logout, and rehydration
 /// Parameters:

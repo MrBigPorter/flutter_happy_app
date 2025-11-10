@@ -47,24 +47,29 @@ class AppRouter {
           builder: (context, state, child) => LuckyTabBar(child: child),
           routes: [
             GoRoute(
+              name:'home',
               path: '/home',
               builder: (context, state) => const HomePage(),
             ),
             GoRoute(
+              name: 'product',
               path: '/product',
               builder: (context, state) => ProductPage(),
             ),
             GoRoute(
+              name: 'winners',
               path: '/winners',
               builder: (context, state) =>const WinnersPage(),
             ),
             GoRoute(
+              name: 'me',
               path: '/me',
               builder: (context, state) =>const MePage(),
             ),
           ],
         ),
         GoRoute(
+            name: 'walletDetail',
             path: '/winners/:id',
             pageBuilder: (ctx,state){
               final id = state.pathParameters['id']!;

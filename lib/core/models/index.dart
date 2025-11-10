@@ -14,3 +14,4 @@ export 'winners_lasts_item.dart';
 export 'page_request.dart';
 export 'order_item.dart';
 export 'address_res.dart';
+export 'auth.dart';

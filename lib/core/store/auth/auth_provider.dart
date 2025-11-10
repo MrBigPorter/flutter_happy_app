@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../token/token_storage_provider.dart';
 
+/// authProvider put in global store
 /// AuthProvider - StateNotifierProvider for AuthNotifier
 /// Manages authentication state using AuthNotifier and AuthState
 /// Depends on TokenStorage for token management

@@ -7,7 +7,7 @@ part 'auth_forms.gform.dart';
 class LoginOtpModel {
   const LoginOtpModel({
     @RfControl(validators: [NonEmpty(), Phone10()]) this.phone = '',
-    @RfControl(validators: [OtpLen(4)]) this.otp = '',
+    @RfControl(validators: [OtpLen(6)]) this.otp = '',
     @RfControl(validators: [InviteCode()]) this.inviteCode = '',
   });
 

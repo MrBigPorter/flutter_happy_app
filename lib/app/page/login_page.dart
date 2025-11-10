@@ -3,24 +3,31 @@ import 'package:flutter/material.dart';
 import 'package:flutter_app/app/routes/app_router.dart';
 import 'package:flutter_app/common.dart';
 import 'package:flutter_app/components/base_scaffold.dart';
+import 'package:flutter_app/core/providers/auth_provider.dart';
+import 'package:flutter_app/core/store/auth/auth_provider.dart';
 import 'package:flutter_app/ui/button/button.dart';
 import 'package:flutter_app/ui/form/index.dart';
 import 'package:flutter_app/utils/form/auth_forms/auth_forms.dart';
+import 'package:flutter_app/utils/helper.dart';
 import 'package:flutter_app/utils/time/countdown.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:reactive_forms/reactive_forms.dart';
 
 import 'package:flutter_app/ui/button/variant.dart';
 import 'package:flutter_app/utils/form/validation_messages.dart';
 
-class LoginPage extends StatefulWidget {
+import 'package:flutter_app/core/models/index.dart';
+
+
+class LoginPage extends ConsumerStatefulWidget {
   const LoginPage({super.key});
 
   @override
-  State<LoginPage> createState() => _LoginPageState();
+  ConsumerState<LoginPage> createState() => _LoginPageState();
 }
 
-class _LoginPageState extends State<LoginPage> {
+class _LoginPageState extends ConsumerState<LoginPage> {
 
   late final Countdown cd = Countdown();
 
@@ -50,6 +57,7 @@ class _LoginPageState extends State<LoginPage> {
       otpForm.form
           .reset();
     }
+    cd.stop();
     setState(() {
       _usePasswordLogin = !_usePasswordLogin;
       _submitted = false;
@@ -60,8 +68,11 @@ class _LoginPageState extends State<LoginPage> {
   // 提交表单 Submit Form
   void submit () {
     final form = _usePasswordLogin ? passwordForm.form : otpForm.form;
-    form.markAllAsTouched();
-    _submitted = true;
+    setState(() {
+      _submitted = true;
+      form.markAllAsTouched();
+    });
+
     if (!form.valid) return;
 
     if (_usePasswordLogin) {
@@ -69,9 +80,39 @@ class _LoginPageState extends State<LoginPage> {
       print('m=>${m.phone}');
       // TODO: 密码登录 m.phone, m.password, m.countryCode, m.inviteCode
     } else {
-      final m = otpForm.model;
-      print('m1111=>${m.phone}');
-      // TODO: OTP 登录 m.phone, m.otp, m.countryCode, m.inviteCode
+      loginWithOtp();
+    }
+  }
+
+  Future<void> loginWithOtp() async {
+    final model = otpForm.model;
+
+    // verify otp
+    await ref.read(optVerifyProvider(
+        OtpVerifyParams(
+        phone: model.phone,
+        code: model.otp,
+      )
+    ).future);
+
+    // 调用登录逻辑 Call login logic
+    final result = await ref.read(loginWithOtpProvider({
+      'phone': model.phone,
+      'inviteCode': model.inviteCode,
+      'countryCode': 63,
+    } as LoginWithOtpParams).future);
+
+    if(result.isNotNullOrEmpty && result.tokens.isNotNullOrEmpty) {
+      // 保存 Token Save Token
+      final auth = ref.read(authProvider.notifier);
+      // 登录 Login success,save tokens
+      await auth.login(
+        result.tokens.accessToken,
+        result.tokens.refreshToken,
+      );
+
+      // 跳转到主页面 Navigate to Main Page
+      appRouter.go('/home');
     }
   }
 
@@ -79,10 +120,21 @@ class _LoginPageState extends State<LoginPage> {
     final form = _usePasswordLogin ? passwordForm.form : otpForm.form;
     final phone = form.control('phone');
     phone.markAsTouched();
+
     if(phone.invalid) return;
 
-    // 发送接口
+    // 发送 OTP 逻辑 Send OTP Logic, prevent multiple requests
+    final current = ref.read(otpRequestProvider(phone.value));
+    if(current.isLoading || cd.running) return;
+
+    await ref.read(otpRequestProvider(phone.value).future);
     cd.start(60);
+  }
+
+  @override
+  void dispose() {
+    cd.dispose();
+    super.dispose();
   }
 
   @override
