@@ -1,48 +1,94 @@
-# Miscellaneous
-*.class
-*.log
-*.pyc
-*.swp
+# ======================
+# OS / Editor
+# ======================
 .DS_Store
-.atom/
-.build/
-.buildlog/
-.history
-.svn/
-.swiftpm/
-migrate_working_dir/
+*.log
+*.swp
+*.tmp
 
-# IntelliJ related
+.idea/
 *.iml
 *.ipr
 *.iws
-.idea/
+.atom/
+.history
+.svn/
+.build/
+.buildlog/
+.swiftpm/
+migrate_working_dir/
 
-# The .vscode folder contains launch configuration and tasks you configure in
-# VS Code which you may wish to be included in version control, so this line
-# is commented out by default.
+# 如果不想提交 VS Code 配置就解开注释
 #.vscode/
 
-# Flutter/Dart/Pub related
-**/doc/api/
-**/ios/Flutter/.last_build_id
+# ======================
+# Flutter / Dart
+# ======================
 .dart_tool/
+.flutter-plugins
 .flutter-plugins-dependencies
+.packages
 .pub-cache/
 .pub/
+
+# build outputs
 /build/
-/coverage/
-/server/node_modules
-tool/build/
-ios/DerivedData/
+**/build/
 
-# Symbolication related
+# 文档生成
+**/doc/api/
+
+# 符号/混淆
 app.*.symbols
-
-# Obfuscation related
 app.*.map.json
 
-# Android Studio will place build artifacts here
+# ======================
+# Android
+# ======================
+
+# Gradle 缓存和 wrapper 输出
+android/.gradle/
+android/.idea/
+android/local.properties
+
+# 常规构建产物
+android/**/build/
+android/**/outputs/
+android/**/intermediates/
+
+# 旧规则（这三行可以保留也可以删，反正被上面的 **/build/ 覆盖）
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# ======================
+# iOS / macOS
+# ======================
+
+# CocoaPods
+ios/Pods/
+macos/Pods/
+
+# Flutter iOS/macOS 中间产物
+ios/Flutter/.last_build_id
+ios/Flutter/Flutter.framework
+ios/Flutter/Flutter.podspec
+
+# Xcode 构建缓存
+ios/DerivedData/
+ios/build/
+macos/build/
+
+# Xcode workspace 用户本地设置
+**/*.xcworkspace/xcshareddata/WorkspaceSettings.xcsettings
+
+# ======================
+# Web / Server / Tools
+# ======================
+
+# Node
+node_modules/
+server/node_modules/
+
+# 自己工具的 build
+tool/build/
