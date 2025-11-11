@@ -4,12 +4,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_app/common.dart';
 import 'package:flutter_app/components/base_scaffold.dart';
 import 'package:flutter_app/components/safe_tab_bar_view.dart';
+import 'package:flutter_app/components/skeleton.dart';
 import 'package:flutter_app/components/swiper_banner.dart';
 import 'package:flutter_app/core/models/index.dart';
 import 'package:flutter_app/core/providers/index.dart';
 import 'package:flutter_app/ui/bubble_progress.dart';
 import 'package:flutter_app/ui/button/button.dart';
 import 'package:flutter_app/utils/format_helper.dart';
+import 'package:flutter_app/utils/helper.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -55,20 +57,15 @@ class _ProductDetailPageState extends ConsumerState<ProductDetailPage>
 
     return BaseScaffold(
       title: 'common.details'.tr(),
-      body: DefaultTabController(
-        length: 2,
-        child: CustomScrollView(
-          slivers: [
-            SliverToBoxAdapter(
-              child: _BannerSection(banners: detail.value?.mainImageList),
-            ),
-           //  SliverToBoxAdapter(child: _TopTreasureSection(item: detail.value!)),
-            SliverToBoxAdapter(child: _GroupSection()),
-            SliverFillRemaining(child: _DetailContentSection(content: desc)),
-            SliverToBoxAdapter(child: _JoinTreasureSection()),
-            SliverToBoxAdapter(child: SizedBox(height: 50.w)),
-          ],
-        ),
+      body:  ListView(
+        children: [
+          _BannerSection(banners: detail.value?.mainImageList),
+          _TopTreasureSection(item: detail.value),
+          _GroupSection(),
+          SizedBox(height: 8.w),
+         _DetailContentSection(content: desc),
+          _JoinTreasureSection()
+        ],
       ),
     );
   }
@@ -96,7 +93,7 @@ class _DetailContentSectionState extends State<_DetailContentSection>
     with SingleTickerProviderStateMixin {
   List<TabItem> get tabs => [
     TabItem(text: 'common.details', content: widget.content),
-    TabItem(text: 'raffle-rules', content: widget.content),
+    TabItem(text: 'raffle-rules', content: '2222'),
   ];
 
   late TabController _tabController;
@@ -116,6 +113,7 @@ class _DetailContentSectionState extends State<_DetailContentSection>
 
   @override
   Widget build(BuildContext context) {
+
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 16.w),
       child: Container(
@@ -125,119 +123,44 @@ class _DetailContentSectionState extends State<_DetailContentSection>
           color: context.bgPrimary,
           borderRadius: BorderRadius.all(Radius.circular(context.radiusMd)),
           border: Border.fromBorderSide(
-            BorderSide(
-              color: context.borderPrimary,
-              width: 1.w,
-            ),
+            BorderSide(color: context.borderPrimary, width: 1.w),
           ),
         ),
-        child: DefaultTabController(
-            length: 2,
-            child: Column(
-              children: [
-                TabBar(
-                  labelColor: context.textBrandSecondary700,
-                  unselectedLabelColor: context.textQuaternary500,
-                  indicatorColor: context.buttonPrimaryBg,
-                  indicatorSize: TabBarIndicatorSize.tab,
-                  indicatorWeight: 2.w,
-                  dividerColor: context.borderSecondary,
-                  tabs: tabs.map((tab) {
-                    return Tab(text: tab.text.tr());
-                  }).toList(),
-                ),
-                SizedBox(height: 8.w),
-                Expanded(
-                    child: TabBarView(
-                      children: tabs.map((tab) {
-                        return SingleChildScrollView(
-                          physics: NeverScrollableScrollPhysics(),
-                          child: HtmlWidget(
-                            tab.content ?? '',
-                          ),
-                        );
-                      }).toList(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TabBar(
+              controller: _tabController,
+              labelColor: context.textBrandSecondary700,
+              unselectedLabelColor: context.textQuaternary500,
+              indicatorColor: context.buttonPrimaryBg,
+              indicatorSize: TabBarIndicatorSize.tab,
+              indicatorWeight: 2.w,
+              dividerColor: context.borderSecondary,
+              tabs: tabs.map((tab) {
+                return Tab(text: tab.text.tr());
+              }).toList(),
+            ),
+            SizedBox(height: 8.w),
+            AnimatedBuilder(
+                animation: _tabController,
+                builder:(_,__){
+                  return  AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 300),
+                    child: KeyedSubtree(
+                      key: ValueKey(_tabController.index),
+                      child: HtmlWidget(
+                        tabs[_tabController.index].content ?? '',
                       ),
-                    )
-                )
-              ],
+                    ),
+                  );
+                }
             )
+          ],
         ),
       ),
     );
-    /*return SliverPadding(
-      padding: EdgeInsets.symmetric(horizontal: 16.w),
-      sliver: MultiSliver(
-        children: [
-          // tabBar 和 tabBarView 结合使用时，需要加固定高度的容器包裹 tabBarView，或者使用 SliverFillRemaining
-          SliverToBoxAdapter(
-            child: Container(
-              padding: EdgeInsets.symmetric(horizontal: 16.w),
-              decoration: BoxDecoration(
-                color: context.bgPrimary,
-                borderRadius: BorderRadius.vertical(
-                  top: Radius.circular(context.radiusMd),
-                  bottom: Radius.circular(0),
-                ),
-                border: Border(
-                  top: BorderSide(
-                    color: context.borderPrimary,
-                    width: 1.w,
-                  ),
-                  left: BorderSide(
-                    color: context.borderPrimary,
-                    width: 1.w,
-                  ),
-                  right: BorderSide(
-                    color: context.borderPrimary,
-                    width: 1.w,
-                  ),
-                )
-              ),
-              child: TabBar(
-                labelColor: context.textBrandSecondary700,
-                unselectedLabelColor: context.textQuaternary500,
-                indicatorColor: context.buttonPrimaryBg,
-               indicatorSize: TabBarIndicatorSize.tab,
-               indicatorWeight: 2.w,
-               dividerColor: Colors.transparent,
-               dividerHeight: 1.w,
-                tabs: tabs.map((tab) {
-                  return Tab(text: tab.text.tr());
-                }).toList(),
-              ),
-            ),
-          ),
-          Container(
-            padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 16.w),
-            decoration: BoxDecoration(
-                color: context.bgPrimary,
-                borderRadius: BorderRadius.vertical(
-                  bottom: Radius.circular(context.radiusMd),
-                  top: Radius.circular(0),
-                ),
-                border: Border.fromBorderSide(
-                  BorderSide(
-                    color: context.borderPrimary,
-                    width: 1.w,
-                  ),
-                )
-            ),
-            child: TabBarView(
-              children: tabs.map((tab) {
-                return SingleChildScrollView(
-                  physics: NeverScrollableScrollPhysics(),
-                  child: HtmlWidget(
-                    tab.content ?? '',
-
-                  ),
-                );
-              }).toList(),
-            ),
-          )
-        ],
-      ),
-    );*/
   }
 }
 
@@ -249,19 +172,39 @@ class _BannerSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (banners == null || banners!.isEmpty) {
-      return SizedBox.shrink();
+      return Skeleton.react(width: double.infinity, height: 250);
     }
     return SwiperBanner(height: 250, borderRadius: 0, banners: banners!);
   }
 }
 
-class _TopTreasureSection extends StatelessWidget {
-  final ProductListItem item;
+class _TopTreasureSectionSkeleton extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.w),
+      child: Skeleton.react(
+        width: double.infinity,
+        height: 220.w,
+        borderRadius: BorderRadius.circular(8.w),
+      ),
+    );
+  }
+}
 
-  const _TopTreasureSection({required this.item});
+class _TopTreasureSection extends StatelessWidget {
+  final ProductListItem? item;
+
+  const _TopTreasureSection({this.item});
 
   @override
   Widget build(BuildContext context) {
+    if (item.isNullOrEmpty) {
+      return _TopTreasureSectionSkeleton();
+    }
+
+    final data = item!;
+
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.w),
       child: Container(
@@ -297,7 +240,7 @@ class _TopTreasureSection extends StatelessWidget {
               child: Column(
                 children: [
                   Text(
-                    item.treasureName,
+                    data.treasureName,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     textAlign: TextAlign.center,
@@ -314,12 +257,12 @@ class _TopTreasureSection extends StatelessWidget {
                     noPressAnimation: true,
                     onPressed: () {},
                     child: Text(
-                      FormatHelper.formatCurrency(item.unitAmount),
+                      FormatHelper.formatCurrency(data.unitAmount),
                       style: TextStyle(fontWeight: FontWeight.w800),
                     ),
                   ),
                   SizedBox(height: 16.w),
-                  BubbleProgress(value: item.buyQuantityRate),
+                  BubbleProgress(value: data.buyQuantityRate),
                   SizedBox(height: 2.w),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -334,7 +277,7 @@ class _TopTreasureSection extends StatelessWidget {
                         ),
                       ),
                       Text(
-                        '${item.seqBuyQuantity}${'entries-sold'.tr()}',
+                        '${data.seqBuyQuantity}${'entries-sold'.tr()}',
                         style: TextStyle(
                           fontSize: context.text2xs,
                           color: context.textSecondary700,
@@ -343,7 +286,7 @@ class _TopTreasureSection extends StatelessWidget {
                         ),
                       ),
                       Text(
-                        '${item.seqShelvesQuantity}',
+                        '${data.seqShelvesQuantity}',
                         style: TextStyle(
                           fontSize: context.text2xs,
                           color: context.textSecondary700,
@@ -367,7 +310,7 @@ class _TopTreasureSection extends StatelessWidget {
                           ),
                           SizedBox(height: 8.w),
                           Text(
-                            '${item.maxPerBuyQuantity ?? 0}Max',
+                            '${data.maxPerBuyQuantity ?? 0}Max',
                             style: TextStyle(
                               fontSize: context.text2xs,
                               color: context.textSecondary700,
@@ -397,7 +340,7 @@ class _TopTreasureSection extends StatelessWidget {
                           ),
                           SizedBox(height: 8.w),
                           Text(
-                            '${item.maxPerBuyQuantity ?? 0}Max',
+                            '${data.maxPerBuyQuantity ?? 0}Max',
                             style: TextStyle(
                               fontSize: context.text2xs,
                               color: context.textSecondary700,
@@ -431,7 +374,7 @@ class _TopTreasureSection extends StatelessWidget {
                           ),
                           SizedBox(height: 8.w),
                           Text(
-                            FormatHelper.formatCurrency(item.costAmount ?? 0),
+                            FormatHelper.formatCurrency(data.costAmount ?? 0),
                             style: TextStyle(
                               fontSize: context.text2xs,
                               color: context.textSecondary700,
@@ -472,7 +415,7 @@ class _TopTreasureSection extends StatelessWidget {
                           SizedBox(height: 4.w),
                           Text(
                             FormatHelper.formatCurrency(
-                              num.parse(item.charityAmount ?? '0'),
+                              num.parse(data.charityAmount ?? '0'),
                             ),
                             style: TextStyle(
                               fontSize: context.text2xs,
@@ -513,7 +456,7 @@ class _GroupSection extends StatelessWidget {
       padding: EdgeInsets.symmetric(horizontal: 16.w),
       child: Container(
         width: double.infinity,
-        padding: EdgeInsets.symmetric(horizontal: 16.w,vertical: 16.w),
+        padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 16.w),
         decoration: BoxDecoration(
           color: context.bgPrimary,
           border: Border.all(color: context.borderPrimary, width: 1),
@@ -523,65 +466,66 @@ class _GroupSection extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           mainAxisSize: MainAxisSize.min,
           children: [
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'common.group.for.treasures'.tr(),
-                        style: TextStyle(
-                          fontSize: context.textMd,
-                          fontWeight: FontWeight.w800,
-                          color: context.fgPrimary900,
-                          height: context.leadingMd,
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'common.group.for.treasures'.tr(),
+                      style: TextStyle(
+                        fontSize: context.textMd,
+                        fontWeight: FontWeight.w800,
+                        color: context.fgPrimary900,
+                        height: context.leadingMd,
+                      ),
+                    ),
+                    SizedBox(height: 10.w),
+                    Container(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 8.w,
+                        vertical: 2.w,
+                      ),
+                      decoration: BoxDecoration(
+                        color: context.utilityBrand50,
+                        borderRadius: BorderRadius.all(
+                          Radius.circular(context.radiusFull),
+                        ),
+                        border: Border.fromBorderSide(
+                          BorderSide(
+                            color: context.utilityBrand200,
+                            width: 1.w,
+                          ),
                         ),
                       ),
-                      SizedBox(height: 10.w),
-                      Container(
-                        padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 2.w),
-                        decoration: BoxDecoration(
-                          color: context.utilityBrand50,
-                          borderRadius: BorderRadius.all(Radius.circular(context.radiusFull)),
-                          border: Border.fromBorderSide(
-                            BorderSide(
-                              color: context.utilityBrand200,
-                              width: 1.w,
-                            ),
-                          ),
+                      child: Text(
+                        'common.users'.tr(namedArgs: {'number': '1234'}),
+                        style: TextStyle(
+                          fontSize: context.text2xs,
+                          color: context.utilityBrand700,
+                          fontWeight: FontWeight.w500,
+                          height: context.leadingXs,
                         ),
-                        child: Text(
-                          'common.users'.tr(
-                            namedArgs: {
-                              'number': '1234',
-                            }
-                          ),
-                          style: TextStyle(
-                            fontSize: context.text2xs,
-                            color: context.utilityBrand700,
-                            fontWeight: FontWeight.w500,
-                            height: context.leadingXs,
-                          ),
-                        ),
-                      )
-                    ],
-                  ),
-                  GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    child:  SvgPicture.asset(
-                        'assets/images/product_detail/goto.svg',
-                        width: 16.w,
-                        height: 16.w,
-                        colorFilter: ColorFilter.mode(
-                          context.fgPrimary900,
-                          BlendMode.srcIn,
-                        )
+                      ),
                     ),
-                  )
-                ],
-              )
+                  ],
+                ),
+                GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  child: SvgPicture.asset(
+                    'assets/images/product_detail/goto.svg',
+                    width: 16.w,
+                    height: 16.w,
+                    colorFilter: ColorFilter.mode(
+                      context.fgPrimary900,
+                      BlendMode.srcIn,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ],
         ),
       ),
