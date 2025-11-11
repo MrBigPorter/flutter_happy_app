@@ -197,6 +197,7 @@ class Api {
 
   // otp request
   static Future<OtpRequest> otpRequestApi(String phone) async {
+    print('Api otpRequestApi phone: $phone');
     final res = await Http.post('/api/v1/otp/request', data: {'phone': phone});
     return OtpRequest.fromJson(res);
   }
@@ -205,7 +206,7 @@ class Api {
   static Future<void> optVerifyApi({
     required String phone,
     required String code,
-}) async {
+  }) async {
     return await Http.post(
       '/api/v1/otp/verify',
       data: {'phone': phone, 'code': code},
@@ -213,12 +214,15 @@ class Api {
   }
 
   // login with otp
-  static Future<AuthLoginOtp> loginWithOtpApi({required phone,int? inviteCode, int? countryCode}) async {
-    final res = await Http.post('/api/v1/auth/login/otp',data: {
-      'phone': phone,
-      'inviteCode': inviteCode,
-      'countryCode': countryCode,
-    });
+  static Future<AuthLoginOtp> loginWithOtpApi({
+    required phone,
+  }) async {
+    final res = await Http.post(
+      '/api/v1/auth/login/otp',
+      data: {
+        'phone': phone,
+      },
+    );
     return AuthLoginOtp.fromJson(res);
   }
 

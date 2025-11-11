@@ -31,6 +31,8 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
   late final Countdown cd = Countdown();
 
+
+
   // OTP 登录表单 OTP Login Form
   late final LoginOtpModelForm otpForm = LoginOtpModelForm(
     LoginOtpModelForm.formElements(const LoginOtpModel()),
@@ -87,31 +89,34 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   Future<void> loginWithOtp() async {
     final model = otpForm.model;
 
-    // verify otp
-    await ref.read(optVerifyProvider(
-        OtpVerifyParams(
-        phone: model.phone,
-        code: model.otp,
-      )
-    ).future);
+    if(ref.watch(verifyOtpCtrlProvider).isLoading) return;
 
-    // 调用登录逻辑 Call login logic
-    final result = await ref.read(loginWithOtpProvider({
-      'phone': model.phone,
-      'inviteCode': model.inviteCode,
-      'countryCode': 63,
-    } as LoginWithOtpParams).future);
+    // verify otp
+    final verify = await ref.read(verifyOtpCtrlProvider.notifier).run(model.phone, model.otp);
+    print('verifyOtp result=> $verify');
+
+   if(!verify) return;
+   print('OTP verified successfully');
+   print(model.otp);
+   print(model.phone);
+
+    //  Call login logic
+    final result = await ref.read(authLoginOtpCtrlProvider.notifier).run((
+      phone: model.phone,
+    ));
+    
+    print('loginWithOtp result=> $result');
 
     if(result.isNotNullOrEmpty && result.tokens.isNotNullOrEmpty) {
-      // 保存 Token Save Token
+      //  Token Save Token
       final auth = ref.read(authProvider.notifier);
-      // 登录 Login success,save tokens
+      //  Login success,save tokens
       await auth.login(
         result.tokens.accessToken,
         result.tokens.refreshToken,
       );
 
-      // 跳转到主页面 Navigate to Main Page
+      //  Navigate to Main Page
       appRouter.go('/home');
     }
   }
@@ -121,13 +126,14 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     final phone = form.control('phone');
     phone.markAsTouched();
 
+
     if(phone.invalid) return;
 
-    // 发送 OTP 逻辑 Send OTP Logic, prevent multiple requests
-    final current = ref.read(otpRequestProvider(phone.value));
-    if(current.isLoading || cd.running) return;
 
-    await ref.read(otpRequestProvider(phone.value).future);
+    if(cd.running) return;
+
+    final sendCtrl = ref.read(sendOtpCtrlProvider.notifier);
+    await sendCtrl.run(phone.value);
     cd.start(60);
   }
 
@@ -139,6 +145,8 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
+
+    final send = ref.watch(sendOtpCtrlProvider);
 
     return BaseScaffold(
       body: LayoutBuilder(
@@ -254,7 +262,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                                         builder: (context, int seconds, _) {
                                           final running = cd.running;
                                           return TextButton(
-                                              onPressed: running?null:sendCode,
+                                              onPressed: running || send.isLoading ? null:sendCode,
                                               child: Text(
                                                   running?'Resend in ${seconds}s':'send code',
                                                   style: TextStyle(

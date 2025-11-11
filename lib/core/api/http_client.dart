@@ -66,12 +66,9 @@ class Http {
         onResponse: (response, handler) async {
           // HTTP 非 2xx 也允许走到这里，由我们按后端 code 统一处理
           final data = response.data;
-          if (data is! Map) {
-            // 非标准信封，直接当错误抛
-            return handler.reject(_asDioError(
-              response,
-              'Invalid response shape',
-            ));
+
+          if (data == null || data is! Map<String, dynamic>) {
+            return handler.reject(_asDioError(response, 'Invalid response data'));
           }
 
           final code = data['code'] as int?;
@@ -90,12 +87,13 @@ class Http {
           // 处理需要跳转的业务码
           final noToast = response.requestOptions.extra['noErrorToast'] == true;
 
+
           if (_tokenErrorCodes.contains(code)) {
             // token 失效：清除并跳登录（防抖）
             await _clearToken();
             if (!_navigatingToLogin) {
               _navigatingToLogin = true;
-             appRouter.replace('/login');
+             appRouter.go('/login');
               Future.delayed(const Duration(seconds: 1), () {
                 _navigatingToLogin = false;
               });
@@ -120,10 +118,8 @@ class Http {
             );
           }
 
-          return handler.reject(_asDioError(
-            response,
-            'code $code, msg: $message',
-          ));
+
+          return handler.reject(_asDioError(response, (data['errorMsg'] as String?) ?? message));
         },
         onError: (e, handler) {
           // 统一网络错误提示（可由 noErrorToast 关闭）

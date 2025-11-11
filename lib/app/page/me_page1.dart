@@ -73,8 +73,8 @@ class _MePageState extends ConsumerState<MePage>
       authProvider.select((s) => s.isAuthenticated),
     );
     final balance = ref.watch(luckyProvider.select((s) => s.balance));
+    print('isAuthenticated${isAuthenticated}');
 
-    isAuthenticated = true; // TODO: remove this line after login flow is ready
 
     return BaseScaffold(
       showBack: false,
