@@ -54,6 +54,7 @@ class Button extends StatefulWidget {
   final List<BoxShadow>? boxShadow;
   final double? paddingX;
   final double? paddingY;
+  final MainAxisAlignment? alignment;
 
   final double? radius;
   final double? gap;
@@ -75,6 +76,7 @@ class Button extends StatefulWidget {
     this.width,
     this.paddingX,
     this.paddingY,
+    this.alignment,
     this.radius,
     this.gap,
     this.leading,
@@ -134,7 +136,7 @@ class _ButtonState extends State<Button> {
 
 
     final content = Row(
-      mainAxisAlignment: MainAxisAlignment.center,
+      mainAxisAlignment: widget.alignment ?? MainAxisAlignment.center,
       mainAxisSize: MainAxisSize.min,
       children: [
         if (widget.loading)
