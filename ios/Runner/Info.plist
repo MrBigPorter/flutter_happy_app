@@ -45,5 +45,18 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<!-- 调起外部 App -->
+    <key>LSApplicationQueriesSchemes</key>
+    <array>
+      <string>whatsapp</string>
+      <string>viber</string>
+      <string>tg</string>
+      <string>twitter</string>
+      <string>facebook</string>
+    </array>
+
+    <!-- 保存图片到相册（如果要“下载海报”） -->
+    <key>NSPhotoLibraryAddUsageDescription</key>
+    <string>We save poster to your Photos for sharing.</string>
 </dict>
 </plist>

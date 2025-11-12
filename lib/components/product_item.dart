@@ -13,7 +13,6 @@ import 'package:flutter_app/utils/format_helper.dart';
 import 'package:flutter_app/utils/helper.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_app/core/models/index.dart';
-import 'package:go_router/go_router.dart';
 class ProductItem extends StatelessWidget {
   // 商品数据
   // Product data

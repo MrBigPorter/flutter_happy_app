@@ -17,7 +17,6 @@ import 'package:reactive_forms/reactive_forms.dart';
 import 'package:flutter_app/ui/button/variant.dart';
 import 'package:flutter_app/utils/form/validation_messages.dart';
 
-import 'package:flutter_app/core/models/index.dart';
 
 
 class LoginPage extends ConsumerStatefulWidget {
@@ -79,7 +78,6 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
     if (_usePasswordLogin) {
       final m = passwordForm.model;
-      print('m=>${m.phone}');
       // TODO: 密码登录 m.phone, m.password, m.countryCode, m.inviteCode
     } else {
       loginWithOtp();
@@ -93,19 +91,13 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
     // verify otp
     final verify = await ref.read(verifyOtpCtrlProvider.notifier).run(model.phone, model.otp);
-    print('verifyOtp result=> $verify');
 
    if(!verify) return;
-   print('OTP verified successfully');
-   print(model.otp);
-   print(model.phone);
 
     //  Call login logic
     final result = await ref.read(authLoginOtpCtrlProvider.notifier).run((
       phone: model.phone,
     ));
-    
-    print('loginWithOtp result=> $result');
 
     if(result.isNotNullOrEmpty && result.tokens.isNotNullOrEmpty) {
       //  Token Save Token

@@ -1,0 +1,93 @@
+import 'dart:typed_data';
+
+import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_app/common.dart';
+import 'package:flutter_app/features/share/models/share_data.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:image_gallery_saver/image_gallery_saver.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:screenshot/screenshot.dart';
+import 'package:share_plus/share_plus.dart';
+
+class SharePost extends StatefulWidget {
+  final ShareData data;
+
+  const SharePost({super.key, required this.data});
+
+  @override
+  State<SharePost> createState() => _SharePostState();
+}
+
+class _SharePostState extends State<SharePost> {
+  final _shot = ScreenshotController();
+
+  Future<XFile> captureToFile() async {
+    final bytes = await _shot.capture(pixelRatio: 2.0);
+    final tempDir = await getTemporaryDirectory();
+    final path = '${tempDir.path}/share_poster_${DateTime.now().millisecondsSinceEpoch}.png';
+    final file =  XFile.fromData(Uint8List.fromList(bytes as List<int>),name: 'share_poster.png',mimeType: 'image/png',path: path);
+    await file.saveTo(path);
+    return XFile(file.path);
+  }
+
+  Future<void> saveToGallery() async {
+    final bytes = await _shot.capture(pixelRatio: 2.0);
+    if(bytes == null) return;
+    await ImageGallerySaver.saveImage(Uint8List.fromList(bytes),quality: 95,name: 'share_poster_${DateTime.now().millisecondsSinceEpoch}');
+  }
+
+  Future<void> sharePost () async {
+    final file = await captureToFile();
+    await Share.shareXFiles([file],text: widget.data.combined,subject: widget.data.title);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Screenshot(
+        controller: _shot,
+        child: Container(
+          width: 310.w,
+          height: 372.w,
+          color: context.bgPrimary,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                color: Colors.grey[200],
+                width: 310.w,
+                height: 200.w,
+                child: widget.data.imageUrl == null ? const SizedBox.shrink() : Image.network(
+                  widget.data.imageUrl!,
+                  width: 310.w,
+                  height: 200.w,
+                  fit: BoxFit.cover,
+                ),
+              ),
+              Padding(
+                padding: EdgeInsets.all(16.w),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      widget.data.title,
+                      maxLines: 2,
+                      style: TextStyle(
+                        fontSize: context.textMd,
+                        fontWeight: FontWeight.w800,
+                        color: context.textTertiary600,
+                        height: context.leadingMd
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            ],
+          ),
+        ),
+    );
+  }
+}
+
+
+

@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'dart:math';
 import 'package:flutter_app/common.dart';
-import 'package:flutter_app/core/models/auth.dart';
 import 'package:flutter_app/core/models/coupon_threshold_data.dart';
 
 import 'package:flutter_app/utils/helper.dart';
@@ -197,7 +196,6 @@ class Api {
 
   // otp request
   static Future<OtpRequest> otpRequestApi(String phone) async {
-    print('Api otpRequestApi phone: $phone');
     final res = await Http.post('/api/v1/otp/request', data: {'phone': phone});
     return OtpRequest.fromJson(res);
   }

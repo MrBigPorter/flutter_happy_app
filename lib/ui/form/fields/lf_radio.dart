@@ -59,7 +59,7 @@ class LfRadioGroup<T> extends StatelessWidget {
       validationMessages: validationMessages,
       showErrors: (c) => c.invalid && (c.dirty || c.touched),
       builder: (reactiveField) {
-        final control = reactiveField.control as FormControl<T>;
+        final control = reactiveField.control;
         final selected = control.value;
         final disabledAll = control.disabled;
 

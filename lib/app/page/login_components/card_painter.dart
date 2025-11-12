@@ -1,4 +1,3 @@
-import 'dart:math';
 
 import 'package:flutter/cupertino.dart';
 
@@ -28,7 +27,6 @@ class CardPainter extends CustomPainter {
     ..color = const Color(0xFFB0B0B0);
     canvas.drawRRect(r, stroke);
     
-    print('r: $r');
 
     canvas.save();
 
