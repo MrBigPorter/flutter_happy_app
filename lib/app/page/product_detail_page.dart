@@ -23,6 +23,7 @@ import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 import '../../features/share/models/share_data.dart';
+import '../../features/share/services/share_service.dart';
 import '../../ui/button/variant.dart';
 
 class ProductDetailTab {
@@ -43,7 +44,6 @@ class ProductDetailPage extends ConsumerStatefulWidget {
 
 class _ProductDetailPageState extends ConsumerState<ProductDetailPage>
     with SingleTickerProviderStateMixin {
-
   @override
   void initState() {
     super.initState();
@@ -69,8 +69,6 @@ class _ProductDetailPageState extends ConsumerState<ProductDetailPage>
       luckyProvider.select((select) => select.sysConfig.webBaseUrl),
     );
 
-
-    
     final PurchaseArgs args = (
       unitPrice: detail.value?.unitAmount ?? 0,
       maxUnitCoins: detail.value?.maxUnitCoins ?? 0,
@@ -113,7 +111,9 @@ class _ProductDetailPageState extends ConsumerState<ProductDetailPage>
               background: _BannerSection(banners: detail.value?.mainImageList),
             ),
           ),
-          SliverToBoxAdapter(child: _TopTreasureSection(item: detail.value, url:webBaseUrl,)),
+          SliverToBoxAdapter(
+            child: _TopTreasureSection(item: detail.value, url: webBaseUrl),
+          ),
           SliverToBoxAdapter(child: _GroupSection()),
           SliverToBoxAdapter(child: SizedBox(height: 8.w)),
           SliverToBoxAdapter(child: _DetailContentSection(content: desc)),
@@ -251,38 +251,45 @@ class _TopTreasureSection extends StatefulWidget {
   final String? url;
 
   const _TopTreasureSection({this.item, this.url});
+
   @override
   State<_TopTreasureSection> createState() => _TopTreasureSectionState();
 }
 
 class _TopTreasureSectionState extends State<_TopTreasureSection> {
-
   final sharePosterKey = GlobalKey<SharePostState>();
 
-
   void openShareSheet(BuildContext context, ShareData data) {
-
-
-    RadixSheet.show(
-      headerBuilder: (context) => Padding(
-        padding: EdgeInsets.only(bottom: 20.w),
-        child: SharePost(
-          key: sharePosterKey,
-          data: ShareData(
-            title: data.title,
-            url: data.url,
-            imageUrl: data.imageUrl,
-            text: data.text,
-            subTitle: data.subTitle,
-          ),
-        ),
+    ShareService.openSystemOrSheet(
+      ShareData(
+        title: data.title,
+        url: 'https://example.com/product/${111}',
+        text: data.title,
+        imageUrl: data.imageUrl,
       ),
-      builder: (context, close) {
-        return ShareSheet(
-          data: ShareData(title: data.title, url: data.url),
-          onDownloadPoster: () async{
-            sharePosterKey.currentState?.saveToGallery();
-            close();
+      () async {
+        RadixSheet.show(
+          headerBuilder: (context) => Padding(
+            padding: EdgeInsets.only(bottom: 20.w),
+            child: SharePost(
+              key: sharePosterKey,
+              data: ShareData(
+                title: data.title,
+                url: data.url,
+                imageUrl: data.imageUrl,
+                text: data.text,
+                subTitle: data.subTitle,
+              ),
+            ),
+          ),
+          builder: (context, close) {
+            return ShareSheet(
+              data: ShareData(title: data.title, url: data.url),
+              onDownloadPoster: () async {
+                sharePosterKey.currentState?.saveToGallery();
+                close();
+              },
+            );
           },
         );
       },
@@ -332,19 +339,6 @@ class _TopTreasureSectionState extends State<_TopTreasureSection> {
                       ),
                     ),
                   );
-
-                  /*ShareService.openSystemOrSheet(
-                    ShareData(
-                      title: data.treasureName,
-                      url: 'https://example.com/product/${111}',
-                      text:
-                          '${data.treasureName} - ${FormatHelper.formatCurrency(data.unitAmount)}',
-                      imageUrl: data.treasureCoverImg,
-                    ),
-                    () async {
-
-                    },
-                  );*/
                 },
                 child: SvgPicture.asset(
                   'assets/images/product_detail/share.svg',
