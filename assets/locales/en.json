@@ -110,7 +110,7 @@
   "common.to.address": "Delivery Address",
   "common.add.address.tip": "Please add your address before checkout",
   "common.persons": "per person",
-  "common.cash.value": "Cash Value",
+  "common.cash.value": "Cash Value: {number}",
   "common.luck.draw": "Lucky Draw",
   "common.node.group": "Create a team for a chance to win a Fortune Bag!",
   "common.pagination": "Page {{current}} of {{totalPage}}",

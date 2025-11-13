@@ -12,9 +12,10 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_app/ui/button/variant.dart';
 
 import 'package:flutter_app/features/share/services/share_service.dart';
+import 'package:screenshot/screenshot.dart';
 
 class ShareSheet extends StatefulWidget {
-  final String origin;
+  final String? origin;
 
   final String? sharePath;
   final String? inviteCode;
@@ -26,7 +27,7 @@ class ShareSheet extends StatefulWidget {
 
   const ShareSheet({
     super.key,
-    required this.origin,
+    this.origin,
     this.sharePath,
     this.inviteCode,
     required this.data,
@@ -35,39 +36,24 @@ class ShareSheet extends StatefulWidget {
     this.onDownloadPoster,
   });
 
-
-
   @override
   State<ShareSheet> createState() => _ShareSheetState();
 }
 
 class _ShareSheetState extends State<ShareSheet> {
-
   bool showForm = false;
 
   Uri get _shareUri {
-    if(widget.sharePath == null || widget.sharePath!.isEmpty) {
-      if(widget.data.url.isNotEmpty){
-        final u = Uri.tryParse(widget.data.url);
-        return _appendInviteCode(u!);
-      }
-      return Uri.parse(widget.origin);
+    if (widget.data.url.isNotEmpty) {
+      final u = Uri.tryParse(widget.data.url);
+      return _appendInviteCode(u!);
     }
-
-    var uri = Uri.parse(widget.origin).replace(
-      path: widget.sharePath
-    );
-
-    if(uri.path == '/me/invitefriends'){
-      uri = uri.replace(path: '/home');
-    }
-
-    return _appendInviteCode(uri);
+    return Uri.parse(widget.origin ?? '');
   }
 
-   // Append invite code to URL if available
+  // Append invite code to URL if available
   Uri _appendInviteCode(Uri uri) {
-    if(widget.inviteCode == null || widget.inviteCode!.isEmpty) {
+    if (widget.inviteCode == null || widget.inviteCode!.isEmpty) {
       return uri;
     }
     final qp = Map<String, String>.from(uri.queryParameters);
@@ -77,15 +63,13 @@ class _ShareSheetState extends State<ShareSheet> {
 
   // ShareData with final URL
   ShareData get _shareDataWithFinalUrl {
-    return widget.data.copyWith(
-      url: _shareUri.toString()
-    );
+    return widget.data.copyWith(url: _shareUri.toString());
   }
 
   // Copy to clipboard
   Future<void> _copyToClipboard(String text) async {
     await Clipboard.setData(ClipboardData(text: text));
-    if(!mounted) return;
+    if (!mounted) return;
     RadixToast.success('copy.success'.tr());
   }
 
@@ -97,69 +81,68 @@ class _ShareSheetState extends State<ShareSheet> {
       mainAxisSize: MainAxisSize.min,
       children: [
         // optional poster
-        if (widget.poster != null) ...[
-          widget.poster!,
-          SizedBox(height: 16.w),
-        ],
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-              IconButton(
-                  onPressed: ()=> setState(()=> showForm = false),
-                  icon: const Icon(Icons.arrow_back)
-              ),
-              Text(
-                showForm ? 'Share Form' : 'Share Options',
-                style: TextStyle(
-                  fontSize: 16.w,
-                  fontWeight: FontWeight.bold,
-                ),
-              )
-          ],
-        ),
-        SizedBox(height: 16.w,),
+        if (widget.poster != null) ...[widget.poster!, SizedBox(height: 16.w)],
+        SizedBox(height: 16.w),
         // !showForm
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
             _ShareIconButton(
               label: 'Facebook',
-              icon: SvgPicture.asset('assets/images/facebook.svg',width: 32.w,height: 32.w),
+              icon: SvgPicture.asset(
+                'assets/images/facebook.svg',
+                width: 32.w,
+                height: 32.w,
+              ),
               onTap: () {
                 ShareService.shareFacebook(_shareDataWithFinalUrl);
               },
             ),
             _ShareIconButton(
               label: 'Viber',
-              icon: SvgPicture.asset('assets/images/viber.svg',width: 32.w,height: 32.w,),
+              icon: SvgPicture.asset(
+                'assets/images/viber.svg',
+                width: 32.w,
+                height: 32.w,
+              ),
               onTap: () {
                 // TODO: implement Viber share or deep link
               },
             ),
             _ShareIconButton(
               label: 'WhatsApp',
-              icon: SvgPicture.asset('assets/images/whatsapp.svg',width: 32.w,height: 32.w,),
+              icon: SvgPicture.asset(
+                'assets/images/whatsapp.svg',
+                width: 32.w,
+                height: 32.w,
+              ),
               onTap: () {
                 ShareService.shareWhatsApp(_shareDataWithFinalUrl);
               },
             ),
             _ShareIconButton(
               label: 'X',
-              icon: SvgPicture.asset('assets/images/twitter.svg',width: 32.w,height: 32.w,),
+              icon: SvgPicture.asset(
+                'assets/images/twitter.svg',
+                width: 32.w,
+                height: 32.w,
+              ),
               onTap: () {
                 ShareService.shareTwitter(_shareDataWithFinalUrl);
               },
             ),
             _ShareIconButton(
               label: 'Download',
-              icon: SvgPicture.asset('assets/images/download.svg',width: 32.w,height: 32.w,),
-              onTap: () {
-
-              },
+              icon: SvgPicture.asset(
+                'assets/images/download.svg',
+                width: 32.w,
+                height: 32.w,
+              ),
+              onTap: ()=> widget.onDownloadPoster?.call(),
             ),
           ],
         ),
-        SizedBox(height: 16.w,),
+        SizedBox(height: 16.w),
         Padding(
           padding: EdgeInsets.symmetric(horizontal: 16.w),
           child: Container(
@@ -167,8 +150,8 @@ class _ShareSheetState extends State<ShareSheet> {
             height: 40.w,
             padding: EdgeInsets.only(left: 16.w),
             decoration: BoxDecoration(
-                border: Border.all(color: context.buttonSecondaryBorder),
-                borderRadius: BorderRadius.all(Radius.circular(context.radiusMd))
+              border: Border.all(color: context.buttonSecondaryBorder),
+              borderRadius: BorderRadius.all(Radius.circular(context.radiusMd)),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -187,30 +170,33 @@ class _ShareSheetState extends State<ShareSheet> {
                 Container(
                   decoration: BoxDecoration(
                     border: Border(
-                      left:BorderSide(
+                      left: BorderSide(
                         color: context.buttonSecondaryBorder,
                         width: 1.w,
-                      )
-                    )
+                      ),
+                    ),
                   ),
                   child: Button(
                     variant: ButtonVariant.text,
                     height: 40.w,
                     onPressed: () => _copyToClipboard(urlString),
-                    leading: SvgPicture.asset('assets/images/copy.svg',width: 16.w,height: 16.w,),
+                    leading: SvgPicture.asset(
+                      'assets/images/copy.svg',
+                      width: 16.w,
+                      height: 16.w,
+                    ),
                     child: Text('common.invite.link.copy'.tr()),
                   ),
-                )
+                ),
               ],
             ),
-          ) ,
+          ),
         ),
-        SizedBox(height: 16.w,)
+        SizedBox(height: 16.w),
       ],
     );
   }
 }
-
 
 class _ShareIconButton extends StatelessWidget {
   final String label;
@@ -237,7 +223,7 @@ class _ShareIconButton extends StatelessWidget {
               fontSize: context.textXs,
               color: context.textSecondary700,
               fontWeight: FontWeight.w600,
-              height: context.leadingXs
+              height: context.leadingXs,
             ),
           ),
         ],

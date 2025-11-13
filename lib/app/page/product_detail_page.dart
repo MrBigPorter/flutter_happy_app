@@ -10,6 +10,7 @@ import 'package:flutter_app/core/providers/index.dart';
 import 'package:flutter_app/core/providers/purchase_state_provider.dart';
 import 'package:flutter_app/core/store/auth/auth_provider.dart';
 import 'package:flutter_app/core/store/lucky_store.dart';
+import 'package:flutter_app/features/share/widgets/share_post.dart';
 import 'package:flutter_app/ui/bubble_progress.dart';
 import 'package:flutter_app/ui/button/button.dart';
 import 'package:flutter_app/ui/modal/index.dart';
@@ -42,10 +43,6 @@ class ProductDetailPage extends ConsumerStatefulWidget {
 
 class _ProductDetailPageState extends ConsumerState<ProductDetailPage>
     with SingleTickerProviderStateMixin {
-  final List<ProductDetailTab> _tabs = [
-    ProductDetailTab(title: 'common.details'.tr(), tabId: 'details'),
-    ProductDetailTab(title: 'raffle-rules'.tr(), tabId: 'rules'),
-  ];
 
   @override
   void initState() {
@@ -54,20 +51,38 @@ class _ProductDetailPageState extends ConsumerState<ProductDetailPage>
 
   @override
   Widget build(BuildContext context) {
-    final isAuthenticated = ref.watch(authProvider.select((select)=>select.isAuthenticated));
-    final coinBalance = ref.watch(luckyProvider.select((select)=> select.balance.coinBalance));
-    final detail = ref.watch(productDetailProvider(widget.productId));
-    final PurchaseArgs args = (
-      unitPrice:      detail.value?.unitAmount ?? 0,
-      maxUnitCoins:   detail.value?.maxUnitCoins ?? 0,
-      exchangeRate:  1, // todo 汇率
-      maxPerBuy:      detail.value?.maxPerBuyQuantity ?? 999999,
-      stockLeft:     (detail.value?.seqShelvesQuantity ?? 0) - (detail.value?.seqBuyQuantity ?? 0),
-      isLoggedIn:     isAuthenticated,
-      balanceCoins:   coinBalance,
-      coinAmountCap:  null, // 有比
+    // login status
+    final isAuthenticated = ref.watch(
+      authProvider.select((select) => select.isAuthenticated),
     );
+    // exchange rate
+    final exchangeRate = ref.watch(
+      luckyProvider.select((select) => select.sysConfig.exChangeRate),
+    );
+    // user coin balance
+    final coinBalance = ref.watch(
+      luckyProvider.select((select) => select.balance.coinBalance),
+    );
+    // product detail
+    final detail = ref.watch(productDetailProvider(widget.productId));
+    final webBaseUrl = ref.watch(
+      luckyProvider.select((select) => select.sysConfig.webBaseUrl),
+    );
+
+
     
+    final PurchaseArgs args = (
+      unitPrice: detail.value?.unitAmount ?? 0,
+      maxUnitCoins: detail.value?.maxUnitCoins ?? 0,
+      exchangeRate: exchangeRate,
+      maxPerBuy: detail.value?.maxPerBuyQuantity ?? 999999,
+      stockLeft:
+          (detail.value?.seqShelvesQuantity ?? 0) -
+          (detail.value?.seqBuyQuantity ?? 0),
+      isLoggedIn: isAuthenticated,
+      balanceCoins: coinBalance,
+      coinAmountCap: null, // 有比
+    );
 
     final desc =
         "\u003cp\u003e\u003cimg src=\"https://prod-pesolucky.s3.ap-east-1.amazonaws.com/rule/20250819154125141c3746-11dd-48cd-bc3b-0c10294513ab.png\" width=\"750\" height=\"500\"\u003erealme Buds T300（Global Version）：\u003cbr\u003ePort charge\u003c/p\u003e\u003cul\u003e\u003cli\u003eUSB Type-C\u003c/li\u003e\u003c/ul\u003e\u003cp\u003eCharging\u003c/p\u003e\u003cul\u003e\u003cli\u003eUSB Type C wired charging\u003c/li\u003e\u003c/ul\u003e\u003cp\u003eBluetooth Version\u003c/p\u003e\u003cul\u003e\u003cli\u003eBluetooth 5.3\u003c/li\u003e\u003c/ul\u003e\u003cp\u003e\u003cbr\u003eAudio codecs\u003c/p\u003e\u003cul\u003e\u003cli\u003eAAC, SBC\u003c/li\u003e\u003c/ul\u003e\u003cp\u003eWireless Range\u003c/p\u003e\u003cul\u003e\u003cli\u003e10m\u003c/li\u003e\u003c/ul\u003e\u003cp\u003eSize of sound\u003c/p\u003e\u003cul\u003e\u003cli\u003e12,4mm\u003c/li\u003e\u003c/ul\u003e\u003cp\u003eBattery capacity\u003c/p\u003e\u003cul\u003e\u003cli\u003eCharging case:460mAh; Single earbud: 43mAh\u003cbr\u003eCharging Time\u003c/li\u003e\u003cli\u003eCharging Case + Buds:10mins Charging for 7hrs Playback (50% Volume,ANC OFF)\u003c/li\u003e\u003c/ul\u003e\u003cp\u003eWaterproof Rating\u003c/p\u003e\u003cul\u003e\u003cli\u003eIP55 (earphones only)\u003c/li\u003e\u003c/ul\u003e\u003cp\u003eNoise Cancelling Features\u003c/p\u003e\u003cul\u003e\u003cli\u003e30dB Active Noise Cancelling, Environment Noise Cancelling\u003c/li\u003e\u003c/ul\u003e\u003cp\u003eBattery (Charging case + Buds)\u003c/p\u003e\u003cul\u003e\u003cli\u003eMusic playback 40hrs (50% Volume,ANC OFF); Music playback 30hrs (50% Volume,ANC ON)\u003c/li\u003e\u003c/ul\u003e\u003cp\u003eBattery (Earbuds Alone)\u003c/p\u003e\u003cul\u003e\u003cli\u003e8hrs Music Playback (50% Volume,ANC OFF); 6hrs Music Playback (50% Volume,ANC ON); 4hrs Calling Time (50% Volume,ANC OFF/ON)\u003c/li\u003e\u003c/ul\u003e\u003cp\u003eInside the box\u003c/p\u003e\u003cul\u003e\u003cli\u003eRealme Buds T300 x 1\u003c/li\u003e\u003cli\u003eCharging Cable Type C x 1\u003c/li\u003e\u003cli\u003eInformation Card x1/\u003c/li\u003e\u003cli\u003eS/M/L Silicone Eartips x 2\u003c/li\u003e\u003c/ul\u003e";
@@ -98,13 +113,13 @@ class _ProductDetailPageState extends ConsumerState<ProductDetailPage>
               background: _BannerSection(banners: detail.value?.mainImageList),
             ),
           ),
-          SliverToBoxAdapter(child: _TopTreasureSection(item: detail.value)),
+          SliverToBoxAdapter(child: _TopTreasureSection(item: detail.value, url:webBaseUrl,)),
           SliverToBoxAdapter(child: _GroupSection()),
           SliverToBoxAdapter(child: SizedBox(height: 8.w)),
           SliverToBoxAdapter(child: _DetailContentSection(content: desc)),
         ],
       ),
-      bottomNavigationBar: _JoinTreasureSection(args:args),
+      bottomNavigationBar: _JoinTreasureSection(args: args),
     );
   }
 }
@@ -127,6 +142,7 @@ class _DetailContentSection extends StatefulWidget {
   State<_DetailContentSection> createState() => _DetailContentSectionState();
 }
 
+/// 详情内容区 state
 class _DetailContentSectionState extends State<_DetailContentSection>
     with SingleTickerProviderStateMixin {
   List<TabItem> get tabs => [
@@ -199,6 +215,7 @@ class _DetailContentSectionState extends State<_DetailContentSection>
   }
 }
 
+/// 轮播图区域 banner section
 class _BannerSection extends StatelessWidget {
   final List<String>? banners;
 
@@ -213,6 +230,7 @@ class _BannerSection extends StatelessWidget {
   }
 }
 
+/// 头部宝藏区 top treasure section skeleton
 class _TopTreasureSectionSkeleton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -227,29 +245,57 @@ class _TopTreasureSectionSkeleton extends StatelessWidget {
   }
 }
 
-class _TopTreasureSection extends StatelessWidget {
+/// 头部宝藏区 top treasure section
+class _TopTreasureSection extends StatefulWidget {
   final ProductListItem? item;
+  final String? url;
 
-  const _TopTreasureSection({this.item});
+  const _TopTreasureSection({this.item, this.url});
+  @override
+  State<_TopTreasureSection> createState() => _TopTreasureSectionState();
+}
+
+class _TopTreasureSectionState extends State<_TopTreasureSection> {
+
+  final sharePosterKey = GlobalKey<SharePostState>();
+
 
   void openShareSheet(BuildContext context, ShareData data) {
-        RadixSheet.show(
-            builder: (context, close) {
-              return  ShareSheet(
-                  origin: 'product_detail',
-                  data: ShareData(title: '111', url: '8888')
-              );
-            },
+
+
+    RadixSheet.show(
+      headerBuilder: (context) => Padding(
+        padding: EdgeInsets.only(bottom: 20.w),
+        child: SharePost(
+          key: sharePosterKey,
+          data: ShareData(
+            title: data.title,
+            url: data.url,
+            imageUrl: data.imageUrl,
+            text: data.text,
+            subTitle: data.subTitle,
+          ),
+        ),
+      ),
+      builder: (context, close) {
+        return ShareSheet(
+          data: ShareData(title: data.title, url: data.url),
+          onDownloadPoster: () async{
+            sharePosterKey.currentState?.saveToGallery();
+            close();
+          },
         );
+      },
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    if (item.isNullOrEmpty) {
+    if (widget.item.isNullOrEmpty) {
       return _TopTreasureSectionSkeleton();
     }
 
-    final data = item!;
+    final data = widget.item!;
 
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.w),
@@ -270,13 +316,21 @@ class _TopTreasureSection extends StatelessWidget {
               child: GestureDetector(
                 behavior: HitTestBehavior.opaque,
                 onTap: () {
-
                   openShareSheet(
                     context,
                     ShareData(
-                        title: data.treasureName,
-                        url: 'https://example.com/product/${111}'
-                    )
+                      title: data.treasureName,
+                      url: '${widget.url}/product/${data.treasureId}',
+                      imageUrl: data.treasureCoverImg,
+                      text: FormatHelper.formatCurrency(data.unitAmount),
+                      subTitle: 'common.cash.value'.tr(
+                        namedArgs: {
+                          'number': FormatHelper.formatCurrency(
+                            data.costAmount,
+                          ),
+                        },
+                      ),
+                    ),
                   );
 
                   /*ShareService.openSystemOrSheet(
@@ -517,6 +571,7 @@ class _CouponSection extends StatelessWidget {
   }
 }
 
+/// 组队区 group section
 class _GroupSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -601,17 +656,18 @@ class _GroupSection extends StatelessWidget {
   }
 }
 
+/// 参与宝藏区 join treasure section
 class _JoinTreasureSection extends ConsumerWidget {
   final PurchaseArgs? args;
+
   const _JoinTreasureSection({this.args});
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-
-    if(args.isNullOrEmpty) return SizedBox.shrink();
+    if (args.isNullOrEmpty) return SizedBox.shrink();
 
     final purchase = ref.watch(purchaseProvider(args!));
     final action = ref.read(purchaseProvider(args!).notifier);
-
 
     return Container(
       padding: EdgeInsets.only(bottom: ViewUtils.bottomBarHeight),
@@ -685,11 +741,11 @@ class _JoinTreasureSection extends ConsumerWidget {
               ),
             ),
             child: _Stepper(
-                entries:purchase.entries,
-                subtotal:purchase.subtotal,
-                onMinus: ()=>action.dec(),
-                onPlus: ()=>action.inc(),
-                onChanged: (v)=>action.setEntriesFromText(v)
+              entries: purchase.entries,
+              subtotal: purchase.subtotal,
+              onMinus: () => action.dec(),
+              onPlus: () => action.inc(),
+              onChanged: (v) => action.setEntriesFromText(v),
             ),
           ),
         ],
@@ -698,6 +754,7 @@ class _JoinTreasureSection extends ConsumerWidget {
   }
 }
 
+/// 数量步进器 stepper
 class _Stepper extends StatefulWidget {
   final int entries;
   final int subtotal;
@@ -705,11 +762,19 @@ class _Stepper extends StatefulWidget {
   final VoidCallback onPlus;
   final ValueChanged<String> onChanged;
 
-  const _Stepper({required this.subtotal, required this.onMinus, required this.onPlus, required this.onChanged, required this.entries});
+  const _Stepper({
+    required this.subtotal,
+    required this.onMinus,
+    required this.onPlus,
+    required this.onChanged,
+    required this.entries,
+  });
+
   @override
   State<_Stepper> createState() => _StepperState();
 }
 
+/// 数量步进器 state
 class _StepperState extends State<_Stepper> {
   late final TextEditingController _controller;
 
@@ -723,7 +788,7 @@ class _StepperState extends State<_Stepper> {
   @override
   void didUpdateWidget(covariant _Stepper oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if(oldWidget.entries != widget.entries){
+    if (oldWidget.entries != widget.entries) {
       _controller.value = TextEditingValue(
         text: '${widget.entries}',
         selection: TextSelection.collapsed(offset: '${widget.entries}'.length),

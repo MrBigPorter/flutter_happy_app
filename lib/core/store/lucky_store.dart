@@ -29,7 +29,11 @@ class LuckyState {
   factory LuckyState.initial()=> LuckyState(
      userInfo: null,
       balance: Balance(realBalance: 0, coinBalance: 0),
-      sysConfig: SysConfig(kycAndPhoneVerification: '1'),
+      sysConfig: SysConfig(
+          kycAndPhoneVerification: '1',
+          webBaseUrl: '',
+          exChangeRate: 1.0
+      ),
   );
 
 

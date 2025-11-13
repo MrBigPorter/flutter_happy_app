@@ -45,7 +45,7 @@ class SheetSurface<T> extends StatelessWidget {
           showClose: config.showCloseButton,
           paddingTop: top,
         ),
-        Expanded(child: child),
+        child
       ],
     );
   }

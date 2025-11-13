@@ -7,7 +7,7 @@ class PurchaseState {
   final int unitPrice; // Price per unit
   final int maxUnitCoins; // Maximum coins per unit
   final double balanceCoins; // User's balance coins
-  final int exchangeRate; // Exchange rate
+  final double exchangeRate; // Exchange rate
   final int maxPerBuy; // Maximum units per purchase
   final int stockLeft; // Stock left
   final num? coinAmountCap; // Optional cap on coin amount
@@ -86,7 +86,7 @@ class PurchaseNotifier extends StateNotifier<PurchaseState> {
 typedef PurchaseArgs = ({
   int unitPrice,
   int maxUnitCoins,
-  int exchangeRate,
+  double exchangeRate,
   int maxPerBuy,
   int stockLeft,
   bool isLoggedIn,

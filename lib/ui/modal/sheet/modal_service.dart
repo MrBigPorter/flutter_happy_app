@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_app/ui/modal/base/modal_auto_close_observer.dart';
 import 'package:flutter_app/ui/modal/base/nav_hub.dart';
 import 'package:flutter_app/ui/modal/sheet/modal_sheet_config.dart';
+import 'package:flutter_app/utils/helper.dart';
 import '../base/animation_policy_resolver.dart';
 import 'animated_sheet_wrapper.dart';
 import '../base/animation_policy_config.dart';
@@ -63,6 +64,8 @@ class ModalSheetService {
 
     /// Sheet configuration (border radius, height, drag, animation strategy etc.)
     ModalSheetConfig config = const ModalSheetConfig(),
+
+    Widget? Function(BuildContext)? headerBuilder,
   }) async {
     //  If sheet is showing, close it first
     if (isShowing) await close();
@@ -115,7 +118,7 @@ class ModalSheetService {
         backgroundColor: Colors.transparent,
         //  Remove default white background
         useSafeArea: false,
-        barrierColor: Colors.transparent,
+        barrierColor: barrierColor,
         isDismissible: allowBgClose,
         //  Whether background click closes
         enableDrag: enableDrag,
@@ -145,9 +148,6 @@ class ModalSheetService {
               ? screenH
               : screenH * config.maxHeightFactor;
 
-          print(
-            '[ModalSheetService] maxHeightFactor: $maxHeightFactor, isFullScreen: $isFullScreen, screenH: $screenH, maxHeight: $maxHeight',
-          );
 
           final surface =
               config.theme.surfaceColor ??
@@ -157,8 +157,6 @@ class ModalSheetService {
           //  Final content container (with border radius, max height, adaptive content)
           // ----------------------------------------------------------------
 
-          final route = ModalRoute.of(modalContext);
-          final Animation<double>? routeAnimation = route?.animation;
 
           final Widget sheetPanel = MediaQuery.removePadding(
             context: modalContext,
@@ -173,93 +171,44 @@ class ModalSheetService {
               constraints: BoxConstraints(maxHeight: maxHeight),
               child: AnimatedSheetWrapper(
                 policy: policy,
-                child: SheetSurface<T>(
-                  isFullScreen: isFullScreen,
-                  config: config,
-                  onClose: finish,
-                  child: builder(modalContext, finish),
+                child: Padding(
+                  padding: EdgeInsets.only(bottom: ViewUtils.bottomBarHeight),
+                  child:  SheetSurface<T>(
+                    isFullScreen: isFullScreen,
+                    config: config,
+                    onClose: finish,
+                    child: builder(modalContext, finish),
+                  ),
                 ),
               ),
             ),
           );
 
-          if (routeAnimation == null) {
-            return Stack(
-              children: [
-                // Background barrier
-                Positioned.fill(
-                  child: GestureDetector(
-                    onTap: allowBgClose ? () => finish() : null,
-                    child: BackdropFilter(
-                      filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
-                      child: Container(color: barrierColor),
+          return  Stack(
+            children: [
+              // Background barrier
+              Positioned.fill(
+                child: GestureDetector(
+                  onTap: allowBgClose ? () => finish() : null,
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(
+                      sigmaX: 14,
+                      sigmaY: 14,
                     ),
+                    child: const SizedBox.expand(),
                   ),
                 ),
-                Align(
-                  alignment: Alignment.bottomCenter,
-                  child: MediaQuery.removePadding(
-                    context: modalContext,
-                    removeBottom: true,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: surface,
-                        borderRadius: BorderRadius.vertical(
-                          top: Radius.circular(config.borderRadius),
-                        ),
-                      ),
-                      constraints: BoxConstraints(maxHeight: maxHeight),
-                      child: AnimatedSheetWrapper(
-                        policy: policy,
-                        child: SheetSurface<T>(
-                          isFullScreen: isFullScreen,
-                          config: config,
-                          onClose: finish,
-                          child: builder(modalContext, finish),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            );
-          }
-
-          // use curved animation to control background opacity, not linear, it looks better
-          final bgAnimation = CurvedAnimation(
-              parent: routeAnimation,
-              curve: const Interval(0.1, 0.1, curve: Curves.easeOutCubic), // in: slow start, fast end
-              reverseCurve: const Interval(0.0, 0.9, curve: Curves.easeInCubic) // out: fast start, slow end
-          );
-
-          return AnimatedBuilder(
-            animation: bgAnimation,
-            child: sheetPanel,
-            builder: (context, child) {
-              final t = (routeAnimation.value).clamp(.0, 1.0);
-              final overlayOpacity = barrierColor.opacity * t;
-              return Stack(
+              ),
+              Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Background barrier
-                  Positioned.fill(
-                    child: GestureDetector(
-                      onTap: allowBgClose ? () => finish() : null,
-                      child: BackdropFilter(
-                        filter: ImageFilter.blur(
-                          sigmaX: 14,
-                          sigmaY: 14,
-                        ),
-                        child: Container(
-                          color: barrierColor.withOpacity(overlayOpacity),
-                        ),
-                      ),
-                    ),
-                  ),
+                  if (headerBuilder != null)
+                    headerBuilder(modalContext) ?? const SizedBox.shrink(),
                   // Sheet panel
-                  Align(alignment: Alignment.bottomCenter, child: child!),
+                  Align(alignment: Alignment.bottomCenter, child: sheetPanel),
                 ],
-              );
-            },
+              )
+            ],
           );
         },
       );

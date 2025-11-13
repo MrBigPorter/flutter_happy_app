@@ -6,6 +6,7 @@ class ShareData {
   final String? text;  // Optional text description
   final String? imageUrl;  // Optional image URL
   final XFile? previewThumbnail; // Optional preview image URL
+  final String? subTitle; // Optional subtitle
 
   ShareData({
     required this.title,
@@ -13,6 +14,7 @@ class ShareData {
     this.text,
     this.imageUrl,
     this.previewThumbnail,
+    this.subTitle,
   });
 
   ShareData copyWith({
