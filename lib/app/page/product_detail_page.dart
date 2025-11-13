@@ -1,6 +1,7 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_app/app/page/product_components/share_sheet.dart';
 import 'package:flutter_app/common.dart';
 import 'package:flutter_app/components/skeleton.dart';
 import 'package:flutter_app/components/swiper_banner.dart';
@@ -11,6 +12,7 @@ import 'package:flutter_app/core/store/auth/auth_provider.dart';
 import 'package:flutter_app/core/store/lucky_store.dart';
 import 'package:flutter_app/ui/bubble_progress.dart';
 import 'package:flutter_app/ui/button/button.dart';
+import 'package:flutter_app/ui/modal/index.dart';
 import 'package:flutter_app/utils/format_helper.dart';
 import 'package:flutter_app/utils/helper.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -20,7 +22,6 @@ import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 import '../../features/share/models/share_data.dart';
-import '../../features/share/services/share_service.dart';
 import '../../ui/button/variant.dart';
 
 class ProductDetailTab {
@@ -231,6 +232,17 @@ class _TopTreasureSection extends StatelessWidget {
 
   const _TopTreasureSection({this.item});
 
+  void openShareSheet(BuildContext context, ShareData data) {
+        RadixSheet.show(
+            builder: (context, close) {
+              return  ShareSheet(
+                  origin: 'product_detail',
+                  data: ShareData(title: '111', url: '8888')
+              );
+            },
+        );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (item.isNullOrEmpty) {
@@ -258,7 +270,16 @@ class _TopTreasureSection extends StatelessWidget {
               child: GestureDetector(
                 behavior: HitTestBehavior.opaque,
                 onTap: () {
-                  ShareService.openSystemOrSheet(
+
+                  openShareSheet(
+                    context,
+                    ShareData(
+                        title: data.treasureName,
+                        url: 'https://example.com/product/${111}'
+                    )
+                  );
+
+                  /*ShareService.openSystemOrSheet(
                     ShareData(
                       title: data.treasureName,
                       url: 'https://example.com/product/${111}',
@@ -269,7 +290,7 @@ class _TopTreasureSection extends StatelessWidget {
                     () async {
 
                     },
-                  );
+                  );*/
                 },
                 child: SvgPicture.asset(
                   'assets/images/product_detail/share.svg',

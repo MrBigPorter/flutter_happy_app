@@ -51,7 +51,7 @@ class _MePageState extends ConsumerState<MePage>
 
     WidgetsBinding.instance.addPostFrameCallback((_){
 
-      RadixModal.show(
+      Modal.show(
         config: ModalDialogConfig(
           animationStyleConfig: AnimationStyleConfig.fadeScale,
           headerHeight: 60.w,

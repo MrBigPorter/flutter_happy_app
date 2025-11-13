@@ -12,7 +12,7 @@ import '../base/animation_policy_resolver.dart';
 typedef ModalAction<T> = void Function(void Function([T? result]) close);
 
 
-/// RadixModal
+/// Modal
 /// ------------------------------------------------------------------
 /// A utility class for displaying modal dialogs with customizable animations,
 /// themes and behaviors.
@@ -38,7 +38,7 @@ typedef ModalAction<T> = void Function(void Function([T? result]) close);
 ///   - allowBackgroundCloseOverride: Override for background close behavior
 /// Usage:
 /// ```dart
-/// await RadixModal.show(
+/// await Modal.show(
 ///  builder: (context, close) => MyDialogContent(onClose: close),
 ///  config: ModalDialogConfig(
 ///  animationStyleConfig: MyAnimationStyleConfig(),
@@ -56,7 +56,7 @@ typedef ModalAction<T> = void Function(void Function([T? result]) close);
 ///  ```
 ///
 /// ------------------------------------------------------------------
-class RadixModal {
+class Modal {
 
   /// Shows a modal dialog with customizable content and behavior
   ///

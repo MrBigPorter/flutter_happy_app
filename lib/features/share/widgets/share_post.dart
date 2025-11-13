@@ -22,6 +22,7 @@ class SharePost extends StatefulWidget {
 class _SharePostState extends State<SharePost> {
   final _shot = ScreenshotController();
 
+  // Capture the widget as an image file
   Future<XFile> captureToFile() async {
     final bytes = await _shot.capture(pixelRatio: 2.0);
     final tempDir = await getTemporaryDirectory();
@@ -31,9 +32,11 @@ class _SharePostState extends State<SharePost> {
     return XFile(file.path);
   }
 
+  // Save the captured image to the device gallery
   Future<void> saveToGallery() async {
     final bytes = await _shot.capture(pixelRatio: 2.0);
     if(bytes == null) return;
+    // ImageGallerySaver requires Uint8List
     await ImageGallerySaver.saveImage(Uint8List.fromList(bytes),quality: 95,name: 'share_poster_${DateTime.now().millisecondsSinceEpoch}');
   }
 

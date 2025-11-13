@@ -1,0 +1,16 @@
+<svg viewBox="0 0 33 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+<mask id="mask0_18375_24124" style="mask-type:alpha" maskUnits="userSpaceOnUse" x="0" y="0" width="33" height="32">
+<rect width="32" height="32" transform="translate(0.699951)" fill="url(#paint0_linear_18375_24124)"/>
+</mask>
+<g mask="url(#mask0_18375_24124)">
+<circle cx="16.7" cy="16" r="15.5" fill="#6C4F07" stroke="#C9930A"/>
+</g>
+<rect x="4.69995" y="4" width="24" height="24" rx="12" fill="#FFBB11"/>
+<path fill-rule="evenodd" clip-rule="evenodd" d="M16.6999 9.33331C17.0681 9.33331 17.3666 9.63179 17.3666 9.99998V17.7238L20.2285 14.8619C20.4889 14.6016 20.911 14.6016 21.1713 14.8619C21.4317 15.1223 21.4317 15.5444 21.1713 15.8047L17.1713 19.8047C16.911 20.0651 16.4889 20.0651 16.2285 19.8047L12.2285 15.8047C11.9682 15.5444 11.9682 15.1223 12.2285 14.8619C12.4889 14.6016 12.911 14.6016 13.1713 14.8619L16.0333 17.7238V9.99998C16.0333 9.63179 16.3317 9.33331 16.6999 9.33331ZM10.0333 22C10.0333 21.6318 10.3317 21.3333 10.6999 21.3333H22.6999C23.0681 21.3333 23.3666 21.6318 23.3666 22C23.3666 22.3682 23.0681 22.6666 22.6999 22.6666H10.6999C10.3317 22.6666 10.0333 22.3682 10.0333 22Z" fill="white"/>
+<defs>
+<linearGradient id="paint0_linear_18375_24124" x1="16" y1="0" x2="16" y2="32" gradientUnits="userSpaceOnUse">
+<stop/>
+<stop offset="1" stop-opacity="0"/>
+</linearGradient>
+</defs>
+</svg>

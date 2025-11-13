@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_app/ui/modal/base/modal_auto_close_observer.dart';
 import 'package:flutter_app/ui/modal/base/nav_hub.dart';
@@ -10,7 +11,7 @@ import 'sheet_surface.dart';
 
 /// ModalSheetService
 /// ------------------------------------------------------------------
-///  Global bottom sheet management service (Core of RadixSheet)
+///  Global bottom sheet management service (Core of BottomSheet)
 ///
 /// Features:
 ///  Unified management of showModalBottomSheet display, closing, and animation strategies
@@ -38,7 +39,7 @@ class ModalSheetService {
   /// For showModalBottomSheet global mounting
   GlobalKey<NavigatorState> get navigatorKey => NavHub.key;
 
-  /// Route observer, used to automatically close current sheet when pushing new page 
+  /// Route observer, used to automatically close current sheet when pushing new page
   final routeObserver = RouteObserver<ModalRoute>();
 
   /// Currently showing sheet's Future (prevents duplicate showing)
@@ -76,8 +77,7 @@ class ModalSheetService {
     _sheetFuture = Future.microtask(() {
       final nav = navigatorKey.currentState;
       if (nav == null) {
-        throw Exception(
-          'ModalSheetService: Navigator not ready.');
+        throw Exception('ModalSheetService: Navigator not ready.');
       }
 
       //  Ensure current context is mounted
@@ -92,16 +92,17 @@ class ModalSheetService {
       // ----------------------------------------------------------------
 
       // Whether background click closes sheet
-      final allowBgClose = (config.allowBackgroundCloseOverride ??
-          policy.allowBackgroundClose) &&
+      final allowBgClose =
+          (config.allowBackgroundCloseOverride ??
+              policy.allowBackgroundClose) &&
           clickBgToClose;
 
       // Whether drag to close is enabled
-      final enableDrag =
-          config.enableDragToClose ?? policy.enableDragToClose;
+      final enableDrag = config.enableDragToClose ?? policy.enableDragToClose;
 
       // Barrier and panel colors (config takes priority)
-      final barrierColor = config.theme.barrierColor ??
+      final barrierColor =
+          config.theme.barrierColor ??
           theme.colorScheme.scrim.withValues(alpha: 0.45);
 
       // ----------------------------------------------------------------
@@ -114,7 +115,7 @@ class ModalSheetService {
         backgroundColor: Colors.transparent,
         //  Remove default white background
         useSafeArea: false,
-        barrierColor: barrierColor,
+        barrierColor: Colors.transparent,
         isDismissible: allowBgClose,
         //  Whether background click closes
         enableDrag: enableDrag,
@@ -139,24 +140,27 @@ class ModalSheetService {
           // If set to 1.0 (or > 0.98), consider as fullscreen
           final bool isFullScreen = maxHeightFactor >= 0.99;
 
-          final screenH = MediaQuery
-              .of(modalContext)
-              .size
-              .height;
-          final maxHeight = isFullScreen ? screenH :
-          screenH * config.maxHeightFactor;
+          final screenH = MediaQuery.of(modalContext).size.height;
+          final maxHeight = isFullScreen
+              ? screenH
+              : screenH * config.maxHeightFactor;
+
+          print(
+            '[ModalSheetService] maxHeightFactor: $maxHeightFactor, isFullScreen: $isFullScreen, screenH: $screenH, maxHeight: $maxHeight',
+          );
 
           final surface =
               config.theme.surfaceColor ??
-                  Theme
-                      .of(modalContext)
-                      .colorScheme
-                      .surface;
+              Theme.of(modalContext).colorScheme.surface;
 
           // ----------------------------------------------------------------
           //  Final content container (with border radius, max height, adaptive content)
           // ----------------------------------------------------------------
-          return MediaQuery.removePadding(
+
+          final route = ModalRoute.of(modalContext);
+          final Animation<double>? routeAnimation = route?.animation;
+
+          final Widget sheetPanel = MediaQuery.removePadding(
             context: modalContext,
             removeBottom: true,
             child: Container(
@@ -168,15 +172,94 @@ class ModalSheetService {
               ),
               constraints: BoxConstraints(maxHeight: maxHeight),
               child: AnimatedSheetWrapper(
-                  policy: policy,
-                  child: SheetSurface<T>(
-                    isFullScreen: isFullScreen,
-                    config: config,
-                    onClose: finish,
-                    child: builder(modalContext, finish),
-                  )
+                policy: policy,
+                child: SheetSurface<T>(
+                  isFullScreen: isFullScreen,
+                  config: config,
+                  onClose: finish,
+                  child: builder(modalContext, finish),
+                ),
               ),
             ),
+          );
+
+          if (routeAnimation == null) {
+            return Stack(
+              children: [
+                // Background barrier
+                Positioned.fill(
+                  child: GestureDetector(
+                    onTap: allowBgClose ? () => finish() : null,
+                    child: BackdropFilter(
+                      filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+                      child: Container(color: barrierColor),
+                    ),
+                  ),
+                ),
+                Align(
+                  alignment: Alignment.bottomCenter,
+                  child: MediaQuery.removePadding(
+                    context: modalContext,
+                    removeBottom: true,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: surface,
+                        borderRadius: BorderRadius.vertical(
+                          top: Radius.circular(config.borderRadius),
+                        ),
+                      ),
+                      constraints: BoxConstraints(maxHeight: maxHeight),
+                      child: AnimatedSheetWrapper(
+                        policy: policy,
+                        child: SheetSurface<T>(
+                          isFullScreen: isFullScreen,
+                          config: config,
+                          onClose: finish,
+                          child: builder(modalContext, finish),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            );
+          }
+
+          // use curved animation to control background opacity, not linear, it looks better
+          final bgAnimation = CurvedAnimation(
+              parent: routeAnimation,
+              curve: const Interval(0.1, 0.1, curve: Curves.easeOutCubic), // in: slow start, fast end
+              reverseCurve: const Interval(0.0, 0.9, curve: Curves.easeInCubic) // out: fast start, slow end
+          );
+
+          return AnimatedBuilder(
+            animation: bgAnimation,
+            child: sheetPanel,
+            builder: (context, child) {
+              final t = (routeAnimation.value).clamp(.0, 1.0);
+              final overlayOpacity = barrierColor.opacity * t;
+              return Stack(
+                children: [
+                  // Background barrier
+                  Positioned.fill(
+                    child: GestureDetector(
+                      onTap: allowBgClose ? () => finish() : null,
+                      child: BackdropFilter(
+                        filter: ImageFilter.blur(
+                          sigmaX: 14,
+                          sigmaY: 14,
+                        ),
+                        child: Container(
+                          color: barrierColor.withOpacity(overlayOpacity),
+                        ),
+                      ),
+                    ),
+                  ),
+                  // Sheet panel
+                  Align(alignment: Alignment.bottomCenter, child: child!),
+                ],
+              );
+            },
           );
         },
       );
