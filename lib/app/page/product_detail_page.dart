@@ -10,9 +10,10 @@ import 'package:flutter_app/core/providers/index.dart';
 import 'package:flutter_app/core/providers/purchase_state_provider.dart';
 import 'package:flutter_app/core/store/auth/auth_provider.dart';
 import 'package:flutter_app/core/store/lucky_store.dart';
-import 'package:flutter_app/features/share/widgets/share_post.dart';
+import 'package:flutter_app/features/share/index.dart';
 import 'package:flutter_app/ui/bubble_progress.dart';
 import 'package:flutter_app/ui/button/button.dart';
+import 'package:flutter_app/ui/button/index.dart';
 import 'package:flutter_app/ui/modal/index.dart';
 import 'package:flutter_app/utils/format_helper.dart';
 import 'package:flutter_app/utils/helper.dart';
@@ -22,9 +23,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
-import '../../features/share/models/share_data.dart';
-import '../../features/share/services/share_service.dart';
-import '../../ui/button/variant.dart';
+
 
 class ProductDetailTab {
   final String title;
@@ -263,7 +262,7 @@ class _TopTreasureSectionState extends State<_TopTreasureSection> {
     ShareService.openSystemOrSheet(
       ShareData(
         title: data.title,
-        url: 'https://example.com/product/${111}',
+        url: data.url,
         text: data.title,
         imageUrl: data.imageUrl,
       ),
