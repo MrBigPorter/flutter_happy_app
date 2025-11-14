@@ -117,6 +117,7 @@ class _ButtonState extends State<Button> {
     final targetScale = widget.noPressAnimation
         ? 1.0
         : (_isPressed ? 0.92 : 1.0);
+    
 
     final bg = effectiveDisabled ? (widget.backgroundColor?.withValues(alpha: 0.8) ?? theme.bg.withValues(alpha: 0.8)) : (widget.backgroundColor??theme.bg);
     final fg = widget.foregroundColor??theme.fg;

@@ -1,6 +1,7 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_app/app/page/product_components/share_sheet.dart';
 import 'package:flutter_app/common.dart';
 import 'package:flutter_app/components/skeleton.dart';
@@ -734,6 +735,7 @@ class _JoinTreasureSection extends ConsumerWidget {
               ),
             ),
             child: _Stepper(
+              maxEntries: purchase.stockLeft,
               entries: purchase.entries,
               subtotal: purchase.subtotal,
               onMinus: () => action.dec(),
@@ -751,6 +753,7 @@ class _JoinTreasureSection extends ConsumerWidget {
 class _Stepper extends StatefulWidget {
   final int entries;
   final int subtotal;
+  final int maxEntries;
   final VoidCallback onMinus;
   final VoidCallback onPlus;
   final ValueChanged<String> onChanged;
@@ -761,6 +764,7 @@ class _Stepper extends StatefulWidget {
     required this.onPlus,
     required this.onChanged,
     required this.entries,
+    required this.maxEntries,
   });
 
   @override
@@ -836,7 +840,35 @@ class _StepperState extends State<_Stepper> {
                   controller: _controller,
                   textAlign: TextAlign.center,
                   keyboardType: TextInputType.number,
-                  onChanged: widget.onChanged,
+                  inputFormatters: [
+                    FilteringTextInputFormatter.digitsOnly,
+                  ],
+                  onChanged:(v){
+                    if(v.isEmpty){
+                      return widget.onChanged('');
+                    }
+
+                    final raw = int.tryParse(v);
+                    if(raw == null){
+                     final fixed = widget.entries;
+                     _controller.value = TextEditingValue(
+                       text: '$fixed',
+                       selection: TextSelection.collapsed(offset: '$fixed'.length),
+                     );
+                     return;
+                    }
+
+                    int clamped = raw.clamp(0, widget.maxEntries);
+
+                    if(clamped != raw){
+                      _controller.value = TextEditingValue(
+                        text: '$clamped',
+                        selection: TextSelection.collapsed(offset: '$clamped'.length),
+                      );
+                    }
+
+                    widget.onChanged('$clamped');
+                  },
                   style: TextStyle(
                     fontSize: context.textMd,
                     color: context.fgPrimary900,
@@ -861,9 +893,10 @@ class _StepperState extends State<_Stepper> {
             ),
           ],
         ),
-        //               <span>{group_id ? `${t('common.join.group')}` : `${t('common.form.group')}`}</span>
+        // todo <span>{group_id ? `${t('common.join.group')}` : `${t('common.form.group')}`}</span>
         SizedBox(height: 20.w),
         Button(
+          disabled: widget.entries <= 0,
           width: double.infinity,
           paddingX: 18.w,
           alignment: MainAxisAlignment.spaceBetween,
