@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_app/app/page/product_components/share_sheet.dart';
 import 'package:flutter_app/app/routes/app_router.dart';
 import 'package:flutter_app/common.dart';
+import 'package:flutter_app/components/anime_count.dart';
 import 'package:flutter_app/components/skeleton.dart';
 import 'package:flutter_app/components/swiper_banner.dart';
 import 'package:flutter_app/core/models/index.dart';
@@ -965,13 +966,13 @@ class _StepperState extends ConsumerState<_Stepper> {
                 }
               );
           },
-          trailing: Text(
-            FormatHelper.formatCurrency(purchase.subtotal),
-            style: TextStyle(
-              fontSize: context.textSm,
-              color: context.textWhite,
-              height: context.leadingSm,
-              fontWeight: FontWeight.w600,
+          trailing: AnimeCount.odo(
+            value: purchase.entries,
+            textStyle: TextStyle(
+              fontSize: context.textMd,
+              color: context.fgPrimary900,
+              height: context.leadingMd,
+              fontWeight: FontWeight.w800,
             ),
           ),
           child: Text('common.join.group'.tr()),
