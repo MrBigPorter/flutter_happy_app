@@ -7,7 +7,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_app/app/page/product_components/share_sheet.dart';
 import 'package:flutter_app/app/routes/app_router.dart';
 import 'package:flutter_app/common.dart';
-import 'package:flutter_app/components/anime_count.dart';
 import 'package:flutter_app/components/skeleton.dart';
 import 'package:flutter_app/components/swiper_banner.dart';
 import 'package:flutter_app/core/models/index.dart';
@@ -16,6 +15,7 @@ import 'package:flutter_app/core/providers/purchase_state_provider.dart';
 import 'package:flutter_app/core/store/auth/auth_provider.dart';
 import 'package:flutter_app/core/store/lucky_store.dart';
 import 'package:flutter_app/features/share/index.dart';
+import 'package:flutter_app/ui/animations/rolling_number.dart';
 import 'package:flutter_app/ui/bubble_progress.dart';
 import 'package:flutter_app/ui/button/button.dart';
 import 'package:flutter_app/ui/button/index.dart';
@@ -955,6 +955,7 @@ class _StepperState extends ConsumerState<_Stepper> {
           disabled: purchase.entries <= 0,
           width: double.infinity,
           paddingX: 18.w,
+          height: 44.w,
           alignment: MainAxisAlignment.spaceBetween,
           onPressed: () {
               appRouter.pushNamed(
@@ -966,13 +967,17 @@ class _StepperState extends ConsumerState<_Stepper> {
                 }
               );
           },
-          trailing: AnimeCount.odo(
-            value: purchase.entries,
-            textStyle: TextStyle(
-              fontSize: context.textMd,
-              color: context.fgPrimary900,
-              height: context.leadingMd,
-              fontWeight: FontWeight.w800,
+          trailing: RollingNumber(
+            value: purchase.subtotal,
+            itemHeight: 24.w,
+            enableComma: true,
+            prefix: Text(
+              '₱',
+              style: TextStyle(
+                fontSize: context.textSm,
+                color: context.textWhite,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
           child: Text('common.join.group'.tr()),
