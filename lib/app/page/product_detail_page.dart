@@ -24,8 +24,6 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
-
-
 class ProductDetailTab {
   final String title;
   final String tabId;
@@ -44,9 +42,46 @@ class ProductDetailPage extends ConsumerStatefulWidget {
 
 class _ProductDetailPageState extends ConsumerState<ProductDetailPage>
     with SingleTickerProviderStateMixin {
+  late final AnimationController _bottomBarController;
+  late final Animation<Offset> _offsetBarAnimation;
+  late final Animation<double> _opacityBarAnimation;
+
   @override
   void initState() {
     super.initState();
+
+    // Initialize animation controller
+    _bottomBarController = AnimationController(
+      duration: const Duration(milliseconds: 700),
+      vsync: this,
+    );
+
+    _opacityBarAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _bottomBarController,
+        curve: Curves.easeOutBack,
+        reverseCurve: Curves.easeInCubic,
+      ),
+    );
+
+    // Define offset animation,set to slide in from bottom
+    _offsetBarAnimation = Tween<Offset>(begin: Offset(0, 1), end: Offset.zero)
+        .animate(
+          CurvedAnimation(
+            parent: _bottomBarController,
+            curve: Curves.elasticInOut,
+            reverseCurve: Curves.easeInCubic,
+          ),
+        );
+
+    // Start the animation
+    _bottomBarController.forward();
+  }
+
+  @override
+  void dispose() {
+    _bottomBarController.dispose();
+    super.dispose();
   }
 
   @override
@@ -119,7 +154,13 @@ class _ProductDetailPageState extends ConsumerState<ProductDetailPage>
           SliverToBoxAdapter(child: _DetailContentSection(content: desc)),
         ],
       ),
-      bottomNavigationBar: _JoinTreasureSection(args: args),
+      bottomNavigationBar: FadeTransition(
+        opacity: _opacityBarAnimation,
+        child: SlideTransition(
+          position: _offsetBarAnimation,
+          child: _JoinTreasureSection(args: args),
+        ),
+      ),
     );
   }
 }
@@ -840,30 +881,32 @@ class _StepperState extends State<_Stepper> {
                   controller: _controller,
                   textAlign: TextAlign.center,
                   keyboardType: TextInputType.number,
-                  inputFormatters: [
-                    FilteringTextInputFormatter.digitsOnly,
-                  ],
-                  onChanged:(v){
-                    if(v.isEmpty){
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  onChanged: (v) {
+                    if (v.isEmpty) {
                       return widget.onChanged('');
                     }
 
                     final raw = int.tryParse(v);
-                    if(raw == null){
-                     final fixed = widget.entries;
-                     _controller.value = TextEditingValue(
-                       text: '$fixed',
-                       selection: TextSelection.collapsed(offset: '$fixed'.length),
-                     );
-                     return;
+                    if (raw == null) {
+                      final fixed = widget.entries;
+                      _controller.value = TextEditingValue(
+                        text: '$fixed',
+                        selection: TextSelection.collapsed(
+                          offset: '$fixed'.length,
+                        ),
+                      );
+                      return;
                     }
 
                     int clamped = raw.clamp(0, widget.maxEntries);
 
-                    if(clamped != raw){
+                    if (clamped != raw) {
                       _controller.value = TextEditingValue(
                         text: '$clamped',
-                        selection: TextSelection.collapsed(offset: '$clamped'.length),
+                        selection: TextSelection.collapsed(
+                          offset: '$clamped'.length,
+                        ),
                       );
                     }
 

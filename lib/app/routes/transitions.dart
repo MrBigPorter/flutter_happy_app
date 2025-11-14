@@ -39,8 +39,8 @@ Page<void> fxPage({
   Duration? inMs,
   Duration? outMs,
 }) {
-  final durIn = inMs ?? const Duration(milliseconds: 420);
-  final durOut = outMs ?? const Duration(milliseconds: 300);
+  final durIn = inMs ?? const Duration(milliseconds: 600);
+  final durOut = outMs ?? const Duration(milliseconds: 420);
 
   return CustomTransitionPage(
     key: key,
@@ -51,7 +51,7 @@ Page<void> fxPage({
       switch (fx) {
         case RouteFx.slideUp:
           final tween = Tween(
-            begin: Offset(0, 0.12),
+            begin: Offset(0, 0.35),
             end: Offset.zero,
           ).chain(CurveTween(curve: Curves.easeOutCubic));
           return SlideTransition(

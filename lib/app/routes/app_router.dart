@@ -89,7 +89,7 @@ class AppRouter {
               return fxPage(
                 key: state.pageKey,
                 child: ProductDetailPage(productId: id,),
-                fx: RouteFx.sharedScale,
+                fx: RouteFx.zoomIn,
               );
             }
         ),
