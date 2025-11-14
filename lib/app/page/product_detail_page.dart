@@ -154,16 +154,24 @@ class _ProductDetailPageState extends ConsumerState<ProductDetailPage>
           SliverToBoxAdapter(child: _DetailContentSection(content: desc)),
         ],
       ),
-      bottomNavigationBar: FadeTransition(
-        opacity: _opacityBarAnimation,
-        child: SlideTransition(
-          position: _offsetBarAnimation,
-          child: _JoinTreasureSection(
-              treasureId: detail.value?.treasureId,
-              groupId: null,//todo
-              args: args
+      bottomNavigationBar: AnimatedPadding(
+          padding: EdgeInsets.only(
+            //键盘高度
+            bottom: MediaQuery.of(context).viewInsets.bottom
           ),
-        ),
+          curve: Curves.easeOut,
+          duration: Duration(microseconds: 200),
+          child: FadeTransition(
+            opacity: _opacityBarAnimation,
+            child: SlideTransition(
+              position: _offsetBarAnimation,
+              child: _JoinTreasureSection(
+                  treasureId: detail.value?.treasureId,
+                  groupId: null,//todo
+                  args: args
+              ),
+            ),
+          ),
       ),
     );
   }
@@ -812,12 +820,43 @@ class _Stepper extends ConsumerStatefulWidget {
 /// 数量步进器 state
 class _StepperState extends ConsumerState<_Stepper> {
   late final TextEditingController _controller;
+  late final FocusNode _focusNode;
 
   @override
   void initState() {
     super.initState();
     final purchase = ref.read(purchaseProvider(widget.args));
     _controller = TextEditingController(text: '${purchase.entries}');
+    _focusNode = FocusNode()..addListener(_handleFocusChange);
+  }
+
+  void _handleFocusChange() {
+    if (!_focusNode.hasFocus) {
+      _commitText();
+    }
+  }
+
+  void _commitText() {
+      final action = ref.read(purchaseProvider(widget.args).notifier);
+      final purchase = ref.read(purchaseProvider(widget.args));
+
+      var text = _controller.text.toString();
+
+      if(text.isEmpty || int.tryParse(text) == null || int.parse(text) < purchase.minPerBuy) {
+        text = purchase.minPerBuy.toString();
+      }
+
+      action.setEntriesFromText(text);
+      final updated = ref.read(purchaseProvider(widget.args)).entries;
+      updateControllerText(updated);
+  }
+
+  void updateControllerText(int value) {
+    final expected = '$value';
+    _controller.value = TextEditingValue(
+      text: expected,
+      selection: TextSelection.collapsed(offset: expected.length),
+    );
   }
 
   @override
@@ -836,21 +875,14 @@ class _StepperState extends ConsumerState<_Stepper> {
   @override
   dispose() {
     _controller.dispose();
+    _focusNode.removeListener(_handleFocusChange);
+    _focusNode.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final purchase = ref.watch(purchaseProvider(widget.args));
-    final expectedText = '${purchase.entries}';
-    // keep controller text in sync with state
-    if (_controller.text != expectedText) {
-      _controller.value = TextEditingValue(
-        text: expectedText,
-        selection: TextSelection.collapsed(offset: expectedText.length),
-      );
-    }
-
 
     final action = ref.read(purchaseProvider(widget.args).notifier);
     return Column(
@@ -863,7 +895,9 @@ class _StepperState extends ConsumerState<_Stepper> {
               width: 44.w,
               height: 44.w,
               variant: ButtonVariant.outline,
-              onPressed: action.dec,
+              onPressed: (){
+                action.dec(updateControllerText);
+              },
               child: Icon(Icons.remove, size: 24.w),
             ),
             SizedBox(width: 10.w),
@@ -891,38 +925,19 @@ class _StepperState extends ConsumerState<_Stepper> {
                 ),
                 child: TextField(
                   controller: _controller,
+                  focusNode: _focusNode,
                   textAlign: TextAlign.center,
                   keyboardType: TextInputType.number,
+                  textInputAction: TextInputAction.done,
                   inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                  onChanged: (v) {
-                    if (v.isEmpty) {
-                      action.setEntriesFromText(math.max(0, purchase.minPerBuy).toString());
-                      return;
-                    }
-
-                    final raw = int.tryParse(v);
-                    if (raw == null) {
-                      final fixed = purchase.entries;
-                      _controller.value = TextEditingValue(
-                        text: '$fixed',
-                        selection: TextSelection.collapsed(
-                          offset: '$fixed'.length,
-                        ),
-                      );
-                      return;
-                    }
-
-                    int clamped = raw.clamp(0, purchase.stockLeft);
-
-                    if (clamped != raw) {
-                      _controller.value = TextEditingValue(
-                        text: '$clamped',
-                        selection: TextSelection.collapsed(
-                          offset: '$clamped'.length,
-                        ),
-                      );
-                    }
-                    action.setEntriesFromText('$clamped');
+                  onChanged: (value){
+                    action.setEntriesFromText(value);
+                  },
+                  onTapOutside: (v){
+                    FocusScope.of(context).unfocus();
+                  },
+                  onEditingComplete: (){
+                   FocusScope.of(context).unfocus();
                   },
                   style: TextStyle(
                     fontSize: context.textMd,
@@ -944,7 +959,9 @@ class _StepperState extends ConsumerState<_Stepper> {
               width: 44.w,
               height: 44.w,
               variant: ButtonVariant.outline,
-              onPressed: action.inc,
+              onPressed:(){
+                action.inc(updateControllerText);
+              },
               child: Icon(Icons.add, size: 24.w),
             ),
           ],
@@ -952,7 +969,7 @@ class _StepperState extends ConsumerState<_Stepper> {
         // todo <span>{group_id ? `${t('common.join.group')}` : `${t('common.form.group')}`}</span>
         SizedBox(height: 20.w),
         Button(
-          disabled: purchase.entries <= 0,
+          disabled: purchase.entries < purchase.minPerBuy,
           width: double.infinity,
           paddingX: 18.w,
           height: 44.w,

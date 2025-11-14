@@ -52,7 +52,7 @@ class PurchaseState {
     return coinAmount;
   }
   PurchaseState copyWith({int? entries}) {
-    final e = (entries ?? this.entries).clamp(minPerBuy, _maxEntriesAllowed);
+    final e = (entries ?? this.entries).clamp(0, _maxEntriesAllowed);
     return PurchaseState(
       entries: e,
       unitPrice: unitPrice,
@@ -73,10 +73,16 @@ class PurchaseNotifier extends StateNotifier<PurchaseState> {
   PurchaseNotifier(super.s);
 
   // Increment entries
-  void inc() => state = state.copyWith(entries: state.entries + 1);
+  void inc(Function(int newEntries)? onChanged) {
+    state = state.copyWith(entries: state.entries + 1);
+    onChanged?.call(state.entries);
+  }
 
   // Decrement entries
-  void dec() => state = state.copyWith(entries: state.entries - 1);
+  void dec(Function(int newEntries)? onChanged) {
+     state = state.copyWith(entries: state.entries - 1);
+      onChanged?.call(state.entries);
+  }
 
 
   // Set entries from text input

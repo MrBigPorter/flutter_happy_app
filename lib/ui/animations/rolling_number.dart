@@ -87,6 +87,7 @@ class RollingNumberState extends State<RollingNumber>
   @override
   void didUpdateWidget(covariant RollingNumber oldWidget) {
     super.didUpdateWidget(oldWidget);
+    
 
     // When the external [value] changes, trigger a new animation.
     if (oldWidget.value != widget.value) {
@@ -116,18 +117,28 @@ class RollingNumberState extends State<RollingNumber>
         final oldStr = oldValue.abs().toString();
         final newStr = widget.value.abs().toString();
 
-        // Use the **max length** between old & new values.
-        // This prevents layout glitches when length changes,
-        // e.g. 999 → 1000 (3 digits → 4 digits).
-        final len = oldStr.length > newStr.length ? oldStr.length : newStr.length;
-
-        // Pad both sides with leading zeros so they have the same length.
-        final o = oldStr.padLeft(len, '0');
-        final n = newStr.padLeft(len, '0');
-
         // Convert each character into a digit int.
-        final oldDigits = o.split('').map(int.parse).toList();
-        final newDigits = n.split('').map(int.parse).toList();
+        final oldDigits = oldStr.split('');
+        final newDigits = newStr.split('');
+
+
+        final newLength = newDigits.length;
+        final oldLength = oldDigits.length;
+
+        final diff = newLength - oldLength;
+
+        int _digitFrom (int i){
+          final oldIndex = i - diff;
+          if(oldIndex < 0 || oldIndex >= oldLength){
+            return int.parse(newDigits[i]);
+          } else {
+            return int.parse( oldDigits[oldIndex]);
+          }
+        }
+
+        int _digitTo (int i){
+          return int.parse( newDigits[i]);
+        }
 
         return Row(
           mainAxisSize: MainAxisSize.min,
@@ -138,13 +149,13 @@ class RollingNumberState extends State<RollingNumber>
             ],
 
             // Loop over each digit position.
-            for (var i = 0; i < len; i++) ...[
+            for (var i = 0; i < newLength; i++) ...[
               // Insert thousand-separator commas if:
               // - not the first digit
               // - and (len - i) is divisible by 3
               //   (i.e. we are at a thousands boundary from the right)
               if (i > 0 &&
-                  (len - i) % 3 == 0 &&
+                  (newLength - i) % 3 == 0 &&
                   (widget.enableComma ?? false))
                 Padding(
                   padding: EdgeInsets.symmetric(horizontal: 1.w),
@@ -160,8 +171,8 @@ class RollingNumberState extends State<RollingNumber>
 
               // Render a single rolling digit column for this position.
               RollingDigitSmooth(
-                from: oldDigits[i],
-                to: newDigits[i],
+                from: _digitFrom(i),
+                to: _digitTo(i),
                 progress: _anim.value,
                 height: widget.itemHeight,
                 width: widget.itemWidth,
