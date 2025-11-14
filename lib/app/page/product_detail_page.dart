@@ -1,9 +1,11 @@
-import 'package:animations/animations.dart';
+import 'dart:math' as math;
+
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_app/app/page/product_components/share_sheet.dart';
+import 'package:flutter_app/app/routes/app_router.dart';
 import 'package:flutter_app/common.dart';
 import 'package:flutter_app/components/skeleton.dart';
 import 'package:flutter_app/components/swiper_banner.dart';
@@ -25,12 +27,6 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
-class ProductDetailTab {
-  final String title;
-  final String tabId;
-
-  ProductDetailTab({required this.title, required this.tabId});
-}
 
 class ProductDetailPage extends ConsumerStatefulWidget {
   final String productId;
@@ -110,12 +106,14 @@ class _ProductDetailPageState extends ConsumerState<ProductDetailPage>
       maxUnitCoins: detail.value?.maxUnitCoins ?? 0,
       exchangeRate: exchangeRate,
       maxPerBuy: detail.value?.maxPerBuyQuantity ?? 999999,
+      minPerBuy: detail.value?.minBuyQuantity ?? 1,
       stockLeft:
           (detail.value?.seqShelvesQuantity ?? 0) -
           (detail.value?.seqBuyQuantity ?? 0),
       isLoggedIn: isAuthenticated,
       balanceCoins: coinBalance,
-      coinAmountCap: null, // 有比
+      coinAmountCap: null,
+      entries: detail.value?.minBuyQuantity ?? 1,
     );
 
     final desc =
@@ -159,7 +157,11 @@ class _ProductDetailPageState extends ConsumerState<ProductDetailPage>
         opacity: _opacityBarAnimation,
         child: SlideTransition(
           position: _offsetBarAnimation,
-          child: _JoinTreasureSection(args: args),
+          child: _JoinTreasureSection(
+              treasureId: detail.value?.treasureId,
+              groupId: null,//todo
+              args: args
+          ),
         ),
       ),
     );
@@ -266,7 +268,7 @@ class _BannerSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (banners == null || banners!.isEmpty) {
-      return Skeleton.react(width: double.infinity, height: 250);
+      return Skeleton.react(width: double.infinity, height: 250, borderRadius: BorderRadius.zero);
     }
     return SwiperBanner(height: 250, borderRadius: 0, banners: banners!);
   }
@@ -694,9 +696,11 @@ class _GroupSection extends StatelessWidget {
 
 /// 参与宝藏区 join treasure section
 class _JoinTreasureSection extends ConsumerWidget {
+  final String? treasureId;
+  final String? groupId;
   final PurchaseArgs? args;
 
-  const _JoinTreasureSection({this.args});
+  const _JoinTreasureSection({this.args, this.treasureId, this.groupId});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -777,12 +781,9 @@ class _JoinTreasureSection extends ConsumerWidget {
               ),
             ),
             child: _Stepper(
-              maxEntries: purchase.stockLeft,
-              entries: purchase.entries,
-              subtotal: purchase.subtotal,
-              onMinus: () => action.dec(),
-              onPlus: () => action.inc(),
-              onChanged: (v) => action.setEntriesFromText(v),
+              treasureId: treasureId ?? '',
+              groupId: groupId,
+              args: args!,
             ),
           ),
         ],
@@ -792,45 +793,41 @@ class _JoinTreasureSection extends ConsumerWidget {
 }
 
 /// 数量步进器 stepper
-class _Stepper extends StatefulWidget {
-  final int entries;
-  final int subtotal;
-  final int maxEntries;
-  final VoidCallback onMinus;
-  final VoidCallback onPlus;
-  final ValueChanged<String> onChanged;
+class _Stepper extends ConsumerStatefulWidget {
+  final String treasureId;
+  final String? groupId;
+  final PurchaseArgs args;
 
   const _Stepper({
-    required this.subtotal,
-    required this.onMinus,
-    required this.onPlus,
-    required this.onChanged,
-    required this.entries,
-    required this.maxEntries,
+    required this.treasureId,
+    this.groupId,
+    required this.args,
   });
 
   @override
-  State<_Stepper> createState() => _StepperState();
+  ConsumerState<_Stepper> createState() => _StepperState();
 }
 
 /// 数量步进器 state
-class _StepperState extends State<_Stepper> {
+class _StepperState extends ConsumerState<_Stepper> {
   late final TextEditingController _controller;
 
   @override
   void initState() {
     super.initState();
-    // Initialize the text editing controller with default value '1' todo
-    _controller = TextEditingController(text: '${widget.entries}');
+    final purchase = ref.read(purchaseProvider(widget.args));
+    _controller = TextEditingController(text: '${purchase.entries}');
   }
 
   @override
   void didUpdateWidget(covariant _Stepper oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.entries != widget.entries) {
+    // when parent args change, update controller text
+    if (oldWidget.args != widget.args) {
+      final purchase = ref.read(purchaseProvider(widget.args));
       _controller.value = TextEditingValue(
-        text: '${widget.entries}',
-        selection: TextSelection.collapsed(offset: '${widget.entries}'.length),
+        text: '${purchase.entries}',
+        selection: TextSelection.collapsed(offset: '${purchase.entries}'.length),
       );
     }
   }
@@ -843,16 +840,29 @@ class _StepperState extends State<_Stepper> {
 
   @override
   Widget build(BuildContext context) {
+    final purchase = ref.watch(purchaseProvider(widget.args));
+    final expectedText = '${purchase.entries}';
+    // keep controller text in sync with state
+    if (_controller.text != expectedText) {
+      _controller.value = TextEditingValue(
+        text: expectedText,
+        selection: TextSelection.collapsed(offset: expectedText.length),
+      );
+    }
+
+
+    final action = ref.read(purchaseProvider(widget.args).notifier);
     return Column(
       children: [
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Button(
+              disabled: purchase.entries <= math.max(0, widget.args.minPerBuy),
               width: 44.w,
               height: 44.w,
               variant: ButtonVariant.outline,
-              onPressed: widget.onMinus,
+              onPressed: action.dec,
               child: Icon(Icons.remove, size: 24.w),
             ),
             SizedBox(width: 10.w),
@@ -885,12 +895,13 @@ class _StepperState extends State<_Stepper> {
                   inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                   onChanged: (v) {
                     if (v.isEmpty) {
-                      return widget.onChanged('');
+                      action.setEntriesFromText(math.max(0, purchase.minPerBuy).toString());
+                      return;
                     }
 
                     final raw = int.tryParse(v);
                     if (raw == null) {
-                      final fixed = widget.entries;
+                      final fixed = purchase.entries;
                       _controller.value = TextEditingValue(
                         text: '$fixed',
                         selection: TextSelection.collapsed(
@@ -900,7 +911,7 @@ class _StepperState extends State<_Stepper> {
                       return;
                     }
 
-                    int clamped = raw.clamp(0, widget.maxEntries);
+                    int clamped = raw.clamp(0, purchase.stockLeft);
 
                     if (clamped != raw) {
                       _controller.value = TextEditingValue(
@@ -910,8 +921,7 @@ class _StepperState extends State<_Stepper> {
                         ),
                       );
                     }
-
-                    widget.onChanged('$clamped');
+                    action.setEntriesFromText('$clamped');
                   },
                   style: TextStyle(
                     fontSize: context.textMd,
@@ -929,10 +939,11 @@ class _StepperState extends State<_Stepper> {
             ),
             SizedBox(width: 10.w),
             Button(
+              disabled: purchase.entries >= purchase.stockLeft,
               width: 44.w,
               height: 44.w,
               variant: ButtonVariant.outline,
-              onPressed: widget.onPlus,
+              onPressed: action.inc,
               child: Icon(Icons.add, size: 24.w),
             ),
           ],
@@ -940,13 +951,22 @@ class _StepperState extends State<_Stepper> {
         // todo <span>{group_id ? `${t('common.join.group')}` : `${t('common.form.group')}`}</span>
         SizedBox(height: 20.w),
         Button(
-          disabled: widget.entries <= 0,
+          disabled: purchase.entries <= 0,
           width: double.infinity,
           paddingX: 18.w,
           alignment: MainAxisAlignment.spaceBetween,
-          onPressed: () {},
+          onPressed: () {
+              appRouter.pushNamed(
+                'payment',
+                queryParameters: {
+                  'entries': '${purchase.entries}',
+                   'treasureId': widget.treasureId,
+                    if (widget.groupId != null) 'groupId': widget.groupId!,
+                }
+              );
+          },
           trailing: Text(
-            FormatHelper.formatCurrency(widget.subtotal),
+            FormatHelper.formatCurrency(purchase.subtotal),
             style: TextStyle(
               fontSize: context.textSm,
               color: context.textWhite,

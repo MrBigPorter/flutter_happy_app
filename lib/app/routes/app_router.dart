@@ -1,4 +1,5 @@
 import 'package:flutter/cupertino.dart';
+import 'package:flutter_app/app/page/payment_page.dart';
 import 'package:flutter_app/app/page/wallet_detail_page.dart';
 import 'package:flutter_app/app/routes/transitions.dart';
 import 'package:flutter_app/ui/modal/base/modal_auto_close_observer.dart';
@@ -93,6 +94,17 @@ class AppRouter {
               );
             }
         ),
+        GoRoute(
+          name:'payment',
+           path: '/payment',
+           pageBuilder: (ctx, state){
+            return fxPage(
+                child: PaymentPage(),
+                key: state.pageKey,
+                fx: RouteFx.slideUp
+            );
+           }
+        )
       ],
     );
   }

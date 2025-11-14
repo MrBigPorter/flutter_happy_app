@@ -9,6 +9,7 @@ class PurchaseState {
   final double balanceCoins; // User's balance coins
   final double exchangeRate; // Exchange rate
   final int maxPerBuy; // Maximum units per purchase
+  final int minPerBuy; // Minimum units per purchase
   final int stockLeft; // Stock left
   final num? coinAmountCap; // Optional cap on coin amount
   final bool isLoginIn; // User login status
@@ -20,13 +21,14 @@ class PurchaseState {
     required this.balanceCoins,
     required this.exchangeRate,
     required this.maxPerBuy,
+    required this.minPerBuy,
     required this.stockLeft,
     this.coinAmountCap,
     required this.isLoginIn,
   });
 
   // Maximum entries allowed based on maxPerBuy and stockLeft
-  int get _maxEntriesAllowed => math.max(0, math.min(maxPerBuy, stockLeft));
+  int get _maxEntriesAllowed => math.max(minPerBuy, math.min(maxPerBuy, stockLeft));
 
   // Whether the current entries exceed the allowed maximum
   int get subtotal => unitPrice * entries;
@@ -50,7 +52,7 @@ class PurchaseState {
     return coinAmount;
   }
   PurchaseState copyWith({int? entries}) {
-    final e = (entries ?? this.entries).clamp(0, _maxEntriesAllowed);
+    final e = (entries ?? this.entries).clamp(minPerBuy, _maxEntriesAllowed);
     return PurchaseState(
       entries: e,
       unitPrice: unitPrice,
@@ -58,6 +60,7 @@ class PurchaseState {
       balanceCoins: balanceCoins,
       exchangeRate: exchangeRate,
       maxPerBuy: maxPerBuy,
+      minPerBuy: minPerBuy,
       stockLeft: stockLeft,
       coinAmountCap: coinAmountCap,
       isLoginIn: isLoginIn,
@@ -84,10 +87,12 @@ class PurchaseNotifier extends StateNotifier<PurchaseState> {
 }
 
 typedef PurchaseArgs = ({
+  int entries,
   int unitPrice,
   int maxUnitCoins,
   double exchangeRate,
   int maxPerBuy,
+  int minPerBuy,
   int stockLeft,
   bool isLoggedIn,
   double balanceCoins,
@@ -98,12 +103,13 @@ final purchaseProvider = StateNotifierProvider.autoDispose
     .family<PurchaseNotifier, PurchaseState, PurchaseArgs>((ref, args) {
       return PurchaseNotifier(
         PurchaseState(
-          entries: 1,
+          entries: args.minPerBuy,
           unitPrice: args.unitPrice,
           maxUnitCoins: args.maxUnitCoins,
           balanceCoins: args.balanceCoins,
           exchangeRate: args.exchangeRate,
           maxPerBuy: args.maxPerBuy,
+          minPerBuy: args.minPerBuy,
           stockLeft: args.stockLeft,
           coinAmountCap: args.coinAmountCap,
           isLoginIn: args.isLoggedIn,

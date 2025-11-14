@@ -1,4 +1,5 @@
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_app/features/share/models/share_data.dart';
 import 'package:http/http.dart' as httpClient;
 import 'package:share_plus/share_plus.dart';
@@ -153,6 +154,13 @@ class ShareService {
   ) async {
     // Try to open the native share dialog first
     try {
+
+      if( kIsWeb && openSheet != null){
+        // On web, directly open the custom share sheet if provided
+        await openSheet();
+        return;
+
+      }
       final thumbnail = await _ensurePreviewThumbnail(d);
 
       await SharePlus.instance.share(
@@ -164,7 +172,6 @@ class ShareService {
         ),
       );
     } catch (e) {
-      print('Failed to open native share dialog: $e');
       // If it fails, open the custom share sheet if provided
       if (openSheet != null) {
         await openSheet();
