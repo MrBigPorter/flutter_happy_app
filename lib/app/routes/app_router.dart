@@ -98,6 +98,8 @@ class AppRouter {
           name:'payment',
            path: '/payment',
            pageBuilder: (ctx, state){
+
+
             return fxPage(
                 child: PaymentPage(),
                 key: state.pageKey,

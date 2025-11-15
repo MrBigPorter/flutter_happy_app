@@ -1,6 +1,3 @@
-import 'dart:typed_data';
-import 'dart:html' as html;
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_app/common.dart';
@@ -13,6 +10,9 @@ import 'package:screenshot/screenshot.dart';
 import 'package:share_plus/share_plus.dart';
 
 import 'package:flutter_app/ui/index.dart';
+
+import 'save_poster_stub.dart'
+    if (dart.library.html) 'save_poster_web.dart';
 
 
 class SharePost extends StatefulWidget {
@@ -61,21 +61,8 @@ class SharePostState extends State<SharePost> {
       }
     }else{
       // Handle web download,because web cannot save to gallery directly
-        _downLoadFromBytes(bytes);
+        downloadImageOnWeb(bytes);
     }
-  }
-
-  // Download image from bytes in web
-  void _downLoadFromBytes(Uint8List bytes){
-    final blob = html.Blob([bytes]);
-    final url = html.Url.createObjectUrl(blob);
-
-    final anchor = html.AnchorElement(href: url)
-      ..download = 'share_poster_${DateTime.now().millisecondsSinceEpoch}.png'
-      ..click();
-
-    html.Url.revokeObjectUrl(url);
-
   }
 
   Future<void> sharePost() async {
