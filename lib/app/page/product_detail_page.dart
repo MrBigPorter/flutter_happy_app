@@ -28,7 +28,6 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
-
 class ProductDetailPage extends ConsumerStatefulWidget {
   final String productId;
 
@@ -147,6 +146,9 @@ class _ProductDetailPageState extends ConsumerState<ProductDetailPage>
             ),
           ),
           SliverToBoxAdapter(
+            child: _CouponSection(),
+          ),
+          SliverToBoxAdapter(
             child: _TopTreasureSection(item: detail.value, url: webBaseUrl),
           ),
           SliverToBoxAdapter(child: _GroupSection()),
@@ -155,23 +157,23 @@ class _ProductDetailPageState extends ConsumerState<ProductDetailPage>
         ],
       ),
       bottomNavigationBar: AnimatedPadding(
-          padding: EdgeInsets.only(
-            //键盘高度
-            bottom: MediaQuery.of(context).viewInsets.bottom
-          ),
-          curve: Curves.easeOut,
-          duration: Duration(microseconds: 200),
-          child: FadeTransition(
-            opacity: _opacityBarAnimation,
-            child: SlideTransition(
-              position: _offsetBarAnimation,
-              child: _JoinTreasureSection(
-                  treasureId: detail.value?.treasureId,
-                  groupId: null,//todo
-                  args: args
-              ),
+        padding: EdgeInsets.only(
+          //键盘高度
+          bottom: MediaQuery.of(context).viewInsets.bottom,
+        ),
+        curve: Curves.easeOut,
+        duration: Duration(microseconds: 200),
+        child: FadeTransition(
+          opacity: _opacityBarAnimation,
+          child: SlideTransition(
+            position: _offsetBarAnimation,
+            child: _JoinTreasureSection(
+              treasureId: detail.value?.treasureId,
+              groupId: null, //todo
+              args: args,
             ),
           ),
+        ),
       ),
     );
   }
@@ -277,7 +279,11 @@ class _BannerSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (banners == null || banners!.isEmpty) {
-      return Skeleton.react(width: double.infinity, height: 250, borderRadius: BorderRadius.zero);
+      return Skeleton.react(
+        width: double.infinity,
+        height: 250,
+        borderRadius: BorderRadius.zero,
+      );
     }
     return SwiperBanner(height: 250, borderRadius: 0, banners: banners!);
   }
@@ -610,10 +616,51 @@ class _TopTreasureSectionState extends State<_TopTreasureSection> {
 class _CouponSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: 100,
-      color: Colors.grey[200],
-      child: Center(child: Text('Coupon Section')),
+    return Padding(
+      padding: EdgeInsets.only(left: 16.w,right: 16.w,top: 20.w),
+      child: SizedBox(
+        height: 22.w,
+        child: Row(
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.start,
+              children: List.generate(2, (index){
+                return Container(
+                  padding: EdgeInsets.symmetric(horizontal: 8.w),
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(6.w),
+                      border: Border.fromBorderSide(
+                        BorderSide(
+                          color: context.utilityBrand200,
+                          width: 1.w,
+                        ),
+                      ),
+                      color: context.utilityBrand50
+                  ),
+                  child: Text(
+                    'new user coming',
+                    style: TextStyle(
+                      fontSize: context.textXs,
+                      color: context.utilityBrand700,
+                      fontWeight: FontWeight.w500,
+                      height: context.leadingXs,
+                    ),
+                  ),
+
+                );
+              }),
+            ),
+            Spacer(),
+            Button(
+                variant: ButtonVariant.text,
+                paddingX: 0,
+                onPressed: (){},
+                child: Icon(Icons.chevron_right, size: 24.w, color: context.fgErrorPrimary,),
+            )
+          ],
+        ),
+      )
     );
   }
 }
@@ -626,7 +673,6 @@ class _GroupSection extends StatelessWidget {
       padding: EdgeInsets.symmetric(horizontal: 16.w),
       child: Container(
         width: double.infinity,
-        padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 16.w),
         decoration: BoxDecoration(
           color: context.bgPrimary,
           border: Border.all(color: context.borderPrimary, width: 1),
@@ -636,66 +682,183 @@ class _GroupSection extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'common.group.for.treasures'.tr(),
-                      style: TextStyle(
-                        fontSize: context.textMd,
-                        fontWeight: FontWeight.w800,
-                        color: context.fgPrimary900,
-                        height: context.leadingMd,
-                      ),
-                    ),
-                    SizedBox(height: 10.w),
-                    Container(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: 8.w,
-                        vertical: 2.w,
-                      ),
-                      decoration: BoxDecoration(
-                        color: context.utilityBrand50,
-                        borderRadius: BorderRadius.all(
-                          Radius.circular(context.radiusFull),
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.w),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'common.group.for.treasures'.tr(),
+                        style: TextStyle(
+                          fontSize: context.textMd,
+                          fontWeight: FontWeight.w800,
+                          color: context.fgPrimary900,
+                          height: context.leadingMd,
                         ),
-                        border: Border.fromBorderSide(
-                          BorderSide(
-                            color: context.utilityBrand200,
-                            width: 1.w,
+                      ),
+                      SizedBox(height: 10.w),
+                      Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 8.w,
+                          vertical: 2.w,
+                        ),
+                        decoration: BoxDecoration(
+                          color: context.utilityBrand50,
+                          borderRadius: BorderRadius.all(
+                            Radius.circular(context.radiusFull),
+                          ),
+                          border: Border.fromBorderSide(
+                            BorderSide(
+                              color: context.utilityBrand200,
+                              width: 1.w,
+                            ),
+                          ),
+                        ),
+                        child: Text(
+                          'common.users'.tr(namedArgs: {'number': '1234'}),
+                          style: TextStyle(
+                            fontSize: context.text2xs,
+                            color: context.utilityBrand700,
+                            fontWeight: FontWeight.w500,
+                            height: context.leadingXs,
                           ),
                         ),
                       ),
-                      child: Text(
-                        'common.users'.tr(namedArgs: {'number': '1234'}),
-                        style: TextStyle(
-                          fontSize: context.text2xs,
-                          color: context.utilityBrand700,
-                          fontWeight: FontWeight.w500,
-                          height: context.leadingXs,
-                        ),
+                    ],
+                  ),
+                  GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    child: SvgPicture.asset(
+                      'assets/images/product_detail/goto.svg',
+                      width: 16.w,
+                      height: 16.w,
+                      colorFilter: ColorFilter.mode(
+                        context.fgPrimary900,
+                        BlendMode.srcIn,
                       ),
                     ),
-                  ],
-                ),
-                GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  child: SvgPicture.asset(
-                    'assets/images/product_detail/goto.svg',
-                    width: 16.w,
-                    height: 16.w,
-                    colorFilter: ColorFilter.mode(
-                      context.fgPrimary900,
-                      BlendMode.srcIn,
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(
+              width: double.infinity,
+              height: 72.w * 6,
+              child: ListView.builder(
+                padding: EdgeInsets.zero,
+                itemExtent: 72.w,
+                physics: const NeverScrollableScrollPhysics(),
+                itemBuilder: (BuildContext context, int index) {
+                  final isEven = index % 2 == 0;
+                  return Container(
+                    width: double.infinity,
+                    height: 72.w,
+                    decoration: BoxDecoration(
+                      color: context.bgPrimary,
+                      border: Border(
+                        bottom: BorderSide(
+                          color: context.borderSecondary,
+                          width: 1.w,
+                        ),
+                      ),
+                      gradient: isEven
+                          ? LinearGradient(
+                              colors: [
+                                context.alphaBlack2.withValues(alpha: 0.02),
+                                context.alphaBlack2,
+                              ],
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                            )
+                          : null,
+                    ),
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 16.w),
+                      child: Row(
+                        children: [
+                          Text(
+                            '#${index + 1}',
+                            style: TextStyle(
+                              fontSize: context.textSm,
+                              color: context.fgPrimary900,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          SizedBox(width: 20.w),
+                          CircleAvatar(
+                            radius: 20.w,
+                            backgroundImage: NetworkImage(
+                              'https://picsum.photos/200',
+                            ),
+                          ),
+                          Spacer(),
+                          Text(
+                            'Username',
+                            style: TextStyle(
+                              fontSize: context.textSm,
+                              color: context.fgPrimary900,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          Spacer(),
+                          Icon(
+                            Icons.chevron_right,
+                            size: 16.w,
+                            color: context.fgQuinary400,
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+                itemCount: 6,
+              ),
+            ),
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16.w,vertical: 16.w),
+              child: Row(
+                children: [
+                  Button(
+                    height: 36.w,
+                    alignment: MainAxisAlignment.center,
+                    variant: ButtonVariant.outline,
+                    onPressed: () {},
+                     child: Icon(
+                       Icons.arrow_back,
+                       size: 20.w,
+                       color: context.fgPrimary900,
+                     ),
+
+                  ),
+                  Spacer(),
+                  Text(
+                    'Page 1 of 10',
+                    style: TextStyle(
+                      fontSize: context.textSm,
+                      color: context.fgPrimary900,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
-                ),
-              ],
-            ),
+                  Spacer(),
+                  Button(
+                    height: 36.w,
+                    alignment: MainAxisAlignment.center,
+                    variant: ButtonVariant.outline,
+                    onPressed: () {},
+                    child: Icon(
+                      Icons.arrow_forward,
+                      size: 20.w,
+                      color: context.fgPrimary900,
+                    ),
+
+                  )
+                ],
+              ),
+            )
           ],
         ),
       ),
@@ -807,11 +970,7 @@ class _Stepper extends ConsumerStatefulWidget {
   final String? groupId;
   final PurchaseArgs args;
 
-  const _Stepper({
-    required this.treasureId,
-    this.groupId,
-    required this.args,
-  });
+  const _Stepper({required this.treasureId, this.groupId, required this.args});
 
   @override
   ConsumerState<_Stepper> createState() => _StepperState();
@@ -837,18 +996,20 @@ class _StepperState extends ConsumerState<_Stepper> {
   }
 
   void _commitText() {
-      final action = ref.read(purchaseProvider(widget.args).notifier);
-      final purchase = ref.read(purchaseProvider(widget.args));
+    final action = ref.read(purchaseProvider(widget.args).notifier);
+    final purchase = ref.read(purchaseProvider(widget.args));
 
-      var text = _controller.text.toString();
+    var text = _controller.text.toString();
 
-      if(text.isEmpty || int.tryParse(text) == null || int.parse(text) < purchase.minPerBuy) {
-        text = purchase.minPerBuy.toString();
-      }
+    if (text.isEmpty ||
+        int.tryParse(text) == null ||
+        int.parse(text) < purchase.minPerBuy) {
+      text = purchase.minPerBuy.toString();
+    }
 
-      action.setEntriesFromText(text);
-      final updated = ref.read(purchaseProvider(widget.args)).entries;
-      updateControllerText(updated);
+    action.setEntriesFromText(text);
+    final updated = ref.read(purchaseProvider(widget.args)).entries;
+    updateControllerText(updated);
   }
 
   void updateControllerText(int value) {
@@ -867,7 +1028,9 @@ class _StepperState extends ConsumerState<_Stepper> {
       final purchase = ref.read(purchaseProvider(widget.args));
       _controller.value = TextEditingValue(
         text: '${purchase.entries}',
-        selection: TextSelection.collapsed(offset: '${purchase.entries}'.length),
+        selection: TextSelection.collapsed(
+          offset: '${purchase.entries}'.length,
+        ),
       );
     }
   }
@@ -895,7 +1058,7 @@ class _StepperState extends ConsumerState<_Stepper> {
               width: 44.w,
               height: 44.w,
               variant: ButtonVariant.outline,
-              onPressed: (){
+              onPressed: () {
                 action.dec(updateControllerText);
               },
               child: Icon(Icons.remove, size: 24.w),
@@ -930,14 +1093,14 @@ class _StepperState extends ConsumerState<_Stepper> {
                   keyboardType: TextInputType.number,
                   textInputAction: TextInputAction.done,
                   inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                  onChanged: (value){
+                  onChanged: (value) {
                     action.setEntriesFromText(value);
                   },
-                  onTapOutside: (v){
+                  onTapOutside: (v) {
                     FocusScope.of(context).unfocus();
                   },
-                  onEditingComplete: (){
-                   FocusScope.of(context).unfocus();
+                  onEditingComplete: () {
+                    FocusScope.of(context).unfocus();
                   },
                   style: TextStyle(
                     fontSize: context.textMd,
@@ -959,7 +1122,7 @@ class _StepperState extends ConsumerState<_Stepper> {
               width: 44.w,
               height: 44.w,
               variant: ButtonVariant.outline,
-              onPressed:(){
+              onPressed: () {
                 action.inc(updateControllerText);
               },
               child: Icon(Icons.add, size: 24.w),
@@ -975,14 +1138,15 @@ class _StepperState extends ConsumerState<_Stepper> {
           height: 44.w,
           alignment: MainAxisAlignment.spaceBetween,
           onPressed: () {
-              appRouter.pushNamed(
-                'payment',
-                queryParameters: {
-                  'entries': '${purchase.entries}',
-                   'treasureId': widget.treasureId,
-                    if (widget.groupId != null) 'groupId': widget.groupId!,
-                }
-              );
+            appRouter.pushNamed(
+              'payment',
+              queryParameters: {
+                'entries': '${purchase.entries}',
+                'treasureId': widget.treasureId,
+                'paymentMethod': 'wallet',
+                if (widget.groupId != null) 'groupId': widget.groupId!,
+              },
+            );
           },
           trailing: RollingNumber(
             value: purchase.subtotal,
