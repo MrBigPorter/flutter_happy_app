@@ -5,6 +5,7 @@ import 'package:http/http.dart' as httpClient;
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+
 /// function: Service for sharing content via various platforms and methods.
 /// description: Provides methods to share content using native share dialogs,
 ///              as well as specific platforms like WhatsApp, Telegram, Twitter, and Facebook.

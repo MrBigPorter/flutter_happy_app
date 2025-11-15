@@ -1,6 +1,7 @@
 import 'dart:typed_data';
+import 'dart:html' as html;
 
-import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_app/common.dart';
 import 'package:flutter_app/features/share/models/share_data.dart';
@@ -11,7 +12,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 import 'package:screenshot/screenshot.dart';
 import 'package:share_plus/share_plus.dart';
 
-import '../../../ui/toast/radix_toast.dart';
+import 'package:flutter_app/ui/index.dart';
 
 
 class SharePost extends StatefulWidget {
@@ -46,17 +47,35 @@ class SharePostState extends State<SharePost> {
   Future<void> saveToGallery() async {
     final bytes = await _shot.capture(pixelRatio: 2.0);
     if (bytes == null) return;
-    // ImageGallerySaver requires Uint8List
-    final result = await ImageGallerySaver.saveImage(
-      Uint8List.fromList(bytes),
-      quality: 95,
-      name: 'share_poster_${DateTime.now().millisecondsSinceEpoch}',
-    );
-    if (result['isSuccess'] == true) {
-      RadixToast.success( 'Image saved to gallery');
-    } else {
-      RadixToast.error('Failed to save image');
+    if(!kIsWeb){
+      // ImageGallerySaver requires Uint8List
+      final result = await ImageGallerySaver.saveImage(
+        Uint8List.fromList(bytes),
+        quality: 95,
+        name: 'share_poster_${DateTime.now().millisecondsSinceEpoch}',
+      );
+      if (result['isSuccess'] == true) {
+        RadixToast.success( 'Image saved to gallery');
+      } else {
+        RadixToast.error('Failed to save image');
+      }
+    }else{
+      // Handle web download,because web cannot save to gallery directly
+        _downLoadFromBytes(bytes);
     }
+  }
+
+  // Download image from bytes in web
+  void _downLoadFromBytes(Uint8List bytes){
+    final blob = html.Blob([bytes]);
+    final url = html.Url.createObjectUrl(blob);
+
+    final anchor = html.AnchorElement(href: url)
+      ..download = 'share_poster_${DateTime.now().millisecondsSinceEpoch}.png'
+      ..click();
+
+    html.Url.revokeObjectUrl(url);
+
   }
 
   Future<void> sharePost() async {
