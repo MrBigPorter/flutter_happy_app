@@ -13,6 +13,7 @@ class BaseScaffold extends StatelessWidget {
   final List<Widget>? actions; // app bar actions
   final bool showBack; // whether show back button
   final String? backIconPath; // custom back icon path
+  final Widget? bottomNavigationBar; // scaffold bottom navigation bar
 
   const BaseScaffold({
     super.key,
@@ -22,6 +23,7 @@ class BaseScaffold extends StatelessWidget {
     this.actions,
     this.showBack = true,
     this.backIconPath,
+    this.bottomNavigationBar,
   });
 
   @override
@@ -35,6 +37,7 @@ class BaseScaffold extends StatelessWidget {
             )
           : null,
       body: body,
+      bottomNavigationBar: bottomNavigationBar,
     );
   }
 }

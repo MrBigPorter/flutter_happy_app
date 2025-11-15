@@ -8,8 +8,8 @@ import 'package:flutter_app/ui/modal/base/modal_theme.dart';
 /// Provides common customization options for appearance and behavior of modals.
 /// This abstract class serves as a foundation for specific modal configurations.
 
-typedef FooterBuilder<T> = Widget Function(void Function([Object? result]) close);
-typedef HeaderBuilder = Widget Function(void Function([Object? result]) close);
+typedef FooterBuilder<T> = Widget Function(BuildContext context, void Function([Object? result]) close);
+typedef HeaderBuilder = Widget Function(BuildContext context, void Function([Object? result]) close);
 enum CloseButtonAlignment {
   topRight,
   topLeft,

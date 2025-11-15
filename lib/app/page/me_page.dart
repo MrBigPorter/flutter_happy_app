@@ -49,43 +49,6 @@ class _MePageState extends ConsumerState<MePage>
     // 首屏拉一次数量，orderCountProvider 只负责更新 totals
     Future.microtask(() => ref.refresh(orderCountProvider));
 
-    WidgetsBinding.instance.addPostFrameCallback((_){
-
-      Modal.show(
-        config: ModalDialogConfig(
-          animationStyleConfig: AnimationStyleConfig.fadeScale,
-          headerHeight: 60.w,
-          headerBuilder: (close) => Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              Button(
-                onPressed: () {
-                 close();
-                },
-                height: 40.w,
-                paddingX: 12.w,
-                child: Text(
-                  'common.close'.tr(),
-                  style: TextStyle(
-                    fontSize: context.textSm,
-                    fontWeight: FontWeight.w500,
-                    height: context.leadingSm,
-                    color: context.textPrimary900,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-         builder: (ctx, close) => SizedBox(
-          width: double.infinity,
-          height: 200.w,
-          child: Center(
-            child: Text('This is a modal sheet'),
-          ),
-        ),
-      );
-    });
 
   }
 

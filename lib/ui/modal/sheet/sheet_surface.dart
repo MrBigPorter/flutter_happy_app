@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_app/common.dart';
 import 'package:flutter_app/utils/helper.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'modal_sheet_config.dart';
@@ -30,23 +31,31 @@ class SheetSurface<T> extends StatelessWidget {
   Widget build(BuildContext context) {
     final double top = isFullScreen ? ViewUtils.statusBarHeight : 8.w;
 
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        config.headerBuilder != null ?
-        SizedBox(
-          height: config.headerHeight,
-          child: config.headerBuilder!.call(
-                  ([result]) => onClose()
+    return Padding(
+      padding:EdgeInsets.symmetric(horizontal: 16.w,vertical: 16.w),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          config.headerBuilder != null
+              ? SizedBox(
+            width: double.infinity,
+            height: config.headerHeight,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                config.headerBuilder!.call(context,([result]) => onClose()),
+                CloseIcon(onClose: onClose)
+              ],
+            ),
+          )
+              : _SheetHeader(
+            onClose: onClose,
+            showClose: config.showCloseButton,
+            paddingTop: top,
           ),
-        ) :
-        _SheetHeader(
-          onClose: onClose,
-          showClose: config.showCloseButton,
-          paddingTop: top,
-        ),
-        child
-      ],
+          child,
+        ],
+      ),
     );
   }
 }
@@ -76,28 +85,35 @@ class _SheetHeader extends StatelessWidget {
               width: 40.w,
               height: 5.w,
               decoration: BoxDecoration(
-                  color: Colors.grey.withValues(alpha: 0.5),
-                  borderRadius: BorderRadius.circular(3.w)
+                color: Colors.grey.withValues(alpha: 0.5),
+                borderRadius: BorderRadius.circular(3.w),
               ),
             ),
-            if(showClose)
-             Positioned(
-               right: 10.w,
-               child: InkResponse(
-                 onTap: onClose,
-                 child: Container(
-                   width: 32,
-                   height: 32,
-                   decoration: BoxDecoration(
-                       color: Colors.black26,
-                       shape: BoxShape.circle
-                   ),
-                   alignment: Alignment.center,
-                   child: const Icon(Icons.close, size: 18, color: Colors.white),
-                 ),
-               ),
-             )
+            if (showClose)
+              CloseIcon(onClose: onClose),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class CloseIcon extends StatelessWidget {
+  final VoidCallback onClose;
+
+  const CloseIcon({super.key, required this.onClose});
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned(
+      right: 0,
+      child:  InkResponse(
+        onTap: onClose,
+        child: Container(
+          width: 32,
+          height: 32,
+          alignment: Alignment.center,
+          child: const Icon(Icons.close, size: 22, color: Colors.black87),
         ),
       ),
     );

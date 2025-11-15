@@ -59,7 +59,7 @@ class ModalDialogSurface<T> extends StatelessWidget {
         children: [
           if (config.headerBuilder != null)
             config.headerBuilder!.call(
-              ([result]) => onClose(result as T?)
+              context,([result]) => onClose(result as T?)
             )
           else
             Container(
@@ -104,7 +104,7 @@ class ModalDialogSurface<T> extends StatelessWidget {
             padding: EdgeInsets.all(12.w),
             child: hasFooter
                 ? config.footerBuilder!.call(
-                  ([result]) => onClose(result as T?),
+                  context,([result]) => onClose(result as T?),
             )
                 : Row(
               children: [
