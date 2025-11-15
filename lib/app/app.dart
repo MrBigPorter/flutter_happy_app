@@ -22,13 +22,13 @@ class MyApp extends ConsumerWidget{
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(appRouterProvider);
-    final themeProvider = context.watch<ThemeProvider>();
+    final themeMode = ref.watch(themeModeProvider);
 
     return MaterialApp.router(
       title: 'Lucky App',
 
        routerConfig:router,
-      themeMode: themeProvider.themeMode,
+      themeMode: themeMode,
       theme: _buildTheme(false),
       darkTheme: _buildTheme(true),
       localizationsDelegates: context.localizationDelegates,

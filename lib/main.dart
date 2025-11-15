@@ -10,6 +10,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_web_plugins/url_strategy.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'app/routes/app_router.dart';
 import 'theme/theme_provider.dart';
@@ -51,29 +52,34 @@ Future<void> main() async {
 
   registerGlobalErrorHandler();
 
-  // 2) 预加载主题模式（避免先亮后暗）
-  final themeProvider = ThemeProvider();
-  await themeProvider.ready; // 在 ThemeProvider 里暴露一个 ready Future，见下
+  // theme provider
+  final prefs = await SharedPreferences.getInstance();
+  final savedThemeMode = prefs.getString('app_theme_mode');
 
+  final initialThemeMode = ThemeMode.values.firstWhere(
+    (mode) => mode.name == savedThemeMode,
+    orElse: () => ThemeMode.system,
+  );
 
   runApp(
     riverpod.ProviderScope(
+        overrides: [
+          // 4) 覆盖初始主题模式 provider
+          initialThemeModeProvider.overrideWithValue(initialThemeMode)
+        ],
         child: EasyLocalization(
           supportedLocales: const [Locale('en'), Locale('tl')],
           path: 'assets/locales',
           fallbackLocale: const Locale('en'),
-          child: ChangeNotifierProvider.value(
-              value: themeProvider,
-              child: ScreenUtilInit(
-                  designSize: const Size(375, 812),
-                  useInheritedMediaQuery: true,
-                  minTextAdapt: true,
-                  splitScreenMode: true,
-                  builder: (_,__){
-                    //3) 传给 MaterialApp.router
-                    return MyApp();
-                  }
-              )
+          child: ScreenUtilInit(
+              designSize: const Size(375, 812),
+              useInheritedMediaQuery: true,
+              minTextAdapt: true,
+              splitScreenMode: true,
+              builder: (_,__){
+                //3) 传给 MaterialApp.router
+                return MyApp();
+              }
           ),
         ),
     )

@@ -1,36 +1,29 @@
-// theme_provider.dart
-import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-class ThemeProvider extends ChangeNotifier {
-  static const _themeKey = 'app_theme_mode';
+final initialThemeModeProvider = Provider<ThemeMode>((ref) {
+  // Here you can read from persistent storage to get the saved theme mode
+  // For simplicity, we'll return ThemeMode.system
+  return ThemeMode.system;
+});
 
-  ThemeMode _themeMode = ThemeMode.system;
-  ThemeMode get themeMode => _themeMode;
+class ThemeModeNotifier extends Notifier<ThemeMode> {
+    static const _themeModeKey = 'app_theme_mode';
 
-  final _ready = Completer<void>();
-  Future<void> get ready => _ready.future;
+    @override
+    ThemeMode build() {
+      // Initialize with the saved theme mode or default to system
+      return ref.read(initialThemeModeProvider);
+    }
 
-  ThemeProvider() {
-    _loadTheme();
-  }
+    Future<void> toggleThemeMode() async {
+       final next = state == ThemeMode.light ? ThemeMode.dark : ThemeMode.light;
+       state = next;
 
-  Future<void> _loadTheme() async {
-    final prefs = await SharedPreferences.getInstance();
-    final saved = prefs.getString(_themeKey);
-    _themeMode = ThemeMode.values.firstWhere(
-          (m) => m.name == saved,
-      orElse: () => ThemeMode.system,
-    );
-    _ready.complete();      // 通知 main 可以继续 runApp 了
-    notifyListeners();
-  }
-
-  Future<void> toggleTheme() async {
-    _themeMode = _themeMode == ThemeMode.light ? ThemeMode.dark : ThemeMode.light;
-    notifyListeners();
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_themeKey, _themeMode.name);
-  }
+       final prefs = await SharedPreferences.getInstance();
+       await prefs.setString(_themeModeKey, next.name);
+    }
 }
+
+final themeModeProvider = NotifierProvider<ThemeModeNotifier,ThemeMode>(ThemeModeNotifier.new);
