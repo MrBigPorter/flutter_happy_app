@@ -19,13 +19,15 @@ class RadixSheet {
     bool showClose = true,
     ModalSheetConfig? config,
     Widget? Function(BuildContext)? headerBuilder,
+    required TickerProvider vsync,
   }) {
     // Uses unified ModalService for managing display and closing logic
     return ModalSheetService.instance.showSheet<T>(
       builder: builder,
       clickBgToClose: clickBgToClose,
       config: config ?? const ModalSheetConfig(),
-      headerBuilder: headerBuilder
+      headerBuilder: headerBuilder,
+        vsync: vsync,
     );
   }
 }

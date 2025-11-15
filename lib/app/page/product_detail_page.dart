@@ -383,7 +383,7 @@ class _TopTreasureSection extends StatefulWidget {
   State<_TopTreasureSection> createState() => _TopTreasureSectionState();
 }
 
-class _TopTreasureSectionState extends State<_TopTreasureSection> {
+class _TopTreasureSectionState extends State<_TopTreasureSection> with SingleTickerProviderStateMixin {
   final sharePosterKey = GlobalKey<SharePostState>();
 
   void openShareSheet(BuildContext context, ShareData data) {
@@ -396,6 +396,7 @@ class _TopTreasureSectionState extends State<_TopTreasureSection> {
       ),
       () async {
         RadixSheet.show(
+          vsync: this,
           headerBuilder: (context) => Padding(
             padding: EdgeInsets.only(bottom: 20.w),
             child: SharePost(

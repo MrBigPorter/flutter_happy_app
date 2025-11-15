@@ -86,15 +86,7 @@ class OrderItemContainer extends StatelessWidget {
             _OrderItemActions(
                 item: item,
                 onViewFriends: () {
-                  RadixSheet.show(
-                    builder: (ctx, close) => SizedBox(
-                      width: double.infinity,
-                      height: 200.w,
-                      child: Center(
-                        child: Text('This is a sheet dialog'),
-                      ),
-                    ),
-                  );
+                  //todo
                 },
                 onViewRewardDetails: () {
                   appRouter.go('/me/order/${item.id}/reward-details');

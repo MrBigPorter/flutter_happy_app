@@ -56,6 +56,7 @@ class ModalSheetService {
   // Show Sheet
   // ------------------------------------------------------------------
   Future<T?> showSheet<T>({
+    required TickerProvider vsync,
     /// Sheet content builder function
     required Widget Function(BuildContext, void Function([T? res])) builder,
 
@@ -69,6 +70,11 @@ class ModalSheetService {
   }) async {
     //  If sheet is showing, close it first
     if (isShowing) await close();
+
+    final controller = BottomSheet.createAnimationController(vsync);
+    final id = 'sheet-${UniqueKey()}';
+    
+    print('ModalSheetService: Showing sheet $id ');
 
     //  Parse strategy early (avoid context async issues)
     final policy = AnimationPolicyResolver.resolve(
@@ -123,6 +129,7 @@ class ModalSheetService {
         //  Whether background click closes
         enableDrag: enableDrag,
         //  Whether drag to close is enabled
+        transitionAnimationController: controller,
         builder: (modalContext) {
           _sheetContext = modalContext;
 
@@ -215,6 +222,7 @@ class ModalSheetService {
     });
 
     // Wait for sheet close result (if any)
+
     final result = await _sheetFuture;
 
     // Clean up references

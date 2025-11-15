@@ -21,7 +21,7 @@ class PaymentPage extends ConsumerStatefulWidget {
   ConsumerState<PaymentPage> createState() => _PaymentPageState();
 }
 
-class _PaymentPageState extends ConsumerState<PaymentPage> {
+class _PaymentPageState extends ConsumerState<PaymentPage>  with SingleTickerProviderStateMixin{
   @override
   Widget build(BuildContext context) {
     final params = widget.params;
@@ -39,7 +39,7 @@ class _PaymentPageState extends ConsumerState<PaymentPage> {
       body: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          _AddressSection(),
+          _AddressSection(vsync: this),
           _ProductSection(),
           _InfoSection(),
           _VoucherSection(),
@@ -59,8 +59,13 @@ class _EmptySection extends StatelessWidget {
 }
 
 class _AddressSection extends StatelessWidget {
+  final TickerProvider vsync;
+
+  const _AddressSection({required this.vsync});
+
   void _onAddressTap() {
     RadixSheet.show(
+      vsync: vsync,
       config: ModalSheetConfig(
         headerBuilder: (context,close) {
          return Text(
