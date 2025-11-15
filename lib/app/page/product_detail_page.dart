@@ -17,7 +17,6 @@ import 'package:flutter_app/core/store/lucky_store.dart';
 import 'package:flutter_app/features/share/index.dart';
 import 'package:flutter_app/ui/animations/rolling_number.dart';
 import 'package:flutter_app/ui/bubble_progress.dart';
-import 'package:flutter_app/ui/button/button.dart';
 import 'package:flutter_app/ui/button/index.dart';
 import 'package:flutter_app/ui/modal/index.dart';
 import 'package:flutter_app/utils/format_helper.dart';
@@ -28,6 +27,24 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
+/// Product Detail Page
+/// ------------------------------------------------------------------
+/// Displays detailed information about a product
+/// Features:
+/// - Banner carousel
+/// - Coupon section
+/// - Top treasure section with share functionality
+/// - Group section
+/// - Detail content with tabs
+/// - Animated bottom bar for joining treasure
+/// ------------------------------------------------------------------
+/// Usage:
+/// dart
+/// Navigator.pushNamed(context, AppRouter.productDetail, arguments: {'productId': '12345'});
+/// ------------------------------------------------------------------
+/// Parameters:
+/// - productId: String - ID of the product to display
+/// ------------------------------------------------------------------
 class ProductDetailPage extends ConsumerStatefulWidget {
   final String productId;
 
@@ -122,6 +139,7 @@ class _ProductDetailPageState extends ConsumerState<ProductDetailPage>
     return Scaffold(
       body: CustomScrollView(
         slivers: [
+          // Banner section
           SliverAppBar(
             pinned: true,
             floating: false,
@@ -145,20 +163,25 @@ class _ProductDetailPageState extends ConsumerState<ProductDetailPage>
               background: _BannerSection(banners: detail.value?.mainImageList),
             ),
           ),
+          // Coupon section
           SliverToBoxAdapter(
             child: _CouponSection(),
           ),
+          // Top treasure section
           SliverToBoxAdapter(
             child: _TopTreasureSection(item: detail.value, url: webBaseUrl),
           ),
+          // Group section
           SliverToBoxAdapter(child: _GroupSection()),
+          // Detail content section
           SliverToBoxAdapter(child: SizedBox(height: 8.w)),
+          // Detail content section，rules and details
           SliverToBoxAdapter(child: _DetailContentSection(content: desc)),
         ],
       ),
       bottomNavigationBar: AnimatedPadding(
         padding: EdgeInsets.only(
-          //键盘高度
+          // Adapt to keyboard height
           bottom: MediaQuery.of(context).viewInsets.bottom,
         ),
         curve: Curves.easeOut,
