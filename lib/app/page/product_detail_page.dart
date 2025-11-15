@@ -136,6 +136,8 @@ class _ProductDetailPageState extends ConsumerState<ProductDetailPage>
     final desc =
         "\u003cp\u003e\u003cimg src=\"https://prod-pesolucky.s3.ap-east-1.amazonaws.com/rule/20250819154125141c3746-11dd-48cd-bc3b-0c10294513ab.png\" width=\"750\" height=\"500\"\u003erealme Buds T300（Global Version）：\u003cbr\u003ePort charge\u003c/p\u003e\u003cul\u003e\u003cli\u003eUSB Type-C\u003c/li\u003e\u003c/ul\u003e\u003cp\u003eCharging\u003c/p\u003e\u003cul\u003e\u003cli\u003eUSB Type C wired charging\u003c/li\u003e\u003c/ul\u003e\u003cp\u003eBluetooth Version\u003c/p\u003e\u003cul\u003e\u003cli\u003eBluetooth 5.3\u003c/li\u003e\u003c/ul\u003e\u003cp\u003e\u003cbr\u003eAudio codecs\u003c/p\u003e\u003cul\u003e\u003cli\u003eAAC, SBC\u003c/li\u003e\u003c/ul\u003e\u003cp\u003eWireless Range\u003c/p\u003e\u003cul\u003e\u003cli\u003e10m\u003c/li\u003e\u003c/ul\u003e\u003cp\u003eSize of sound\u003c/p\u003e\u003cul\u003e\u003cli\u003e12,4mm\u003c/li\u003e\u003c/ul\u003e\u003cp\u003eBattery capacity\u003c/p\u003e\u003cul\u003e\u003cli\u003eCharging case:460mAh; Single earbud: 43mAh\u003cbr\u003eCharging Time\u003c/li\u003e\u003cli\u003eCharging Case + Buds:10mins Charging for 7hrs Playback (50% Volume,ANC OFF)\u003c/li\u003e\u003c/ul\u003e\u003cp\u003eWaterproof Rating\u003c/p\u003e\u003cul\u003e\u003cli\u003eIP55 (earphones only)\u003c/li\u003e\u003c/ul\u003e\u003cp\u003eNoise Cancelling Features\u003c/p\u003e\u003cul\u003e\u003cli\u003e30dB Active Noise Cancelling, Environment Noise Cancelling\u003c/li\u003e\u003c/ul\u003e\u003cp\u003eBattery (Charging case + Buds)\u003c/p\u003e\u003cul\u003e\u003cli\u003eMusic playback 40hrs (50% Volume,ANC OFF); Music playback 30hrs (50% Volume,ANC ON)\u003c/li\u003e\u003c/ul\u003e\u003cp\u003eBattery (Earbuds Alone)\u003c/p\u003e\u003cul\u003e\u003cli\u003e8hrs Music Playback (50% Volume,ANC OFF); 6hrs Music Playback (50% Volume,ANC ON); 4hrs Calling Time (50% Volume,ANC OFF/ON)\u003c/li\u003e\u003c/ul\u003e\u003cp\u003eInside the box\u003c/p\u003e\u003cul\u003e\u003cli\u003eRealme Buds T300 x 1\u003c/li\u003e\u003cli\u003eCharging Cable Type C x 1\u003c/li\u003e\u003cli\u003eInformation Card x1/\u003c/li\u003e\u003cli\u003eS/M/L Silicone Eartips x 2\u003c/li\u003e\u003c/ul\u003e";
 
+    final expandedHeight = 250.w;
+
     return Scaffold(
       body: CustomScrollView(
         slivers: [
@@ -158,15 +160,58 @@ class _ProductDetailPageState extends ConsumerState<ProductDetailPage>
                 size: 24.w,
               ),
             ),
-            flexibleSpace: FlexibleSpaceBar(
-              collapseMode: CollapseMode.parallax,
-              background: _BannerSection(banners: detail.value?.mainImageList),
+            flexibleSpace: LayoutBuilder(
+              builder: (context, constrain) {
+                final currentHeight = constrain.biggest.height;
+                final minHeight =
+                    MediaQuery.of(context).padding.top + kToolbarHeight;
+
+                // Calculate the interpolation factor t
+                // use currentHeight, minHeight, expandedHeight to calculate t
+                final t =
+                    ((currentHeight - minHeight) / (expandedHeight - minHeight))
+                        .clamp(0.0, 1.0);
+                final titleOpacity = (1.0 - t) >= 0.9 ? 1.0 : 0.0;
+
+                return Stack(
+                  // tell children who don't use positioned to expand to fill the stack
+                  fit: StackFit.expand,
+                  children: [
+                    Opacity(
+                      opacity: t,
+                      child: _BannerSection(
+                        banners: detail.value?.mainImageList,
+                      ),
+                    ),
+                    titleOpacity > 0
+                        ? Positioned(
+                            left: 56.w,
+                            right: 16.w,
+                            top:
+                                MediaQuery.of(context).padding.top +
+                                (kToolbarHeight - 25.w) / 2,
+                            child: Opacity(
+                              opacity: titleOpacity,
+                              child: Text(
+                                detail.value?.treasureName ?? '',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: context.textMd,
+                                  fontWeight: FontWeight.w700,
+                                  color: context.fgPrimary900,
+                                ),
+                              ),
+                            ),
+                          )
+                        : SizedBox.shrink(),
+                  ],
+                );
+              },
             ),
           ),
           // Coupon section
-          SliverToBoxAdapter(
-            child: _CouponSection(),
-          ),
+          SliverToBoxAdapter(child: _CouponSection()),
           // Top treasure section
           SliverToBoxAdapter(
             child: _TopTreasureSection(item: detail.value, url: webBaseUrl),
@@ -640,26 +685,23 @@ class _CouponSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.only(left: 16.w,right: 16.w,top: 20.w),
+      padding: EdgeInsets.only(left: 16.w, right: 16.w, top: 20.w),
       child: SizedBox(
         height: 22.w,
         child: Row(
           children: [
             Row(
               mainAxisAlignment: MainAxisAlignment.start,
-              children: List.generate(2, (index){
+              children: List.generate(2, (index) {
                 return Container(
                   padding: EdgeInsets.symmetric(horizontal: 8.w),
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(6.w),
-                      border: Border.fromBorderSide(
-                        BorderSide(
-                          color: context.utilityBrand200,
-                          width: 1.w,
-                        ),
-                      ),
-                      color: context.utilityBrand50
+                    borderRadius: BorderRadius.circular(6.w),
+                    border: Border.fromBorderSide(
+                      BorderSide(color: context.utilityBrand200, width: 1.w),
+                    ),
+                    color: context.utilityBrand50,
                   ),
                   child: Text(
                     'new user coming',
@@ -670,20 +712,23 @@ class _CouponSection extends StatelessWidget {
                       height: context.leadingXs,
                     ),
                   ),
-
                 );
               }),
             ),
             Spacer(),
             Button(
-                variant: ButtonVariant.text,
-                paddingX: 0,
-                onPressed: (){},
-                child: Icon(Icons.chevron_right, size: 24.w, color: context.fgErrorPrimary,),
-            )
+              variant: ButtonVariant.text,
+              paddingX: 0,
+              onPressed: () {},
+              child: Icon(
+                Icons.chevron_right,
+                size: 24.w,
+                color: context.fgErrorPrimary,
+              ),
+            ),
           ],
         ),
-      )
+      ),
     );
   }
 }
@@ -842,7 +887,7 @@ class _GroupSection extends StatelessWidget {
               ),
             ),
             Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16.w,vertical: 16.w),
+              padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 16.w),
               child: Row(
                 children: [
                   Button(
@@ -850,12 +895,11 @@ class _GroupSection extends StatelessWidget {
                     alignment: MainAxisAlignment.center,
                     variant: ButtonVariant.outline,
                     onPressed: () {},
-                     child: Icon(
-                       Icons.arrow_back,
-                       size: 20.w,
-                       color: context.fgPrimary900,
-                     ),
-
+                    child: Icon(
+                      Icons.arrow_back,
+                      size: 20.w,
+                      color: context.fgPrimary900,
+                    ),
                   ),
                   Spacer(),
                   Text(
@@ -877,11 +921,10 @@ class _GroupSection extends StatelessWidget {
                       size: 20.w,
                       color: context.fgPrimary900,
                     ),
-
-                  )
+                  ),
                 ],
               ),
-            )
+            ),
           ],
         ),
       ),
