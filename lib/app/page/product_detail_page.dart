@@ -457,14 +457,7 @@ class _TopTreasureSectionState extends State<_TopTreasureSection> {
                       url: '${widget.url}/product/${data.treasureId}',
                       imageUrl: data.treasureCoverImg,
                       text: FormatHelper.formatCurrency(data.unitAmount),
-                      subTitle: 'common.cash.value'.tr(
-                        namedArgs: {
-                          'number': FormatHelper.formatCurrency(
-                            data.costAmount,
-                          ),
-                        },
-                      ),
-                    ),
+                      subTitle: 'common.cash.value.tr()${FormatHelper.formatCurrency(data.costAmount)}'),
                   );
                 },
                 child: SvgPicture.asset(
