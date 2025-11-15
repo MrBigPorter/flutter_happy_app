@@ -55,8 +55,6 @@ Future<void> main() async {
   final themeProvider = ThemeProvider();
   await themeProvider.ready; // 在 ThemeProvider 里暴露一个 ready Future，见下
 
-  //2) 创建并赋值全局实例
-  appRouter = AppRouter.create();
 
   runApp(
     riverpod.ProviderScope(
@@ -73,7 +71,7 @@ Future<void> main() async {
                   splitScreenMode: true,
                   builder: (_,__){
                     //3) 传给 MaterialApp.router
-                    return MyApp(router: appRouter);
+                    return MyApp();
                   }
               )
           ),

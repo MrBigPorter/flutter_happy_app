@@ -2,6 +2,8 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_app/common.dart';
+import 'package:flutter_app/core/providers/app_router_provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -12,14 +14,14 @@ import '../../theme/theme_provider.dart';
 
 
 
-class MyApp extends StatelessWidget{
+class MyApp extends ConsumerWidget{
 
-  final GoRouter router;
 
-  const MyApp({super.key, required this.router});
+  const MyApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final router = ref.watch(appRouterProvider);
     final themeProvider = context.watch<ThemeProvider>();
 
     return MaterialApp.router(
