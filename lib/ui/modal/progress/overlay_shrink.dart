@@ -11,9 +11,9 @@ class OverlayShrink extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final t = ref.watch(overlayEffectiveProgressProvider);
+    final t = ref.watch(overlayProgressProvider);
 
-    if (t == 0) return child;
+    if (t < 0.01) return child;
 
     final eased = Curves.easeOutCubic.transform(t);
 
@@ -26,6 +26,7 @@ class OverlayShrink extends ConsumerWidget {
     final shadowOpacity = 0.12 * eased;
 
     final bg = Theme.of(context).scaffoldBackgroundColor;
+    
 
     return Padding(
       padding: EdgeInsets.fromLTRB(
@@ -41,7 +42,6 @@ class OverlayShrink extends ConsumerWidget {
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: shadowOpacity),
-              blurRadius: 24.w * eased,
               offset: Offset(0, 8.h * eased),
               spreadRadius: -4,
             ),

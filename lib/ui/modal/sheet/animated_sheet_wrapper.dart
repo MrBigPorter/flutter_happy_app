@@ -82,25 +82,6 @@ class AnimatedSheetWrapperState extends State<AnimatedSheetWrapper>
       ),
     );
 
-    // Blur layer + particle layer (only when enabled in policy)
-    if (enableBlur || enableParticles) {
-      animated = Stack(
-        children: [
-          if (enableBlur)
-            BackdropFilter(
-              filter: ImageFilter.blur(
-                sigmaX: widget.policy.blurSigma,
-                sigmaY: widget.policy.blurSigma,
-              ),
-              child: Container(color: Colors.transparent),
-            ),
-          if (enableParticles)
-            const _ParticleLayer(),
-          animated,
-        ],
-      );
-    }
-
     return animated;
   }
 }

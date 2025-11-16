@@ -162,7 +162,7 @@ class RadixModal {
           ),
         );
 
-        return ModalProgressObserver(id: id, child: content);
+        return ModalProgressObserver(child: content);
       },
     );
   }

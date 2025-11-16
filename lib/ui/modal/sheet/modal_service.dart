@@ -201,8 +201,8 @@ class ModalSheetService {
                   onTap: allowBgClose ? () => finish() : null,
                   child: BackdropFilter(
                     filter: ImageFilter.blur(
-                      sigmaX: 6,
-                      sigmaY: 6,
+                      sigmaX: policy.blurSigma,
+                      sigmaY: policy.blurSigma,
                     ),
                     child: const SizedBox.expand(),
                   ),
@@ -220,7 +220,7 @@ class ModalSheetService {
             ],
           );
 
-          return ModalProgressObserver(id: id, child: content);
+          return ModalProgressObserver(child: content);
         },
       );
 
