@@ -66,14 +66,14 @@ class _ProductDetailPageState extends ConsumerState<ProductDetailPage>
 
     // Initialize animation controller
     _bottomBarController = AnimationController(
-      duration: const Duration(milliseconds: 700),
+      duration: const Duration(milliseconds: 1000),
       vsync: this,
     );
 
     _opacityBarAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
         parent: _bottomBarController,
-        curve: Curves.easeOutBack,
+        curve: Curves.easeOutCubic,
         reverseCurve: Curves.easeInCubic,
       ),
     );
@@ -83,7 +83,7 @@ class _ProductDetailPageState extends ConsumerState<ProductDetailPage>
         .animate(
           CurvedAnimation(
             parent: _bottomBarController,
-            curve: Curves.elasticInOut,
+            curve: Curves.easeOutCubic,
             reverseCurve: Curves.easeInCubic,
           ),
         );
