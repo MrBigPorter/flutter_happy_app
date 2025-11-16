@@ -13,4 +13,12 @@ class SysConfig {
       exChangeRate: json["ex_change_rate"]?.toDouble() ?? 1.0,
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      "kyc_and_phone_verification": kycAndPhoneVerification,
+      "web_base_url": webBaseUrl,
+      "ex_change_rate": exChangeRate,
+    };
+  }
 }

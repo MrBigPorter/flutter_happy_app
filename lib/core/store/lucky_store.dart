@@ -1,5 +1,6 @@
 import 'package:flutter_app/common.dart';
 import 'package:flutter_app/core/models/index.dart';
+import 'package:flutter_app/core/store/hydrated_state_notifier.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 /// LuckyState - State class for LuckyStore
@@ -54,6 +55,22 @@ class LuckyState {
       sysConfig: sysConfig ?? this.sysConfig,
     );
   }
+
+  Map<String,dynamic> toJson() {
+    return {
+      'userInfo': userInfo?.toJson(),
+      'balance': balance.toJson(),
+      'sysConfig': sysConfig.toJson(),
+    };
+  }
+
+  factory LuckyState.fromJson(Map<String,dynamic> json) {
+    return LuckyState(
+      userInfo: json['userInfo'] != null ? UserInfo.fromJson(json['userInfo']) : null,
+      balance: json['balance'] != null ? Balance.fromJson(json['balance']) : Balance(realBalance: 0, coinBalance: 0),
+      sysConfig: json['sysConfig'] != null ? SysConfig.fromJson(json['sysConfig']) : SysConfig(kycAndPhoneVerification: '1', webBaseUrl: '', exChangeRate: 1.0),
+    );
+  }
 }
 
 
@@ -73,10 +90,23 @@ class LuckyState {
 /// Example: final lucky = ref.watch(luckyProvider);
 /// Updates: ref.read(luckyProvider.notifier).updateUserInfo(userInfo);
 /// No parameters
-class LuckyNotifier extends StateNotifier<LuckyState> {
+class LuckyNotifier extends HydratedStateNotifier<LuckyState> {
   LuckyNotifier(this.ref) : super(LuckyState.initial());
 
   final Ref ref;
+
+  @override
+  String get storageKey => 'lucky_state';
+
+  @override
+  LuckyState fromJson(Map<String, dynamic> json) {
+    return LuckyState.fromJson(json);
+  }
+
+  @override
+  Map<String, dynamic> toJson(LuckyState state) {
+    return state.toJson();
+  }
 
   /// Update user info method
   /// Fetches user info from API and updates state

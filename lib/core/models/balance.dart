@@ -10,4 +10,11 @@ class Balance {
       coinBalance: (json["coin_balance"] ?? 0).toDouble(),
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      "real_balance": realBalance,
+      "coin_balance": coinBalance,
+    };
+  }
 }
