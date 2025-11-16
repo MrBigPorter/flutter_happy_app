@@ -31,6 +31,20 @@
 
   <title>flutter_app</title>
   <link rel="manifest" href="manifest.json">
+
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      /* 改成和你 app 的 scaffoldBackgroundColor 一样的颜色 */
+      background-color: #F3F3F3;  /* 比如你的 TokensLight.bgMobilePrimary */
+    }
+
+    /* 可选：让 flutter-canvas 不留白边 */
+    body {
+      overflow: hidden;
+    }
+  </style>
 </head>
 <body>
   <script src="flutter_bootstrap.js" async></script>

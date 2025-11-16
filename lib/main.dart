@@ -7,15 +7,14 @@ import 'package:flutter_app/common.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart' as riverpod;
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
-import 'package:provider/provider.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_web_plugins/url_strategy.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'app/routes/app_router.dart';
+import 'core/store/auth/auth_initial.dart';
 import 'theme/theme_provider.dart';
 import 'app/app.dart';
-
 
 
 Future<void> main() async {
@@ -61,11 +60,19 @@ Future<void> main() async {
     orElse: () => ThemeMode.system,
   );
 
+
+  //auth initial, read token from storage first
+  final tokenStorage = authInitialTokenStorage();
+  final storedTokens = await tokenStorage.read();
+
+
   runApp(
     riverpod.ProviderScope(
         overrides: [
           // 4) 覆盖初始主题模式 provider
-          initialThemeModeProvider.overrideWithValue(initialThemeMode)
+          initialThemeModeProvider.overrideWithValue(initialThemeMode),
+          // 传给 AuthNotifier 的初始 token
+          initialTokensProvider.overrideWithValue(storedTokens),
         ],
         child: EasyLocalization(
           supportedLocales: const [Locale('en'), Locale('tl')],

@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_app/ui/modal/base/modal_auto_close_observer.dart';
 import 'package:flutter_app/ui/modal/base/nav_hub.dart';
+import 'package:flutter_app/ui/modal/progress/modal_progress_observer.dart';
 import 'package:flutter_app/ui/modal/sheet/modal_sheet_config.dart';
 import 'package:flutter_app/utils/helper.dart';
 import '../base/animation_policy_resolver.dart';
@@ -52,11 +53,11 @@ class ModalSheetService {
   /// Whether there is a sheet currently showing
   bool get isShowing => _sheetFuture != null;
 
+
   // ------------------------------------------------------------------
   // Show Sheet
   // ------------------------------------------------------------------
   Future<T?> showSheet<T>({
-    required TickerProvider vsync,
     /// Sheet content builder function
     required Widget Function(BuildContext, void Function([T? res])) builder,
 
@@ -71,10 +72,6 @@ class ModalSheetService {
     //  If sheet is showing, close it first
     if (isShowing) await close();
 
-    final controller = BottomSheet.createAnimationController(vsync);
-    final id = 'sheet-${UniqueKey()}';
-    
-    print('ModalSheetService: Showing sheet $id ');
 
     //  Parse strategy early (avoid context async issues)
     final policy = AnimationPolicyResolver.resolve(
@@ -83,17 +80,19 @@ class ModalSheetService {
     );
 
     //  Start microtask to ensure context is used at safe time
-    _sheetFuture = Future.microtask(() {
       final nav = navigatorKey.currentState;
       if (nav == null) {
         throw Exception('ModalSheetService: Navigator not ready.');
       }
+
+
 
       //  Ensure current context is mounted
       if (!nav.mounted) return null;
 
       final ctx = nav.context;
       final theme = Theme.of(ctx);
+
 
       // ----------------------------------------------------------------
       // Config priority:
@@ -117,7 +116,7 @@ class ModalSheetService {
       // ----------------------------------------------------------------
       //  Show BottomSheet
       // ----------------------------------------------------------------
-      return showModalBottomSheet<T>(
+      _sheetFuture =  showModalBottomSheet<T>(
         context: ctx,
         isScrollControlled: true,
         //  Can fill entire screen (supports tall content)
@@ -129,9 +128,12 @@ class ModalSheetService {
         //  Whether background click closes
         enableDrag: enableDrag,
         //  Whether drag to close is enabled
-        transitionAnimationController: controller,
         builder: (modalContext) {
           _sheetContext = modalContext;
+
+
+          final id = 'sheet-${UniqueKey()}';
+
 
           // Internal close function
           void finish([dynamic res]) {
@@ -191,7 +193,7 @@ class ModalSheetService {
             ),
           );
 
-          return  Stack(
+          final Widget content =  Stack(
             children: [
               // Background barrier
               Positioned.fill(
@@ -199,8 +201,8 @@ class ModalSheetService {
                   onTap: allowBgClose ? () => finish() : null,
                   child: BackdropFilter(
                     filter: ImageFilter.blur(
-                      sigmaX: 14,
-                      sigmaY: 14,
+                      sigmaX: 6,
+                      sigmaY: 6,
                     ),
                     child: const SizedBox.expand(),
                   ),
@@ -217,13 +219,15 @@ class ModalSheetService {
               )
             ],
           );
+
+          return ModalProgressObserver(id: id, child: content);
         },
       );
-    });
 
     // Wait for sheet close result (if any)
 
     final result = await _sheetFuture;
+
 
     // Clean up references
     _sheetFuture = null;
@@ -240,5 +244,7 @@ class ModalSheetService {
     }
     _sheetFuture = null;
     _sheetContext = null;
+
+
   }
 }

@@ -1,12 +1,12 @@
 import 'dart:ui';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_app/common.dart';
 import 'package:flutter_app/core/providers/app_router_provider.dart';
+import 'package:flutter_app/ui/modal/progress/overlay_shrink.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:provider/provider.dart';
 import 'package:easy_localization/easy_localization.dart';
 
 import '../../theme/theme_provider.dart';
@@ -36,13 +36,19 @@ class MyApp extends ConsumerWidget{
       locale: context.locale,
       scrollBehavior: const _NoScrollbarBehavior(),
       builder: (context,child){
-        return DefaultTextStyle.merge(
+        final content = DefaultTextStyle.merge(
           style: GoogleFonts.inter(
             fontSize: 14,
             height: 1.2,
             fontWeight: FontWeight.w400,
           ),
           child: child!,
+        );
+        if(kIsWeb){
+          return content;
+        }
+        return OverlayShrink(
+          child: content,
         );
       },
     );

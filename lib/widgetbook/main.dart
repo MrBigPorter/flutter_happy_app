@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_app/widgetbook/stories/index.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart' as Riverpod;
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:widgetbook/widgetbook.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart' as riverpod;
@@ -14,37 +16,42 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await EasyLocalization.ensureInitialized();
 
-  final themeProvider = ThemeProvider();
-  await themeProvider.ready;
+  // theme provider
+  final prefs = await SharedPreferences.getInstance();
+  final savedThemeMode = prefs.getString('app_theme_mode');
+
+  final initialThemeMode = ThemeMode.values.firstWhere(
+        (mode) => mode.name == savedThemeMode,
+    orElse: () => ThemeMode.system,
+  );
 
   runApp(
-    EasyLocalization(
-      supportedLocales: const [Locale('en'), Locale('tl')],
-      path: 'assets/locales',
-      fallbackLocale: const Locale('en'),
-
-      child: riverpod.ProviderScope(
-        child: ChangeNotifierProvider.value(
-          value: themeProvider,
-          child: ScreenUtilInit(
-            designSize: const Size(375, 812),
-            useInheritedMediaQuery: true,
-            minTextAdapt: true,
-            splitScreenMode: true,
-            builder: (_, __) => const WidgetBookApp(),
-          ),
+   Riverpod.ProviderScope(
+     overrides: [
+       // 4) 覆盖初始主题模式 provider
+       initialThemeModeProvider.overrideWithValue(initialThemeMode)
+     ],
+      child:  EasyLocalization(
+        supportedLocales: const [Locale('en'), Locale('tl')],
+        path: 'assets/locales',
+        fallbackLocale: const Locale('en'),
+        child: ScreenUtilInit(
+          designSize: const Size(375, 812),
+          useInheritedMediaQuery: true,
+          minTextAdapt: true,
+          splitScreenMode: true,
+          builder: (_, __) => const WidgetBookApp(),
         ),
       ),
-    ),
-  );
+  ));
 }
 
-class WidgetBookApp extends StatelessWidget {
+class WidgetBookApp extends Riverpod.ConsumerWidget {
   const WidgetBookApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final themeProvider = context.watch<ThemeProvider>();
+  Widget build(BuildContext context, riverpod.WidgetRef ref) {
+   final themeMode = ref.watch(themeModeProvider);
 
 
     return ScreenUtilInit(
@@ -57,7 +64,7 @@ class WidgetBookApp extends StatelessWidget {
           directories: buildAllComponentStories(context),
           lightTheme: _buildTheme(false),
           darkTheme: _buildTheme(true),
-          themeMode: themeProvider.themeMode,
+          themeMode: themeMode,
           addons: [
             DeviceFrameAddon(
               devices: [

@@ -6,7 +6,6 @@ import 'package:flutter_app/common.dart';
 import 'package:flutter_app/components/skeleton.dart';
 import 'package:flutter_app/core/models/index.dart';
 import 'package:flutter_app/ui/button/index.dart';
-import 'package:flutter_app/ui/modal/index.dart';
 import 'package:flutter_app/utils/date_helper.dart';
 import 'package:flutter_app/utils/format_helper.dart';
 import 'package:flutter_app/utils/helper.dart';

@@ -11,7 +11,11 @@ class AuthState {
     this.isAuthenticated = false,
   });
 
-  factory AuthState.initial() => AuthState();
+  factory AuthState.initial() => AuthState(
+        accessToken: null,
+        refreshToken: null,
+        isAuthenticated: false,
+  );
 
   AuthState copyWith({
     String? accessToken,

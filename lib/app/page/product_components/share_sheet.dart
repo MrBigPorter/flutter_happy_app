@@ -12,7 +12,6 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_app/ui/button/variant.dart';
 
 import 'package:flutter_app/features/share/services/share_service.dart';
-import 'package:screenshot/screenshot.dart';
 
 class ShareSheet extends StatefulWidget {
   final String? origin;

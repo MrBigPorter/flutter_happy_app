@@ -46,7 +46,7 @@ abstract class BaseModalConfig {
   const BaseModalConfig({
     this.theme = const ModalTheme(),
     this.borderRadius = 16,
-    this.animationStyleConfig = AnimationStyleConfig.minimal,
+    this.animationStyleConfig = AnimationStyleConfig.bounce,
     this.allowBackgroundCloseOverride,
     this.footerBuilder,
     this.closeButtonAlignment = CloseButtonAlignment.topRight,

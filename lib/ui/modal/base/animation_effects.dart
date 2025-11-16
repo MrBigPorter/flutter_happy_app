@@ -11,7 +11,7 @@ Widget buildModalTransition(
   // animation style config
   AnimationStyleConfig style, {
   bool allowBgClose = true,
-  double blurSigma = 12.0,
+  double? blurSigma,
   Color barrierColor = const Color(0xAA000000),
   required BuildContext context,
 }) {
@@ -142,6 +142,8 @@ Widget buildModalTransition(
       break;
   }
 
+  print('-->${blurSigma}');
+
   return Stack(
     fit: StackFit.expand,
     children: [
@@ -151,8 +153,8 @@ Widget buildModalTransition(
         onTap: allowBgClose ? () => Navigator.of(context).pop() : null,
         child: BackdropFilter(
           filter: ImageFilter.blur(
-            sigmaX: blurSigma * anim.value,
-            sigmaY: blurSigma * anim.value,
+            sigmaX: blurSigma?? 0 * anim.value,
+            sigmaY: blurSigma ?? 0 * anim.value,
           ),
           child: FadeTransition(
             opacity: curved,

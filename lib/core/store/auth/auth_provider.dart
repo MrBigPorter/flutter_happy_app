@@ -1,3 +1,4 @@
+import 'package:flutter_app/core/store/auth/auth_initial.dart';
 import 'package:flutter_app/core/store/auth/auth_notifier.dart';
 import 'package:flutter_app/core/store/auth/auth_state.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -23,7 +24,8 @@ import '../token/token_storage_provider.dart';
 /// - AuthNotifier(ref, storage)
 /// - ref.watch(tokenStorageProvider)
 ///
-final authProvider = StateNotifierProvider<AuthNotifier,AuthState>((ref){
+final authProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
   final storage = ref.watch(tokenStorageProvider);
-  return AuthNotifier(ref,storage);
+  final (initialAccess, initialRefresh) = ref.read(initialTokensProvider);
+  return AuthNotifier(ref, storage, initialAccess, initialRefresh);
 });

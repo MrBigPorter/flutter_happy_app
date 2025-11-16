@@ -5,6 +5,7 @@ import 'package:flutter_app/ui/modal/dialog/modal_dialog_config.dart';
 import 'package:flutter_app/ui/modal/dialog/modal_dialog_surface.dart';
 import 'package:flutter_app/ui/modal/base/modal_auto_close_observer.dart';
 import 'package:flutter_app/ui/modal/base/nav_hub.dart';
+import 'package:flutter_app/ui/modal/progress/modal_progress_observer.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import '../base/animation_policy_resolver.dart';
@@ -56,7 +57,7 @@ typedef ModalAction<T> = void Function(void Function([T? result]) close);
 ///  ```
 ///
 /// ------------------------------------------------------------------
-class Modal {
+class RadixModal {
 
   /// Shows a modal dialog with customizable content and behavior
   ///
@@ -104,6 +105,7 @@ class Modal {
         theme.colorScheme.scrim.withValues(alpha: 0.5);
     final surfaceColor = config.theme.surfaceColor ?? theme.colorScheme.surface;
 
+    final id = 'radix_modal_dialog_${UniqueKey()}';
     return showGeneralDialog(
       context: ctx,
       barrierDismissible: allowBgClose,
@@ -130,7 +132,7 @@ class Modal {
 
         ModalManager.instance.bind(()=> finish());
 
-        return SafeArea(
+        final content = SafeArea(
           child: Center(
             child: Container(
               margin: EdgeInsets.symmetric(horizontal: 24.w),
@@ -159,6 +161,8 @@ class Modal {
             ),
           ),
         );
+
+        return ModalProgressObserver(id: id, child: content);
       },
     );
   }

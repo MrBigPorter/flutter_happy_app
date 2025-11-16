@@ -19,7 +19,9 @@ class WebPreferencesStorage implements TokenStorage {
     final sp = await SharedPreferences.getInstance();
     await sp.setString(_kAccess, access);
     if (refresh != null) {
-      await sp.setString(_kRefresh, access);
+      await sp.setString(_kRefresh, refresh);
+    }else{
+      await sp.remove(_kRefresh);
     }
   }
 
@@ -28,7 +30,7 @@ class WebPreferencesStorage implements TokenStorage {
     final sp = await SharedPreferences.getInstance();
     final access = sp.getString(_kAccess);
     final refresh = sp.getString(_kRefresh);
-    return (access, refresh);
+    return (access, refresh);// (string? access, string? refresh)
   }
 
   @override

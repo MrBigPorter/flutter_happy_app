@@ -8,7 +8,6 @@ import 'package:flutter_app/core/models/payment.dart';
 import 'package:flutter_app/core/providers/index.dart';
 import 'package:flutter_app/ui/empty.dart';
 import 'package:flutter_app/ui/index.dart';
-import 'package:flutter_app/ui/modal/sheet/modal_sheet_config.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
@@ -21,7 +20,8 @@ class PaymentPage extends ConsumerStatefulWidget {
   ConsumerState<PaymentPage> createState() => _PaymentPageState();
 }
 
-class _PaymentPageState extends ConsumerState<PaymentPage>  with SingleTickerProviderStateMixin{
+class _PaymentPageState extends ConsumerState<PaymentPage>
+    with SingleTickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     final params = widget.params;
@@ -64,24 +64,11 @@ class _AddressSection extends StatelessWidget {
   const _AddressSection({required this.vsync});
 
   void _onAddressTap() {
-    RadixSheet.show(
-      vsync: vsync,
-      config: ModalSheetConfig(
-        headerBuilder: (context,close) {
-         return Text(
-           'Delivery address',
-           style: TextStyle(
-             fontSize: context.textMd,
-             fontWeight: FontWeight.bold,
-              color: context.textPrimary900,
-           ),
-         );
-        },
-      ),
+    RadixModal.show(
       builder: (context, close) {
         return Container(
           height: 300.w,
-          child: Center(child: Text('Address Selection Page')),//todo
+          child: Center(child: Text('Address Selection Page')), //todo
         );
       },
     );

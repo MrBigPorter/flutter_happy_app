@@ -16,7 +16,6 @@ class AnimationPolicyResolver {
           inDuration: const Duration(milliseconds: 500),
           outDuration: const Duration(milliseconds: 250),
           style: businessStyle ?? AnimationStyleConfig.bounce,
-          blurSigma: 12.0
         );
       case AnimationStyleConfig.minimal:
         return _minimal();
@@ -49,7 +48,6 @@ class AnimationPolicyResolver {
     outCurve: Curves.easeInOutBack,
     allowBackgroundClose: false,
     enableDragToClose: false,
-    blurSigma: 16.0,
     enableParticles: true,
   );
 }

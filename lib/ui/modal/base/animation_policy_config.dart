@@ -52,7 +52,7 @@ class AnimationPolicyConfig {
     this.outCurve = Curves.easeIn,
     this.allowBackgroundClose = true,
     this.enableDragToClose = true,
-    this.blurSigma = 12.0,
+    this.blurSigma = 0.0,
     this.enableParticles = false,
   });
 

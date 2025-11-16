@@ -26,7 +26,11 @@ class SecureTokenStorage implements TokenStorage {
   @override
   Future<void> save(String access, String? refresh) async {
     await _s.write(key: _kAccess, value: access);
-    if(refresh != null) await _s.write(key: _kRefresh, value: refresh);
+    if(refresh != null){
+      await _s.write(key: _kRefresh, value: refresh);
+    }else{
+      await _s.delete(key: _kRefresh);
+    }
   }
 
   @override

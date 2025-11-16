@@ -396,7 +396,6 @@ class _TopTreasureSectionState extends State<_TopTreasureSection> with SingleTic
       ),
       () async {
         RadixSheet.show(
-          vsync: this,
           headerBuilder: (context) => Padding(
             padding: EdgeInsets.only(bottom: 20.w),
             child: SharePost(
@@ -939,7 +938,6 @@ class _JoinTreasureSection extends ConsumerWidget {
     if (args.isNullOrEmpty) return SizedBox.shrink();
 
     final purchase = ref.watch(purchaseProvider(args!));
-    final action = ref.read(purchaseProvider(args!).notifier);
 
     return Container(
       padding: EdgeInsets.only(bottom: ViewUtils.bottomBarHeight),

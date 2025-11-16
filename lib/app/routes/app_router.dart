@@ -111,7 +111,7 @@ class AppRouter {
            path: '/payment',
            pageBuilder: (ctx, state){
 
-            final  queryParams = state.uri.queryParameters ?? {};
+            final  queryParams = state.uri.queryParameters;
             final PagePaymentParams params = (
               entries: queryParams['entries'] ?? '',
               treasureId: queryParams['treasureId']?? '',
