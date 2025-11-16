@@ -139,7 +139,6 @@ class AppRouter {
 
         // if the user is not authenticated and trying to access a protected route, redirect to login
         if(needLogin && !isAuthenticated){
-          print('Redirecting to login from path: $path');
           return '/login';
         }
 

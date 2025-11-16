@@ -142,7 +142,6 @@ Widget buildModalTransition(
       break;
   }
 
-  print('-->${blurSigma}');
 
   return Stack(
     fit: StackFit.expand,
