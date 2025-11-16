@@ -12,21 +12,16 @@ class OverlayShrink extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = ref.watch(overlayEffectiveProgressProvider);
-    // debugPrint('OverlayShrink progress t==>: $t');
 
-    // 没弹窗就啥也不做
     if (t == 0) return child;
 
     final eased = Curves.easeOutCubic.transform(t);
 
-    // 🔹 左右 + 顶部 的缩进
-    final sideInset  = lerpDouble(0.0, 16.0.w, eased)!; // 你可以在 12~20.w 调
+    final sideInset  = lerpDouble(0.0, 16.0.w, eased)!;
     final topInset   = lerpDouble(0.0, 16.0.w, eased)!;
 
-    // 🔹 底部缩进稍微小一点，避免“底部整块上下跳”
-    final bottomInset = lerpDouble(0.0, 8.0.w, eased)!; // 甚至可以先设 0 看感觉
+    final bottomInset = lerpDouble(0.0, 8.0.w, eased)!;
 
-    // 🔹 圆角 & 阴影
     final radius        = lerpDouble(0.0, 24.0.w, eased)!;
     final shadowOpacity = 0.12 * eased;
 
@@ -45,7 +40,7 @@ class OverlayShrink extends ConsumerWidget {
           borderRadius: BorderRadius.circular(radius),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(shadowOpacity),
+              color: Colors.black.withValues(alpha: shadowOpacity),
               blurRadius: 24.w * eased,
               offset: Offset(0, 8.h * eased),
               spreadRadius: -4,
