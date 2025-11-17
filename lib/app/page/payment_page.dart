@@ -11,6 +11,9 @@ import 'package:flutter_app/core/models/payment.dart';
 import 'package:flutter_app/core/providers/index.dart';
 import 'package:flutter_app/ui/empty.dart';
 import 'package:flutter_app/ui/index.dart';
+import 'package:flutter_app/utils/date_helper.dart';
+import 'package:flutter_app/utils/format_helper.dart';
+import 'package:flutter_app/utils/helper.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
@@ -25,6 +28,20 @@ class PaymentPage extends ConsumerStatefulWidget {
 
 class _PaymentPageState extends ConsumerState<PaymentPage>
     with SingleTickerProviderStateMixin {
+  
+  @override
+  void initState() {
+    super.initState();
+    
+    final id = widget.params.treasureId;
+    if (id != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_){
+        ref.refresh(productDetailProvider(id));
+      });
+    }
+  }
+  
+  
   @override
   Widget build(BuildContext context) {
     final params = widget.params;
@@ -35,27 +52,30 @@ class _PaymentPageState extends ConsumerState<PaymentPage>
     }
 
     final detail = ref.watch(productDetailProvider(params.treasureId!));
+    
 
-    if (!detail.isLoading || detail.hasValue) {
-      return _PaymentSkeleton();
-    }
-    print('PaymentPage params: ${widget.params}');
-
-    return BaseScaffold(
-      title: 'checkout',
-      body: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _AddressSection(),
-          SizedBox(height: 8.w),
-          _ProductSection(detail: detail.value!),
-          _InfoSection(),
-          _VoucherSection(),
-          _PaymentMethodSection(),
-        ],
+    return detail.when(
+      loading: () => _PaymentSkeleton(),
+      error: (_, __) => _PaymentSkeleton(),
+      data: (value) => BaseScaffold(
+        title: 'checkout',
+        body: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _AddressSection(),
+              SizedBox(height: 8.w),
+              _ProductSection(detail: value),
+              _InfoSection(),
+              _VoucherSection(),
+              _PaymentMethodSection(),
+            ],
+          ),
+        ),
+        bottomNavigationBar: _BottomNavigationBar(),
       ),
-      bottomNavigationBar: _BottomNavigationBar(),
     );
+
   }
 }
 
@@ -71,21 +91,23 @@ class _PaymentSkeleton extends StatelessWidget {
   Widget build(BuildContext context) {
     return BaseScaffold(
       title: 'checkout',
-      body: Padding(
-        padding: EdgeInsets.symmetric(horizontal: 16.w),
-        child: Column(
-          children: [
-            SizedBox(height: 20.w),
-            _AddressSectionSkeleton(),
-            SizedBox(height: 8.w),
-            _ProductSectionSkeleton(),
-            SizedBox(height: 8.w),
-            _InfoSectionSkeleton(),
-            SizedBox(height: 8.w),
-            _VoucherSectionSkeleton(),
-            SizedBox(height: 8.w),
-            _PaymentMethodSectionSkeleton(),
-          ],
+      body:SingleChildScrollView(
+        child:  Padding(
+          padding: EdgeInsets.symmetric(horizontal: 16.w),
+          child: Column(
+            children: [
+              SizedBox(height: 20.w),
+              _AddressSectionSkeleton(),
+              SizedBox(height: 8.w),
+              _ProductSectionSkeleton(),
+              SizedBox(height: 8.w),
+              _InfoSectionSkeleton(),
+              SizedBox(height: 8.w),
+              _VoucherSectionSkeleton(),
+              SizedBox(height: 8.w),
+              _PaymentMethodSectionSkeleton(),
+            ],
+          ),
         ),
       ),
       bottomNavigationBar: _BottomNavigationBarSkeleton()
@@ -556,19 +578,142 @@ class _ProductSection extends StatelessWidget {
           borderRadius: BorderRadius.all(Radius.circular(context.radiusXl)),
         ),
         child: Column(
-          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            ClipRRect(
-              clipBehavior: Clip.hardEdge,
-              borderRadius: BorderRadius.circular(context.radiusLg),
-              child: CachedNetworkImage(
-                imageUrl: detail.treasureCoverImg!,
-                width: 80.w,
-                height: 80.w,
-                fit: BoxFit.cover,
-              ),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ClipRRect(
+                  clipBehavior: Clip.antiAlias,
+                  borderRadius: BorderRadius.circular(context.radiusLg),
+                  child: CachedNetworkImage(
+                    imageUrl: detail.treasureCoverImg!,
+                    width: 80.w,
+                    height: 80.w,
+                    fit: BoxFit.cover,
+                    // 内存缓存宽度设置，提升性能，避免每次都解码大图，需要80就只缓存80宽度的图，解码也是80宽度
+                    memCacheWidth: (80.w * ViewUtils.dpr).toInt(),
+                    memCacheHeight: (80.w * ViewUtils.dpr).toInt(),
+                    errorWidget: (context, url, error) => Icon(
+                      CupertinoIcons.photo,
+                      size: 80.w,
+                      color: context.bgSecondary,
+                    ),
+                    placeholder: (context, url) => Skeleton.react(
+                      width: 80.w,
+                      height: 80.w,
+                      borderRadius: BorderRadius.circular(context.radiusLg),
+                    ),
+                  ),
+                ),
+                SizedBox(width: 12.w),
+                Expanded(
+                   child: SizedBox(
+                     height: 80.w,
+                     child: Column(
+                     crossAxisAlignment: CrossAxisAlignment.start,
+                     children: [
+                       Text(
+                         detail.treasureName,
+                         maxLines: 2,
+                         overflow: TextOverflow.ellipsis,
+                         style: TextStyle(
+                           color: context.textPrimary900,
+                           fontSize: context.textSm,
+                           height: context.leadingLg,
+                           fontWeight: FontWeight.w800,
+                         ),
+                       ),
+                       SizedBox(height: 8.w),
+                       Text(
+                         detail.lotteryTime != null ? '${'common.draw.date'.tr()}:${DateFormatHelper.formatFull(detail.lotteryTime)}' : 'Draw once sold out',
+                         style: TextStyle(
+                           color: context.textSecondary700,
+                           fontSize: context.textXs,
+                           height: context.leadingXs,
+                           fontWeight: FontWeight.w500,
+                         ),
+                       ),
+                     ],
+                   ),
+                   ),
+                ),
+                SizedBox(width: 10.w),
+                Text(
+                  FormatHelper.formatCurrency(detail.unitAmount),
+                  style: TextStyle(
+                    color: context.textPrimary900,
+                    fontSize: context.textXs,
+                    height: context.leadingLg,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ],
             ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                Container(
+                  height: 38.w,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    border: Border.all(
+                      color: context.borderSecondary,
+                      width: 1.w,
+                    ),
+                    borderRadius: BorderRadius.all(Radius.circular(8.w))
+                  ),
+                  child: Row(
+                     crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Button(
+                          variant: ButtonVariant.text,
+                          width: 44.w,
+                          height: 38.w,
+                          paddingY: 0,
+                          onPressed: (){},
+                          child: Icon(
+                            CupertinoIcons.minus,
+                            color: context.textPrimary900,
+                            size: 16.w,
+                          ),
+                      ),
+                      TextField(
+                        textInputAction: TextInputAction.done,
+                        keyboardType: TextInputType.number,
+                        textAlign: TextAlign.center,
+                        textAlignVertical: TextAlignVertical.center,
+                        style: TextStyle(
+                          color: context.textPrimary900,
+                          fontSize: context.textMd,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        decoration: InputDecoration(
+                            isDense: true,
+                            border: InputBorder.none,
+                            constraints: BoxConstraints(
+                              minWidth: 40.w,
+                              maxWidth: 80.w,
+                            )
+                        ),
+                      ),
+                      Button(
+                        variant: ButtonVariant.text,
+                        width: 44.w,
+                        height: 38.w,
+                        paddingY: 0,
+                        onPressed: (){},
+                        child: Icon(
+                          CupertinoIcons.add,
+                          color: context.textPrimary900,
+                          size: 16.w,
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              ],
+            )
           ],
         ),
       ),

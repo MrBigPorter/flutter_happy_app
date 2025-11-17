@@ -32,6 +32,6 @@ Provider.family<PageRequest<ProductListItem>, int>((ref, id) {
 
 
 /// Product detail provider
-final productDetailProvider = FutureProvider.family<ProductListItem, String>((ref, String productId) async {
+final productDetailProvider = FutureProvider.autoDispose.family<ProductListItem, String>((ref, String productId) async {
   return Api.getProductDetail(productId);
 });
