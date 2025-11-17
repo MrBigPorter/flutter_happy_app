@@ -1,43 +1,51 @@
 import 'dart:math' as math;
 
+import 'package:flutter_app/core/providers/index.dart';
+import 'package:flutter_app/core/store/auth/auth_provider.dart';
+import 'package:flutter_app/core/store/lucky_store.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class PurchaseState {
   final int entries; // Number of purchase entries
-  final int unitPrice; // Price per unit
-  final int maxUnitCoins; // Maximum coins per unit
+  final int unitAmount; // Price per unit
+  final double maxUnitCoins; // Maximum coins per unit
   final double balanceCoins; // User's balance coins
+  final double realBalance; // User's balance in real currency
   final double exchangeRate; // Exchange rate
-  final int maxPerBuy; // Maximum units per purchase
-  final int minPerBuy; // Minimum units per purchase
+  final int maxPerBuyQuantity; // Maximum units per purchase
+  final int minBuyQuantity; // Minimum units per purchase
   final int stockLeft; // Stock left
   final num? coinAmountCap; // Optional cap on coin amount
-  final bool isLoginIn; // User login status
+  final bool isAuthenticated; // User login status
 
   PurchaseState({
     required this.entries,
-    required this.unitPrice,
+    required this.unitAmount,
     required this.maxUnitCoins,
     required this.balanceCoins,
+    required this.realBalance,
     required this.exchangeRate,
-    required this.maxPerBuy,
-    required this.minPerBuy,
+    required this.maxPerBuyQuantity,
+    required this.minBuyQuantity,
     required this.stockLeft,
     this.coinAmountCap,
-    required this.isLoginIn,
+    required this.isAuthenticated,
   });
 
   // Maximum entries allowed based on maxPerBuy and stockLeft
-  int get _maxEntriesAllowed => math.max(minPerBuy, math.min(maxPerBuy, stockLeft));
+  int get _maxEntriesAllowed => math.max(minBuyQuantity, math.min(maxPerBuyQuantity, stockLeft));
+
+  // Minimum entries allowed based on minPerBuy and stockLeft
+  int get _minEntriesAllowed => math.min(minBuyQuantity, stockLeft);
 
   // Whether the current entries exceed the allowed maximum
-  int get subtotal => unitPrice * entries;
+  int get subtotal => unitAmount * entries;
 
   // Theoretical maximum coins that can be used
-  int get _theoreticalMaxCoins => maxUnitCoins * entries;
+  double get _theoreticalMaxCoins => maxUnitCoins * entries;
 
   // Actual coins to use based on login status and balance
-  double get coinsToUse => isLoginIn
+  double get coinsToUse => isAuthenticated
       ? math.min(_theoreticalMaxCoins.toDouble(), balanceCoins)
       : _theoreticalMaxCoins.toDouble();
 
@@ -52,48 +60,57 @@ class PurchaseState {
     return coinAmount;
   }
   PurchaseState copyWith({int? entries}) {
-    final e = (entries ?? this.entries).clamp(0, _maxEntriesAllowed);
     return PurchaseState(
-      entries: e,
-      unitPrice: unitPrice,
+      entries: entries ?? this.entries,
+      unitAmount: unitAmount,
       maxUnitCoins: maxUnitCoins,
       balanceCoins: balanceCoins,
       exchangeRate: exchangeRate,
-      maxPerBuy: maxPerBuy,
-      minPerBuy: minPerBuy,
+      maxPerBuyQuantity: maxPerBuyQuantity,
+      minBuyQuantity: minBuyQuantity,
       stockLeft: stockLeft,
       coinAmountCap: coinAmountCap,
-      isLoginIn: isLoginIn,
+      isAuthenticated: isAuthenticated,
+      realBalance: realBalance,
     );
   }
 }
 
 // Purchase state provider using Riverpod
 class PurchaseNotifier extends StateNotifier<PurchaseState> {
-  PurchaseNotifier(super.s);
+  PurchaseNotifier(super.state);
+
+  void resetEntries(int entries) {
+    final next = entries.clamp(state._minEntriesAllowed, state._maxEntriesAllowed);
+    state = state.copyWith(entries: next);
+  }
 
   // Increment entries
   void inc(Function(int newEntries)? onChanged) {
-    state = state.copyWith(entries: state.entries + 1);
-    onChanged?.call(state.entries);
+    final next = (state.entries + 1).clamp(state._minEntriesAllowed, state._maxEntriesAllowed);
+    state = state.copyWith(entries: next);
+    onChanged?.call(next);
   }
 
   // Decrement entries
   void dec(Function(int newEntries)? onChanged) {
-     state = state.copyWith(entries: state.entries - 1);
-      onChanged?.call(state.entries);
+    final next = (state.entries - 1).clamp(state._minEntriesAllowed, state._maxEntriesAllowed);
+     state = state.copyWith(entries: next);
+      onChanged?.call(next);
   }
 
 
   // Set entries from text input
   void setEntriesFromText(String v) {
-    final n = int.tryParse(v.replaceAll(RegExp(r'[^0-9]'), '')) ?? 1;
-    state = state.copyWith(entries: n);
+    final n = int.tryParse(v.replaceAll(RegExp(r'[^0-9]'), ''));
+    if(n == null) return;
+    final next = n.clamp(state._minEntriesAllowed, state._maxEntriesAllowed);
+    state = state.copyWith(entries: next);
+
   }
 }
 
 typedef PurchaseArgs = ({
-  int entries,
   int unitPrice,
   int maxUnitCoins,
   double exchangeRate,
@@ -106,19 +123,35 @@ typedef PurchaseArgs = ({
 });
 
 final purchaseProvider = StateNotifierProvider.autoDispose
-    .family<PurchaseNotifier, PurchaseState, PurchaseArgs>((ref, args) {
+    .family<PurchaseNotifier, PurchaseState, String>((ref, id) {
+      final detailAsync = ref.watch(productDetailProvider(id));
+      final detail = detailAsync.value;
+      final state = ref.watch(luckyProvider.select((s) => (
+          balanceCoins: s.balance.coinBalance ?? 0,
+          realBalance: s.balance.realBalance ?? 0,
+          exChangeRate: s.sysConfig.exChangeRate??1.0
+      )));
+      final isAuthenticated = ref.watch(authProvider.select((auth) => auth.isAuthenticated));
+
+      final stockLeft = (detail?.seqShelvesQuantity ?? 0) - (detail?.seqBuyQuantity ?? 0);
+
       return PurchaseNotifier(
         PurchaseState(
-          entries: args.minPerBuy,
-          unitPrice: args.unitPrice,
-          maxUnitCoins: args.maxUnitCoins,
-          balanceCoins: args.balanceCoins,
-          exchangeRate: args.exchangeRate,
-          maxPerBuy: args.maxPerBuy,
-          minPerBuy: args.minPerBuy,
-          stockLeft: args.stockLeft,
-          coinAmountCap: args.coinAmountCap,
-          isLoginIn: args.isLoggedIn,
+          entries: detail?.minBuyQuantity ?? stockLeft,
+          // unitAmount: detail?.unitAmount ?? 0, //todo mock
+          unitAmount: detail?.unitAmount ?? 10,
+          // maxUnitCoins: detail?.maxUnitCoins ?? 0, //todo mock
+          maxUnitCoins: detail?.maxUnitCoins?.toDouble() ?? 0.5,
+          // balanceCoins: state.balanceCoins,//todo mock
+          balanceCoins: 100000.00,
+          // realBalance: state.realBalance, //todo mock
+          realBalance: 3000.00,
+          // exchangeRate: state.exChangeRate, //todo mock
+          exchangeRate: 10.0,
+          maxPerBuyQuantity: detail?.maxPerBuyQuantity ?? math.max(1, stockLeft),
+          minBuyQuantity: detail?.minBuyQuantity ?? math.min(1, stockLeft),
+          stockLeft: stockLeft,
+          isAuthenticated: isAuthenticated,
         ),
       );
     });

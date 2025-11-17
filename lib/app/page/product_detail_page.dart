@@ -98,6 +98,7 @@ class _ProductDetailPageState extends ConsumerState<ProductDetailPage>
     super.dispose();
   }
 
+
   @override
   Widget build(BuildContext context) {
     // login status
@@ -118,82 +119,71 @@ class _ProductDetailPageState extends ConsumerState<ProductDetailPage>
       luckyProvider.select((select) => select.sysConfig.webBaseUrl),
     );
 
-    final PurchaseArgs args = (
-      unitPrice: detail.value?.unitAmount ?? 0,
-      maxUnitCoins: detail.value?.maxUnitCoins ?? 0,
-      exchangeRate: exchangeRate,
-      maxPerBuy: detail.value?.maxPerBuyQuantity ?? 999999,
-      minPerBuy: detail.value?.minBuyQuantity ?? 1,
-      stockLeft:
-          (detail.value?.seqShelvesQuantity ?? 0) -
-          (detail.value?.seqBuyQuantity ?? 0),
-      isLoggedIn: isAuthenticated,
-      balanceCoins: coinBalance,
-      coinAmountCap: null,
-      entries: detail.value?.minBuyQuantity ?? 1,
-    );
 
     final desc =
         "\u003cp\u003e\u003cimg src=\"https://prod-pesolucky.s3.ap-east-1.amazonaws.com/rule/20250819154125141c3746-11dd-48cd-bc3b-0c10294513ab.png\" width=\"750\" height=\"500\"\u003erealme Buds T300（Global Version）：\u003cbr\u003ePort charge\u003c/p\u003e\u003cul\u003e\u003cli\u003eUSB Type-C\u003c/li\u003e\u003c/ul\u003e\u003cp\u003eCharging\u003c/p\u003e\u003cul\u003e\u003cli\u003eUSB Type C wired charging\u003c/li\u003e\u003c/ul\u003e\u003cp\u003eBluetooth Version\u003c/p\u003e\u003cul\u003e\u003cli\u003eBluetooth 5.3\u003c/li\u003e\u003c/ul\u003e\u003cp\u003e\u003cbr\u003eAudio codecs\u003c/p\u003e\u003cul\u003e\u003cli\u003eAAC, SBC\u003c/li\u003e\u003c/ul\u003e\u003cp\u003eWireless Range\u003c/p\u003e\u003cul\u003e\u003cli\u003e10m\u003c/li\u003e\u003c/ul\u003e\u003cp\u003eSize of sound\u003c/p\u003e\u003cul\u003e\u003cli\u003e12,4mm\u003c/li\u003e\u003c/ul\u003e\u003cp\u003eBattery capacity\u003c/p\u003e\u003cul\u003e\u003cli\u003eCharging case:460mAh; Single earbud: 43mAh\u003cbr\u003eCharging Time\u003c/li\u003e\u003cli\u003eCharging Case + Buds:10mins Charging for 7hrs Playback (50% Volume,ANC OFF)\u003c/li\u003e\u003c/ul\u003e\u003cp\u003eWaterproof Rating\u003c/p\u003e\u003cul\u003e\u003cli\u003eIP55 (earphones only)\u003c/li\u003e\u003c/ul\u003e\u003cp\u003eNoise Cancelling Features\u003c/p\u003e\u003cul\u003e\u003cli\u003e30dB Active Noise Cancelling, Environment Noise Cancelling\u003c/li\u003e\u003c/ul\u003e\u003cp\u003eBattery (Charging case + Buds)\u003c/p\u003e\u003cul\u003e\u003cli\u003eMusic playback 40hrs (50% Volume,ANC OFF); Music playback 30hrs (50% Volume,ANC ON)\u003c/li\u003e\u003c/ul\u003e\u003cp\u003eBattery (Earbuds Alone)\u003c/p\u003e\u003cul\u003e\u003cli\u003e8hrs Music Playback (50% Volume,ANC OFF); 6hrs Music Playback (50% Volume,ANC ON); 4hrs Calling Time (50% Volume,ANC OFF/ON)\u003c/li\u003e\u003c/ul\u003e\u003cp\u003eInside the box\u003c/p\u003e\u003cul\u003e\u003cli\u003eRealme Buds T300 x 1\u003c/li\u003e\u003cli\u003eCharging Cable Type C x 1\u003c/li\u003e\u003cli\u003eInformation Card x1/\u003c/li\u003e\u003cli\u003eS/M/L Silicone Eartips x 2\u003c/li\u003e\u003c/ul\u003e";
 
     final expandedHeight = 250.w;
 
-    return Scaffold(
-      body: CustomScrollView(
-        slivers: [
-          // Banner section
-          SliverAppBar(
-            pinned: true,
-            floating: false,
-            expandedHeight: 250,
-            title: null,
-            backgroundColor: context.bgPrimary,
-            surfaceTintColor: Colors.transparent,
-            shadowColor: context.bgBrandPrimaryAlt,
-            elevation: 0,
-            scrolledUnderElevation: 1,
-            leading: IconButton(
-              onPressed: () => Navigator.of(context).maybePop(),
-              icon: Icon(
-                CupertinoIcons.back,
-                color: context.fgPrimary900,
-                size: 24.w,
-              ),
-            ),
-            flexibleSpace: LayoutBuilder(
-              builder: (context, constrain) {
-                final currentHeight = constrain.biggest.height;
-                final minHeight =
-                    MediaQuery.of(context).padding.top + kToolbarHeight;
 
-                // Calculate the interpolation factor t
-                // use currentHeight, minHeight, expandedHeight to calculate t
-                final t =
-                    ((currentHeight - minHeight) / (expandedHeight - minHeight))
-                        .clamp(0.0, 1.0);
-                final titleOpacity = (1.0 - t) >= 0.9 ? 1.0 : 0.0;
-
-                return Stack(
-                  // tell children who don't use positioned to expand to fill the stack
-                  fit: StackFit.expand,
-                  children: [
-                    Opacity(
-                      opacity: t,
-                      child: _BannerSection(
-                        banners: detail.value?.mainImageList,
-                      ),
+    return detail.when(
+        data: (detail){
+          return Scaffold(
+            body: CustomScrollView(
+              slivers: [
+                // Banner section
+                SliverAppBar(
+                  pinned: true,
+                  floating: false,
+                  expandedHeight: 250,
+                  title: null,
+                  backgroundColor: context.bgPrimary,
+                  surfaceTintColor: Colors.transparent,
+                  shadowColor: context.bgBrandPrimaryAlt,
+                  elevation: 0,
+                  scrolledUnderElevation: 1,
+                  leading: IconButton(
+                    onPressed: () => Navigator.of(context).maybePop(),
+                    icon: Icon(
+                      CupertinoIcons.back,
+                      color: context.fgPrimary900,
+                      size: 24.w,
                     ),
-                    titleOpacity > 0
-                        ? Positioned(
+                  ),
+                  flexibleSpace: LayoutBuilder(
+                    builder: (context, constrain) {
+                      final currentHeight = constrain.biggest.height;
+                      final minHeight =
+                          MediaQuery.of(context).padding.top + kToolbarHeight;
+
+                      // Calculate the interpolation factor t
+                      // use currentHeight, minHeight, expandedHeight to calculate t
+                      final t =
+                      ((currentHeight - minHeight) / (expandedHeight - minHeight))
+                          .clamp(0.0, 1.0);
+                      final titleOpacity = (1.0 - t) >= 0.9 ? 1.0 : 0.0;
+
+                      return Stack(
+                        // tell children who don't use positioned to expand to fill the stack
+                        fit: StackFit.expand,
+                        children: [
+                          Opacity(
+                            opacity: t,
+                            child: _BannerSection(
+                              banners: detail.mainImageList,
+                            ),
+                          ),
+                          titleOpacity > 0
+                              ? Positioned(
                             left: 56.w,
                             right: 16.w,
                             top:
-                                MediaQuery.of(context).padding.top +
+                            MediaQuery.of(context).padding.top +
                                 (kToolbarHeight - 25.w) / 2,
                             child: Opacity(
                               opacity: titleOpacity,
                               child: Text(
-                                detail.value?.treasureName ?? '',
+                                detail.treasureName ?? '',
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
@@ -204,46 +194,59 @@ class _ProductDetailPageState extends ConsumerState<ProductDetailPage>
                               ),
                             ),
                           )
-                        : SizedBox.shrink(),
-                  ],
-                );
-              },
+                              : SizedBox.shrink(),
+                        ],
+                      );
+                    },
+                  ),
+                ),
+                // Coupon section
+                SliverToBoxAdapter(child: _CouponSection()),
+                // Top treasure section
+                SliverToBoxAdapter(
+                  child: _TopTreasureSection(item: detail, url: webBaseUrl),
+                ),
+                // Group section
+                SliverToBoxAdapter(child: _GroupSection()),
+                // Detail content section
+                SliverToBoxAdapter(child: SizedBox(height: 8.w)),
+                // Detail content section，rules and details
+                SliverToBoxAdapter(child: _DetailContentSection(content: desc)),
+              ],
             ),
-          ),
-          // Coupon section
-          SliverToBoxAdapter(child: _CouponSection()),
-          // Top treasure section
-          SliverToBoxAdapter(
-            child: _TopTreasureSection(item: detail.value, url: webBaseUrl),
-          ),
-          // Group section
-          SliverToBoxAdapter(child: _GroupSection()),
-          // Detail content section
-          SliverToBoxAdapter(child: SizedBox(height: 8.w)),
-          // Detail content section，rules and details
-          SliverToBoxAdapter(child: _DetailContentSection(content: desc)),
-        ],
-      ),
-      bottomNavigationBar: AnimatedPadding(
-        padding: EdgeInsets.only(
-          // Adapt to keyboard height
-          bottom: MediaQuery.of(context).viewInsets.bottom,
-        ),
-        curve: Curves.easeOut,
-        duration: Duration(microseconds: 200),
-        child: FadeTransition(
-          opacity: _opacityBarAnimation,
-          child: SlideTransition(
-            position: _offsetBarAnimation,
-            child: _JoinTreasureSection(
-              treasureId: detail.value?.treasureId,
-              groupId: null, //todo
-              args: args,
+            bottomNavigationBar: AnimatedPadding(
+              padding: EdgeInsets.only(
+                // Adapt to keyboard height
+                bottom: MediaQuery.of(context).viewInsets.bottom,
+              ),
+              curve: Curves.easeOut,
+              duration: Duration(microseconds: 200),
+              child: FadeTransition(
+                opacity: _opacityBarAnimation,
+                child: SlideTransition(
+                  position: _offsetBarAnimation,
+                  child: _JoinTreasureSection(
+                    treasureId: detail.treasureId,
+                    groupId: null, //todo
+                  ),
+                ),
+              ),
             ),
-          ),
-        ),
-      ),
+          );
+        },
+        error: (_, __) {
+          return Center(
+            child: Text('common.load.failed'.tr()),
+          );
+        },
+        loading: () {
+          return Center(
+            child: CircularProgressIndicator(),
+          );
+        }
     );
+
+
   }
 }
 
@@ -927,17 +930,15 @@ class _GroupSection extends StatelessWidget {
 
 /// 参与宝藏区 join treasure section
 class _JoinTreasureSection extends ConsumerWidget {
-  final String? treasureId;
+  final String treasureId;
   final String? groupId;
-  final PurchaseArgs? args;
 
-  const _JoinTreasureSection({this.args, this.treasureId, this.groupId});
+  const _JoinTreasureSection({required this.treasureId, this.groupId});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    if (args.isNullOrEmpty) return SizedBox.shrink();
 
-    final purchase = ref.watch(purchaseProvider(args!));
+    final purchase = ref.watch(purchaseProvider(treasureId));
 
     return Container(
       padding: EdgeInsets.only(bottom: ViewUtils.bottomBarHeight),
@@ -1011,9 +1012,8 @@ class _JoinTreasureSection extends ConsumerWidget {
               ),
             ),
             child: _Stepper(
-              treasureId: treasureId ?? '',
+              treasureId: treasureId,
               groupId: groupId,
-              args: args!,
             ),
           ),
         ],
@@ -1026,9 +1026,8 @@ class _JoinTreasureSection extends ConsumerWidget {
 class _Stepper extends ConsumerStatefulWidget {
   final String treasureId;
   final String? groupId;
-  final PurchaseArgs args;
 
-  const _Stepper({required this.treasureId, this.groupId, required this.args});
+  const _Stepper({required this.treasureId, this.groupId,});
 
   @override
   ConsumerState<_Stepper> createState() => _StepperState();
@@ -1042,7 +1041,7 @@ class _StepperState extends ConsumerState<_Stepper> {
   @override
   void initState() {
     super.initState();
-    final purchase = ref.read(purchaseProvider(widget.args));
+    final purchase = ref.read(purchaseProvider(widget.treasureId));
     _controller = TextEditingController(text: '${purchase.entries}');
     _focusNode = FocusNode()..addListener(_handleFocusChange);
   }
@@ -1054,19 +1053,19 @@ class _StepperState extends ConsumerState<_Stepper> {
   }
 
   void _commitText() {
-    final action = ref.read(purchaseProvider(widget.args).notifier);
-    final purchase = ref.read(purchaseProvider(widget.args));
+    final action = ref.read(purchaseProvider(widget.treasureId).notifier);
+    final purchase = ref.read(purchaseProvider(widget.treasureId));
 
     var text = _controller.text.toString();
 
     if (text.isEmpty ||
         int.tryParse(text) == null ||
-        int.parse(text) < purchase.minPerBuy) {
-      text = purchase.minPerBuy.toString();
+        int.parse(text) < purchase.minBuyQuantity) {
+      text = purchase.minBuyQuantity.toString();
     }
 
     action.setEntriesFromText(text);
-    final updated = ref.read(purchaseProvider(widget.args)).entries;
+    final updated = ref.read(purchaseProvider(widget.treasureId)).entries;
     updateControllerText(updated);
   }
 
@@ -1078,20 +1077,6 @@ class _StepperState extends ConsumerState<_Stepper> {
     );
   }
 
-  @override
-  void didUpdateWidget(covariant _Stepper oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    // when parent args change, update controller text
-    if (oldWidget.args != widget.args) {
-      final purchase = ref.read(purchaseProvider(widget.args));
-      _controller.value = TextEditingValue(
-        text: '${purchase.entries}',
-        selection: TextSelection.collapsed(
-          offset: '${purchase.entries}'.length,
-        ),
-      );
-    }
-  }
 
   @override
   dispose() {
@@ -1103,16 +1088,26 @@ class _StepperState extends ConsumerState<_Stepper> {
 
   @override
   Widget build(BuildContext context) {
-    final purchase = ref.watch(purchaseProvider(widget.args));
+    final purchase = ref.watch(purchaseProvider(widget.treasureId));
 
-    final action = ref.read(purchaseProvider(widget.args).notifier);
+    final action = ref.read(purchaseProvider(widget.treasureId).notifier);
+
+    if(!_focusNode.hasFocus){
+       final expected = '${purchase.entries}';
+        if(_controller.text != expected){
+          _controller.value = TextEditingValue(
+            text: expected,
+            selection: TextSelection.collapsed(offset: expected.length),
+          );
+        }
+    }
+
     return Column(
       children: [
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Button(
-              disabled: purchase.entries <= math.max(0, widget.args.minPerBuy),
               width: 44.w,
               height: 44.w,
               variant: ButtonVariant.outline,
@@ -1176,7 +1171,6 @@ class _StepperState extends ConsumerState<_Stepper> {
             ),
             SizedBox(width: 10.w),
             Button(
-              disabled: purchase.entries >= purchase.stockLeft,
               width: 44.w,
               height: 44.w,
               variant: ButtonVariant.outline,
@@ -1190,7 +1184,6 @@ class _StepperState extends ConsumerState<_Stepper> {
         // todo <span>{group_id ? `${t('common.join.group')}` : `${t('common.form.group')}`}</span>
         SizedBox(height: 20.w),
         Button(
-          disabled: purchase.entries < purchase.minPerBuy,
           width: double.infinity,
           paddingX: 18.w,
           height: 44.w,
