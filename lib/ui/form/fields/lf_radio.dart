@@ -51,8 +51,6 @@ class LfRadioGroup<T> extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = formThemeOf(context);
-    final theme = Theme.of(context);
 
     Widget field = ReactiveFormField<T, T>(
       formControlName: name,

@@ -105,7 +105,6 @@ class RadixModal {
         theme.colorScheme.scrim.withValues(alpha: 0.5);
     final surfaceColor = config.theme.surfaceColor ?? theme.colorScheme.surface;
 
-    final id = 'radix_modal_dialog_${UniqueKey()}';
     return showGeneralDialog(
       context: ctx,
       barrierDismissible: allowBgClose,

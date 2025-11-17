@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:reactive_forms/reactive_forms.dart';
-import '../core/lf_core.dart';
 import '../core/lf_field.dart';
 import '../core/types.dart';
-import '../ui_min.dart';
 
 typedef LfSelectOption<T> = ({String text, T value, bool disabled});
 
@@ -48,7 +46,6 @@ class LfSelect<T> extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final d = runtimeDefault(context);
     final theme = Theme.of(context);
 
     return LfField<T>(

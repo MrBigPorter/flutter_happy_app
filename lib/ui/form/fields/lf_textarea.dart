@@ -65,7 +65,7 @@ class LfTextArea extends StatelessWidget {
       builder: (ctx, decoration, textStyle) {
         final bool useExpands = expands;
         final int? resolvedMin = useExpands ? null : (autoGrow ? 1 : (minLines ?? 3));
-        final int? resolvedMax = useExpands ? null : (autoGrow ? (maxLines ?? null) : (maxLines ?? 6));
+        final int? resolvedMax = useExpands ? null : (autoGrow ? (maxLines) : (maxLines ?? 6));
 
         return ReactiveTextField<String>(
 

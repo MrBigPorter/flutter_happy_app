@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:reactive_forms/reactive_forms.dart';
-import '../core/lf_core.dart';
 import '../ui_min.dart';
 
 class LfCheckbox extends StatelessWidget {

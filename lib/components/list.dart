@@ -478,7 +478,6 @@ class PageListViewPro<T> extends StatelessWidget {
       return listCore;
     }
 
-    final bool showBottomList = showBottom;
     final totalCount = list.length;
 
     final delegate = SliverChildBuilderDelegate(

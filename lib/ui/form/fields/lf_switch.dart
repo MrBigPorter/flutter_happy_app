@@ -63,7 +63,7 @@ class LfSwitch extends StatelessWidget {
             Switch.adaptive(
               value: value,
               onChanged: disabled ? null : field.didChange,
-              activeColor: activeColor ?? theme.colorScheme.primary,
+              activeThumbColor: activeColor ?? theme.colorScheme.primary,
               inactiveTrackColor: inactiveTrackColor,
               materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
             ),

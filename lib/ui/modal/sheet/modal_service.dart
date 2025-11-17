@@ -132,8 +132,6 @@ class ModalSheetService {
           _sheetContext = modalContext;
 
 
-          final id = 'sheet-${UniqueKey()}';
-
 
           // Internal close function
           void finish([dynamic res]) {

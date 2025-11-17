@@ -11,7 +11,6 @@ import 'package:flutter_app/core/models/index.dart';
 import 'package:flutter_app/core/models/payment.dart';
 import 'package:flutter_app/core/providers/index.dart';
 import 'package:flutter_app/core/providers/purchase_state_provider.dart';
-import 'package:flutter_app/ui/empty.dart';
 import 'package:flutter_app/ui/index.dart';
 import 'package:flutter_app/utils/date_helper.dart';
 import 'package:flutter_app/utils/format_helper.dart';
@@ -33,22 +32,6 @@ class _PaymentPageState extends ConsumerState<PaymentPage>
 
   bool _isInit = false;
 
-  PurchaseArgs _matchArgs (ProductListItem detail, bool isAuthenticated, double coinBalance, double exchangeRate) {
-    final PurchaseArgs args = (
-    unitPrice: detail.unitAmount ?? 0,
-    maxUnitCoins: detail.maxUnitCoins ?? 0,
-    exchangeRate: exchangeRate,
-    maxPerBuy: detail.maxPerBuyQuantity ?? 999999,
-    minPerBuy: detail.minBuyQuantity ?? 1,
-    stockLeft:
-    (detail.seqShelvesQuantity ?? 0) -
-        (detail.seqBuyQuantity ?? 0),
-    isLoggedIn: isAuthenticated,
-    balanceCoins: coinBalance,
-    coinAmountCap: null,
-    );
-    return args;
-  }
 
   @override
   void initState() {
@@ -111,12 +94,6 @@ class _PaymentPageState extends ConsumerState<PaymentPage>
   }
 }
 
-class _EmptySection extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return BaseScaffold(body: Empty());
-  }
-}
 
 
 class _AddressSection extends StatelessWidget {

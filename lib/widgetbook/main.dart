@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_app/widgetbook/stories/index.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart' as Riverpod;
+import 'package:flutter_riverpod/flutter_riverpod.dart' as riverpod;
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:widgetbook/widgetbook.dart';
 import 'package:easy_localization/easy_localization.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart' as riverpod;
-import 'package:provider/provider.dart';
 
 import '../theme/design_tokens.g.dart';
 import '../theme/theme_provider.dart';
@@ -26,7 +24,7 @@ Future<void> main() async {
   );
 
   runApp(
-   Riverpod.ProviderScope(
+   riverpod.ProviderScope(
      overrides: [
        // 4) 覆盖初始主题模式 provider
        initialThemeModeProvider.overrideWithValue(initialThemeMode)
@@ -46,7 +44,7 @@ Future<void> main() async {
   ));
 }
 
-class WidgetBookApp extends Riverpod.ConsumerWidget {
+class WidgetBookApp extends riverpod.ConsumerWidget {
   const WidgetBookApp({super.key});
 
   @override

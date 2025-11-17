@@ -127,7 +127,7 @@ class RollingNumberState extends State<RollingNumber>
 
         final diff = newLength - oldLength;
 
-        int _digitFrom (int i){
+        int digitFrom (int i){
           final oldIndex = i - diff;
           if(oldIndex < 0 || oldIndex >= oldLength){
             return int.parse(newDigits[i]);
@@ -136,7 +136,7 @@ class RollingNumberState extends State<RollingNumber>
           }
         }
 
-        int _digitTo (int i){
+        int digitTo (int i){
           return int.parse( newDigits[i]);
         }
 
@@ -171,8 +171,8 @@ class RollingNumberState extends State<RollingNumber>
 
               // Render a single rolling digit column for this position.
               RollingDigitSmooth(
-                from: _digitFrom(i),
-                to: _digitTo(i),
+                from: digitFrom(i),
+                to: digitTo(i),
                 progress: _anim.value,
                 height: widget.itemHeight,
                 width: widget.itemWidth,

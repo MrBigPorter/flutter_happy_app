@@ -16,7 +16,7 @@ Future<void> downloadImageOnWeb(Uint8List bytes, {String? imageUrl}) async {
   final blob = html.Blob([bytes]);
   final url = html.Url.createObjectUrlFromBlob(blob);
 
-  final a = html.AnchorElement(href: url)
+   html.AnchorElement(href: url)
     ..download = 'poster.png'
     ..click();
 

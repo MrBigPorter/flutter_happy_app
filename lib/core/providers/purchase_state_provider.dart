@@ -2,7 +2,6 @@ import 'dart:math' as math;
 
 import 'package:flutter_app/core/providers/index.dart';
 import 'package:flutter_app/core/store/auth/auth_provider.dart';
-import 'package:flutter_app/core/store/lucky_store.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class PurchaseState {
@@ -126,11 +125,11 @@ final purchaseProvider = StateNotifierProvider.autoDispose
     .family<PurchaseNotifier, PurchaseState, String>((ref, id) {
       final detailAsync = ref.watch(productDetailProvider(id));
       final detail = detailAsync.value;
-      final state = ref.watch(luckyProvider.select((s) => (
-          balanceCoins: s.balance.coinBalance ?? 0,
-          realBalance: s.balance.realBalance ?? 0,
-          exChangeRate: s.sysConfig.exChangeRate??1.0
-      )));
+      /*final state = ref.watch(luckyProvider.select((s) => (
+          balanceCoins: s.balance.coinBalance,
+          realBalance: s.balance.realBalance,
+          exChangeRate: s.sysConfig.exChangeRate
+      )));*/
       final isAuthenticated = ref.watch(authProvider.select((auth) => auth.isAuthenticated));
 
       final stockLeft = (detail?.seqShelvesQuantity ?? 0) - (detail?.seqBuyQuantity ?? 0);

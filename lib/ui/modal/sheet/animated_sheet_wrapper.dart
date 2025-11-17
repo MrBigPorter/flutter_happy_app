@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../base/animation_policy_config.dart';
 
@@ -71,8 +70,6 @@ class AnimatedSheetWrapperState extends State<AnimatedSheetWrapper>
 
   @override
   Widget build(BuildContext context) {
-    final enableBlur = widget.policy.blurSigma > 0;
-    final enableParticles = widget.policy.enableParticles;
 
     Widget animated = SlideTransition(
       position: _slide,

@@ -23,7 +23,7 @@ class _ModalProgressObserverState extends ConsumerState<ModalProgressObserver> {
 
     if(value != null){
       ref.read(overlayProgressProvider.notifier).state = value;
-    };
+    }
   }
 
   // only init once after first build with id, then reattach on dependency changes

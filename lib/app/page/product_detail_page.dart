@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -12,7 +10,6 @@ import 'package:flutter_app/components/swiper_banner.dart';
 import 'package:flutter_app/core/models/index.dart';
 import 'package:flutter_app/core/providers/index.dart';
 import 'package:flutter_app/core/providers/purchase_state_provider.dart';
-import 'package:flutter_app/core/store/auth/auth_provider.dart';
 import 'package:flutter_app/core/store/lucky_store.dart';
 import 'package:flutter_app/features/share/index.dart';
 import 'package:flutter_app/ui/animations/rolling_number.dart';
@@ -101,18 +98,7 @@ class _ProductDetailPageState extends ConsumerState<ProductDetailPage>
 
   @override
   Widget build(BuildContext context) {
-    // login status
-    final isAuthenticated = ref.watch(
-      authProvider.select((select) => select.isAuthenticated),
-    );
-    // exchange rate
-    final exchangeRate = ref.watch(
-      luckyProvider.select((select) => select.sysConfig.exChangeRate),
-    );
-    // user coin balance
-    final coinBalance = ref.watch(
-      luckyProvider.select((select) => select.balance.coinBalance),
-    );
+
     // product detail
     final detail = ref.watch(productDetailProvider(widget.productId));
     final webBaseUrl = ref.watch(
@@ -183,7 +169,7 @@ class _ProductDetailPageState extends ConsumerState<ProductDetailPage>
                             child: Opacity(
                               opacity: titleOpacity,
                               child: Text(
-                                detail.treasureName ?? '',
+                                detail.treasureName,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(

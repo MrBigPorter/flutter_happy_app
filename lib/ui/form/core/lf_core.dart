@@ -58,7 +58,7 @@ LfResolvedBorders resolvedBorders(
       ? sh.error
       : [
           BoxShadow(
-            color: theme.colorScheme.error.withOpacity(.22),
+            color: theme.colorScheme.error.withValues(alpha: .22),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
