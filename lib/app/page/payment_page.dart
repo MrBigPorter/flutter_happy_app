@@ -34,18 +34,6 @@ class _PaymentPageState extends ConsumerState<PaymentPage>
 
 
   @override
-  void initState() {
-    super.initState();
-
-    final id = widget.params.treasureId;
-    if (id != null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        //ref.refresh(productDetailProvider(id));
-      });
-    }
-  }
-
-  @override
   Widget build(BuildContext context) {
     final params = widget.params;
 
@@ -79,7 +67,7 @@ class _PaymentPageState extends ConsumerState<PaymentPage>
                 SizedBox(height: 8.w),
                 _ProductSection(detail: value),
                 SizedBox(height: 8.w),
-                _InfoSection(),
+                _InfoSection(detail: value, treasureId: params.treasureId!),
                 SizedBox(height: 8.w),
                 _VoucherSection(),
                 SizedBox(height: 8.w),
@@ -87,7 +75,7 @@ class _PaymentPageState extends ConsumerState<PaymentPage>
               ],
             ),
           ),
-          bottomNavigationBar: _BottomNavigationBar(),
+          bottomNavigationBar: _BottomNavigationBar(treasureId: params.treasureId!),
         );
       },
     );
@@ -400,10 +388,70 @@ class _ProductSectionState extends ConsumerState<_ProductSection> {
   }
 }
 
-class _InfoSection extends StatelessWidget {
+class _InfoSection extends ConsumerWidget {
+  final ProductListItem detail;
+  final String treasureId;
+  const _InfoSection({required this.detail, required this.treasureId});
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final purchase = ref.watch(purchaseProvider(treasureId));
+
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: 16.w),
+      child: Container(
+          width: double.infinity,
+          padding: EdgeInsets.symmetric(horizontal: 12.w,vertical: 12.w),
+          decoration: BoxDecoration(
+            color: context.bgPrimary,
+            borderRadius: BorderRadius.circular(context.radiusXl),
+          ),
+          child:Column(
+            children: [
+             _InfoRow(label: 'common.price.detail'.tr(), value: ''),
+             SizedBox(height: 12.w,),
+             _InfoRow(label: 'common.ticket.price'.tr(), value: FormatHelper.formatCurrency(detail.unitAmount)),
+              SizedBox(height: 12.w,),
+             _InfoRow(label: 'common.tickets.number'.tr(), value: '${purchase.entries}'),
+              SizedBox(height: 12.w,),
+             _InfoRow(label: 'common.total.price'.tr(), value: FormatHelper.formatCurrency(detail.unitAmount * purchase.entries)),
+            ],
+          )
+      ),
+    );
+  }
+}
+
+class _InfoRow extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _InfoRow({required this.label, required this.value});
+
   @override
   Widget build(BuildContext context) {
-    return Container(child: Text('Info Section'));
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            color: context.textPrimary900,
+            fontSize: context.textSm,
+            height: context.leadingSm,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        Text(
+          value,
+          style: TextStyle(
+            color: context.textPrimary900,
+            fontSize: context.textSm,
+            height: context.leadingSm,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+      ],
+    );
   }
 }
 
@@ -422,12 +470,62 @@ class _PaymentMethodSection extends StatelessWidget {
 }
 
 class _BottomNavigationBar extends StatelessWidget {
+  final String treasureId;
+  const _BottomNavigationBar({required this.treasureId});
+
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 60,
-      color: CupertinoColors.systemGrey5,
-      child: Center(child: Text('Bottom Navigation Bar')),
+      padding: EdgeInsets.all(16.w),
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: context.bgPrimary
+      ),
+      child:Row(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          Column(
+            children: [
+              Text(
+                'Total',
+                style: TextStyle(
+                  color: context.textSecondary700,
+                  fontSize: context.textSm,
+                  height: context.leadingSm,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              SizedBox(height: 8.w),
+              Text(
+                '￥0.00', //todo
+                style: TextStyle(
+                  color: context.textPrimary900,
+                  fontSize: context.textLg,
+                  height: context.leadingLg,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
+          ),
+          SizedBox(width: 16.w),
+          Button(
+            width: 140.w,
+            height: 44.w,
+            onPressed: () {
+              // Handle payment action
+            },
+            child: Text(
+              'Pay Now',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: context.textMd,
+                height: context.leadingMd,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
