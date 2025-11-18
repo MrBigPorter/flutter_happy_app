@@ -138,6 +138,7 @@ flutter:
   assets:
     - assets/images/
     - assets/images/product_detail/
+    - assets/images/payment/
     - assets/images/home_statistics/
     - assets/images/tab_bar/
     - assets/locales/en.json

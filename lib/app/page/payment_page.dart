@@ -17,6 +17,7 @@ import 'package:flutter_app/utils/format_helper.dart';
 import 'package:flutter_app/utils/helper.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 class PaymentPage extends ConsumerStatefulWidget {
   final PagePaymentParams params;
@@ -29,9 +30,7 @@ class PaymentPage extends ConsumerStatefulWidget {
 
 class _PaymentPageState extends ConsumerState<PaymentPage>
     with SingleTickerProviderStateMixin {
-
   bool _isInit = false;
-
 
   @override
   Widget build(BuildContext context) {
@@ -44,45 +43,60 @@ class _PaymentPageState extends ConsumerState<PaymentPage>
 
     final detail = ref.watch(productDetailProvider(params.treasureId!));
 
-
     return detail.when(
       loading: () => _PaymentSkeleton(),
       error: (_, __) => _PaymentSkeleton(),
       data: (value) {
-        if(!_isInit){
+        if (!_isInit) {
           _isInit = true;
-          Future.microtask((){
-            final action = ref.read(purchaseProvider(params.treasureId!).notifier);
-           final purchaseState = ref.read(purchaseProvider(params.treasureId!));
-           final entries = int.tryParse(params.entries ?? '') ?? purchaseState.minBuyQuantity;
-           action.resetEntries(entries);
+          Future.microtask(() {
+            final action = ref.read(
+              purchaseProvider(params.treasureId!).notifier,
+            );
+            final purchaseState = ref.read(
+              purchaseProvider(params.treasureId!),
+            );
+            final entries =
+                int.tryParse(params.entries ?? '') ??
+                purchaseState.minBuyQuantity;
+            action.resetEntries(entries);
           });
         }
         return BaseScaffold(
           title: 'checkout'.tr(),
-          body: SingleChildScrollView(
-            child: Column(
-              children: [
-                _AddressSection(),
-                SizedBox(height: 8.w),
-                _ProductSection(detail: value),
-                SizedBox(height: 8.w),
-                _InfoSection(detail: value, treasureId: params.treasureId!),
-                SizedBox(height: 8.w),
-                _VoucherSection(treasureId: params.treasureId!,),
-                SizedBox(height: 8.w),
-                _PaymentMethodSection(),
-              ],
-            ),
+          body: LayoutBuilder(
+            builder: (context, constrains) {
+              return SingleChildScrollView(
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(minHeight: constrains.maxHeight),
+                  child: Column(
+                    children: [
+                      _AddressSection(),
+                      SizedBox(height: 8.w),
+                      _ProductSection(detail: value),
+                      SizedBox(height: 8.w),
+                      _InfoSection(
+                        detail: value,
+                        treasureId: params.treasureId!,
+                      ),
+                      SizedBox(height: 8.w),
+                      _VoucherSection(treasureId: params.treasureId!),
+                      SizedBox(height: 8.w),
+                      _PaymentMethodSection(treasureId: params.treasureId!),
+                    ],
+                  ),
+                ),
+              );
+            },
           ),
-          bottomNavigationBar: _BottomNavigationBar(treasureId: params.treasureId!),
+          bottomNavigationBar: _BottomNavigationBar(
+            treasureId: params.treasureId!,
+          ),
         );
       },
     );
   }
 }
-
-
 
 class _AddressSection extends StatelessWidget {
   void _onAddressTap() {
@@ -154,19 +168,22 @@ class _ProductSection extends ConsumerStatefulWidget {
 }
 
 class _ProductSectionState extends ConsumerState<_ProductSection> {
-  
   late final TextEditingController _textEditingController;
   late final FocusNode _focusNode;
 
-  void _updateEntries(int entries){
-     _textEditingController.text = entries.toString();
+  void _updateEntries(int entries) {
+    _textEditingController.text = entries.toString();
   }
 
   void _handleFocusChange() {
     if (!_focusNode.hasFocus) {
-      final action = ref.read(purchaseProvider(widget.detail.treasureId).notifier);
+      final action = ref.read(
+        purchaseProvider(widget.detail.treasureId).notifier,
+      );
       action.setEntriesFromText(_textEditingController.text);
-      final purchaseState = ref.read(purchaseProvider(widget.detail.treasureId));
+      final purchaseState = ref.read(
+        purchaseProvider(widget.detail.treasureId),
+      );
       _updateEntries(purchaseState.entries);
     }
   }
@@ -174,9 +191,10 @@ class _ProductSectionState extends ConsumerState<_ProductSection> {
   @override
   void initState() {
     super.initState();
-      _textEditingController = TextEditingController();
-      _focusNode = FocusNode()..addListener(_handleFocusChange);
+    _textEditingController = TextEditingController();
+    _focusNode = FocusNode()..addListener(_handleFocusChange);
   }
+
   @override
   void dispose() {
     _textEditingController.dispose();
@@ -189,11 +207,13 @@ class _ProductSectionState extends ConsumerState<_ProductSection> {
   Widget build(BuildContext context) {
     final detail = widget.detail;
     final purchase = ref.watch(purchaseProvider(widget.detail.treasureId));
-    final action = ref.read(purchaseProvider(widget.detail.treasureId).notifier);
+    final action = ref.read(
+      purchaseProvider(widget.detail.treasureId).notifier,
+    );
 
-    if(!_focusNode.hasFocus){
+    if (!_focusNode.hasFocus) {
       final text = purchase.entries.toString();
-      if(_textEditingController.text != text){
+      if (_textEditingController.text != text) {
         _textEditingController.value = TextEditingValue(
           text: text,
           selection: TextSelection.collapsed(offset: text.length),
@@ -307,7 +327,7 @@ class _ProductSectionState extends ConsumerState<_ProductSection> {
                         height: 38.w,
                         paddingY: 0,
                         onPressed: () {
-                         action.dec((v)=> _updateEntries(v));
+                          action.dec((v) => _updateEntries(v));
                         },
                         child: Icon(
                           CupertinoIcons.minus,
@@ -335,7 +355,9 @@ class _ProductSectionState extends ConsumerState<_ProductSection> {
                           focusNode: _focusNode,
                           textInputAction: TextInputAction.done,
                           keyboardType: TextInputType.number,
-                          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                          inputFormatters: [
+                            FilteringTextInputFormatter.digitsOnly,
+                          ],
                           textAlign: TextAlign.center,
                           textAlignVertical: TextAlignVertical.center,
                           style: TextStyle(
@@ -354,10 +376,10 @@ class _ProductSectionState extends ConsumerState<_ProductSection> {
                           onChanged: (value) {
                             action.setEntriesFromText(value);
                           },
-                          onTapOutside:(_){
+                          onTapOutside: (_) {
                             FocusScope.of(context).unfocus();
                           },
-                          onEditingComplete:(){
+                          onEditingComplete: () {
                             FocusScope.of(context).unfocus();
                           },
                         ),
@@ -368,7 +390,7 @@ class _ProductSectionState extends ConsumerState<_ProductSection> {
                         height: 38.w,
                         paddingY: 0,
                         onPressed: () {
-                          action.inc((v)=> _updateEntries(v));
+                          action.inc((v) => _updateEntries(v));
                         },
                         child: Icon(
                           CupertinoIcons.add,
@@ -391,7 +413,9 @@ class _ProductSectionState extends ConsumerState<_ProductSection> {
 class _InfoSection extends ConsumerWidget {
   final ProductListItem detail;
   final String treasureId;
+
   const _InfoSection({required this.detail, required this.treasureId});
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final purchase = ref.watch(purchaseProvider(treasureId));
@@ -399,23 +423,34 @@ class _InfoSection extends ConsumerWidget {
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 16.w),
       child: Container(
-          width: double.infinity,
-          padding: EdgeInsets.symmetric(horizontal: 12.w,vertical: 12.w),
-          decoration: BoxDecoration(
-            color: context.bgPrimary,
-            borderRadius: BorderRadius.circular(context.radiusXl),
-          ),
-          child:Column(
-            children: [
-             _InfoRow(label: 'common.price.detail'.tr(), value: ''),
-             SizedBox(height: 12.w,),
-             _InfoRow(label: 'common.ticket.price'.tr(), value: FormatHelper.formatCurrency(detail.unitAmount)),
-              SizedBox(height: 12.w,),
-             _InfoRow(label: 'common.tickets.number'.tr(), value: '${purchase.entries}'),
-              SizedBox(height: 12.w,),
-             _InfoRow(label: 'common.total.price'.tr(), value: FormatHelper.formatCurrency(detail.unitAmount * purchase.entries)),
-            ],
-          )
+        width: double.infinity,
+        padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 12.w),
+        decoration: BoxDecoration(
+          color: context.bgPrimary,
+          borderRadius: BorderRadius.circular(context.radiusXl),
+        ),
+        child: Column(
+          children: [
+            _InfoRow(label: 'common.price.detail'.tr(), value: ''),
+            SizedBox(height: 12.w),
+            _InfoRow(
+              label: 'common.ticket.price'.tr(),
+              value: FormatHelper.formatCurrency(detail.unitAmount),
+            ),
+            SizedBox(height: 12.w),
+            _InfoRow(
+              label: 'common.tickets.number'.tr(),
+              value: '${purchase.entries}',
+            ),
+            SizedBox(height: 12.w),
+            _InfoRow(
+              label: 'common.total.price'.tr(),
+              value: FormatHelper.formatCurrency(
+                detail.unitAmount * purchase.entries,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -465,7 +500,6 @@ class _VoucherSection extends ConsumerWidget {
     final purchase = ref.watch(purchaseProvider(treasureId));
     final action = ref.read(purchaseProvider(treasureId).notifier);
 
-    print('coinAmount:${purchase.coinsToUse},maxUnitCoins:${purchase.maxUnitCoins}');
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 16.w),
       child: Container(
@@ -493,33 +527,29 @@ class _VoucherSection extends ConsumerWidget {
                   ),
                 ),
                 Button(
-                    variant: ButtonVariant.text,
-                    height: 20.w,
-                    paddingX: 0,
-                    gap: 2.w,
-                    onPressed: ()=>{},
-                    trailing: Icon(
-                      CupertinoIcons.chevron_right,
-                      color: context. textPrimary900,
-                      size: 16.w,
+                  variant: ButtonVariant.text,
+                  height: 20.w,
+                  paddingX: 0,
+                  gap: 2.w,
+                  onPressed: () => {},
+                  trailing: Icon(
+                    CupertinoIcons.chevron_right,
+                    color: context.textPrimary900,
+                    size: 16.w,
+                  ),
+                  child: Text(
+                    'coupon.num.available'.tr(namedArgs: {'number': '0'}),
+                    style: TextStyle(
+                      color: context.textErrorPrimary600,
+                      fontSize: context.textSm,
+                      height: context.leadingSm,
+                      fontWeight: FontWeight.w600,
                     ),
-                    child: Text(
-                      'coupon.num.available'.tr(
-                          namedArgs: {
-                            'number': '0',
-                          }
-                      ),
-                      style: TextStyle(
-                        color: context.textErrorPrimary600,
-                        fontSize: context.textSm,
-                        height: context.leadingSm,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    )
-                )
+                  ),
+                ),
               ],
             ),
-            SizedBox(height: 12.w,),
+            SizedBox(height: 12.w),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -538,19 +568,19 @@ class _VoucherSection extends ConsumerWidget {
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
                       AnimatedSwitcher(
-                        duration:  const Duration(milliseconds: 400),
-                        child: purchase.useDiscountCoins ? Text(
-                          '(${purchase.coinsToUse} coins)=${FormatHelper.formatCurrency(purchase.coinAmount)}',
-                          key: ValueKey('on${purchase.coinsToUse}'),
-                          style: TextStyle(
-                            color: context.textErrorPrimary600,
-                            fontSize: context.textSm,
-                            height: context.leadingSm,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ) : const SizedBox.shrink(
-                            key: ValueKey('off'),
-                        )
+                        duration: const Duration(milliseconds: 400),
+                        child: purchase.useDiscountCoins
+                            ? Text(
+                                '(${purchase.coinsToUse} coins)=${FormatHelper.formatCurrency(purchase.coinAmount)}',
+                                key: ValueKey('on${purchase.coinsToUse}'),
+                                style: TextStyle(
+                                  color: context.textErrorPrimary600,
+                                  fontSize: context.textSm,
+                                  height: context.leadingSm,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              )
+                            : const SizedBox.shrink(key: ValueKey('off')),
                       ),
                       SizedBox(
                         width: 40.w,
@@ -558,28 +588,28 @@ class _VoucherSection extends ConsumerWidget {
                         child: Transform.scale(
                           scale: 0.7,
                           child: Switch(
-                              padding: EdgeInsets.zero,
-                              activeThumbColor:context.fgWhite,
-                              activeTrackColor: context.bgBrandSolid,
-                              inactiveTrackColor: context.bgQuaternary,
-                              inactiveThumbColor: context.fgWhite,
-                              trackOutlineColor: WidgetStateProperty.all(context.borderSecondary),
-                              value: purchase.useDiscountCoins,
-                              onChanged: (v)=> action.toggleUseDiscountCoins(v)
+                            padding: EdgeInsets.zero,
+                            activeThumbColor: context.fgWhite,
+                            activeTrackColor: context.bgBrandSolid,
+                            inactiveTrackColor: context.bgQuaternary,
+                            inactiveThumbColor: context.fgWhite,
+                            trackOutlineColor: WidgetStateProperty.all(
+                              context.borderSecondary,
+                            ),
+                            value: purchase.useDiscountCoins,
+                            onChanged: (v) => action.toggleUseDiscountCoins(v),
                           ),
                         ),
-                      )
+                      ),
                     ],
                   ),
-                )
+                ),
               ],
             ),
             Text(
               '${'common.balance'.tr()}: ${purchase.balanceCoins.toInt()} ${'common.coins'.tr()}',
-              style: TextStyle(
-                color: context.textQuaternary500
-              ),
-            )
+              style: TextStyle(color: context.textQuaternary500),
+            ),
           ],
         ),
       ),
@@ -587,101 +617,245 @@ class _VoucherSection extends ConsumerWidget {
   }
 }
 
-class _PaymentMethodSection extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Container(child: Text('Payment Method Section'));
-  }
-}
-
-class _BottomNavigationBar extends ConsumerWidget {
+class _PaymentMethodSection extends ConsumerWidget {
   final String treasureId;
-  const _BottomNavigationBar({required this.treasureId});
+
+  const _PaymentMethodSection({required this.treasureId});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-
     final purchase = ref.watch(purchaseProvider(treasureId));
 
-    return Container(
-      padding: EdgeInsets.only(left: 16.w, right: 16.w, top: 12.w, bottom: ViewUtils.bottomBarHeight),
-      width: double.infinity,
-      decoration: BoxDecoration(
-        color: context.bgPrimary,
-        boxShadow: [
-          BoxShadow(
-            color: context.shadowMd01.withValues(alpha: 0.1),
-            blurRadius: 10.w,
-            offset: Offset(0, -1.w),
-          ),
-        ]
-      ),
-      child:Row(
-        mainAxisAlignment: MainAxisAlignment.end,
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              RichText(
-                 text: TextSpan(
-                   children: [
-                     TextSpan(
-                       text: '${'common.total'.tr()}: ',
-                       style: TextStyle(
-                         color: context.textPrimary900,
-                         fontSize: context.textSm,
-                         height: context.leadingSm,
-                         fontWeight: FontWeight.w600,
-                       ),
-                     ),
-                     TextSpan(
-                        text: FormatHelper.formatCurrency(purchase.payableAmount),
-                        style: TextStyle(
-                          color: context.textErrorPrimary600,
-                          fontSize: context.textLg,
-                          height: context.leadingLg,
-                          fontWeight: FontWeight.w800,
-                        ),
-                     )
-                   ]
-                 ),
-              ),
-              SizedBox(height: 8.w),
-              Text(
-                '${'common.total.discount'.tr()} ${FormatHelper.formatCurrency(purchase.useDiscountCoins?purchase.coinAmount:0)}',
-                style: TextStyle(
-                  color: context.textErrorPrimary600,
-                  fontSize: context.textSm,
-                  height: context.leadingSm,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-          SizedBox(width: 16.w),
-          Button(
-            width: 120.w,
-            height: 40.w,
-            onPressed: () {
-              // Handle payment action
-            },
-            child: Text(
-              'common.checkout'.tr(),
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: 16.w),
+      child: Container(
+        width: double.infinity,
+        padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 12.w),
+        decoration: BoxDecoration(
+          color: context.bgPrimary,
+          borderRadius: BorderRadius.circular(context.radiusXl),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'common.select'.tr(),
               style: TextStyle(
-                color: Colors.white,
-                fontSize: context.textMd,
-                height: context.leadingMd,
-                fontWeight: FontWeight.w600,
+                color: context.textPrimary900,
+                fontSize: context.textSm,
+                height: context.leadingSm,
+                fontWeight: FontWeight.w800,
               ),
             ),
-          ),
-        ],
+            SizedBox(height: 12.w),
+            Row(
+              children: [
+                SvgPicture.asset(
+                  'assets/images/payment/wallet-icon.svg',
+                  width: 20.w,
+                  height: 20.w,
+                  colorFilter: ColorFilter.mode(
+                    context.textPrimary900,
+                    BlendMode.srcIn,
+                  ),
+                ),
+                SizedBox(width: 12.w),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'common.wallet'.tr(),
+                      style: TextStyle(
+                        color: context.textPrimary900,
+                        fontSize: context.textSm,
+                        height: context.leadingSm,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    SizedBox(height: 4.w),
+                    Text(
+                      '${'common.balance'.tr()}:${FormatHelper.formatCurrency(purchase.realBalance)}',
+                      style: TextStyle(
+                        color: context.textQuaternary500,
+                        fontSize: context.textXs,
+                        height: context.leadingXs,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+                Spacer(),
+                RadioGroup(
+                  groupValue: 'wallet',
+                  onChanged: (v) => {},
+                  child: Radio(
+                    activeColor: context.borderBrand,
+                    overlayColor: WidgetStateProperty.all(Colors.black),
+                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    visualDensity: VisualDensity.compact,
+                    value: 'wallet',
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
 }
 
+class _BottomNavigationBar extends ConsumerStatefulWidget {
+  final String treasureId;
+
+  const _BottomNavigationBar({required this.treasureId});
+
+  @override
+  ConsumerState<_BottomNavigationBar> createState() =>
+      _BottomNavigationBarState();
+}
+
+class _BottomNavigationBarState extends ConsumerState<_BottomNavigationBar>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _animationController;
+  late final Animation<double> _animation;
+  late final Animation<double> _fadeAnimation;
+  late final Animation<Offset> _slideAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+
+    /// Animation controller for any future animations
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1000),
+    );
+
+    _animation = CurvedAnimation(
+      parent: _animationController,
+      curve: Curves.easeOutCubic,
+      reverseCurve: Curves.easeInCubic,
+    );
+
+    _fadeAnimation = Tween(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
+    );
+
+    _slideAnimation = Tween(begin: Offset(0, 1), end: Offset.zero).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeInOut,reverseCurve: Curves.easeInOut)
+    );
+
+    // start the animation
+    _animationController.forward();
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final purchase = ref.watch(purchaseProvider(widget.treasureId));
+
+    return AnimatedBuilder(
+        animation: _animationController,
+        builder: (context, child){
+          return FadeTransition(
+              opacity: _fadeAnimation,
+              child: SlideTransition(
+                position: _slideAnimation,
+                child: child,
+              ),
+          );
+        },
+        child: Container(
+          padding: EdgeInsets.only(
+            left: 16.w,
+            right: 16.w,
+            top: 12.w,
+            bottom: ViewUtils.bottomBarHeight,
+          ),
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: context.bgPrimary,
+            boxShadow: [
+              BoxShadow(
+                color: context.shadowMd01.withValues(alpha: 0.1),
+                blurRadius: 10.w,
+                offset: Offset(0, -1.w),
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  RichText(
+                    text: TextSpan(
+                      children: [
+                        TextSpan(
+                          text: '${'common.total'.tr()}: ',
+                          style: TextStyle(
+                            color: context.textPrimary900,
+                            fontSize: context.textSm,
+                            height: context.leadingSm,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        TextSpan(
+                          text: FormatHelper.formatCurrency(purchase.payableAmount),
+                          style: TextStyle(
+                            color: context.textErrorPrimary600,
+                            fontSize: context.textLg,
+                            height: context.leadingLg,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  SizedBox(height: 8.w),
+                  Text(
+                    '${'common.total.discount'.tr()} ${FormatHelper.formatCurrency(purchase.useDiscountCoins ? purchase.coinAmount : 0)}',
+                    style: TextStyle(
+                      color: context.textErrorPrimary600,
+                      fontSize: context.textSm,
+                      height: context.leadingSm,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(width: 16.w),
+              Button(
+                width: 120.w,
+                height: 40.w,
+                onPressed: () {
+                  // Handle payment action
+                },
+                child: Text(
+                  'common.checkout'.tr(),
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: context.textMd,
+                    height: context.leadingMd,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+    );
+  }
+}
 
 class _PaymentSkeleton extends StatelessWidget {
   @override
