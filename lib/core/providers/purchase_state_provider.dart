@@ -6,7 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class PurchaseState {
   final int entries; // Number of purchase entries
-  final int unitAmount; // Price per unit
+  final double unitAmount; // Price per unit
   final double maxUnitCoins; // Maximum coins per unit
   final double balanceCoins; // User's balance coins
   final double realBalance; // User's balance in real currency
@@ -16,6 +16,7 @@ class PurchaseState {
   final int stockLeft; // Stock left
   final num? coinAmountCap; // Optional cap on coin amount
   final bool isAuthenticated; // User login status
+  final bool useDiscountCoins; // Whether to use discount coins
 
   PurchaseState({
     required this.entries,
@@ -29,6 +30,7 @@ class PurchaseState {
     required this.stockLeft,
     this.coinAmountCap,
     required this.isAuthenticated,
+    required this.useDiscountCoins,
   });
 
   // Maximum entries allowed based on maxPerBuy and stockLeft
@@ -38,7 +40,9 @@ class PurchaseState {
   int get _minEntriesAllowed => math.min(minBuyQuantity, stockLeft);
 
   // Whether the current entries exceed the allowed maximum
-  int get subtotal => unitAmount * entries;
+  double get subtotal => unitAmount * entries;
+
+  double? get payableAmount => useDiscountCoins ? (subtotal - coinAmount) : subtotal;
 
   // Theoretical maximum coins that can be used
   double get _theoreticalMaxCoins => maxUnitCoins * entries;
@@ -49,7 +53,7 @@ class PurchaseState {
       : _theoreticalMaxCoins.toDouble();
 
   // Coin amount based on exchange rate
-  num get coinAmount => exchangeRate > 0 ? (coinsToUse / exchangeRate) : 0;
+  double get coinAmount => exchangeRate > 0 ? (coinsToUse / exchangeRate) : 0;
 
   // Capped coin amount if a cap is set
   num get coinAmountCapped {
@@ -58,7 +62,7 @@ class PurchaseState {
     }
     return coinAmount;
   }
-  PurchaseState copyWith({int? entries}) {
+  PurchaseState copyWith({int? entries,  bool? useDiscountCoins}) {
     return PurchaseState(
       entries: entries ?? this.entries,
       unitAmount: unitAmount,
@@ -71,6 +75,7 @@ class PurchaseState {
       coinAmountCap: coinAmountCap,
       isAuthenticated: isAuthenticated,
       realBalance: realBalance,
+      useDiscountCoins: useDiscountCoins?? this.useDiscountCoins,
     );
   }
 }
@@ -105,7 +110,10 @@ class PurchaseNotifier extends StateNotifier<PurchaseState> {
     if(n == null) return;
     final next = n.clamp(state._minEntriesAllowed, state._maxEntriesAllowed);
     state = state.copyWith(entries: next);
+  }
 
+  void toggleUseDiscountCoins(bool use) {
+    state = state.copyWith(useDiscountCoins: use);
   }
 }
 
@@ -138,7 +146,7 @@ final purchaseProvider = StateNotifierProvider.autoDispose
         PurchaseState(
           entries: detail?.minBuyQuantity ?? stockLeft,
           // unitAmount: detail?.unitAmount ?? 0, //todo mock
-          unitAmount: detail?.unitAmount ?? 10,
+          unitAmount: detail?.unitAmount.toDouble() ?? 1.0,
           // maxUnitCoins: detail?.maxUnitCoins ?? 0, //todo mock
           maxUnitCoins: detail?.maxUnitCoins?.toDouble() ?? 0.5,
           // balanceCoins: state.balanceCoins,//todo mock
@@ -151,6 +159,7 @@ final purchaseProvider = StateNotifierProvider.autoDispose
           minBuyQuantity: detail?.minBuyQuantity ?? math.min(1, stockLeft),
           stockLeft: stockLeft,
           isAuthenticated: isAuthenticated,
+          useDiscountCoins: false,
         ),
       );
     });

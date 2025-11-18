@@ -1187,6 +1187,7 @@ class _StepperState extends ConsumerState<_Stepper> {
           },
           trailing: RollingNumber(
             value: purchase.subtotal,
+            fractionDigits: 2,
             itemHeight: 24.w,
             enableComma: true,
             prefix: Text(

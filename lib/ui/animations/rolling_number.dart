@@ -1,46 +1,47 @@
-import 'package:flutter/cupertino.dart';
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_app/common.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
-/// RollingNumber
-/// --------------
-/// A “jackpot-style” rolling number widget.
-///
-/// - Animates **from old value to new value** whenever [value] changes
-/// - Each digit scrolls vertically from old digit → new digit
-/// - Supports thousand separators (commas) between digits
-/// - Supports optional [prefix] widget (e.g. currency icon)
-/// - Supports custom [textStyle], [itemHeight], [itemWidth]
+/// rolling number widget- animate number changes by rolling digits
+/// Parameters:
+/// - value: Object - The value to display (int, double, String)
+/// - duration: Duration - Animation duration
+/// - itemHeight: double - Height of each digit item
+/// - itemWidth: double - Width of each digit item
+/// - enableComma: bool - Whether to enable thousands separator
+/// - fractionDigits: int - Number of decimal places for double values
+/// - textStyle: TextStyle? - Text style for the digits
+/// - prefix: Widget? - Optional prefix widget
+/// Usage:
+/// ```dart
+/// RollingNumber(
+/// value: 12345,
+/// duration: Duration(milliseconds: 800),
+/// itemHeight: 40.0,
+/// itemWidth: 12.0,
+/// enableComma: true,
+/// fractionDigits: 2,
+/// textStyle: TextStyle(fontSize: 20, color: Colors.white),
+/// prefix: Icon(Icons.monetization_on),
+/// )
+/// ```
 class RollingNumber extends StatefulWidget {
-  /// Target value to display.
-  /// Every time this value changes, the digits will animate
-  /// from the previous value to this new value.
-  final int value;
+  final Object value;
 
-  /// Height of each digit cell (one row = one digit).
-  final double itemHeight;
-
-  /// Width of each digit cell.
-  final double itemWidth;
-
-  /// Duration of the rolling animation for each change.
   final Duration duration;
 
-  /// Whether to show thousand separators, e.g. 12,345,678.
-  /// If true, a comma will be inserted between digit groups.
-  final bool? enableComma;
+  final double itemHeight;
 
-  /// Text style for digits (and commas).
-  /// If null, a default style will be used.
+  final double itemWidth;
+
+  final bool enableComma;
+
+  final int fractionDigits;
+
   final TextStyle? textStyle;
 
-  /// Optional prefix widget, e.g.:
-  ///  - an icon
-  ///  - a currency symbol
-  ///  - a small label
-  ///
-  /// This widget will be rendered on the left of the number.
   final Widget? prefix;
 
   const RollingNumber({
@@ -48,30 +49,30 @@ class RollingNumber extends StatefulWidget {
     required this.value,
     this.duration = const Duration(milliseconds: 600),
     this.itemHeight = 40.0,
-    this.itemWidth = 12.0,
-    this.enableComma,
+    this.itemWidth = 10.0,
+    this.enableComma = false,
+    this.fractionDigits = 0,
     this.textStyle,
     this.prefix,
   });
 
   @override
-  State<RollingNumber> createState() => RollingNumberState();
+  State<RollingNumber> createState() => _RollingNumberState();
 }
 
-class RollingNumberState extends State<RollingNumber>
+class _RollingNumberState extends State<RollingNumber>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
   late final Animation<double> _anim;
 
-  /// Last value before the latest change.
-  /// We animate **from oldValue → widget.value**.
-  int oldValue = 0;
+  /// last formatted text value
+  String _oldText = '';
 
   @override
   void initState() {
     super.initState();
 
-    oldValue = widget.value;
+    _oldText = _formatValue(widget.value);
 
     _controller = AnimationController(
       duration: widget.duration,
@@ -87,12 +88,10 @@ class RollingNumberState extends State<RollingNumber>
   @override
   void didUpdateWidget(covariant RollingNumber oldWidget) {
     super.didUpdateWidget(oldWidget);
-    
 
-    // When the external [value] changes, trigger a new animation.
+    // value changed: start animation
     if (oldWidget.value != widget.value) {
-      // Store previous value so we can animate from old → new.
-      oldValue = oldWidget.value;
+      _oldText = _formatValue(oldWidget.value);
 
       _controller
         ..stop()
@@ -107,76 +106,144 @@ class RollingNumberState extends State<RollingNumber>
     super.dispose();
   }
 
+  /// 把任意类型统一格式成字符串：
+  /// - int:     "12345"
+  /// - double:  按 fractionDigits 保留小数，比如 2 => "12345.67"
+  /// - String:  原样 toString()
+  /// 然后再：
+  /// - 拆出符号位 '-'（如果有）
+  /// - 拆出整数部分 / 小数部分
+  /// - 给整数部分加千分位逗号（可选）
+  String _formatValue(Object v) {
+    String raw;
+
+    if (v is int) {
+      raw = v.toString();
+    } else if (v is double) {
+      raw = v.toStringAsFixed(widget.fractionDigits);
+    } else {
+      raw = v.toString();
+    }
+
+    raw = raw.trim();
+    if (raw.isEmpty) return '0';
+
+    // 处理负号
+    String sign = '';
+    if (raw.startsWith('-')) {
+      sign = '-';
+      raw = raw.substring(1);
+    }
+
+    // 拆整数 / 小数
+    String integerPart = raw;
+    String decimalPart = '';
+    final dotIndex = raw.indexOf('.');
+    if (dotIndex != -1) {
+      integerPart = raw.substring(0, dotIndex);
+      decimalPart = raw.substring(dotIndex); // 保留 "." + 小数
+    }
+
+    if (widget.enableComma) {
+      integerPart = _addThousandsSeparator(integerPart);
+    }
+
+    return sign + integerPart + decimalPart;
+  }
+
+  /// 简单加千分位逗号： "1234567" -> "1,234,567"
+  String _addThousandsSeparator(String digits) {
+    // 非纯数字就不搞了，防止奇怪字符串
+    if (digits.isEmpty || !RegExp(r'^\d+$').hasMatch(digits)) {
+      return digits;
+    }
+    if (digits.length <= 3) return digits;
+
+    final buffer = StringBuffer();
+    final len = digits.length;
+    final firstGroupLen = len % 3 == 0 ? 3 : len % 3;
+
+    buffer.write(digits.substring(0, firstGroupLen));
+    for (int i = firstGroupLen; i < len; i += 3) {
+      buffer.write(',');
+      buffer.write(digits.substring(i, i + 3));
+    }
+    return buffer.toString();
+  }
+
+  bool _isDigit(String ch) =>
+      ch.codeUnitAt(0) >= 48 && ch.codeUnitAt(0) <= 57; // '0' ~ '9'
+
+  /// 右对齐取字符，不够长度的在左侧补空格
+  /// maxLen: 对齐后的总长度
+  /// index:  0 ~ maxLen-1
+  String _charAtRightAligned(String text, int maxLen, int index) {
+    final offset = maxLen - text.length;
+    final i = index - offset;
+    if (i < 0 || i >= text.length) return ' ';
+    return text[i];
+  }
+
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
       animation: _anim,
       builder: (context, _) {
-        // Convert both old & new values to positive strings.
-        // (If you need minus sign, you can handle prefix '-'.)
-        final oldStr = oldValue.abs().toString();
-        final newStr = widget.value.abs().toString();
+        final newText = _formatValue(widget.value);
 
-        // Convert each character into a digit int.
-        final oldDigits = oldStr.split('');
-        final newDigits = newStr.split('');
+        // old / new 右对齐对齐，保证个位、十位、百位对上
+        final maxLen = math.max(_oldText.length, newText.length);
 
-
-        final newLength = newDigits.length;
-        final oldLength = oldDigits.length;
-
-        final diff = newLength - oldLength;
-
-        int digitFrom (int i){
-          final oldIndex = i - diff;
-          if(oldIndex < 0 || oldIndex >= oldLength){
-            return int.parse(newDigits[i]);
-          } else {
-            return int.parse( oldDigits[oldIndex]);
-          }
-        }
-
-        int digitTo (int i){
-          return int.parse( newDigits[i]);
-        }
+        final baseStyle = (TextStyle(
+          fontSize: context.textSm,
+          fontWeight: FontWeight.w600,
+          color: Colors.white,
+        )).merge(widget.textStyle);
 
         return Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Optional prefix (e.g. ₱, icon, label...)
             if (widget.prefix != null) ...[
               widget.prefix!,
+              SizedBox(width: 2.w),
             ],
 
-            // Loop over each digit position.
-            for (var i = 0; i < newLength; i++) ...[
-              // Insert thousand-separator commas if:
-              // - not the first digit
-              // - and (len - i) is divisible by 3
-              //   (i.e. we are at a thousands boundary from the right)
-              if (i > 0 &&
-                  (newLength - i) % 3 == 0 &&
-                  (widget.enableComma ?? false))
-                Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 1.w),
-                  child: Text(
-                    ',',
-                    style: (TextStyle(
-                      fontSize: context.textSm,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white,
-                    )).merge(widget.textStyle),
-                  ),
-                ),
+            for (var i = 0; i < maxLen; i++) ...[
+              Builder(
+                builder: (_) {
+                  final oldCh = _charAtRightAligned(_oldText, maxLen, i);
+                  final newCh = _charAtRightAligned(newText, maxLen, i);
 
-              // Render a single rolling digit column for this position.
-              RollingDigitSmooth(
-                from: digitFrom(i),
-                to: digitTo(i),
-                progress: _anim.value,
-                height: widget.itemHeight,
-                width: widget.itemWidth,
-                textStyle: widget.textStyle,
+                  // 不是数字：直接静态显示（包括 '-', '.', ','，以及字母等）
+                  if (!_isDigit(oldCh) || !_isDigit(newCh)) {
+                    if (newCh == ' ') {
+                      // 左侧补位空格：给一个固定宽度避免布局抖动
+                      return SizedBox(width: widget.itemWidth);
+                    }
+                    return SizedBox(
+                      width: widget.itemWidth,
+                      child: Center(
+                        child: Text(
+                          newCh,
+                          style: baseStyle,
+                        ),
+                      ),
+                    );
+                  }
+
+                  // 数字：使用滚动数字组件
+                  final from = int.parse(oldCh);
+                  final to = int.parse(newCh);
+
+                  return RollingDigitSmooth(
+                    from: from,
+                    to: to,
+                    progress: _anim.value,
+                    height: widget.itemHeight,
+                    width: widget.itemWidth,
+                    textStyle: baseStyle,
+                  );
+                },
               ),
             ],
           ],
@@ -186,40 +253,22 @@ class RollingNumberState extends State<RollingNumber>
   }
 }
 
-/// RollingDigitSmooth
-/// ------------------
-/// A **single digit column** that smoothly scrolls from [from] → [to].
-///
-/// - Displays digits 0–9 stacked vertically in a column
-/// - Uses [progress] (0 ~ 1) to interpolate vertical offset
-/// - [height] is the visible window height (one digit high)
-/// - [width] is the digit cell width
+/// 单个数字列：从 [from] 滚动到 [to]（0~9）
+/// - 垂直堆叠 0~9
+/// - 通过 [progress] 插值 offset 实现滚动
 class RollingDigitSmooth extends StatelessWidget {
-  /// Start digit (0–9) before the animation.
   final int from;
-
-  /// Target digit (0–9) after the animation.
   final int to;
-
-  /// Animation progress between 0 and 1.
-  ///  - 0.0 = exactly [from]
-  ///  - 1.0 = exactly [to]
   final double progress;
-
-  /// Height of one digit cell.
   final double height;
-
-  /// Width of one digit cell.
   final double width;
-
-  /// Text style for the digits.
   final TextStyle? textStyle;
 
   const RollingDigitSmooth({
     super.key,
-    required this.progress,
     required this.from,
     required this.to,
+    required this.progress,
     required this.height,
     required this.width,
     this.textStyle,
@@ -228,34 +277,23 @@ class RollingDigitSmooth extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final itemHeight = height;
-
-    // Digits 0–9 to build the vertical column.
     final numbers = List.generate(10, (i) => i);
 
-    // Vertical offset for [from] & [to] positions.
-    // Example: itemHeight = 40
-    //  - digit 3 at offset = -3 * 40 = -120
+    // 0 在最上面，往下依次 1,2,...9
     final start = -from * itemHeight;
     final end = -to * itemHeight;
 
-    // Interpolate offset according to progress.
-    // progress=0 → start
-    // progress=1 → end
     final dy = start + (end - start) * progress;
 
     return ClipRect(
-      // Clip to show only one digit row height.
       child: SizedBox(
         width: width,
         height: itemHeight,
         child: OverflowBox(
-          // Allow child to have a fixed tall height (10 * itemHeight),
-          // but we only show the clipped viewport area above.
           alignment: Alignment.topCenter,
           minHeight: itemHeight * 10,
           maxHeight: itemHeight * 10,
           child: Transform.translate(
-            // Shift the whole column up/down according to [dy].
             offset: Offset(0, dy),
             child: Column(
               mainAxisSize: MainAxisSize.min,

@@ -572,7 +572,7 @@
   "common.cash.rule": "After deducting platform costs, it's calculated based on the actual transaction price; the amount is subject to what is displayed.",
   "total.amount": "Discounted cash amount",
   "share.the.fortune.bag": "The other members of the group will share the Fortune Bag",
-  "coupon.num.available": "{{number}} available",
+  "coupon.num.available": "{number} available",
   "number.of.coins": "The exact number of coins will be based on the page display on the day of signing in.",
   "day": "Day",
   "new.user.coupon.title": "Newcomer voucher",

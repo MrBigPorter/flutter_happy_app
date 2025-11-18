@@ -69,7 +69,7 @@ class _PaymentPageState extends ConsumerState<PaymentPage>
                 SizedBox(height: 8.w),
                 _InfoSection(detail: value, treasureId: params.treasureId!),
                 SizedBox(height: 8.w),
-                _VoucherSection(),
+                _VoucherSection(treasureId: params.treasureId!,),
                 SizedBox(height: 8.w),
                 _PaymentMethodSection(),
               ],
@@ -455,10 +455,135 @@ class _InfoRow extends StatelessWidget {
   }
 }
 
-class _VoucherSection extends StatelessWidget {
+class _VoucherSection extends ConsumerWidget {
+  final String treasureId;
+
+  const _VoucherSection({required this.treasureId});
+
   @override
-  Widget build(BuildContext context) {
-    return Container(child: Text('Voucher Section'));
+  Widget build(BuildContext context, WidgetRef ref) {
+    final purchase = ref.watch(purchaseProvider(treasureId));
+    final action = ref.read(purchaseProvider(treasureId).notifier);
+
+    print('coinAmount:${purchase.coinsToUse},maxUnitCoins:${purchase.maxUnitCoins}');
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: 16.w),
+      child: Container(
+        width: double.infinity,
+        padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 16.w),
+        decoration: BoxDecoration(
+          color: context.bgPrimary,
+          borderRadius: BorderRadius.circular(context.radiusXl),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'coupon.coupon'.tr(),
+                  style: TextStyle(
+                    color: context.textPrimary900,
+                    fontSize: context.textSm,
+                    height: context.leadingSm,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                Button(
+                    variant: ButtonVariant.text,
+                    height: 20.w,
+                    paddingX: 0,
+                    gap: 2.w,
+                    onPressed: ()=>{},
+                    trailing: Icon(
+                      CupertinoIcons.chevron_right,
+                      color: context. textPrimary900,
+                      size: 16.w,
+                    ),
+                    child: Text(
+                      'coupon.num.available'.tr(
+                          namedArgs: {
+                            'number': '0',
+                          }
+                      ),
+                      style: TextStyle(
+                        color: context.textErrorPrimary600,
+                        fontSize: context.textSm,
+                        height: context.leadingSm,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    )
+                )
+              ],
+            ),
+            SizedBox(height: 12.w,),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'common.treasureCoins'.tr(),
+                  style: TextStyle(
+                    color: context.textPrimary900,
+                    fontSize: context.textSm,
+                    height: context.leadingSm,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                Expanded(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      AnimatedSwitcher(
+                        duration:  const Duration(milliseconds: 400),
+                        child: purchase.useDiscountCoins ? Text(
+                          '(${purchase.coinsToUse} coins)=${FormatHelper.formatCurrency(purchase.coinAmount)}',
+                          key: ValueKey('on${purchase.coinsToUse}'),
+                          style: TextStyle(
+                            color: context.textErrorPrimary600,
+                            fontSize: context.textSm,
+                            height: context.leadingSm,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ) : const SizedBox.shrink(
+                            key: ValueKey('off'),
+                        )
+                      ),
+                      SizedBox(
+                        width: 40.w,
+                        height: 20.w,
+                        child: Transform.scale(
+                          scale: 0.7,
+                          child: Switch(
+                              padding: EdgeInsets.zero,
+                              activeThumbColor:context.fgWhite,
+                              activeTrackColor: context.bgBrandSolid,
+                              inactiveTrackColor: context.bgQuaternary,
+                              inactiveThumbColor: context.fgWhite,
+                              trackOutlineColor: WidgetStateProperty.all(context.borderSecondary),
+                              value: purchase.useDiscountCoins,
+                              onChanged: (v)=> action.toggleUseDiscountCoins(v)
+                          ),
+                        ),
+                      )
+                    ],
+                  ),
+                )
+              ],
+            ),
+            Text(
+              '${'common.balance'.tr()}: ${purchase.balanceCoins.toInt()} ${'common.coins'.tr()}',
+              style: TextStyle(
+                color: context.textQuaternary500
+              ),
+            )
+          ],
+        ),
+      ),
+    );
   }
 }
 
@@ -469,53 +594,80 @@ class _PaymentMethodSection extends StatelessWidget {
   }
 }
 
-class _BottomNavigationBar extends StatelessWidget {
+class _BottomNavigationBar extends ConsumerWidget {
   final String treasureId;
   const _BottomNavigationBar({required this.treasureId});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+
+    final purchase = ref.watch(purchaseProvider(treasureId));
+
     return Container(
-      padding: EdgeInsets.all(16.w),
+      padding: EdgeInsets.only(left: 16.w, right: 16.w, top: 12.w, bottom: ViewUtils.bottomBarHeight),
       width: double.infinity,
       decoration: BoxDecoration(
-        color: context.bgPrimary
+        color: context.bgPrimary,
+        boxShadow: [
+          BoxShadow(
+            color: context.shadowMd01.withValues(alpha: 0.1),
+            blurRadius: 10.w,
+            offset: Offset(0, -1.w),
+          ),
+        ]
       ),
       child:Row(
         mainAxisAlignment: MainAxisAlignment.end,
+        crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Text(
-                'Total',
-                style: TextStyle(
-                  color: context.textSecondary700,
-                  fontSize: context.textSm,
-                  height: context.leadingSm,
-                  fontWeight: FontWeight.w600,
-                ),
+              RichText(
+                 text: TextSpan(
+                   children: [
+                     TextSpan(
+                       text: '${'common.total'.tr()}: ',
+                       style: TextStyle(
+                         color: context.textPrimary900,
+                         fontSize: context.textSm,
+                         height: context.leadingSm,
+                         fontWeight: FontWeight.w600,
+                       ),
+                     ),
+                     TextSpan(
+                        text: FormatHelper.formatCurrency(purchase.payableAmount),
+                        style: TextStyle(
+                          color: context.textErrorPrimary600,
+                          fontSize: context.textLg,
+                          height: context.leadingLg,
+                          fontWeight: FontWeight.w800,
+                        ),
+                     )
+                   ]
+                 ),
               ),
               SizedBox(height: 8.w),
               Text(
-                '￥0.00', //todo
+                '${'common.total.discount'.tr()} ${FormatHelper.formatCurrency(purchase.useDiscountCoins?purchase.coinAmount:0)}',
                 style: TextStyle(
-                  color: context.textPrimary900,
-                  fontSize: context.textLg,
-                  height: context.leadingLg,
-                  fontWeight: FontWeight.w800,
+                  color: context.textErrorPrimary600,
+                  fontSize: context.textSm,
+                  height: context.leadingSm,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ],
           ),
           SizedBox(width: 16.w),
           Button(
-            width: 140.w,
-            height: 44.w,
+            width: 120.w,
+            height: 40.w,
             onPressed: () {
               // Handle payment action
             },
             child: Text(
-              'Pay Now',
+              'common.checkout'.tr(),
               style: TextStyle(
                 color: Colors.white,
                 fontSize: context.textMd,
