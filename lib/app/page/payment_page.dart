@@ -3,6 +3,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_app/app/routes/app_router.dart';
 import 'package:flutter_app/common.dart';
 import 'package:flutter_app/components/base_scaffold.dart';
 import 'package:flutter_app/components/skeleton.dart';
@@ -18,6 +19,7 @@ import 'package:flutter_app/utils/helper.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 
 class PaymentPage extends ConsumerStatefulWidget {
   final PagePaymentParams params;
@@ -723,6 +725,95 @@ class _BottomNavigationBarState extends ConsumerState<_BottomNavigationBar>
   late final Animation<double> _fadeAnimation;
   late final Animation<Offset> _slideAnimation;
 
+  void submitPayment() async {
+    final action = ref.read(
+      purchaseProvider(widget.treasureId).notifier,
+    );
+    final result = await action.submitOrder();
+
+    if(!context.mounted) return;
+
+    if(!result.ok){
+      switch (result.error){
+        case PurchaseSubmitError.needLogin:
+          appRouter.pushNamed('login');
+          break;
+        case PurchaseSubmitError.needKyc:
+          RadixSheet.show(
+            builder: (context, close) {
+              return Container(
+                height: 200.w,
+                padding: EdgeInsets.all(16.w),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'kyc.verification.required'.tr(),
+                      style: TextStyle(
+                        color: context.textPrimary900,
+                        fontSize: context.textLg,
+                        height: context.leadingLg,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    SizedBox(height: 12.w),
+                    Text(
+                      'please.complete.kyc.to.proceed'.tr(),
+                      style: TextStyle(
+                        color: context.textSecondary700,
+                        fontSize: context.textMd,
+                        height: context.leadingMd,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    Spacer(),
+                    Button(
+                      width: double.infinity,
+                      onPressed: () {
+                        close();
+                        appRouter.pushNamed('kycVerification');
+                      },
+                      child: Text(
+                        'kyc.verify.now'.tr(),
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: context.textMd,
+                          height: context.leadingMd,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          );
+          break;
+        case PurchaseSubmitError.noAddress:
+           RadixToast.error('please.add.delivery.address'.tr());
+          break;
+        case PurchaseSubmitError.insufficientBalance:
+          RadixToast.error('insufficient.balance.please.top.up'.tr());
+          break;
+        case PurchaseSubmitError.soldOut:
+          RadixToast.error('this.item.is.sold.out'.tr());
+          break;
+        case PurchaseSubmitError.purchaseLimitExceeded:
+          RadixToast.error('purchase.limit.exceeded'.tr());
+          break;
+        case PurchaseSubmitError.unknown:
+          case PurchaseSubmitError.none:
+          RadixToast.error(result.message ?? 'an.unknown.error.occurred'.tr());
+          break;
+        default:
+          break;
+      }
+      return;
+    }
+
+    RadixToast.success('purchase.successful'.tr());
+  }
+
   @override
   void initState() {
     super.initState();
@@ -837,9 +928,8 @@ class _BottomNavigationBarState extends ConsumerState<_BottomNavigationBar>
               Button(
                 width: 120.w,
                 height: 40.w,
-                onPressed: () {
-                  // Handle payment action
-                },
+                loading: purchase.isSubmitting,
+                onPressed: submitPayment,
                 child: Text(
                   'common.checkout'.tr(),
                   style: TextStyle(

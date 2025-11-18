@@ -4,6 +4,8 @@ import 'package:flutter_app/core/providers/index.dart';
 import 'package:flutter_app/core/store/auth/auth_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../store/lucky_store.dart';
+
 class PurchaseState {
   final int entries; // Number of purchase entries
   final double unitAmount; // Price per unit
@@ -18,6 +20,8 @@ class PurchaseState {
   final bool isAuthenticated; // User login status
   final bool useDiscountCoins; // Whether to use discount coins
 
+  final bool isSubmitting; // Submission status
+
   PurchaseState({
     required this.entries,
     required this.unitAmount,
@@ -31,6 +35,8 @@ class PurchaseState {
     this.coinAmountCap,
     required this.isAuthenticated,
     required this.useDiscountCoins,
+
+    required this.isSubmitting,
   });
 
   // Maximum entries allowed based on maxPerBuy and stockLeft
@@ -62,7 +68,7 @@ class PurchaseState {
     }
     return coinAmount;
   }
-  PurchaseState copyWith({int? entries,  bool? useDiscountCoins}) {
+  PurchaseState copyWith({int? entries,  bool? useDiscountCoins,  bool? isSubmitting}) {
     return PurchaseState(
       entries: entries ?? this.entries,
       unitAmount: unitAmount,
@@ -76,13 +82,117 @@ class PurchaseState {
       isAuthenticated: isAuthenticated,
       realBalance: realBalance,
       useDiscountCoins: useDiscountCoins?? this.useDiscountCoins,
+      isSubmitting: isSubmitting ?? this.isSubmitting,
     );
   }
 }
 
+enum PurchaseSubmitError {
+  none,
+  needLogin,
+  insufficientBalance,
+  insufficientStock,
+  needKyc,
+  noAddress,
+  purchaseLimitExceeded,
+  soldOut,
+  unknown,
+}
+
+/// Result of a purchase submission
+/// provides factory methods for success and error cases
+class PurchaseSubmitResult {
+  final bool ok;
+  final PurchaseSubmitError error;
+  final String? message;
+
+  // Private constructor， only accessible through factory methods
+  const PurchaseSubmitResult._(this.ok, this.error, this.message);
+
+   // Factory method for successful submission
+  factory PurchaseSubmitResult.ok()=> PurchaseSubmitResult._(true, PurchaseSubmitError.none, null);
+
+  // Factory method for error submission
+  factory PurchaseSubmitResult.error(PurchaseSubmitError error,{String? message})=> PurchaseSubmitResult._(false, error, message);
+}
+
+
 // Purchase state provider using Riverpod
 class PurchaseNotifier extends StateNotifier<PurchaseState> {
-  PurchaseNotifier(super.state);
+  PurchaseNotifier({
+    required this.ref,
+    required this.treasureId,
+    required PurchaseState state,
+}) : super(state);
+
+  final Ref ref;
+  final String treasureId;
+
+  Future<PurchaseSubmitResult> submitOrder({String? groupId}) async {
+
+    // need login
+    if (!state.isAuthenticated) {
+      return PurchaseSubmitResult.error(PurchaseSubmitError.needLogin);
+    }
+
+    // kyc check
+    final sysConfig = ref.read(luckyProvider).sysConfig;
+    final needKyc = sysConfig.kycAndPhoneVerification == '1';
+
+    /*if(needKyc){
+      final user = ref.read(luckyProvider).userInfo;
+      // if(user?.kycStatus != KycStatus.passed){
+      if(user?.kycStatus != 2){
+        return PurchaseSubmitResult.error(PurchaseSubmitError.needKyc);
+      }
+    }*/
+
+    // balance check
+    final pay = state.payableAmount ?? state.subtotal;
+    if(state.realBalance < pay){
+      return PurchaseSubmitResult.error(PurchaseSubmitError.insufficientBalance);
+    }
+
+    // address check
+    /*if(needKyc){
+      final addresses = await ref.read(addressListProvider.future);
+      if(addresses.isEmpty){
+        return PurchaseSubmitResult.error(PurchaseSubmitError.noAddress);
+      }
+    }*/
+
+    // stock check,limit check
+    if(state.stockLeft <= 0){
+      return PurchaseSubmitResult.error(PurchaseSubmitError.soldOut);
+    }
+
+    if(state.entries > state.maxPerBuyQuantity  || state.entries > state.stockLeft){
+      return PurchaseSubmitResult.error(PurchaseSubmitError.purchaseLimitExceeded);
+    }
+    try{
+      state = state.copyWith(
+        isSubmitting: true
+      );
+      /*final repo = ref.read(purchaseRepositoryProvider);
+      await repo.submitOrder(
+        treasureId: treasureId,
+        quantity: state.entries,
+        useCoins: state.useDiscountCoins,
+        groupId: groupId,
+      );*/
+      //refresh balance
+      await Future.delayed(const Duration(milliseconds: 20000)); // mock delay
+      await ref.read(luckyProvider.notifier).updateWalletBalance();
+      return PurchaseSubmitResult.ok();
+    }catch(e){
+      return PurchaseSubmitResult.error(PurchaseSubmitError.unknown, message: e.toString());
+    } finally {
+      state = state.copyWith(
+        isSubmitting: false
+      );
+    }
+
+  }
 
   void resetEntries(int entries) {
     final next = entries.clamp(state._minEntriesAllowed, state._maxEntriesAllowed);
@@ -115,6 +225,8 @@ class PurchaseNotifier extends StateNotifier<PurchaseState> {
   void toggleUseDiscountCoins(bool use) {
     state = state.copyWith(useDiscountCoins: use);
   }
+
+
 }
 
 typedef PurchaseArgs = ({
@@ -133,33 +245,37 @@ final purchaseProvider = StateNotifierProvider.autoDispose
     .family<PurchaseNotifier, PurchaseState, String>((ref, id) {
       final detailAsync = ref.watch(productDetailProvider(id));
       final detail = detailAsync.value;
-      /*final state = ref.watch(luckyProvider.select((s) => (
+      final state = ref.watch(luckyProvider.select((s) => (
           balanceCoins: s.balance.coinBalance,
           realBalance: s.balance.realBalance,
           exChangeRate: s.sysConfig.exChangeRate
-      )));*/
+      )));
       final isAuthenticated = ref.watch(authProvider.select((auth) => auth.isAuthenticated));
 
       final stockLeft = (detail?.seqShelvesQuantity ?? 0) - (detail?.seqBuyQuantity ?? 0);
 
+      final initialState = PurchaseState(
+        entries: detail?.minBuyQuantity ?? stockLeft,
+        // unitAmount: detail?.unitAmount ?? 0, //todo mock
+        unitAmount: detail?.unitAmount.toDouble() ?? 1.0,
+        // maxUnitCoins: detail?.maxUnitCoins ?? 0, //todo mock
+        maxUnitCoins: detail?.maxUnitCoins?.toDouble() ?? 0.5,
+        // balanceCoins: state.balanceCoins,//todo mock
+        balanceCoins: 1000.00,
+        // realBalance: state.realBalance, //todo mock
+        realBalance: 10000.00,
+        // exchangeRate: state.exChangeRate, //todo mock
+        exchangeRate: 10.0,
+        maxPerBuyQuantity: detail?.maxPerBuyQuantity ?? math.max(1, stockLeft),
+        minBuyQuantity: detail?.minBuyQuantity ?? math.min(1, stockLeft),
+        stockLeft: stockLeft,
+        isAuthenticated: isAuthenticated,
+        useDiscountCoins: false,
+        isSubmitting: false
+      );
       return PurchaseNotifier(
-        PurchaseState(
-          entries: detail?.minBuyQuantity ?? stockLeft,
-          // unitAmount: detail?.unitAmount ?? 0, //todo mock
-          unitAmount: detail?.unitAmount.toDouble() ?? 1.0,
-          // maxUnitCoins: detail?.maxUnitCoins ?? 0, //todo mock
-          maxUnitCoins: detail?.maxUnitCoins?.toDouble() ?? 0.5,
-          // balanceCoins: state.balanceCoins,//todo mock
-          balanceCoins: 100000.00,
-          // realBalance: state.realBalance, //todo mock
-          realBalance: 3000.00,
-          // exchangeRate: state.exChangeRate, //todo mock
-          exchangeRate: 10.0,
-          maxPerBuyQuantity: detail?.maxPerBuyQuantity ?? math.max(1, stockLeft),
-          minBuyQuantity: detail?.minBuyQuantity ?? math.min(1, stockLeft),
-          stockLeft: stockLeft,
-          isAuthenticated: isAuthenticated,
-          useDiscountCoins: false,
-        ),
+        ref: ref,
+        treasureId: id,
+        state: initialState
       );
     });
