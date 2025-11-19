@@ -574,7 +574,6 @@ class _VoucherSection extends ConsumerWidget {
                         child: purchase.useDiscountCoins
                             ? Text(
                                 '(${purchase.coinsToUse} coins)=${FormatHelper.formatCurrency(purchase.coinAmount)}',
-                                key: ValueKey('on${purchase.coinsToUse}'),
                                 style: TextStyle(
                                   color: context.textErrorPrimary600,
                                   fontSize: context.textSm,
@@ -582,7 +581,7 @@ class _VoucherSection extends ConsumerWidget {
                                   fontWeight: FontWeight.w600,
                                 ),
                               )
-                            : const SizedBox.shrink(key: ValueKey('off')),
+                            : const SizedBox.shrink(),
                       ),
                       SizedBox(
                         width: 40.w,
