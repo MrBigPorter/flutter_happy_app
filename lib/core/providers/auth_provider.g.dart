@@ -43,7 +43,7 @@ final sendOtpCtrlProvider =
     );
 
 typedef _$SendOtpCtrl = Notifier<AsyncValue<OtpRequest?>>;
-String _$verifyOtpCtrlHash() => r'47ee60efac7b6882e79fdad4b4060a9a9c48301c';
+String _$verifyOtpCtrlHash() => r'ac379466866445e0fafaaf62286a99d78566cbb3';
 
 /// 2) 校验 OTP
 ///
@@ -61,7 +61,7 @@ final verifyOtpCtrlProvider =
     );
 
 typedef _$VerifyOtpCtrl = Notifier<AsyncValue<void>>;
-String _$authLoginOtpCtrlHash() => r'0094cde895943e91d0dd8ec432297d3b841e1505';
+String _$authLoginOtpCtrlHash() => r'7ac963e6dd2a1153c976c58e28bc09993a29e763';
 
 /// 4) OTP 登录
 ///

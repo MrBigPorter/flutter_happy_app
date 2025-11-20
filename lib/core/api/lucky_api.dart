@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:math';
 import 'package:flutter_app/common.dart';
 import 'package:flutter_app/core/models/coupon_threshold_data.dart';
+import 'package:flutter_app/core/models/wallet.dart';
 
 import 'package:flutter_app/utils/helper.dart';
 import 'package:flutter_app/core/models/index.dart';
@@ -62,9 +63,15 @@ class Api {
   }
 
   /// 钱包余额 wallet balance
-  static Future<Balance> getWalletBalance() async {
-    final res = await Http.get('/balance.json');
+  static Future<Balance> getWalletBalanceApi() async {
+    final res = await Http.post('/api/v1/wallet/balance');
     return Balance.fromJson(res);
+  }
+
+  /// 钱包支出 wallet debit
+  static Future<Debit> walletDebitAoi() async {
+    final res = await Http.get('/api/v1/wallet/debit');
+    return Debit.fromJson(res);
   }
 
   /// 系统配置 sys config

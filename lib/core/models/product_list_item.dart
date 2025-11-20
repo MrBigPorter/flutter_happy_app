@@ -29,7 +29,7 @@ class ProductListItem {
   @JsonKey(name: 'treasure_name')
   final String treasureName;
   @JsonKey(name: 'unit_amount')
-  final int unitAmount;
+  final double unitAmount;
   @JsonKey(name: 'treasure_cover_img')
   final String? treasureCoverImg;
   @JsonKey(name: 'rate')
@@ -42,7 +42,7 @@ class ProductListItem {
   final String? desc;
 
   @JsonKey(name: 'max_unit_coins')
-  final int? maxUnitCoins;
+  final double? maxUnitCoins;
 
   @JsonKey(name: 'max_unit_amount')
   final int? maxUnitAmount;

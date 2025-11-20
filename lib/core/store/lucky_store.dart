@@ -1,5 +1,9 @@
 import 'package:flutter_app/common.dart';
 import 'package:flutter_app/core/models/index.dart';
+import 'package:flutter_app/core/providers/sys_config_provider.dart';
+import 'package:flutter_app/core/providers/wallet_provider.dart';
+import 'package:flutter_app/core/store/auth/auth_provider.dart';
+import 'package:flutter_app/core/store/auth/auth_state.dart';
 import 'package:flutter_app/core/store/hydrated_state_notifier.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -118,15 +122,15 @@ class LuckyNotifier extends HydratedStateNotifier<LuckyState> {
   /// Update wallet balance method
   /// Fetches wallet balance from API and updates state
   Future<void> updateWalletBalance() async {
-    final data = await Api.getWalletBalance();
-    state = state.copyWith(balance: data);
+    final data = ref.watch(walletBalanceProvider);
+    state = state.copyWith(balance: data.value ?? state.balance);
   }
 
   /// Update system config method
   /// Fetches system config from API and updates state
   Future<void> updateSysConfig() async {
-    final data = await Api.getSysConfig();
-    state = state.copyWith(sysConfig: data);
+    final data = ref.watch(sysConfigProvider);
+    state = state.copyWith(sysConfig: data.value ?? state.sysConfig);
   }
 
   /// Refresh all data method
@@ -135,13 +139,19 @@ class LuckyNotifier extends HydratedStateNotifier<LuckyState> {
   /// No parameters
   Future<void> refreshAll() async {
      final user = await Api.getUserInfo();
-     final balance = await Api.getWalletBalance();
+     final balance = await Api.getWalletBalanceApi();
      final sysConfig = await Api.getSysConfig();
      state = LuckyState(
        userInfo: user,
        balance: balance,
        sysConfig: sysConfig,
      );
+  }
+  
+  void clearBalance() {
+    state = state.copyWith(
+      balance: Balance(realBalance: 0, coinBalance: 0),
+    );
   }
 
 
@@ -153,4 +163,22 @@ class LuckyNotifier extends HydratedStateNotifier<LuckyState> {
 /// Usage: luckyProvider
 /// Example: final lucky = ref.watch(luckyProvider);
 /// Updates: ref.read(luckyProvider.notifier).updateUserInfo(userInfo);
-final luckyProvider = StateNotifierProvider<LuckyNotifier,LuckyState>((ref)=> LuckyNotifier(ref));
+final luckyProvider = StateNotifierProvider<LuckyNotifier,LuckyState>((ref){
+
+  final notifier = LuckyNotifier(ref);
+  
+  ref.listen<AuthState>(authProvider, (previous, next) {
+    
+    // unLogin to login refresh all data
+    if((previous?.isAuthenticated ?? false) == false && next.isAuthenticated){
+       notifier.updateWalletBalance();
+    }
+    
+    // login to unLogin clear user info
+    if((previous?.isAuthenticated ?? false) == true && !next.isAuthenticated){
+      notifier.clearBalance();
+    }
+  });
+
+  return notifier;
+});

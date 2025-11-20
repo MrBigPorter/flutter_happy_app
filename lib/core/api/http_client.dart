@@ -1,5 +1,6 @@
 // lib/app/network/http_client.dart
 import 'package:dio/dio.dart';
+import 'package:flutter_app/core/store/auth/auth_initial.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_app/app/routes/app_router.dart';
@@ -9,9 +10,11 @@ typedef FromJson<T> = T Function(dynamic json);
 
 class Http {
   Http._();
+
   static final Dio _dio = Dio(
     BaseOptions(
-      baseUrl: Env.apiBaseEffective,               // <- 用 final 值，不要 const
+      baseUrl: Env.apiBaseEffective,
+      // <- 用 final 值，不要 const
       connectTimeout: const Duration(seconds: 20),
       receiveTimeout: const Duration(seconds: 20),
       responseType: ResponseType.json,
@@ -35,7 +38,7 @@ class Http {
 
   static Future<void> init() async {
     // 日志（仅在 dev / 需要时打开）
-   /* if (Env.logHttp) {
+    /* if (Env.logHttp) {
       _dio.interceptors.add(LogInterceptor(
         requestBody: true,
         responseBody: true,
@@ -68,7 +71,9 @@ class Http {
           final data = response.data;
 
           if (data == null || data is! Map<String, dynamic>) {
-            return handler.reject(_asDioError(response, 'Invalid response data'));
+            return handler.reject(
+              _asDioError(response, 'Invalid response data'),
+            );
           }
 
           final code = data['code'] as int?;
@@ -87,13 +92,12 @@ class Http {
           // 处理需要跳转的业务码
           final noToast = response.requestOptions.extra['noErrorToast'] == true;
 
-
           if (_tokenErrorCodes.contains(code)) {
             // token 失效：清除并跳登录（防抖）
             await _clearToken();
             if (!_navigatingToLogin) {
               _navigatingToLogin = true;
-             appRouter.go('/login');
+              appRouter.go('/login');
               Future.delayed(const Duration(seconds: 1), () {
                 _navigatingToLogin = false;
               });
@@ -112,23 +116,24 @@ class Http {
           if (!noToast) {
             final errorMsg = (data['errorMsg'] as String?) ?? message;
             Fluttertoast.showToast(
-                msg: errorMsg,
-                toastLength: Toast.LENGTH_LONG,
-                gravity: ToastGravity.TOP
+              msg: errorMsg,
+              toastLength: Toast.LENGTH_LONG,
+              gravity: ToastGravity.TOP,
             );
           }
 
-
-          return handler.reject(_asDioError(response, (data['errorMsg'] as String?) ?? message));
+          return handler.reject(
+            _asDioError(response, (data['errorMsg'] as String?) ?? message),
+          );
         },
         onError: (e, handler) {
           // 统一网络错误提示（可由 noErrorToast 关闭）
           final noToast = e.requestOptions.extra['noErrorToast'] == true;
           if (!noToast) {
             Fluttertoast.showToast(
-                msg: e.message ?? 'Network error',
-                toastLength: Toast.LENGTH_LONG,
-                gravity: ToastGravity.TOP
+              msg: e.message ?? 'Network error',
+              toastLength: Toast.LENGTH_LONG,
+              gravity: ToastGravity.TOP,
             );
           }
           handler.next(e);
@@ -142,14 +147,14 @@ class Http {
 
   /// ---- 便捷请求：支持 fromJson 类型安全解析 ----
   static Future<T> get<T>(
-      String path, {
-        Map<String, dynamic>? query,
-        Map<String, dynamic>? queryParameters,
-        Options? options,
-        CancelToken? cancelToken,
-        ProgressCallback? onReceiveProgress,
-        FromJson<T>? fromJson,
-      }) async {
+    String path, {
+    Map<String, dynamic>? query,
+    Map<String, dynamic>? queryParameters,
+    Options? options,
+    CancelToken? cancelToken,
+    ProgressCallback? onReceiveProgress,
+    FromJson<T>? fromJson,
+  }) async {
     final resp = await _dio.get(
       path,
       queryParameters: query ?? queryParameters,
@@ -161,15 +166,15 @@ class Http {
   }
 
   static Future<T> post<T>(
-      String path, {
-        dynamic data,
-        Map<String, dynamic>? query,
-        Options? options,
-        CancelToken? cancelToken,
-        ProgressCallback? onSendProgress,
-        ProgressCallback? onReceiveProgress,
-        FromJson<T>? fromJson,
-      }) async {
+    String path, {
+    dynamic data,
+    Map<String, dynamic>? query,
+    Options? options,
+    CancelToken? cancelToken,
+    ProgressCallback? onSendProgress,
+    ProgressCallback? onReceiveProgress,
+    FromJson<T>? fromJson,
+  }) async {
     final resp = await _dio.post(
       path,
       data: data,
@@ -183,15 +188,15 @@ class Http {
   }
 
   static Future<T> put<T>(
-      String path, {
-        dynamic data,
-        Map<String, dynamic>? query,
-        Options? options,
-        CancelToken? cancelToken,
-        ProgressCallback? onSendProgress,
-        ProgressCallback? onReceiveProgress,
-        FromJson<T>? fromJson,
-      }) async {
+    String path, {
+    dynamic data,
+    Map<String, dynamic>? query,
+    Options? options,
+    CancelToken? cancelToken,
+    ProgressCallback? onSendProgress,
+    ProgressCallback? onReceiveProgress,
+    FromJson<T>? fromJson,
+  }) async {
     final resp = await _dio.put(
       path,
       data: data,
@@ -205,13 +210,13 @@ class Http {
   }
 
   static Future<T> delete<T>(
-      String path, {
-        dynamic data,
-        Map<String, dynamic>? query,
-        Options? options,
-        CancelToken? cancelToken,
-        FromJson<T>? fromJson,
-      }) async {
+    String path, {
+    dynamic data,
+    Map<String, dynamic>? query,
+    Options? options,
+    CancelToken? cancelToken,
+    FromJson<T>? fromJson,
+  }) async {
     final resp = await _dio.delete(
       path,
       data: data,
@@ -222,27 +227,23 @@ class Http {
     return _decode<T>(resp.data, fromJson);
   }
 
-  /// ---- Token 管理 ----
-  static Future<void> setToken(String token) async {
+  /// ---- Token 管理 ---- set to memory cache
+  static void setToken(String token)  {
     _tokenCache = token;
-    final sp = await SharedPreferences.getInstance();
-    await sp.setString(_kTokenKey, token);
   }
 
   static Future<void> clearToken() => _clearToken();
 
   static Future<String?> _getToken() async {
     if (_tokenCache != null) return _tokenCache;
-    final sp = await SharedPreferences.getInstance();
-    final t = sp.getString(_kTokenKey);
-    _tokenCache = t;
-    return t;
+    final auth = authInitialTokenStorage();
+    final tokens = await auth.read();
+    return tokens.$1;
   }
 
   static Future<void> _clearToken() async {
     _tokenCache = null;
-    final sp = await SharedPreferences.getInstance();
-    await sp.remove(_kTokenKey);
+    await authInitialTokenStorage().clear();
   }
 
   /// ---- 工具 ----

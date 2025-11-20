@@ -12,6 +12,8 @@ import 'package:flutter_app/core/models/index.dart';
 import 'package:flutter_app/core/models/payment.dart';
 import 'package:flutter_app/core/providers/index.dart';
 import 'package:flutter_app/core/providers/purchase_state_provider.dart';
+import 'package:flutter_app/core/store/auth/auth_provider.dart';
+import 'package:flutter_app/core/store/lucky_store.dart';
 import 'package:flutter_app/ui/index.dart';
 import 'package:flutter_app/utils/date_helper.dart';
 import 'package:flutter_app/utils/format_helper.dart';
@@ -19,7 +21,6 @@ import 'package:flutter_app/utils/helper.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:fluttertoast/fluttertoast.dart';
 
 class PaymentPage extends ConsumerStatefulWidget {
   final PagePaymentParams params;
@@ -33,6 +34,18 @@ class PaymentPage extends ConsumerStatefulWidget {
 class _PaymentPageState extends ConsumerState<PaymentPage>
     with SingleTickerProviderStateMixin {
   bool _isInit = false;
+  
+  @override
+  void initState() {
+    super.initState();
+    
+    final isAuthenticated = ref.read(authProvider.select((state) => state.isAuthenticated));
+    if(isAuthenticated) {
+      WidgetsBinding.instance.addPostFrameCallback((_){
+        ref.read(luckyProvider.notifier).updateWalletBalance();
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -44,6 +57,7 @@ class _PaymentPageState extends ConsumerState<PaymentPage>
     }
 
     final detail = ref.watch(productDetailProvider(params.treasureId!));
+
 
     return detail.when(
       loading: () => _PaymentSkeleton(),

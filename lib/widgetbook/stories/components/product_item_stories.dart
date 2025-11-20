@@ -17,7 +17,7 @@ WidgetbookComponent buildProductItemStories() {
             max: 100,
           );
 
-          final price = context.knobs.int.slider(
+          final price = context.knobs.double.slider(
             label: 'Unit Amount (₱)',
             initialValue: 199,
             min: 1,

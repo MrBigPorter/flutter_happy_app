@@ -43,7 +43,7 @@ ProductListItem _$ProductListItemFromJson(
       ),
       treasureId: $checkedConvert('treasure_id', (v) => v as String),
       treasureName: $checkedConvert('treasure_name', (v) => v as String),
-      unitAmount: $checkedConvert('unit_amount', (v) => (v as num).toInt()),
+      unitAmount: $checkedConvert('unit_amount', (v) => (v as num).toDouble()),
       treasureCoverImg: $checkedConvert(
         'treasure_cover_img',
         (v) => v as String?,
@@ -53,7 +53,7 @@ ProductListItem _$ProductListItemFromJson(
       desc: $checkedConvert('desc', (v) => v as String?),
       maxUnitCoins: $checkedConvert(
         'max_unit_coins',
-        (v) => (v as num?)?.toInt(),
+        (v) => (v as num?)?.toDouble(),
       ),
       maxUnitAmount: $checkedConvert(
         'max_unit_amount',
