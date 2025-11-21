@@ -132,6 +132,7 @@ class AppRouter {
 
         // check if the user is authenticated
         final isAuthenticated = ref.read(authProvider.select( (auth) => auth.isAuthenticated ));
+        print("Redirect Check===>: path=$path, isAuthenticated=$isAuthenticated");
 
 
         // check if the current path requires login

@@ -31,7 +31,12 @@ class AuthNotifier extends StateNotifier<AuthState> {
           refreshToken: initialRefresh,
           isAuthenticated: initialAccess != null,
         ),
-      );
+      ){
+       if(initialAccess != null && initialAccess.isNotEmpty){
+         print('initialAccess====>$initialAccess');
+         Http.setToken(initialAccess);
+       }
+  }
 
   final Ref ref;
   final TokenStorage storage;
@@ -40,6 +45,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
     // Set token for HTTP requests
     Http.setToken(access);
     await storage.save(access, refresh);
+    print('AuthNotifier login: access=$access, refresh=$refresh');
     state = state.copyWith(
       accessToken: access,
       refreshToken: refresh,

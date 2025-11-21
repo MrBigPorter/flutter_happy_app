@@ -3,6 +3,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_app/app/page/payment_components/insufficient_balance_sheet.dart';
 import 'package:flutter_app/app/routes/app_router.dart';
 import 'package:flutter_app/common.dart';
 import 'package:flutter_app/components/base_scaffold.dart';
@@ -15,6 +16,7 @@ import 'package:flutter_app/core/providers/purchase_state_provider.dart';
 import 'package:flutter_app/core/store/auth/auth_provider.dart';
 import 'package:flutter_app/core/store/lucky_store.dart';
 import 'package:flutter_app/ui/index.dart';
+import 'package:flutter_app/ui/modal/sheet/modal_sheet_config.dart';
 import 'package:flutter_app/utils/date_helper.dart';
 import 'package:flutter_app/utils/format_helper.dart';
 import 'package:flutter_app/utils/helper.dart';
@@ -806,10 +808,65 @@ class _BottomNavigationBarState extends ConsumerState<_BottomNavigationBar>
            RadixToast.error('please.add.delivery.address'.tr());
           break;
         case PurchaseSubmitError.insufficientBalance:
-          RadixToast.error('insufficient.balance.please.top.up'.tr());
+          RadixSheet.show(
+            config: ModalSheetConfig(
+              enableHeader: false,
+            ),
+            builder: (context, close) {
+              return InsufficientBalanceSheet(close: close);
+            },
+          );
           break;
         case PurchaseSubmitError.soldOut:
-          RadixToast.error('this.item.is.sold.out'.tr());
+           RadixSheet.show(
+             builder: (context,close){
+               return Container(
+                 height: 180.w,
+                 padding: EdgeInsets.all(16.w),
+                 child: Column(
+                   crossAxisAlignment: CrossAxisAlignment.start,
+                   children: [
+                     Text(
+                       'treasure.sold.out'.tr(),
+                       style: TextStyle(
+                         color: context.textPrimary900,
+                         fontSize: context.textLg,
+                         height: context.leadingLg,
+                         fontWeight: FontWeight.w800,
+                       ),
+                     ),
+                     SizedBox(height: 12.w),
+                     Text(
+                       'sorry.this.treasure.is.sold.out'.tr(),
+                       style: TextStyle(
+                         color: context.textSecondary700,
+                         fontSize: context.textMd,
+                         height: context.leadingMd,
+                         fontWeight: FontWeight.w600,
+                       ),
+                     ),
+                     Spacer(),
+                     Button(
+                       width: double.infinity,
+                       onPressed: (){
+                         close();
+                         appRouter.pop();
+                       },
+                       child: Text(
+                         'common.okay'.tr(),
+                         style: TextStyle(
+                           color: Colors.white,
+                           fontSize: context.textMd,
+                           height: context.leadingMd,
+                           fontWeight: FontWeight.w600,
+                         ),
+                       ),
+                     ),
+                   ],
+                 ),
+               );
+             }
+           );
           break;
         case PurchaseSubmitError.purchaseLimitExceeded:
           RadixToast.error('purchase.limit.exceeded'.tr());

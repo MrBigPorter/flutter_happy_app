@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_app/common.dart';
 import 'package:flutter_app/utils/helper.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'modal_sheet_config.dart';
@@ -35,23 +36,26 @@ class SheetSurface<T> extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          config.headerBuilder != null
-              ? SizedBox(
-            width: double.infinity,
-            height: config.headerHeight,
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                config.headerBuilder!.call(context,([result]) => onClose()),
-                CloseIcon(onClose: onClose)
-              ],
+          if(config.enableHeader ?? true) ...[
+            config.headerBuilder != null
+                ? SizedBox(
+              width: double.infinity,
+              height: config.headerHeight,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  config.headerBuilder!.call(context,([result]) => onClose()),
+                  CloseIcon(onClose: onClose)
+                ],
+              ),
+            )
+                : _SheetHeader(
+              onClose: onClose,
+              showClose: config.showCloseButton,
+              paddingTop: top,
+              showThumb: config.showThumb ?? false,
             ),
-          )
-              : _SheetHeader(
-            onClose: onClose,
-            showClose: config.showCloseButton,
-            paddingTop: top,
-          ),
+          ],
           child,
         ],
       ),
@@ -63,11 +67,13 @@ class _SheetHeader extends StatelessWidget {
   final VoidCallback onClose;
   final bool showClose;
   final double paddingTop;
+  final bool showThumb;
 
   const _SheetHeader({
     required this.onClose,
     required this.showClose,
     this.paddingTop = 8,
+    this.showThumb = false,
   });
 
   @override
@@ -80,6 +86,7 @@ class _SheetHeader extends StatelessWidget {
         child: Stack(
           alignment: Alignment.center,
           children: [
+            if (showThumb)
             Container(
               width: 40.w,
               height: 5.w,
@@ -112,7 +119,7 @@ class CloseIcon extends StatelessWidget {
           width: 32,
           height: 32,
           alignment: Alignment.center,
-          child: const Icon(Icons.close, size: 22, color: Colors.black87),
+          child:  Icon(Icons.close, size: 22, color: context.fgPrimary900),
         ),
       ),
     );

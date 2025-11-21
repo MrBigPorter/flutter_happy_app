@@ -1,20 +1,29 @@
+import 'package:json_annotation/json_annotation.dart';
+
+import '../json/json_num_converters.dart';
+
+part 'balance.g.dart';
+
+@JsonSerializable(checked: true)
 class Balance {
+  @JsonKey(name: 'real_balance',fromJson: JsonNumConverter.toDouble,toJson: JsonNumConverter.doubleToString)
   final double realBalance;
+  @JsonKey(name: 'coin_balance',fromJson: JsonNumConverter.toDouble,toJson: JsonNumConverter.doubleToString)
   final double coinBalance;
 
-  Balance({required this.realBalance, required this.coinBalance});
+  Balance({
+    required this.realBalance,
+    required this.coinBalance,
+  });
 
-  factory Balance.fromJson(Map<String, dynamic> json) {
-    return Balance(
-      realBalance: (json["real_balance"] ?? 0).toDouble(),
-      coinBalance: (json["coin_balance"] ?? 0).toDouble(),
-    );
+   factory Balance.fromJson(Map<String, dynamic> json) => _$BalanceFromJson(json);
+
+  Map<String, dynamic> toJson() => _$BalanceToJson(this);
+
+  @override
+  String toString() {
+    return toJson().toString();
   }
 
-  Map<String, dynamic> toJson() {
-    return {
-      "real_balance": realBalance,
-      "coin_balance": coinBalance,
-    };
-  }
+
 }

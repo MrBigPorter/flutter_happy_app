@@ -14,17 +14,21 @@ class ModalSheetConfig extends BaseModalConfig {
   /// Distance threshold in pixels to trigger drag-to-close
   final double dragToCloseThreshold;
 
+  final bool? showThumb;
+
   const ModalSheetConfig({
     this.minHeight = 100,
     this.maxHeightFactor = 0.7,
     this.enableDragToClose = true,
     this.dragToCloseThreshold = 40,
+    this.showThumb = false,
     super.theme,
     super.borderRadius,
     super.animationStyleConfig,
     super.headerHeight,
     super.headerBuilder,
     super.showCloseButton,
+    super.enableHeader,
     bool? allowBackgroundCloseOverride,
   });
 }

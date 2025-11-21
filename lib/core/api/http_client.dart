@@ -59,6 +59,7 @@ class Http {
           final noAuth = options.extra['noAuth'] == true;
           if (!noAuth) {
             final token = await _getToken();
+            print("Injecting token: $token");
             if (token != null && token.isNotEmpty) {
               options.headers['Authorization'] = 'Bearer $token';
             }
@@ -241,8 +242,10 @@ class Http {
 
   static Future<String?> _getToken() async {
     if (_tokenCache != null) return _tokenCache;
+    print("Reading token from storage==>${_tokenCache}");
     final auth = authInitialTokenStorage();
     final tokens = await auth.read();
+    print("Reading token from storage==>+++${tokens}");
     return tokens.$1;
   }
 

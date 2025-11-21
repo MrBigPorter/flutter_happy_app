@@ -40,7 +40,10 @@ abstract class BaseModalConfig {
 
   final HeaderBuilder? headerBuilder;
 
+  final bool? enableHeader;
+
   final bool showCloseButton;
+
 
 
   const BaseModalConfig({
@@ -53,5 +56,6 @@ abstract class BaseModalConfig {
     this.headerHeight = 50,
     this.headerBuilder,
     this.showCloseButton = true,
+    this.enableHeader = true,
   });
 }
