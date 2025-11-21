@@ -477,7 +477,8 @@ model Order {
   luckyCodeCount Int     @default(0) @map("lucky_code_count") /// 幸运码数量
 
   // 订单状态
-  orderStatus Int @default(1) @map("order_status") @db.SmallInt /// 订单状态: 1-待支付 2-支付中 3-已支付 4-已取消 5-已退款
+  orderStatus Int @default(1) @map("order_status") @db.SmallInt
+
   payStatus   Int @default(0) @map("pay_status") @db.SmallInt /// 支付状态: 0-未支付 1-已支付 2-支付失败
 
   // 支付信息
@@ -1065,3 +1066,4 @@ model SignInRecord {
   @@index([continuousDays], map: "idx_sign_in_continuous")
   @@map("sign_in_records")
 }
+

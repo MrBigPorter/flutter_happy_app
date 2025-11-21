@@ -4,6 +4,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_app/common.dart';
 import 'package:flutter_app/core/providers/app_router_provider.dart';
+import 'package:flutter_app/core/store/auth/auth_provider.dart';
+import 'package:flutter_app/core/store/lucky_store.dart';
 import 'package:flutter_app/ui/modal/progress/overlay_shrink.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -21,6 +23,13 @@ class MyApp extends ConsumerWidget{
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+
+    // 全局处理 Token 失效：登出并跳转到登录页 - Global handling of token invalidation: logout and redirect to login page
+    Http.onTokenInvalid  ??= () async {
+      final authNotifier = ref.read(authProvider.notifier);
+      await authNotifier.logout();
+    };
+
     final router = ref.watch(appRouterProvider);
     final themeMode = ref.watch(themeModeProvider);
 

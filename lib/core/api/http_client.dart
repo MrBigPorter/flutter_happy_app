@@ -31,7 +31,7 @@ class Http {
 
   static const _kTokenKey = '__t__';
   static const _successCodes = <int>[10000];
-  static const _tokenErrorCodes = <int>[20062, 92000, 14004]; // 按你后端定义
+  static const _tokenErrorCodes = <int>[40100];
   static bool _navigatingToLogin = false;
 
   static String? _tokenCache;
@@ -93,8 +93,13 @@ class Http {
           final noToast = response.requestOptions.extra['noErrorToast'] == true;
 
           if (_tokenErrorCodes.contains(code)) {
-            // token 失效：清除并跳登录（防抖）
+            // remove token from cache
             await _clearToken();
+
+            if(onTokenInvalid != null){
+              // notify authProvider to logout
+              await onTokenInvalid!();
+            }
             if (!_navigatingToLogin) {
               _navigatingToLogin = true;
               appRouter.go('/login');
@@ -241,9 +246,10 @@ class Http {
     return tokens.$1;
   }
 
+  static Future<void> Function()? onTokenInvalid;
+
   static Future<void> _clearToken() async {
     _tokenCache = null;
-    await authInitialTokenStorage().clear();
   }
 
   /// ---- 工具 ----

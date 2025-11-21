@@ -147,13 +147,12 @@ class LuckyNotifier extends HydratedStateNotifier<LuckyState> {
        sysConfig: sysConfig,
      );
   }
-  
-  void clearBalance() {
-    state = state.copyWith(
-      balance: Balance(realBalance: 0, coinBalance: 0),
-    );
-  }
 
+
+  void reset() {
+    state = LuckyState.initial();
+  }
+  
 
 }
 
@@ -171,12 +170,12 @@ final luckyProvider = StateNotifierProvider<LuckyNotifier,LuckyState>((ref){
     
     // unLogin to login refresh all data
     if((previous?.isAuthenticated ?? false) == false && next.isAuthenticated){
-       notifier.updateWalletBalance();
+       notifier.refreshAll();
     }
     
     // login to unLogin clear user info
     if((previous?.isAuthenticated ?? false) == true && !next.isAuthenticated){
-      notifier.clearBalance();
+      notifier.reset();
     }
   });
 

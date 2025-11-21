@@ -108,9 +108,6 @@ class _LoginPageState extends ConsumerState<LoginPage> {
         result.tokens.refreshToken,
       );
 
-      //  Set Http Token to Http Client memory
-      Http.setToken(result.tokens.accessToken);
-
       //  Navigate to Main Page
       appRouter.go('/home');
     }

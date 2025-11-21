@@ -1,3 +1,4 @@
+import 'package:flutter_app/common.dart';
 import 'package:flutter_app/core/store/auth/auth_state.dart';
 import 'package:flutter_app/core/store/token/token_storage.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -36,6 +37,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
   final TokenStorage storage;
 
   Future<void> login(String access, String? refresh) async {
+    // Set token for HTTP requests
+    Http.setToken(access);
     await storage.save(access, refresh);
     state = state.copyWith(
       accessToken: access,
@@ -45,7 +48,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
   Future<void> logout() async {
+    // Clear token for HTTP requests
     await storage.clear();
+    await Http.clearToken();
     state = AuthState.initial();
   }
 }
