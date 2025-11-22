@@ -27,6 +27,7 @@ class MyApp extends ConsumerWidget{
     // 全局处理 Token 失效：登出并跳转到登录页 - Global handling of token invalidation: logout and redirect to login page
     Http.onTokenInvalid  ??= () async {
       final authNotifier = ref.read(authProvider.notifier);
+      print('[MyApp] Http.onTokenInvalid called, logging out...');
       await authNotifier.logout();
     };
 

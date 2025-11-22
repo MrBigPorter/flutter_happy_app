@@ -6,6 +6,3 @@ final walletBalanceProvider = FutureProvider((ref) async {
   return await Api.getWalletBalanceApi();
 });
 
-final walletDebitProvider = FutureProvider((ref) async {
-  return await Api.walletDebitAoi();
-});

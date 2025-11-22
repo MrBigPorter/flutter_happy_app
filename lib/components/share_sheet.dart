@@ -21,6 +21,7 @@ class ShareSheet extends StatefulWidget {
   final ShareData data;
   final bool showShareCode;
   final Widget? poster;
+  final bool? showDownButton;
 
   final Future<void> Function()? onDownloadPoster;
 
@@ -33,6 +34,7 @@ class ShareSheet extends StatefulWidget {
     this.showShareCode = false,
     this.poster,
     this.onDownloadPoster,
+    this.showDownButton,
   });
 
   @override
@@ -130,6 +132,7 @@ class _ShareSheetState extends State<ShareSheet> {
                 ShareService.shareTwitter(_shareDataWithFinalUrl);
               },
             ),
+            if (widget.showDownButton ?? false)
             _ShareIconButton(
               label: 'Download',
               icon: SvgPicture.asset(
@@ -142,53 +145,50 @@ class _ShareSheetState extends State<ShareSheet> {
           ],
         ),
         SizedBox(height: 16.w),
-        Padding(
-          padding: EdgeInsets.symmetric(horizontal: 16.w),
-          child: Container(
-            width: double.infinity,
-            height: 40.w,
-            padding: EdgeInsets.only(left: 16.w),
-            decoration: BoxDecoration(
-              border: Border.all(color: context.buttonSecondaryBorder),
-              borderRadius: BorderRadius.all(Radius.circular(context.radiusMd)),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: Text(
-                    urlString,
-                    overflow: TextOverflow.ellipsis,
-                    maxLines: 1,
-                    style: TextStyle(
-                      fontSize: context.textXs,
-                      color: context.textSecondary700,
+        Container(
+          width: double.infinity,
+          height: 40.w,
+          padding: EdgeInsets.only(left: 16.w),
+          decoration: BoxDecoration(
+            border: Border.all(color: context.buttonSecondaryBorder),
+            borderRadius: BorderRadius.all(Radius.circular(context.radiusMd)),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Text(
+                  urlString,
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
+                  style: TextStyle(
+                    fontSize: context.textXs,
+                    color: context.textSecondary700,
+                  ),
+                ),
+              ),
+              Container(
+                decoration: BoxDecoration(
+                  border: Border(
+                    left: BorderSide(
+                      color: context.buttonSecondaryBorder,
+                      width: 1.w,
                     ),
                   ),
                 ),
-                Container(
-                  decoration: BoxDecoration(
-                    border: Border(
-                      left: BorderSide(
-                        color: context.buttonSecondaryBorder,
-                        width: 1.w,
-                      ),
-                    ),
+                child: Button(
+                  variant: ButtonVariant.text,
+                  height: 40.w,
+                  onPressed: () => _copyToClipboard(urlString),
+                  leading: SvgPicture.asset(
+                    'assets/images/copy.svg',
+                    width: 16.w,
+                    height: 16.w,
                   ),
-                  child: Button(
-                    variant: ButtonVariant.text,
-                    height: 40.w,
-                    onPressed: () => _copyToClipboard(urlString),
-                    leading: SvgPicture.asset(
-                      'assets/images/copy.svg',
-                      width: 16.w,
-                      height: 16.w,
-                    ),
-                    child: Text('common.invite.link.copy'.tr()),
-                  ),
+                  child: Text('common.invite.link.copy'.tr()),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
         SizedBox(height: 16.w),

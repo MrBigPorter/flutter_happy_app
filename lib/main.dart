@@ -64,6 +64,8 @@ Future<void> main() async {
   final tokenStorage = authInitialTokenStorage();
   final storedTokens = await tokenStorage.read();
 
+  print('init storedTokens===>${storedTokens}');
+
 
   runApp(
     riverpod.ProviderScope(

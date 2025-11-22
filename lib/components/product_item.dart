@@ -1,4 +1,3 @@
-// 商品项组件，用于展示单个商品的卡片视图
 // Product item component for displaying individual product card view
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:easy_localization/easy_localization.dart';

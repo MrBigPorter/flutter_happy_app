@@ -1,5 +1,7 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter_app/common.dart';
 import 'package:flutter_app/core/store/auth/auth_state.dart';
+import 'package:flutter_app/core/store/lucky_store.dart';
 import 'package:flutter_app/core/store/token/token_storage.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -33,8 +35,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
         ),
       ){
        if(initialAccess != null && initialAccess.isNotEmpty){
-         print('initialAccess====>$initialAccess');
          Http.setToken(initialAccess);
+         debugPrint('[Auth] ctor: initialAccess=$initialAccess');
        }
   }
 
@@ -45,12 +47,13 @@ class AuthNotifier extends StateNotifier<AuthState> {
     // Set token for HTTP requests
     Http.setToken(access);
     await storage.save(access, refresh);
-    print('AuthNotifier login: access=$access, refresh=$refresh');
     state = state.copyWith(
       accessToken: access,
       refreshToken: refresh,
       isAuthenticated: true,
     );
+    ref.read(luckyProvider.notifier).refreshAll();
+    debugPrint('[Auth] login() called==> access=$access, refresh=$refresh');
   }
 
   Future<void> logout() async {

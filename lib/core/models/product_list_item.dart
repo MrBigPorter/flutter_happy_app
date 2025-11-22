@@ -1,3 +1,4 @@
+
 import 'package:json_annotation/json_annotation.dart';
 
 part 'product_list_item.g.dart';
@@ -51,7 +52,7 @@ class ProductListItem {
   final int? maxPerBuyQuantity;
 
   @JsonKey(name: 'charity_amount')
-  final String? charityAmount;
+  final double? charityAmount;
 
   @JsonKey(name: 'treasure_seq')
   final String? treasureSeq;

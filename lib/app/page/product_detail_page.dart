@@ -2,7 +2,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_app/app/page/product_components/share_sheet.dart';
+import 'package:flutter_app/components/share_sheet.dart';
 import 'package:flutter_app/app/routes/app_router.dart';
 import 'package:flutter_app/common.dart';
 import 'package:flutter_app/components/skeleton.dart';
@@ -106,10 +106,8 @@ class _ProductDetailPageState extends ConsumerState<ProductDetailPage>
     );
 
 
-    final desc =
-        "\u003cp\u003e\u003cimg src=\"https://prod-pesolucky.s3.ap-east-1.amazonaws.com/rule/20250819154125141c3746-11dd-48cd-bc3b-0c10294513ab.png\" width=\"750\" height=\"500\"\u003erealme Buds T300（Global Version）：\u003cbr\u003ePort charge\u003c/p\u003e\u003cul\u003e\u003cli\u003eUSB Type-C\u003c/li\u003e\u003c/ul\u003e\u003cp\u003eCharging\u003c/p\u003e\u003cul\u003e\u003cli\u003eUSB Type C wired charging\u003c/li\u003e\u003c/ul\u003e\u003cp\u003eBluetooth Version\u003c/p\u003e\u003cul\u003e\u003cli\u003eBluetooth 5.3\u003c/li\u003e\u003c/ul\u003e\u003cp\u003e\u003cbr\u003eAudio codecs\u003c/p\u003e\u003cul\u003e\u003cli\u003eAAC, SBC\u003c/li\u003e\u003c/ul\u003e\u003cp\u003eWireless Range\u003c/p\u003e\u003cul\u003e\u003cli\u003e10m\u003c/li\u003e\u003c/ul\u003e\u003cp\u003eSize of sound\u003c/p\u003e\u003cul\u003e\u003cli\u003e12,4mm\u003c/li\u003e\u003c/ul\u003e\u003cp\u003eBattery capacity\u003c/p\u003e\u003cul\u003e\u003cli\u003eCharging case:460mAh; Single earbud: 43mAh\u003cbr\u003eCharging Time\u003c/li\u003e\u003cli\u003eCharging Case + Buds:10mins Charging for 7hrs Playback (50% Volume,ANC OFF)\u003c/li\u003e\u003c/ul\u003e\u003cp\u003eWaterproof Rating\u003c/p\u003e\u003cul\u003e\u003cli\u003eIP55 (earphones only)\u003c/li\u003e\u003c/ul\u003e\u003cp\u003eNoise Cancelling Features\u003c/p\u003e\u003cul\u003e\u003cli\u003e30dB Active Noise Cancelling, Environment Noise Cancelling\u003c/li\u003e\u003c/ul\u003e\u003cp\u003eBattery (Charging case + Buds)\u003c/p\u003e\u003cul\u003e\u003cli\u003eMusic playback 40hrs (50% Volume,ANC OFF); Music playback 30hrs (50% Volume,ANC ON)\u003c/li\u003e\u003c/ul\u003e\u003cp\u003eBattery (Earbuds Alone)\u003c/p\u003e\u003cul\u003e\u003cli\u003e8hrs Music Playback (50% Volume,ANC OFF); 6hrs Music Playback (50% Volume,ANC ON); 4hrs Calling Time (50% Volume,ANC OFF/ON)\u003c/li\u003e\u003c/ul\u003e\u003cp\u003eInside the box\u003c/p\u003e\u003cul\u003e\u003cli\u003eRealme Buds T300 x 1\u003c/li\u003e\u003cli\u003eCharging Cable Type C x 1\u003c/li\u003e\u003cli\u003eInformation Card x1/\u003c/li\u003e\u003cli\u003eS/M/L Silicone Eartips x 2\u003c/li\u003e\u003c/ul\u003e";
-
     final expandedHeight = 250.w;
+    
 
 
     return detail.when(
@@ -197,7 +195,7 @@ class _ProductDetailPageState extends ConsumerState<ProductDetailPage>
                 // Detail content section
                 SliverToBoxAdapter(child: SizedBox(height: 8.w)),
                 // Detail content section，rules and details
-                SliverToBoxAdapter(child: _DetailContentSection(content: desc)),
+                SliverToBoxAdapter(child: _DetailContentSection(content: detail.desc)),
               ],
             ),
             bottomNavigationBar: AnimatedPadding(
@@ -640,7 +638,7 @@ class _TopTreasureSectionState extends State<_TopTreasureSection> with SingleTic
                           SizedBox(height: 4.w),
                           Text(
                             FormatHelper.formatCurrency(
-                              num.parse(data.charityAmount ?? '0'),
+                                data.charityAmount ?? 0
                             ),
                             style: TextStyle(
                               fontSize: context.text2xs,
@@ -1170,6 +1168,7 @@ class _StepperState extends ConsumerState<_Stepper> {
         // todo <span>{group_id ? `${t('common.join.group')}` : `${t('common.form.group')}`}</span>
         SizedBox(height: 20.w),
         Button(
+          disabled: purchase.stockLeft <= 0,
           width: double.infinity,
           paddingX: 18.w,
           height: 44.w,

@@ -1,7 +1,8 @@
 import 'dart:math' as math;
 
+import 'package:flutter_app/core/models/payment.dart';
 import 'package:flutter_app/core/providers/index.dart';
-import 'package:flutter_app/core/providers/wallet_provider.dart';
+import 'package:flutter_app/core/providers/order_provider.dart';
 import 'package:flutter_app/core/store/auth/auth_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -9,15 +10,15 @@ import '../store/lucky_store.dart';
 
 class PurchaseState {
   final int entries; // Number of purchase entries
-  final double unitAmount; // Price per unit
-  final double maxUnitCoins; // Maximum coins per unit
-  final double balanceCoins; // User's balance coins
-  final double realBalance; // User's balance in real currency
-  final double exchangeRate; // Exchange rate
+  final double unitAmount; // Price per unit (PHP)
+  final double maxUnitCoins; // Maximum coins per unit (coins)
+  final double balanceCoins; // User's balance coins (coins)
+  final double realBalance; // User's balance in real currency (PHP)
+  final double exchangeRate; // Exchange rate: coins per 1 PHP (后端同款)
   final int maxPerBuyQuantity; // Maximum units per purchase
   final int minBuyQuantity; // Minimum units per purchase
   final int stockLeft; // Stock left
-  final num? coinAmountCap; // Optional cap on coin amount
+  final num? coinAmountCap; // Optional cap on coin amount (PHP)
   final bool isAuthenticated; // User login status
   final bool useDiscountCoins; // Whether to use discount coins
 
@@ -36,40 +37,85 @@ class PurchaseState {
     this.coinAmountCap,
     required this.isAuthenticated,
     required this.useDiscountCoins,
-
     required this.isSubmitting,
   });
 
-  // Maximum entries allowed based on maxPerBuy and stockLeft
-  int get _maxEntriesAllowed =>
-      math.max(minBuyQuantity, math.min(maxPerBuyQuantity, stockLeft));
+  /// 最大可买份数：
+  /// - 不能超过库存
+  /// - 不能超过限购（<=0 时视为不限购）
+  /// - 库存<=0 时直接 0
+  int get _maxEntriesAllowed {
+    if (stockLeft <= 0) return 0;
 
-  // Minimum entries allowed based on minPerBuy and stockLeft
-  int get _minEntriesAllowed => math.min(minBuyQuantity, stockLeft);
+    final maxByStock = stockLeft; // 至多买到库存为止
+    final maxByLimit =
+    maxPerBuyQuantity <= 0 ? maxByStock : maxPerBuyQuantity;
 
-  // Whether the current entries exceed the allowed maximum
+    return math.max(
+      1,
+      math.min(maxByStock, maxByLimit),
+    );
+  }
+
+  /// 最小可买份数：
+  /// - minBuyQuantity <=0 时按 1
+  /// - 再和库存取 min
+  /// - 库存<=0 时为 0
+  int get _minEntriesAllowed {
+    if (stockLeft <= 0) return 0;
+    final minByConfig = minBuyQuantity <= 0 ? 1 : minBuyQuantity;
+    return math.min(minByConfig, stockLeft);
+  }
+
+  /// 小计金额（PHP）
   double get subtotal => unitAmount * entries;
 
-  double? get payableAmount =>
-      useDiscountCoins ? (subtotal - coinAmount) : subtotal;
+  /// 理论最大可用金币（coins）
+  /// 后端：maxUnitCoins 是 “单份最大使用金币数（coins）”
+  /// 后端计算：
+  ///   maxCoinUsable = maxUnitCoins * entries
+  double get _theoreticalMaxCoins {
+    if (!useDiscountCoins) return 0;
+    return maxUnitCoins * entries;
+  }
 
-  // Theoretical maximum coins that can be used
-  double get _theoreticalMaxCoins => maxUnitCoins * entries;
+  /// 实际使用金币（coins）
+  /// - 未登录：用于展示“最多可用多少”，不受余额限制
+  /// - 已登录：受余额与规则共同约束
+  double get coinsToUse {
+    if (!useDiscountCoins) return 0;
 
-  // Actual coins to use based on login status and balance
-  double get coinsToUse => isAuthenticated
-      ? math.min(_theoreticalMaxCoins.toDouble(), balanceCoins)
-      : _theoreticalMaxCoins.toDouble();
-
-  // Coin amount based on exchange rate
-  double get coinAmount => exchangeRate > 0 ? (coinsToUse / exchangeRate) : 0;
-
-  // Capped coin amount if a cap is set
-  num get coinAmountCapped {
-    if (coinAmountCap != null) {
-      return math.min(coinAmount, coinAmountCap!);
+    final maxByRule = _theoreticalMaxCoins;
+    if (!isAuthenticated) {
+      return maxByRule;
     }
-    return coinAmount;
+
+    final maxByBalance = balanceCoins;
+    return math.max(0, math.min(maxByRule, maxByBalance));
+  }
+
+  /// 金币对应折扣金额（PHP）
+  /// 后端同款：coinAmount = coins / rate
+  double get coinAmount {
+    if (!useDiscountCoins || exchangeRate <= 0) return 0;
+    return coinsToUse / exchangeRate;
+  }
+
+  /// 若有额外上限（PHP），再做一次封顶
+  num get coinAmountCapped {
+    final base = coinAmount;
+    if (coinAmountCap == null) return base;
+    return math.min(base, coinAmountCap!);
+  }
+
+  /// 实际应付金额（PHP）
+  /// - 使用金币时：subtotal - 折扣金额（不能小于 0）
+  /// - 不用金币：subtotal
+  double? get payableAmount {
+    if (!useDiscountCoins) return subtotal;
+    final discount = coinAmountCapped.toDouble();
+    final raw = subtotal - discount;
+    return raw <= 0 ? 0 : raw;
   }
 
   PurchaseState copyWith({
@@ -113,13 +159,14 @@ class PurchaseSubmitResult {
   final bool ok;
   final PurchaseSubmitError error;
   final String? message;
+  final OrderCheckoutResponse? data;
 
   // Private constructor， only accessible through factory methods
-  const PurchaseSubmitResult._(this.ok, this.error, this.message);
+  const PurchaseSubmitResult._(this.ok, this.error, this.message, [this.data]);
 
   // Factory method for successful submission
-  factory PurchaseSubmitResult.ok() =>
-      PurchaseSubmitResult._(true, PurchaseSubmitError.none, null);
+  factory PurchaseSubmitResult.ok(data) =>
+      PurchaseSubmitResult._(true, PurchaseSubmitError.none, null, data);
 
   // Factory method for error submission
   factory PurchaseSubmitResult.error(
@@ -140,6 +187,12 @@ class PurchaseNotifier extends StateNotifier<PurchaseState> {
   final String treasureId;
 
   Future<PurchaseSubmitResult> submitOrder({String? groupId}) async {
+    if(!mounted){
+      return PurchaseSubmitResult.error(
+        PurchaseSubmitError.unknown,
+        message: 'Notifier is unmounted',
+      );
+    }
     // need login
     if (!state.isAuthenticated) {
       return PurchaseSubmitResult.error(PurchaseSubmitError.needLogin);
@@ -185,24 +238,41 @@ class PurchaseNotifier extends StateNotifier<PurchaseState> {
       );
     }
     try {
+      if(!mounted){
+        return PurchaseSubmitResult.error(
+          PurchaseSubmitError.unknown,
+          message: 'Notifier is unmounted',
+        );
+      }
       state = state.copyWith(isSubmitting: true);
-      /*final walletDebit = ref.read(walletDebitProvider.future);
-      await repo.submitOrder(
-        treasureId: treasureId,
-        quantity: state.entries,
-        useCoins: state.useDiscountCoins,
-        groupId: groupId,
-      );*/
+      final orderCheckoutResult = await ref.read(orderCheckoutProvider(OrdersCheckoutParams(
+          treasureId: treasureId,
+          entries: state.entries,
+          paymentMethod: state.useDiscountCoins ? 2 : 1,
+          groupId: groupId,
+          addressId: null,
+          couponId: null
+      )).future);
+      
+      if(!mounted){
+        return PurchaseSubmitResult.error(
+          PurchaseSubmitError.unknown,
+          message: 'Notifier is unmounted',
+        );
+      }
+      
       //refresh balance
-      await ref.read(luckyProvider.notifier).updateWalletBalance();
-      return PurchaseSubmitResult.ok();
+     await ref.read(luckyProvider.notifier).updateWalletBalance();
+      return PurchaseSubmitResult.ok(orderCheckoutResult);
     } catch (e) {
       return PurchaseSubmitResult.error(
         PurchaseSubmitError.unknown,
         message: e.toString(),
       );
     } finally {
-      state = state.copyWith(isSubmitting: false);
+      if(mounted){
+        state = state.copyWith(isSubmitting: false);
+      }
     }
   }
 
@@ -259,16 +329,16 @@ typedef PurchaseArgs = ({
   num? coinAmountCap,
 });
 
-final purchaseProvider = StateNotifierProvider.autoDispose
+final purchaseProvider = StateNotifierProvider
     .family<PurchaseNotifier, PurchaseState, String>((ref, id) {
-      final isAuthenticated = ref.watch(
+      final isAuthenticated = ref.read(
         authProvider.select((auth) => auth.isAuthenticated),
       );
-      final detailAsync = ref.watch(productDetailProvider(id));
+      final detailAsync = ref.read(productDetailProvider(id));
       final detail = detailAsync.value;
 
 
-      final state = ref.watch(
+      final state = ref.read(
         luckyProvider.select(
           (s) => (
             balanceCoins: s.balance.coinBalance,
@@ -277,18 +347,17 @@ final purchaseProvider = StateNotifierProvider.autoDispose
           ),
         ),
       );
-
+      
       final stockLeft =
           (detail?.seqShelvesQuantity ?? 0) - (detail?.seqBuyQuantity ?? 0);
 
       final initialState = PurchaseState(
-        entries: detail?.minBuyQuantity ?? stockLeft,
+        entries: stockLeft > 0 ? detail?.minBuyQuantity ?? 1 : 0,
         unitAmount: detail?.unitAmount ?? 0.0,
         maxUnitCoins: detail?.maxUnitCoins ?? 0,
         balanceCoins: state.balanceCoins,
         realBalance: state.realBalance,
-        // exchangeRate: state.exChangeRate, //todo mock
-        exchangeRate: 10.0,
+        exchangeRate: state.exChangeRate,
         maxPerBuyQuantity: detail?.maxPerBuyQuantity ?? math.max(1, stockLeft),
         minBuyQuantity: detail?.minBuyQuantity ?? math.min(1, stockLeft),
         stockLeft: stockLeft,

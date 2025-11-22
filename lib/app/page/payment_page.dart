@@ -1,9 +1,11 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_app/app/page/payment_components/insufficient_balance_sheet.dart';
+import 'package:flutter_app/app/page/payment_components/payment_success_sheet.dart';
 import 'package:flutter_app/app/routes/app_router.dart';
 import 'package:flutter_app/common.dart';
 import 'package:flutter_app/components/base_scaffold.dart';
@@ -41,12 +43,17 @@ class _PaymentPageState extends ConsumerState<PaymentPage>
   void initState() {
     super.initState();
     
-    final isAuthenticated = ref.read(authProvider.select((state) => state.isAuthenticated));
-    if(isAuthenticated) {
       WidgetsBinding.instance.addPostFrameCallback((_){
+        final isAuthenticated = ref.read(authProvider.select((state) => state.isAuthenticated));
+        if(!isAuthenticated) return;
+        // Refresh wallet balance on page load
         ref.read(luckyProvider.notifier).updateWalletBalance();
+        // You can also refresh other necessary data here
+        final treasureId = widget.params.treasureId;
+        if(treasureId != null){
+          ref.invalidate(productDetailProvider(treasureId));
+        }
       });
-    }
   }
 
   @override
@@ -109,6 +116,7 @@ class _PaymentPageState extends ConsumerState<PaymentPage>
           ),
           bottomNavigationBar: _BottomNavigationBar(
             treasureId: params.treasureId!,
+            title: value.treasureName
           ),
         );
       },
@@ -176,68 +184,14 @@ class _AddressSection extends StatelessWidget {
   }
 }
 
-class _ProductSection extends ConsumerStatefulWidget {
-  final ProductListItem detail;
 
+class _ProductSection extends StatelessWidget {
+
+  final ProductListItem detail;
   const _ProductSection({required this.detail});
 
   @override
-  ConsumerState<_ProductSection> createState() => _ProductSectionState();
-}
-
-class _ProductSectionState extends ConsumerState<_ProductSection> {
-  late final TextEditingController _textEditingController;
-  late final FocusNode _focusNode;
-
-  void _updateEntries(int entries) {
-    _textEditingController.text = entries.toString();
-  }
-
-  void _handleFocusChange() {
-    if (!_focusNode.hasFocus) {
-      final action = ref.read(
-        purchaseProvider(widget.detail.treasureId).notifier,
-      );
-      action.setEntriesFromText(_textEditingController.text);
-      final purchaseState = ref.read(
-        purchaseProvider(widget.detail.treasureId),
-      );
-      _updateEntries(purchaseState.entries);
-    }
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    _textEditingController = TextEditingController();
-    _focusNode = FocusNode()..addListener(_handleFocusChange);
-  }
-
-  @override
-  void dispose() {
-    _textEditingController.dispose();
-    _focusNode.removeListener(_handleFocusChange);
-    _focusNode.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final detail = widget.detail;
-    final purchase = ref.watch(purchaseProvider(widget.detail.treasureId));
-    final action = ref.read(
-      purchaseProvider(widget.detail.treasureId).notifier,
-    );
-
-    if (!_focusNode.hasFocus) {
-      final text = purchase.entries.toString();
-      if (_textEditingController.text != text) {
-        _textEditingController.value = TextEditingValue(
-          text: text,
-          selection: TextSelection.collapsed(offset: text.length),
-        );
-      }
-    }
 
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 16.w),
@@ -323,107 +277,173 @@ class _ProductSectionState extends ConsumerState<_ProductSection> {
                 ),
               ],
             ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                Container(
-                  height: 38.w,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    border: Border.all(
-                      color: context.borderSecondary,
-                      width: 1.w,
-                    ),
-                    borderRadius: BorderRadius.all(Radius.circular(8.w)),
-                  ),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Button(
-                        variant: ButtonVariant.text,
-                        width: 44.w,
-                        height: 38.w,
-                        paddingY: 0,
-                        onPressed: () {
-                          action.dec((v) => _updateEntries(v));
-                        },
-                        child: Icon(
-                          CupertinoIcons.minus,
-                          color: context.textPrimary900,
-                          size: 16.w,
-                        ),
-                      ),
-                      Container(
-                        height: 38.w,
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          border: Border(
-                            right: BorderSide(
-                              color: context.borderSecondary,
-                              width: 1.w,
-                            ),
-                            left: BorderSide(
-                              color: context.borderSecondary,
-                              width: 1.w,
-                            ),
-                          ),
-                        ),
-                        child: TextField(
-                          controller: _textEditingController,
-                          focusNode: _focusNode,
-                          textInputAction: TextInputAction.done,
-                          keyboardType: TextInputType.number,
-                          inputFormatters: [
-                            FilteringTextInputFormatter.digitsOnly,
-                          ],
-                          textAlign: TextAlign.center,
-                          textAlignVertical: TextAlignVertical.center,
-                          style: TextStyle(
-                            color: context.textPrimary900,
-                            fontSize: context.textMd,
-                            fontWeight: FontWeight.w600,
-                          ),
-                          decoration: InputDecoration(
-                            isDense: true,
-                            border: InputBorder.none,
-                            constraints: BoxConstraints(
-                              minWidth: 40.w,
-                              maxWidth: 80.w,
-                            ),
-                          ),
-                          onChanged: (value) {
-                            action.setEntriesFromText(value);
-                          },
-                          onTapOutside: (_) {
-                            FocusScope.of(context).unfocus();
-                          },
-                          onEditingComplete: () {
-                            FocusScope.of(context).unfocus();
-                          },
-                        ),
-                      ),
-                      Button(
-                        variant: ButtonVariant.text,
-                        width: 44.w,
-                        height: 38.w,
-                        paddingY: 0,
-                        onPressed: () {
-                          action.inc((v) => _updateEntries(v));
-                        },
-                        child: Icon(
-                          CupertinoIcons.add,
-                          color: context.textPrimary900,
-                          size: 16.w,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
+            _QuantityControl(treasureId:detail.treasureId)
           ],
         ),
       ),
+    );
+  }
+}
+
+class _QuantityControl extends ConsumerStatefulWidget {
+  final String treasureId;
+  const _QuantityControl({required this.treasureId});
+
+  @override
+  ConsumerState<_QuantityControl> createState() => _QuantityControlState();
+}
+
+class _QuantityControlState extends ConsumerState<_QuantityControl> {
+  late final TextEditingController _textEditingController;
+  late final FocusNode _focusNode;
+
+  void _updateEntries(int entries) {
+    _textEditingController.text = entries.toString();
+  }
+
+  void _handleFocusChange() {
+    if (!_focusNode.hasFocus) {
+      final action = ref.read(
+        purchaseProvider(widget.treasureId).notifier,
+      );
+      action.setEntriesFromText(_textEditingController.text);
+      final purchaseState = ref.read(
+        purchaseProvider(widget.treasureId),
+      );
+      _updateEntries(purchaseState.entries);
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _textEditingController = TextEditingController();
+    _focusNode = FocusNode()..addListener(_handleFocusChange);
+  }
+
+  @override
+  void dispose() {
+    _textEditingController.dispose();
+    _focusNode.removeListener(_handleFocusChange);
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context){
+
+    final purchase = ref.watch(purchaseProvider(widget.treasureId));
+    final action = ref.read(
+      purchaseProvider(widget.treasureId).notifier,
+    );
+
+    if (!_focusNode.hasFocus) {
+      final text = purchase.entries.toString();
+      if (_textEditingController.text != text) {
+        _textEditingController.value = TextEditingValue(
+          text: text,
+          selection: TextSelection.collapsed(offset: text.length),
+        );
+      }
+    }
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.end,
+      children: [
+        Container(
+          height: 38.w,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            border: Border.all(
+              color: context.borderSecondary,
+              width: 1.w,
+            ),
+            borderRadius: BorderRadius.all(Radius.circular(8.w)),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Button(
+                variant: ButtonVariant.text,
+                width: 44.w,
+                height: 38.w,
+                paddingY: 0,
+                onPressed: () {
+                  action.dec((v) => _updateEntries(v));
+                },
+                child: Icon(
+                  CupertinoIcons.minus,
+                  color: context.textPrimary900,
+                  size: 16.w,
+                ),
+              ),
+              Container(
+                height: 38.w,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  border: Border(
+                    right: BorderSide(
+                      color: context.borderSecondary,
+                      width: 1.w,
+                    ),
+                    left: BorderSide(
+                      color: context.borderSecondary,
+                      width: 1.w,
+                    ),
+                  ),
+                ),
+                child: TextField(
+                  controller: _textEditingController,
+                  focusNode: _focusNode,
+                  textInputAction: TextInputAction.done,
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [
+                    FilteringTextInputFormatter.digitsOnly,
+                  ],
+                  textAlign: TextAlign.center,
+                  textAlignVertical: TextAlignVertical.center,
+                  style: TextStyle(
+                    color: context.textPrimary900,
+                    fontSize: context.textMd,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  decoration: InputDecoration(
+                    isDense: true,
+                    border: InputBorder.none,
+                    constraints: BoxConstraints(
+                      minWidth: 40.w,
+                      maxWidth: 80.w,
+                    ),
+                  ),
+                  onChanged: (value) {
+                    action.setEntriesFromText(value);
+                  },
+                  onTapOutside: (_) {
+                    FocusScope.of(context).unfocus();
+                  },
+                  onEditingComplete: () {
+                    FocusScope.of(context).unfocus();
+                  },
+                ),
+              ),
+              Button(
+                variant: ButtonVariant.text,
+                width: 44.w,
+                height: 38.w,
+                paddingY: 0,
+                onPressed: () {
+                  action.inc((v) => _updateEntries(v));
+                },
+                child: Icon(
+                  CupertinoIcons.add,
+                  color: context.textPrimary900,
+                  size: 16.w,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
@@ -642,7 +662,7 @@ class _PaymentMethodSection extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final purchase = ref.watch(purchaseProvider(treasureId));
-
+    
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 16.w),
       child: Container(
@@ -725,8 +745,9 @@ class _PaymentMethodSection extends ConsumerWidget {
 
 class _BottomNavigationBar extends ConsumerStatefulWidget {
   final String treasureId;
+  final String title;
 
-  const _BottomNavigationBar({required this.treasureId});
+  const _BottomNavigationBar({required this.treasureId, required this.title});
 
   @override
   ConsumerState<_BottomNavigationBar> createState() =>
@@ -754,16 +775,22 @@ class _BottomNavigationBarState extends ConsumerState<_BottomNavigationBar>
           appRouter.pushNamed('login');
           break;
         case PurchaseSubmitError.needKyc:
-          RadixSheet.show(
+          RadixModal.show(
+            title: 'common.modal.kyc.title'.tr(),
+            confirmText: 'common.modal.kyc.button'.tr(),
+            onConfirm: (_) {
+              appRouter.push('/me/kyc/verify');
+            },
+            cancelText: '',
             builder: (context, close) {
-              return Container(
-                height: 200.w,
-                padding: EdgeInsets.all(16.w),
+              return SizedBox(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      'kyc.verification.required'.tr(),
+                      'common.modal.kyc.desc1'.tr(),
+                      textAlign: TextAlign.center,
                       style: TextStyle(
                         color: context.textPrimary900,
                         fontSize: context.textLg,
@@ -773,29 +800,12 @@ class _BottomNavigationBarState extends ConsumerState<_BottomNavigationBar>
                     ),
                     SizedBox(height: 12.w),
                     Text(
-                      'please.complete.kyc.to.proceed'.tr(),
+                      'common.modal.kyc.desc2'.tr(),
                       style: TextStyle(
                         color: context.textSecondary700,
                         fontSize: context.textMd,
                         height: context.leadingMd,
                         fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    Spacer(),
-                    Button(
-                      width: double.infinity,
-                      onPressed: () {
-                        close();
-                        appRouter.pushNamed('kycVerification');
-                      },
-                      child: Text(
-                        'kyc.verify.now'.tr(),
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: context.textMd,
-                          height: context.leadingMd,
-                          fontWeight: FontWeight.w600,
-                        ),
                       ),
                     ),
                   ],
@@ -871,17 +881,23 @@ class _BottomNavigationBarState extends ConsumerState<_BottomNavigationBar>
         case PurchaseSubmitError.purchaseLimitExceeded:
           RadixToast.error('purchase.limit.exceeded'.tr());
           break;
-        case PurchaseSubmitError.unknown:
-          case PurchaseSubmitError.none:
-          RadixToast.error(result.message ?? 'an.unknown.error.occurred'.tr());
-          break;
         default:
           break;
       }
       return;
     }
 
-    RadixToast.success('purchase.successful'.tr());
+    // On success, navigate to order confirmation page
+    RadixSheet.show(
+      builder: (context, close) {
+        return PaymentSuccessSheet(
+          title: widget.title,
+          purchaseResponse: result.data!,
+        );
+      },
+    );
+
+
   }
 
   @override
@@ -937,8 +953,8 @@ class _BottomNavigationBarState extends ConsumerState<_BottomNavigationBar>
           padding: EdgeInsets.only(
             left: 16.w,
             right: 16.w,
-            top: 12.w,
-            bottom: ViewUtils.bottomBarHeight,
+            top: 16.w,
+            bottom: ViewUtils.bottomBarHeight + (kIsWeb?16.w:0),
           ),
           width: double.infinity,
           decoration: BoxDecoration(

@@ -70,7 +70,7 @@ class Http {
         onResponse: (response, handler) async {
           // HTTP 非 2xx 也允许走到这里，由我们按后端 code 统一处理
           final data = response.data;
-
+          
           if (data == null || data is! Map<String, dynamic>) {
             return handler.reject(
               _asDioError(response, 'Invalid response data'),
@@ -121,6 +121,7 @@ class Http {
 
           if (!noToast) {
             final errorMsg = (data['errorMsg'] as String?) ?? message;
+            print("Showing error toast: $errorMsg");
             Fluttertoast.showToast(
               msg: errorMsg,
               toastLength: Toast.LENGTH_LONG,

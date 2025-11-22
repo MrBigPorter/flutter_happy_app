@@ -116,6 +116,7 @@ class AppRouter {
               entries: queryParams['entries'] ?? '',
               treasureId: queryParams['treasureId']?? '',
               paymentMethod: queryParams['paymentMethod'] ?? '',
+              groupId: queryParams['groupId'] ?? '',
             );
             return fxPage(
                 child: PaymentPage(params: params),
@@ -132,7 +133,6 @@ class AppRouter {
 
         // check if the user is authenticated
         final isAuthenticated = ref.read(authProvider.select( (auth) => auth.isAuthenticated ));
-        print("Redirect Check===>: path=$path, isAuthenticated=$isAuthenticated");
 
 
         // check if the current path requires login

@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:math';
 import 'package:flutter_app/common.dart';
 import 'package:flutter_app/core/models/coupon_threshold_data.dart';
-import 'package:flutter_app/core/models/wallet.dart';
+import 'package:flutter_app/core/models/payment.dart';
 
 import 'package:flutter_app/utils/helper.dart';
 import 'package:flutter_app/core/models/index.dart';
@@ -58,7 +58,7 @@ class Api {
 
   /// 用户信息 user info
   static Future<UserInfo> getUserInfo() async {
-    final res = await Http.get("user/info");
+    final res = await Http.get("/api/v1/auth/profile");
     return UserInfo.fromJson(jsonDecode(res));
   }
 
@@ -68,10 +68,11 @@ class Api {
     return Balance.fromJson(res);
   }
 
-  /// 钱包支出 wallet debit
-  static Future<Debit> walletDebitAoi() async {
-    final res = await Http.get('/api/v1/wallet/debit');
-    return Debit.fromJson(res);
+
+  /// checkout order
+  static Future<OrderCheckoutResponse> ordersCheckOutApi(OrdersCheckoutParams params) async{
+    final res = await Http.post('/api/v1/orders/checkout', data: params.toJson());
+    return OrderCheckoutResponse.fromJson(res);
   }
 
   /// 系统配置 sys config

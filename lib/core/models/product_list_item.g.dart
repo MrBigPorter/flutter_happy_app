@@ -63,7 +63,10 @@ ProductListItem _$ProductListItemFromJson(
         'max_per_buy_quantity',
         (v) => (v as num?)?.toInt(),
       ),
-      charityAmount: $checkedConvert('charity_amount', (v) => v as String?),
+      charityAmount: $checkedConvert(
+        'charity_amount',
+        (v) => (v as num?)?.toDouble(),
+      ),
       treasureSeq: $checkedConvert('treasure_seq', (v) => v as String?),
       cashState: $checkedConvert('cash_state', (v) => (v as num?)?.toInt()),
     );
