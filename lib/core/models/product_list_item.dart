@@ -8,8 +8,7 @@ part 'product_list_item.g.dart';
 @JsonSerializable(checked: true)
 class ProductListItem {
   final double buyQuantityRate;
-  @JsonKey(name: 'costAmount', fromJson:JsonNumConverter.toDouble , toJson: JsonNumConverter.doubleToString)
-  final double? costAmount;
+  final String? costAmount;
   final int? imgStyleType;
   final int? lotteryMode;
   final int? lotteryTime;

@@ -14,10 +14,7 @@ ProductListItem _$ProductListItemFromJson(
       'buyQuantityRate',
       (v) => (v as num).toDouble(),
     ),
-    costAmount: $checkedConvert(
-      'costAmount',
-      (v) => JsonNumConverter.toDouble(v),
-    ),
+    costAmount: $checkedConvert('costAmount', (v) => v as String?),
     imgStyleType: $checkedConvert('imgStyleType', (v) => (v as num?)?.toInt()),
     lotteryMode: $checkedConvert('lotteryMode', (v) => (v as num?)?.toInt()),
     lotteryTime: $checkedConvert('lotteryTime', (v) => (v as num?)?.toInt()),
@@ -64,7 +61,7 @@ ProductListItem _$ProductListItemFromJson(
 Map<String, dynamic> _$ProductListItemToJson(ProductListItem instance) =>
     <String, dynamic>{
       'buyQuantityRate': instance.buyQuantityRate,
-      'costAmount': JsonNumConverter.doubleToString(instance.costAmount),
+      'costAmount': instance.costAmount,
       'imgStyleType': instance.imgStyleType,
       'lotteryMode': instance.lotteryMode,
       'lotteryTime': instance.lotteryTime,

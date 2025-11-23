@@ -104,9 +104,6 @@ class _ProductDetailPageState extends ConsumerState<ProductDetailPage>
     final webBaseUrl = ref.watch(
       luckyProvider.select((select) => select.sysConfig.webBaseUrl),
     );
-    
-    print(detail);
-
 
     final expandedHeight = 250.w;
     
