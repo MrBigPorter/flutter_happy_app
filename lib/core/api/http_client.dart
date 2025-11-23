@@ -35,6 +35,7 @@ class Http {
   static bool _navigatingToLogin = false;
 
   static String? _tokenCache;
+  static bool _isRefreshingToken = false;
 
   static Future<void> init() async {
     // 日志（仅在 dev / 需要时打开）
@@ -70,7 +71,7 @@ class Http {
         onResponse: (response, handler) async {
           // HTTP 非 2xx 也允许走到这里，由我们按后端 code 统一处理
           final data = response.data;
-          
+
           if (data == null || data is! Map<String, dynamic>) {
             return handler.reject(
               _asDioError(response, 'Invalid response data'),
@@ -91,9 +92,42 @@ class Http {
           }
 
           // 处理需要跳转的业务码
-          final noToast = response.requestOptions.extra['noErrorToast'] == true;
+          final reqExtra = response.requestOptions.extra;
+          final noToast = reqExtra['noErrorToast'] == true;
 
-          if (_tokenErrorCodes.contains(code)) {
+          // Whether to skip token guard
+          final skipTokenGuard = reqExtra['skipTokenGuard'] == true;
+
+          if (_tokenErrorCodes.contains(code) && !skipTokenGuard) {
+
+           final alreadyRetries = reqExtra['__retryAfterRefresh__'] == true;
+
+           if(!alreadyRetries){
+             final refreshed = await _tryRefreshToken();
+             if(refreshed){
+               // successfully refreshed token, retry original request
+               final options = response.requestOptions;
+               // mark as retried, avoid infinite loop
+                options.extra['__retryAfterRefresh__'] = true;
+
+                // update Authorization header
+               final newToken = _tokenCache;
+
+               if(newToken != null && newToken.isNotEmpty) {
+                 options.headers['Authorization'] = 'Bearer $newToken';
+               }
+
+               try{
+                 // retry to appy the last request
+                 final newResponse = await _dio.fetch(options);
+                 return handler.resolve(newResponse);
+               }catch(_){
+                 // failed to retry, will continue to logout
+               }
+
+             }
+           }
+
             // remove token from cache
             await _clearToken();
 
@@ -234,6 +268,69 @@ class Http {
     return _decode<T>(resp.data, fromJson);
   }
 
+  static Future<bool> _tryRefreshToken() async {
+    if(_isRefreshingToken){
+      return false;
+    }
+    _isRefreshingToken = true;
+
+    try{
+      // get refresh token from storage
+      final storage = authInitialTokenStorage();
+      final tokens = await storage.read();
+      final refreshToken = tokens.$2;
+
+      if(refreshToken == null || refreshToken.isEmpty){
+        return false;
+      }
+
+      // apply refresh token API
+      final resp = await _dio.post(
+          '/api/v1/auth/refresh',
+          data: {
+            'refresh_token': refreshToken,
+          },
+          options: Options(
+            extra: {
+              'noAuth': true, // avoid injecting token
+              'noErrorToast': true, // avoid error toast
+              'skipTokenGuard' : true, // avoid token invalid handling, avoid loop
+            },
+          )
+      );
+
+      // parse response
+      final data = resp.data;
+      if(data == null || data is! Map<String, dynamic>){
+        return false;
+      }
+
+      final tokensMap = data['tokens'] as Map<String, dynamic>?;
+      if(tokensMap == null){
+        return false;
+      }
+
+      final newAccessToken = tokensMap['access_token'] as String?;
+      final newRefreshToken = tokensMap['refresh_token'] as String?;
+
+      if(newAccessToken == null || newAccessToken.isEmpty){
+        return false;
+      }
+
+      // update token cache and storage
+      _tokenCache = newAccessToken;
+      await storage.save(newAccessToken, newRefreshToken);
+
+     return true;
+
+    }catch(e){
+      return false;
+    }finally {
+      _isRefreshingToken = false;
+    }
+
+  }
+
   /// ---- Token 管理 ---- set to memory cache
   static void setToken(String token)  {
     _tokenCache = token;
@@ -243,10 +340,8 @@ class Http {
 
   static Future<String?> _getToken() async {
     if (_tokenCache != null) return _tokenCache;
-    print("Reading token from storage==>${_tokenCache}");
     final auth = authInitialTokenStorage();
     final tokens = await auth.read();
-    print("Reading token from storage==>+++${tokens}");
     return tokens.$1;
   }
 
