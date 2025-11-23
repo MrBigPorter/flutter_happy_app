@@ -4,19 +4,12 @@ part 'act_winners_month.g.dart';
 
 @JsonSerializable()
 class ActWinnersMonth {
-  @JsonKey(name: "treasure_id")
   final int treasureId;
-  @JsonKey(name: 'treasure_name')
   final String treasureName;
-  @JsonKey(name: 'main_image_list')
   final List<String>? mainImageList;
-  @JsonKey(name: 'winner_name')
   final String winnerName;
-  @JsonKey(name: 'award_number')
   final int awardNumber;
-  @JsonKey(name: 'month')
   final int month;
-  @JsonKey(name: 'lottery_time')
   final int lotteryTime;
 
   /// The following fields are not included in JSON serialization/deserialization

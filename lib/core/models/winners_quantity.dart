@@ -7,7 +7,7 @@ class WinnersQuantity {
 
   factory WinnersQuantity.fromJson(Map<String, dynamic> json){
     return WinnersQuantity(
-      awardTotalQuantity: json['award_total_quantity'] as int,
+      awardTotalQuantity: json['awardTotalQuantity'] as int,
     );
   }
 

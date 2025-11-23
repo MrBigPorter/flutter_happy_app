@@ -7,36 +7,24 @@ part of 'index_statistics.dart';
 // **************************************************************************
 
 IndexStatistics _$IndexStatisticsFromJson(Map<String, dynamic> json) =>
-    $checkedCreate(
-      'IndexStatistics',
-      json,
-      ($checkedConvert) {
-        final val = IndexStatistics(
-          charityFundNum: $checkedConvert(
-            'charity_fund_num',
-            (v) => (v as num).toInt(),
-          ),
-          totalAmount: $checkedConvert(
-            'total_amount',
-            (v) => (v as num).toInt(),
-          ),
-          totalUserAmount: $checkedConvert(
-            'total_user_amount',
-            (v) => (v as num).toInt(),
-          ),
-        );
-        return val;
-      },
-      fieldKeyMap: const {
-        'charityFundNum': 'charity_fund_num',
-        'totalAmount': 'total_amount',
-        'totalUserAmount': 'total_user_amount',
-      },
-    );
+    $checkedCreate('IndexStatistics', json, ($checkedConvert) {
+      final val = IndexStatistics(
+        charityFundNum: $checkedConvert(
+          'charityFundNum',
+          (v) => (v as num).toInt(),
+        ),
+        totalAmount: $checkedConvert('totalAmount', (v) => (v as num).toInt()),
+        totalUserAmount: $checkedConvert(
+          'totalUserAmount',
+          (v) => (v as num).toInt(),
+        ),
+      );
+      return val;
+    });
 
 Map<String, dynamic> _$IndexStatisticsToJson(IndexStatistics instance) =>
     <String, dynamic>{
-      'charity_fund_num': instance.charityFundNum,
-      'total_amount': instance.totalAmount,
-      'total_user_amount': instance.totalUserAmount,
+      'charityFundNum': instance.charityFundNum,
+      'totalAmount': instance.totalAmount,
+      'totalUserAmount': instance.totalUserAmount,
     };

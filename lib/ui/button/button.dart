@@ -147,8 +147,8 @@ class _ButtonState extends State<Button> {
               right: widget.child is SizedBox ? 0 : G,
             ),
             child: SizedBox(
-              width: 16.w,
-              height: 16.w,
+              width: 10.w,
+              height: 10.w,
               child: CircularProgressIndicator(strokeWidth: 2, color: context.textWhite,),
             ),
           ),

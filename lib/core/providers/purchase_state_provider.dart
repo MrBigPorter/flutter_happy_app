@@ -4,6 +4,7 @@ import 'package:flutter_app/core/models/payment.dart';
 import 'package:flutter_app/core/providers/index.dart';
 import 'package:flutter_app/core/providers/order_provider.dart';
 import 'package:flutter_app/core/store/auth/auth_provider.dart';
+import 'package:flutter_app/utils/helper.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../store/lucky_store.dart';
@@ -179,13 +180,13 @@ class PurchaseNotifier extends StateNotifier<PurchaseState> {
     final sysConfig = ref.read(luckyProvider).sysConfig;
     final needKyc = sysConfig.kycAndPhoneVerification == '1';
 
-    if(needKyc){
+    /*if(needKyc){
       final user = ref.read(luckyProvider).userInfo;
       // if(user?.kycStatus != KycStatus.passed){
       if(user?.kycStatus != 2){
         return PurchaseSubmitResult.error(PurchaseSubmitError.needKyc);
       }
-    }
+    }*/
 
     // balance check
     final pay = payableAmount;
@@ -328,8 +329,8 @@ final purchaseProvider =
       final initialState = PurchaseState(
         entries: stockLeft > 0 ? detail?.minBuyQuantity ?? 1 : 0,
         unitAmount: detail?.unitAmount ?? 0.0,
-        maxUnitCoins: detail?.maxUnitCoins ?? 0,
-        maxPerBuyQuantity: detail?.maxPerBuyQuantity ?? math.max(1, stockLeft),
+        maxUnitCoins: JsonNumConverter.toDouble(detail?.maxUnitCoins),
+        maxPerBuyQuantity: JsonNumConverter.toInt(detail?.maxPerBuyQuantity ?? math.max(1, stockLeft)),
         minBuyQuantity: detail?.minBuyQuantity ?? math.min(1, stockLeft),
         stockLeft: stockLeft,
         useDiscountCoins: false,

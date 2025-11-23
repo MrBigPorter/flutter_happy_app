@@ -1,4 +1,8 @@
 
+import 'package:json_annotation/json_annotation.dart';
+
+part 'sys_config.g.dart';
+@JsonSerializable(checked: true)
 class SysConfig {
   final String kycAndPhoneVerification;
   final String webBaseUrl;
@@ -6,19 +10,11 @@ class SysConfig {
 
   SysConfig({required this.kycAndPhoneVerification, required this.webBaseUrl, required this.exChangeRate});
 
-  factory SysConfig.fromJson(Map<String, dynamic> json) {
-    return SysConfig(
-      kycAndPhoneVerification: json["kyc_and_phone_verification"] ?? "1",
-      webBaseUrl: json["web_base_url"] ?? "",
-      exChangeRate: json["ex_change_rate"]?.toDouble() ?? 1.0,
-    );
+  factory SysConfig.fromJson(Map<String, dynamic> json) => _$SysConfigFromJson(json);
+  Map<String, dynamic> toJson() => _$SysConfigToJson(this);
+  @override
+  String toString() {
+    return toJson().toString();
   }
 
-  Map<String, dynamic> toJson() {
-    return {
-      "kyc_and_phone_verification": kycAndPhoneVerification,
-      "web_base_url": webBaseUrl,
-      "ex_change_rate": exChangeRate,
-    };
-  }
 }

@@ -6,91 +6,48 @@ part 'order_item.g.dart';
 
 @JsonSerializable(checked: true)
 class OrderItem {
-  @JsonKey(name: 'address_id')
   final String? addressId;
-  @JsonKey(name: 'address_resp')
   final AddressRes? addressResp;
-  @JsonKey(name: 'amount_coin')
   final double? amountCoin;
-  @JsonKey(name: 'award_ticket')
   final String? awardTicket;
-  @JsonKey(name: 'bet_amount')
   final double? betAmount;
-  @JsonKey(name: 'current_status')
   final double? currentStatus;
-  @JsonKey(name: 'denomination')
   final String? denomination;
-  @JsonKey(name: 'entries')
   final double entries;
-  @JsonKey(name: 'friend')
   final String? friend;
-  @JsonKey(name: 'friend_ticket')
   final String? friendTicket;
-  @JsonKey(name: 'group_id')
   final String? groupId;
-  @JsonKey(name: 'handle_status')
   final double? handleStatus;
-  @JsonKey(name: 'id')
   final String id;
-  @JsonKey(name: 'is_own')
   final double? isOwn;
-  @JsonKey(name: 'lottery_time')
   final int? lotteryTime;
-  @JsonKey(name: 'main_images')
   final String? mainImages;
-  @JsonKey(name: 'my_ticket')
   final String? myTicket;
-  @JsonKey(name: 'order_status')
   final int orderStatus;
-  @JsonKey(name: 'pay_time')
   final int? payTime;
-  @JsonKey(name: 'payment_method')
   final double? paymentMethod;
-  @JsonKey(name: 'prize_amount')
   final double? prizeAmount;
-  @JsonKey(name: 'prize_coin')
   final double? prizeCoin;
-  @JsonKey(name: 'product_actual_id')
   final double? productActualId;
-  @JsonKey(name: 'product_name')
   final String productName;
-  @JsonKey(name: 'purchase_count')
   final double purchaseCount;
-  @JsonKey(name: 'share_amount')
   final double? shareAmount;
-  @JsonKey(name: 'share_coin')
   final int? shareCoin;
-  @JsonKey(name: 'stock_quantity')
   final double stockQuantity;
-  @JsonKey(name: 'ticket_list')
   final List<TicketItem>? ticketList;
-  @JsonKey(name: 'total_amount')
   final double totalAmount;
-  @JsonKey(name: 'treasure_id')
   final double treasureId;
-  @JsonKey(name: 'user_id')
   final String? userId;
-  @JsonKey(name: 'user_phone')
   final String? userPhone;
-  @JsonKey(name: 'virtual')
   final int virtual;
-  @JsonKey(name: 'virtual_account')
   final String? virtualAccount;
-  @JsonKey(name: 'virtual_code')
   final String? virtualCode;
-  @JsonKey(name: 'treasure_cover_img')
   final String treasureCoverImg;
-  @JsonKey(name: 'treasure_name')
   final String treasureName;
-  @JsonKey(name: 'refund_reason')
   final String? refundReason;
-  @JsonKey(name: 'cash_state')
   final int? cashState;
-  @JsonKey(name: 'cash_amount')
   final double? cashAmount;
-  @JsonKey(name: 'cash_email')
   final String? cashEmail;
-  @JsonKey(name: 'confirm_state')
   final int? confirmState;
 
   const OrderItem({
@@ -152,9 +109,7 @@ class OrderItem {
 
 @JsonSerializable(checked: true)
 class TicketItem {
-  @JsonKey(name: 'status')
   final double status;
-  @JsonKey(name: 'ticket')
   final String ticket;
 
   const TicketItem({required this.status, required this.ticket});
@@ -167,11 +122,8 @@ class TicketItem {
 
 @JsonSerializable(checked: true)
 class OrderCount {
-  @JsonKey(name: 'active_count')
   final double activeCount;
-  @JsonKey(name: 'end_count')
   final double endCount;
-  @JsonKey(name: 'refund_count')
   final double refundCount;
 
   const OrderCount({
@@ -180,13 +132,14 @@ class OrderCount {
     required this.refundCount,
   });
 
-  Map<String,int> asMap(){
+  Map<String, dynamic> asMap() {
     return {
-      'active_count': activeCount.toInt(),
-      'end_count': endCount.toInt(),
-      'refund_count': refundCount.toInt(),
+      'activeCount': activeCount,
+      'endCount': endCount,
+      'refundCount': refundCount,
     };
   }
+
 
   factory OrderCount.fromJson(Map<String, dynamic> json) =>
       _$OrderCountFromJson(json);
@@ -202,11 +155,8 @@ class OrderCount {
 
 @JsonSerializable(checked: true)
 class OrderListParams {
-  @JsonKey(name: 'order_state')
   final int orderState;
-  @JsonKey(name: 'page')
   final int page;
-  @JsonKey(name: 'size')
   final int size;
 
   const OrderListParams({

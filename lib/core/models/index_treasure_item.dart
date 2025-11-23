@@ -5,11 +5,8 @@ part 'index_treasure_item.g.dart';
 
 @JsonSerializable(checked: true)
 class IndexTreasureItem {
-  @JsonKey(name: 'act_id')
   final int actId;
-  @JsonKey(name: 'img_style_type')
   final int imgStyleType;
-  @JsonKey(name: 'treasure_resp',defaultValue: [])
   final List<ProductListItem>? treasureResp;
 
   IndexTreasureItem({

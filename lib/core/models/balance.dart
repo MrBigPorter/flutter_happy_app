@@ -6,9 +6,9 @@ part 'balance.g.dart';
 
 @JsonSerializable(checked: true)
 class Balance {
-  @JsonKey(name: 'real_balance',fromJson: JsonNumConverter.toDouble,toJson: JsonNumConverter.doubleToString)
+  @JsonKey(fromJson: JsonNumConverter.toDouble,toJson: JsonNumConverter.doubleToString)
   final double realBalance;
-  @JsonKey(name: 'coin_balance',fromJson: JsonNumConverter.toDouble,toJson: JsonNumConverter.doubleToString)
+  @JsonKey(fromJson: JsonNumConverter.toDouble,toJson: JsonNumConverter.doubleToString)
   final double coinBalance;
 
   Balance({

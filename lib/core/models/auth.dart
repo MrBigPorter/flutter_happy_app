@@ -4,21 +4,13 @@ part 'auth.g.dart';
 
 @JsonSerializable(checked: true)
 class AuthLoginOtp {
-  @JsonKey(name: 'id')
   final String id;
-  @JsonKey(name: 'phone')
   final String phone;
-  @JsonKey(name: 'phone_md5')
   final String phoneMd5;
-  @JsonKey(name: 'nickname')
   final String nickname;
-  @JsonKey(name: 'username')
   final String username;
-  @JsonKey(name: 'avartar')
   final String? avartar;
-  @JsonKey(name: 'country_code')
   final int? countryCode;
-  @JsonKey(name: 'tokens')
   final Tokens tokens;
 
   AuthLoginOtp({
@@ -46,9 +38,7 @@ class AuthLoginOtp {
 
 @JsonSerializable(checked: true)
 class Tokens {
-  @JsonKey(name: 'access_token')
   final String accessToken;
-  @JsonKey(name: 'refresh_token')
   final String refreshToken;
 
   Tokens({
@@ -70,7 +60,6 @@ class Tokens {
 
 @JsonSerializable(checked: true)
 class OtpRequest {
-  @JsonKey(name: 'DevCode')
   final String? devCode;
 
   OtpRequest({
@@ -89,27 +78,16 @@ class OtpRequest {
 
 @JsonSerializable(checked: true)
 class Profile {
-  @JsonKey(name: 'id')
   final String id;
-  @JsonKey(name: 'nickname')
   final String nickname;
-  @JsonKey(name: 'avatar')
   final String? avatar;
-  @JsonKey(name: 'phone_md5')
   final String phoneMd5;
-  @JsonKey(name: 'phone')
   final String phone;
-  @JsonKey(name: 'invite_code')
   final String? inviteCode;
-  @JsonKey(name: 'vip_level')
   final int? vipLevel;
-  @JsonKey(name: 'last_login_at')
   final String lastLoginAt;
-  @JsonKey(name: 'kyc_status')
   final int kycStatus;
-  @JsonKey(name: 'delivery_address_id')
   final int? deliveryAddressId;
-  @JsonKey(name: 'self_exclusion_expire_at')
   final int? selfExclusionExpireAt;
 
   Profile({

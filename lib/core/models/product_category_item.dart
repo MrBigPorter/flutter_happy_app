@@ -5,9 +5,7 @@ part 'product_category_item.g.dart';
 
 @JsonSerializable()
 class ProductCategoryItem {
-  @JsonKey(name: 'name')
   final String name;
-  @JsonKey(name: 'id')
   final int id;
 
   ProductCategoryItem({

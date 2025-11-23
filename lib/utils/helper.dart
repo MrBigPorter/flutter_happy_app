@@ -197,3 +197,33 @@ ScrollPhysics platformScrollPhysics({bool alwaysScrollable = true, bool webBounc
 
   return alwaysScrollable ? const AlwaysScrollableScrollPhysics().applyTo(base) : base;
 }
+
+
+/// JSON number conversion utilities
+class JsonNumConverter {
+  static double toDouble(Object? v, {double fallback = 0}) {
+    if (v == null) return fallback;
+
+    if (v is num) return v.toDouble();
+    if (v is String) {
+      return double.tryParse(v) ?? fallback;
+    }
+    return fallback;
+  }
+
+  static int toInt(Object? v, {int fallback = 0}) {
+    if (v == null) return fallback;
+
+    if (v is int) return v;
+    if (v is num) return v.toInt();
+
+    if (v is String) {
+      final asInt = int.tryParse(v);
+      if (asInt != null) return asInt;
+
+      final asDouble = double.tryParse(v);
+      if (asDouble != null) return asDouble.toInt();
+    }
+    return fallback;
+  }
+}

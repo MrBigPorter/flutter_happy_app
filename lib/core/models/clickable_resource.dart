@@ -24,14 +24,4 @@ class DefaultClickableResource implements ClickableResource {
     this.videoUrl,
   });
 
-
-  /// Create a ClickableResource from a JSON map
-  factory DefaultClickableResource.fromJson(Map<String, dynamic> json) {
-    return DefaultClickableResource(
-      jumpCate: json['jump_cate'] as int?,
-      jumpUrl: json['jump_url'] as String?,
-      relatedTitleId: json['related_title_id'] as String?,
-      videoUrl: json['video_url'] as String?,
-    );
-  }
 }

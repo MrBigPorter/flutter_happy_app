@@ -104,6 +104,8 @@ class _ProductDetailPageState extends ConsumerState<ProductDetailPage>
     final webBaseUrl = ref.watch(
       luckyProvider.select((select) => select.sysConfig.webBaseUrl),
     );
+    
+    print(detail);
 
 
     final expandedHeight = 250.w;
@@ -638,7 +640,7 @@ class _TopTreasureSectionState extends State<_TopTreasureSection> with SingleTic
                           SizedBox(height: 4.w),
                           Text(
                             FormatHelper.formatCurrency(
-                                data.charityAmount ?? 0
+                                data.charityAmount
                             ),
                             style: TextStyle(
                               fontSize: context.text2xs,

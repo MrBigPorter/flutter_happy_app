@@ -25,33 +25,21 @@ enum CouponStatus {
 
 @JsonSerializable(checked: true)
 class CouponThresholdData {
-  @JsonKey(name: 'buy_threshold_start')
   final double? buyThresholdStart;
-  @JsonKey(name: 'coupon_id')
   final int couponId;
-  @JsonKey(name: 'currency')
   final String? currency;
-  @JsonKey(name: 'get_coupons')
   final int getCoupons; //1 | 2 | 3; // 1:不可领取 2:可领取 3:已领取
-  @JsonKey(name: 'reward_amount')
   final double rewardAmount;
-  @JsonKey(name: 'id')
   final String id;
-  @JsonKey(name: 'coupon_name')
   final String couponName;
   @JsonKey(
-      name: 'coupon_status',
       fromJson:  CouponStatus.fromJson,
       toJson: CouponStatus.toJson,
   )
   final CouponStatus? couponStatus;
-  @JsonKey(name: 'treasure_id')
   final int? treasureId;
-  @JsonKey(name: 'use_at_end')
   final int? useAtEnd;
-  @JsonKey(name: 'use_at_start')
   final int? useAtStart;
-  @JsonKey(name: 'threshold_start')
   final double? thresholdStart;
 
   const CouponThresholdData({
@@ -82,9 +70,7 @@ class CouponThresholdData {
 
 @JsonSerializable(checked: true)
 class CouponThresholdResponse {
-  @JsonKey(name: 'coupon_threshold')
   final List<CouponThresholdData> couponThreshold;
-  @JsonKey(name: 'desc')
   final String desc;
   const CouponThresholdResponse({
     required this.couponThreshold,

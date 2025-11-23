@@ -53,7 +53,6 @@ class AuthNotifier extends StateNotifier<AuthState> {
       isAuthenticated: true,
     );
     ref.read(luckyProvider.notifier).refreshAll();
-    debugPrint('[Auth] login() called==> access=$access, refresh=$refresh');
   }
 
   void updateTokens(String access, String? refresh) {

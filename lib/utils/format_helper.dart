@@ -1,79 +1,92 @@
 import 'package:easy_localization/easy_localization.dart';
 
 class FormatHelper {
-  /// 金额格式化（带千分号，保留2位小数) formatCurrency(1234567.89) => ₱1,234,567.89
-  /// [amount] 金额数值 amount value
-  /// [symbol] 货币符号，默认 '₱' default is '₱'
-  /// 返回格式化后的字符串 returns formatted currency string
-  static String formatCurrency(num? amount, {String symbol = '₱'}) {
-    if (amount == null) return '${symbol}0.00';
+  /// 通用：把传进来的东西转成 num
+  /// 支持 num / String，其他情况返回 null
+  static num? _toNum(Object? value) {
+    if (value == null) return null;
+    if (value is num) return value;
+
+    if (value is String) {
+      // 去掉可能的货币符号、逗号空格之类（看需要，可以更严格）
+      final clean = value.replaceAll(',', '').trim();
+      final parsed = double.tryParse(clean);
+      return parsed;
+    }
+
+    return null;
+  }
+
+  /// 金额格式化（带千分号，保留2位小数)
+  /// 支持传 num / String
+  static String formatCurrency(Object? amount, {String symbol = '₱'}) {
+    final n = _toNum(amount);
+    if (n == null) return '${symbol}0.00';
+
     final formatter = NumberFormat.currency(
       locale: 'en_US',
       symbol: symbol,
       decimalDigits: 2,
     );
-    return formatter.format(amount);
+    return formatter.format(n);
   }
 
-  /// 数字格式化（千分号，无小数） formatNumber(1234567) => 1,234,567
-  /// [number] 数值 number value
-  /// 返回格式化后的字符串 returns formatted number string
-  static String formatWithCommas(num? number) {
-    if (number == null) return '0';
+  /// 数字格式化（千分号，无小数）
+  static String formatWithCommas(Object? number) {
+    final n = _toNum(number);
+    if (n == null) return '0';
+
     final formatter = NumberFormat('#,##0', 'en_US');
-    return formatter.format(number);
+    return formatter.format(n);
   }
 
-  /// 百分比格式化（保留2位小数） formatPercentage(0.1234) => 12.34%
-  /// [value] 百分比数值 percentage value (0.0 to 1
-  /// 返回格式化后的字符串 returns formatted percentage string
-  static String formatPercentage(num? value) {
-    if (value == null) return '0.00%';
+  /// 百分比格式化（保留2位小数） value 可以是 num / String
+  static String formatPercentage(Object? value) {
+    final n = _toNum(value);
+    if (n == null) return '0.00%';
+
     final formatter = NumberFormat.percentPattern('en_US');
-    return formatter.format(value);
+    return formatter.format(n);
   }
 
   /// 数字格式化（千分号，带小数）
-  /// formatNumberWithDecimals(1234567.89) => 1,234,567.89
-  /// [number] 数值 number value
-  /// [decimalDigits] 小数位数 decimal places
-  /// 返回格式化后的字符串 returns formatted number string
   static String formatWithCommasAndDecimals(
-    num? number, {
-    int decimalDigits = 2,
-  }) {
-    if (number == null) return '0.00';
+      Object? number, {
+        int decimalDigits = 2,
+      }) {
+    final n = _toNum(number);
+    if (n == null) {
+      return decimalDigits == 0 ? '0' : '0.${'0' * decimalDigits}';
+    }
+
     final formatter = NumberFormat('#,##0.${'0' * decimalDigits}', 'en_US');
-    return formatter.format(number);
+    return formatter.format(n);
   }
 
   /// 缩写（K/M/B），无小数
-  /// formatAbbreviatedNumber(1234567) => 1.2M
-  /// [number] 数值 number value
-  /// 返回格式化后的字符串 returns formatted abbreviated number string
-  static String formatCompact(num? n) {
-    if (n == null) return '0';
-    return NumberFormat.compact(locale: 'en_US').format(n);
+  static String formatCompact(Object? n) {
+    final v = _toNum(n);
+    if (v == null) return '0';
+    return NumberFormat.compact(locale: 'en_US').format(v);
   }
 
   /// 缩写（K/M/B），带小数
-  /// formatCompactDecimal(1234567) => 1.23M
-  /// [number] 数值 number value
-  /// [decimalDigits] 小数位数 decimal places
-  /// 返回格式化后的字符串 returns formatted abbreviated number string
-  static String formatCompactDecimal(num? n, {int decimalDigits = 2}) {
-    if (n == null) return '0';
+  static String formatCompactDecimal(Object? n, {int decimalDigits = 2}) {
+    final v = _toNum(n);
+    if (v == null) return '0';
     return NumberFormat.compactCurrency(
       locale: 'en_US',
-      symbol: '', // 不要货币符号，只要 K/M
+      symbol: '',
       decimalDigits: decimalDigits,
-    ).format(n);
+    ).format(v);
   }
 
-  /// 解析百分比字符串为小数 parseRate('78.00') => 78
-  static double parseRate(dynamic value, {target = '.00'}) {
+  /// 解析百分比字符串为 0~100 的数值
+  static double parseRate(dynamic value, {String target = '.00'}) {
     if (value == null) return 0;
+
     if (value is num) return value.toDouble().clamp(0, 100);
+
     if (value is String) {
       final clean = value.replaceAll(target, '');
       final parsed = double.tryParse(clean) ?? 0;
@@ -82,5 +95,3 @@ class FormatHelper {
     return 0;
   }
 }
-
-
