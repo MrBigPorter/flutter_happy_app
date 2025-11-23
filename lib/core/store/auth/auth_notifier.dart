@@ -56,6 +56,14 @@ class AuthNotifier extends StateNotifier<AuthState> {
     debugPrint('[Auth] login() called==> access=$access, refresh=$refresh');
   }
 
+  void updateTokens(String access, String? refresh) {
+    state = state.copyWith(
+      accessToken: access,
+      refreshToken: refresh,
+      isAuthenticated: true,
+    );
+  }
+
   Future<void> logout() async {
     // Clear token for HTTP requests
     await storage.clear();

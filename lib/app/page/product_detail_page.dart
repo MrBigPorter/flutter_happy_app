@@ -921,8 +921,8 @@ class _JoinTreasureSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-
-    final notifier = ref.watch(purchaseProvider(treasureId).notifier);
+    final purchase = ref.watch(purchaseProvider(treasureId));
+    final notifier = ref.read(purchaseProvider(treasureId).notifier);
 
     return Container(
       padding: EdgeInsets.only(bottom: ViewUtils.bottomBarHeight),

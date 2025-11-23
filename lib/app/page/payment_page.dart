@@ -327,11 +327,11 @@ class _QuantityControlState extends ConsumerState<_QuantityControl> {
 
   @override
   Widget build(BuildContext context) {
-    final purchase = ref.watch(purchaseProvider(widget.treasureId));
+    final entries = ref.watch(purchaseProvider(widget.treasureId).select((select)=> select.entries));
     final action = ref.read(purchaseProvider(widget.treasureId).notifier);
 
     if (!_focusNode.hasFocus) {
-      final text = purchase.entries.toString();
+      final text = entries.toString();
       if (_textEditingController.text != text) {
         _textEditingController.value = TextEditingValue(
           text: text,
@@ -441,7 +441,7 @@ class _InfoSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final purchase = ref.watch(purchaseProvider(treasureId));
+    final entries = ref.watch(purchaseProvider(treasureId).select((select) => select.entries));
 
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 16.w),
@@ -463,13 +463,13 @@ class _InfoSection extends ConsumerWidget {
             SizedBox(height: 12.w),
             _InfoRow(
               label: 'common.tickets.number'.tr(),
-              value: '${purchase.entries}',
+              value: '${entries}',
             ),
             SizedBox(height: 12.w),
             _InfoRow(
               label: 'common.total.price'.tr(),
               value: FormatHelper.formatCurrency(
-                detail.unitAmount * purchase.entries,
+                detail.unitAmount * entries,
               ),
             ),
           ],

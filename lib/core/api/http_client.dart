@@ -321,6 +321,11 @@ class Http {
       _tokenCache = newAccessToken;
       await storage.save(newAccessToken, newRefreshToken);
 
+      // notify auth provider
+      if(onTokenRefresh != null){
+        await onTokenRefresh!(newAccessToken, newRefreshToken);
+      }
+
      return true;
 
     }catch(e){
@@ -346,6 +351,8 @@ class Http {
   }
 
   static Future<void> Function()? onTokenInvalid;
+
+  static Future<void> Function(String access, String? refresh)? onTokenRefresh;
 
   static Future<void> _clearToken() async {
     _tokenCache = null;

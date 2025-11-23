@@ -27,8 +27,13 @@ class MyApp extends ConsumerWidget{
     // 全局处理 Token 失效：登出并跳转到登录页 - Global handling of token invalidation: logout and redirect to login page
     Http.onTokenInvalid  ??= () async {
       final authNotifier = ref.read(authProvider.notifier);
-      print('[MyApp] Http.onTokenInvalid called, logging out...');
       await authNotifier.logout();
+    };
+
+    // 全局处理 Token 刷新：更新存储的 Token - Global handling of token refresh: update stored tokens
+    Http.onTokenRefresh ??= (String newAccess, String? newRefresh) async {
+      final authNotifier = ref.read(authProvider.notifier);
+      authNotifier.updateTokens(newAccess, newRefresh);
     };
 
     final router = ref.watch(appRouterProvider);
