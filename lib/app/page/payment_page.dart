@@ -129,7 +129,7 @@ class _AddressSection extends StatelessWidget {
   void _onAddressTap() {
     RadixSheet.show(
       builder: (context, close) {
-        return Container(
+        return SizedBox(
           height: 300.w,
           child: Center(child: Text('Address Selection Page')), //todo
         );
@@ -463,7 +463,7 @@ class _InfoSection extends ConsumerWidget {
             SizedBox(height: 12.w),
             _InfoRow(
               label: 'common.tickets.number'.tr(),
-              value: '${entries}',
+              value: '$entries',
             ),
             SizedBox(height: 12.w),
             _InfoRow(

@@ -83,19 +83,4 @@ class AnimationPolicyConfig {
 }
 
 extension _Merge on AnimationPolicyConfig {
-  AnimationPolicyConfig mergeGlobal(AnimationPolicyConfig? g) {
-    if (g == null) return this;
-    // 仅当全局的 style 与当前一致时，才用它来微调参数；避免把庆祝改成极简或反之
-    if (g.style != style) return this;
-    return copyWith(
-      inDuration: g.inDuration,
-      outDuration: g.outDuration,
-      inCurve: g.inCurve,
-      outCurve: g.outCurve,
-      allowBackgroundClose: g.allowBackgroundClose,
-      enableDragToClose: g.enableDragToClose,
-      blurSigma: g.blurSigma,
-      enableParticles: g.enableParticles,
-    );
-  }
 }

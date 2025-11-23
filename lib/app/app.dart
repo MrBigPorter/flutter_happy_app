@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_app/common.dart';
 import 'package:flutter_app/core/providers/app_router_provider.dart';
 import 'package:flutter_app/core/store/auth/auth_provider.dart';
-import 'package:flutter_app/core/store/lucky_store.dart';
 import 'package:flutter_app/ui/modal/progress/overlay_shrink.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';

@@ -121,14 +121,14 @@ class LuckyNotifier extends HydratedStateNotifier<LuckyState> {
   /// Fetches wallet balance from API and updates state
   Future<void> updateWalletBalance() async {
     final data = await ref.refresh(walletBalanceProvider.future);
-      state = state.copyWith(balance: data ?? state.balance);
+      state = state.copyWith(balance: data);
   }
 
   /// Update system config method
   /// Fetches system config from API and updates state
   Future<void> updateSysConfig() async {
     final data = await ref.refresh(sysConfigProvider.future);
-      state = state.copyWith(sysConfig: data ?? state.sysConfig);
+      state = state.copyWith(sysConfig: data);
   }
 
   /// Refresh all data method

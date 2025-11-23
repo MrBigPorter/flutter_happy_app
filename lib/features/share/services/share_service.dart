@@ -1,7 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_app/features/share/models/share_data.dart';
-import 'package:http/http.dart' as httpClient;
+import 'package:http/http.dart' as http;
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -31,7 +31,7 @@ class ShareService {
     }
 
     try {
-      final resp = await httpClient.get(Uri.parse(d.imageUrl!));
+      final resp = await http.get(Uri.parse(d.imageUrl!));
       if (resp.statusCode != 200) {
         return null;
       }

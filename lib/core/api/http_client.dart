@@ -2,7 +2,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_app/core/store/auth/auth_initial.dart';
 import 'package:fluttertoast/fluttertoast.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_app/app/routes/app_router.dart';
 import 'env.dart';
 
@@ -60,7 +59,6 @@ class Http {
           final noAuth = options.extra['noAuth'] == true;
           if (!noAuth) {
             final token = await _getToken();
-            print("Injecting token: $token");
             if (token != null && token.isNotEmpty) {
               options.headers['Authorization'] = 'Bearer $token';
             }

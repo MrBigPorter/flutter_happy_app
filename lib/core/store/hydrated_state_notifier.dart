@@ -7,8 +7,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// Methods:
 /// - HydratedStateNotifier(T initialState)
 /// - String get storageKey
-/// - T fromJson(Map<String, dynamic> json)
-/// - Map<String, dynamic> toJson(T state)
+/// - T fromJson(Map<‘String, dynamic’> json)
+/// - Map<‘String, dynamic’> toJson(T state)
 /// - Future<'void'> _load()
 /// - Future<'void'> _save(T value)
 /// - @override set state(T value)
@@ -20,7 +20,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 ///  CounterNotifier() : super(0);
 ///
 abstract class HydratedStateNotifier<T> extends StateNotifier<T> {
-  HydratedStateNotifier(T initialState) : super(initialState){
+  HydratedStateNotifier(super.initialState){
     _load();
   }
 
@@ -46,7 +46,6 @@ abstract class HydratedStateNotifier<T> extends StateNotifier<T> {
       super.state = loaded;
     } catch (e) {
       // Handle JSON parsing error
-      print('Error loading state for $storageKey: $e');
     }
   }
 
