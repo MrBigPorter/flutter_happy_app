@@ -179,13 +179,13 @@ class PurchaseNotifier extends StateNotifier<PurchaseState> {
     final sysConfig = ref.read(luckyProvider).sysConfig;
     final needKyc = sysConfig.kycAndPhoneVerification == '1';
 
-    /*if(needKyc){
+    if(needKyc){
       final user = ref.read(luckyProvider).userInfo;
       // if(user?.kycStatus != KycStatus.passed){
       if(user?.kycStatus != 2){
         return PurchaseSubmitResult.error(PurchaseSubmitError.needKyc);
       }
-    }*/
+    }
 
     // balance check
     final pay = payableAmount;

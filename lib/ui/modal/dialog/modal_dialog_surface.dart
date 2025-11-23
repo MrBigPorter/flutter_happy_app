@@ -91,7 +91,7 @@ class ModalDialogSurface<T> extends StatelessWidget {
                     bottom: 0,
                     child: IconButton(
                       onPressed: onClose,
-                      icon: Icon(Icons.close, size: 22.w),
+                      icon: Icon(Icons.close, size: 22.w, color: context.fgPrimary900),
                     ),
                   ),
                 ],
