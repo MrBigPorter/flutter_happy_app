@@ -9,6 +9,7 @@ import 'package:flutter_app/app/page/payment_components/payment_success_sheet.da
 import 'package:flutter_app/app/routes/app_router.dart';
 import 'package:flutter_app/common.dart';
 import 'package:flutter_app/components/base_scaffold.dart';
+import 'package:flutter_app/components/kyc_modal.dart';
 import 'package:flutter_app/components/skeleton.dart';
 import 'package:flutter_app/core/models/index.dart';
 
@@ -772,34 +773,7 @@ class _BottomNavigationBarState extends ConsumerState<_BottomNavigationBar>
             },
             cancelText: '',
             builder: (context, close) {
-              return SizedBox(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      'common.modal.kyc.desc1'.tr(),
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: context.textPrimary900,
-                        fontSize: context.textLg,
-                        height: context.leadingLg,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    SizedBox(height: 12.w),
-                    Text(
-                      'common.modal.kyc.desc2'.tr(),
-                      style: TextStyle(
-                        color: context.textSecondary700,
-                        fontSize: context.textMd,
-                        height: context.leadingMd,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-              );
+              return KycModal();
             },
           );
           break;
