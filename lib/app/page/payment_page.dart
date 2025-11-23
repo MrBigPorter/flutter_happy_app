@@ -38,22 +38,24 @@ class PaymentPage extends ConsumerStatefulWidget {
 class _PaymentPageState extends ConsumerState<PaymentPage>
     with SingleTickerProviderStateMixin {
   bool _isInit = false;
-  
+
   @override
   void initState() {
     super.initState();
-    
-      WidgetsBinding.instance.addPostFrameCallback((_){
-        final isAuthenticated = ref.read(authProvider.select((state) => state.isAuthenticated));
-        if(!isAuthenticated) return;
-        // Refresh wallet balance on page load
-        ref.read(luckyProvider.notifier).updateWalletBalance();
-        // You can also refresh other necessary data here
-        final treasureId = widget.params.treasureId;
-        if(treasureId != null){
-          ref.invalidate(productDetailProvider(treasureId));
-        }
-      });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final isAuthenticated = ref.read(
+        authProvider.select((state) => state.isAuthenticated),
+      );
+      if (!isAuthenticated) return;
+      // Refresh wallet balance on page load
+      ref.read(luckyProvider.notifier).updateWalletBalance();
+      // You can also refresh other necessary data here
+      final treasureId = widget.params.treasureId;
+      if (treasureId != null) {
+        ref.invalidate(productDetailProvider(treasureId));
+      }
+    });
   }
 
   @override
@@ -66,7 +68,6 @@ class _PaymentPageState extends ConsumerState<PaymentPage>
     }
 
     final detail = ref.watch(productDetailProvider(params.treasureId!));
-
 
     return detail.when(
       loading: () => _PaymentSkeleton(),
@@ -116,7 +117,7 @@ class _PaymentPageState extends ConsumerState<PaymentPage>
           ),
           bottomNavigationBar: _BottomNavigationBar(
             treasureId: params.treasureId!,
-            title: value.treasureName
+            title: value.treasureName,
           ),
         );
       },
@@ -184,15 +185,13 @@ class _AddressSection extends StatelessWidget {
   }
 }
 
-
 class _ProductSection extends StatelessWidget {
-
   final ProductListItem detail;
+
   const _ProductSection({required this.detail});
 
   @override
   Widget build(BuildContext context) {
-
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 16.w),
       child: Container(
@@ -277,7 +276,7 @@ class _ProductSection extends StatelessWidget {
                 ),
               ],
             ),
-            _QuantityControl(treasureId:detail.treasureId)
+            _QuantityControl(treasureId: detail.treasureId),
           ],
         ),
       ),
@@ -287,6 +286,7 @@ class _ProductSection extends StatelessWidget {
 
 class _QuantityControl extends ConsumerStatefulWidget {
   final String treasureId;
+
   const _QuantityControl({required this.treasureId});
 
   @override
@@ -303,13 +303,9 @@ class _QuantityControlState extends ConsumerState<_QuantityControl> {
 
   void _handleFocusChange() {
     if (!_focusNode.hasFocus) {
-      final action = ref.read(
-        purchaseProvider(widget.treasureId).notifier,
-      );
+      final action = ref.read(purchaseProvider(widget.treasureId).notifier);
       action.setEntriesFromText(_textEditingController.text);
-      final purchaseState = ref.read(
-        purchaseProvider(widget.treasureId),
-      );
+      final purchaseState = ref.read(purchaseProvider(widget.treasureId));
       _updateEntries(purchaseState.entries);
     }
   }
@@ -330,12 +326,9 @@ class _QuantityControlState extends ConsumerState<_QuantityControl> {
   }
 
   @override
-  Widget build(BuildContext context){
-
+  Widget build(BuildContext context) {
     final purchase = ref.watch(purchaseProvider(widget.treasureId));
-    final action = ref.read(
-      purchaseProvider(widget.treasureId).notifier,
-    );
+    final action = ref.read(purchaseProvider(widget.treasureId).notifier);
 
     if (!_focusNode.hasFocus) {
       final text = purchase.entries.toString();
@@ -354,10 +347,7 @@ class _QuantityControlState extends ConsumerState<_QuantityControl> {
           height: 38.w,
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            border: Border.all(
-              color: context.borderSecondary,
-              width: 1.w,
-            ),
+            border: Border.all(color: context.borderSecondary, width: 1.w),
             borderRadius: BorderRadius.all(Radius.circular(8.w)),
           ),
           child: Row(
@@ -397,9 +387,7 @@ class _QuantityControlState extends ConsumerState<_QuantityControl> {
                   focusNode: _focusNode,
                   textInputAction: TextInputAction.done,
                   keyboardType: TextInputType.number,
-                  inputFormatters: [
-                    FilteringTextInputFormatter.digitsOnly,
-                  ],
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                   textAlign: TextAlign.center,
                   textAlignVertical: TextAlignVertical.center,
                   style: TextStyle(
@@ -410,10 +398,7 @@ class _QuantityControlState extends ConsumerState<_QuantityControl> {
                   decoration: InputDecoration(
                     isDense: true,
                     border: InputBorder.none,
-                    constraints: BoxConstraints(
-                      minWidth: 40.w,
-                      maxWidth: 80.w,
-                    ),
+                    constraints: BoxConstraints(minWidth: 40.w, maxWidth: 80.w),
                   ),
                   onChanged: (value) {
                     action.setEntriesFromText(value);
@@ -536,7 +521,10 @@ class _VoucherSection extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final purchase = ref.watch(purchaseProvider(treasureId));
-    final action = ref.read(purchaseProvider(treasureId).notifier);
+    final notifier = ref.read(purchaseProvider(treasureId).notifier);
+    final coinsBalance = ref.watch(
+      luckyProvider.select((state) => state.balance.coinBalance),
+    );
 
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 16.w),
@@ -609,7 +597,7 @@ class _VoucherSection extends ConsumerWidget {
                         duration: const Duration(milliseconds: 400),
                         child: purchase.useDiscountCoins
                             ? Text(
-                                '(${purchase.coinsToUse} coins)=${FormatHelper.formatCurrency(purchase.coinAmount)}',
+                                '(${FormatHelper.formatCompactDecimal(notifier.coinsCanUse)} coins)=${FormatHelper.formatCurrency(notifier.coinAmount)}',
                                 style: TextStyle(
                                   color: context.textErrorPrimary600,
                                   fontSize: context.textSm,
@@ -634,7 +622,8 @@ class _VoucherSection extends ConsumerWidget {
                               context.borderSecondary,
                             ),
                             value: purchase.useDiscountCoins,
-                            onChanged: (v) => action.toggleUseDiscountCoins(v),
+                            onChanged: (v) =>
+                                notifier.toggleUseDiscountCoins(v),
                           ),
                         ),
                       ),
@@ -644,7 +633,7 @@ class _VoucherSection extends ConsumerWidget {
               ],
             ),
             Text(
-              '${'common.balance'.tr()}: ${purchase.balanceCoins.toInt()} ${'common.coins'.tr()}',
+              '${'common.balance'.tr()}: ${FormatHelper.formatCompactDecimal(coinsBalance)} ${'common.coins'.tr()}',
               style: TextStyle(color: context.textQuaternary500),
             ),
           ],
@@ -661,8 +650,10 @@ class _PaymentMethodSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final purchase = ref.watch(purchaseProvider(treasureId));
-    
+    final realBalance = ref.watch(
+      luckyProvider.select((select) => select.balance.realBalance),
+    );
+
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 16.w),
       child: Container(
@@ -712,7 +703,7 @@ class _PaymentMethodSection extends ConsumerWidget {
                     ),
                     SizedBox(height: 4.w),
                     Text(
-                      '${'common.balance'.tr()}:${FormatHelper.formatCurrency(purchase.realBalance)}',
+                      '${'common.balance'.tr()}:${FormatHelper.formatCurrency(realBalance)}',
                       style: TextStyle(
                         color: context.textQuaternary500,
                         fontSize: context.textXs,
@@ -762,15 +753,13 @@ class _BottomNavigationBarState extends ConsumerState<_BottomNavigationBar>
   late final Animation<Offset> _slideAnimation;
 
   void submitPayment() async {
-    final action = ref.read(
-      purchaseProvider(widget.treasureId).notifier,
-    );
+    final action = ref.read(purchaseProvider(widget.treasureId).notifier);
     final result = await action.submitOrder();
 
-    if(!context.mounted) return;
+    if (!context.mounted) return;
 
-    if(!result.ok){
-      switch (result.error){
+    if (!result.ok) {
+      switch (result.error) {
         case PurchaseSubmitError.needLogin:
           appRouter.pushNamed('login');
           break;
@@ -815,68 +804,66 @@ class _BottomNavigationBarState extends ConsumerState<_BottomNavigationBar>
           );
           break;
         case PurchaseSubmitError.noAddress:
-           RadixToast.error('please.add.delivery.address'.tr());
+          RadixToast.error('please.add.delivery.address'.tr());
           break;
         case PurchaseSubmitError.insufficientBalance:
           RadixSheet.show(
-            config: ModalSheetConfig(
-              enableHeader: false,
-            ),
+            config: ModalSheetConfig(enableHeader: false),
             builder: (context, close) {
               return InsufficientBalanceSheet(close: close);
             },
           );
           break;
         case PurchaseSubmitError.soldOut:
-           RadixSheet.show(
-             builder: (context,close){
-               return Container(
-                 height: 180.w,
-                 padding: EdgeInsets.all(16.w),
-                 child: Column(
-                   crossAxisAlignment: CrossAxisAlignment.start,
-                   children: [
-                     Text(
-                       'treasure.sold.out'.tr(),
-                       style: TextStyle(
-                         color: context.textPrimary900,
-                         fontSize: context.textLg,
-                         height: context.leadingLg,
-                         fontWeight: FontWeight.w800,
-                       ),
-                     ),
-                     SizedBox(height: 12.w),
-                     Text(
-                       'sorry.this.treasure.is.sold.out'.tr(),
-                       style: TextStyle(
-                         color: context.textSecondary700,
-                         fontSize: context.textMd,
-                         height: context.leadingMd,
-                         fontWeight: FontWeight.w600,
-                       ),
-                     ),
-                     Spacer(),
-                     Button(
-                       width: double.infinity,
-                       onPressed: (){
-                         close();
-                         appRouter.pop();
-                       },
-                       child: Text(
-                         'common.okay'.tr(),
-                         style: TextStyle(
-                           color: Colors.white,
-                           fontSize: context.textMd,
-                           height: context.leadingMd,
-                           fontWeight: FontWeight.w600,
-                         ),
-                       ),
-                     ),
-                   ],
-                 ),
-               );
-             }
-           );
+          RadixSheet.show(
+            builder: (context, close) {
+              return Container(
+                height: 180.w,
+                padding: EdgeInsets.all(16.w),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'treasure.sold.out'.tr(),
+                      style: TextStyle(
+                        color: context.textPrimary900,
+                        fontSize: context.textLg,
+                        height: context.leadingLg,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    SizedBox(height: 12.w),
+                    Text(
+                      'sorry.this.treasure.is.sold.out'.tr(),
+                      style: TextStyle(
+                        color: context.textSecondary700,
+                        fontSize: context.textMd,
+                        height: context.leadingMd,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    Spacer(),
+                    Button(
+                      width: double.infinity,
+                      onPressed: () {
+                        close();
+                        appRouter.pop();
+                      },
+                      child: Text(
+                        'common.okay'.tr(),
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: context.textMd,
+                          height: context.leadingMd,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          );
           break;
         case PurchaseSubmitError.purchaseLimitExceeded:
           RadixToast.error('purchase.limit.exceeded'.tr());
@@ -896,8 +883,6 @@ class _BottomNavigationBarState extends ConsumerState<_BottomNavigationBar>
         );
       },
     );
-
-
   }
 
   @override
@@ -921,7 +906,11 @@ class _BottomNavigationBarState extends ConsumerState<_BottomNavigationBar>
     );
 
     _slideAnimation = Tween(begin: Offset(0, 1), end: Offset.zero).animate(
-      CurvedAnimation(parent: _animationController, curve: Curves.easeInOut,reverseCurve: Curves.easeInOut)
+      CurvedAnimation(
+        parent: _animationController,
+        curve: Curves.easeInOut,
+        reverseCurve: Curves.easeInOut,
+      ),
     );
 
     // start the animation
@@ -936,99 +925,99 @@ class _BottomNavigationBarState extends ConsumerState<_BottomNavigationBar>
 
   @override
   Widget build(BuildContext context) {
+    final notifier = ref.read(purchaseProvider(widget.treasureId).notifier);
     final purchase = ref.watch(purchaseProvider(widget.treasureId));
 
     return AnimatedBuilder(
-        animation: _animationController,
-        builder: (context, child){
-          return FadeTransition(
-              opacity: _fadeAnimation,
-              child: SlideTransition(
-                position: _slideAnimation,
-                child: child,
-              ),
-          );
-        },
-        child: Container(
-          padding: EdgeInsets.only(
-            left: 16.w,
-            right: 16.w,
-            top: 16.w,
-            bottom: ViewUtils.bottomBarHeight + (kIsWeb?16.w:0),
-          ),
-          width: double.infinity,
-          decoration: BoxDecoration(
-            color: context.bgPrimary,
-            boxShadow: [
-              BoxShadow(
-                color: context.shadowMd01.withValues(alpha: 0.1),
-                blurRadius: 10.w,
-                offset: Offset(0, -1.w),
-              ),
-            ],
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  RichText(
-                    text: TextSpan(
-                      children: [
-                        TextSpan(
-                          text: '${'common.total'.tr()}: ',
-                          style: TextStyle(
-                            color: context.textPrimary900,
-                            fontSize: context.textSm,
-                            height: context.leadingSm,
-                            fontWeight: FontWeight.w600,
-                          ),
+      animation: _animationController,
+      builder: (context, child) {
+        return FadeTransition(
+          opacity: _fadeAnimation,
+          child: SlideTransition(position: _slideAnimation, child: child),
+        );
+      },
+      child: Container(
+        padding: EdgeInsets.only(
+          left: 16.w,
+          right: 16.w,
+          top: 16.w,
+          bottom: ViewUtils.bottomBarHeight + (kIsWeb ? 16.w : 0),
+        ),
+        width: double.infinity,
+        decoration: BoxDecoration(
+          color: context.bgPrimary,
+          boxShadow: [
+            BoxShadow(
+              color: context.shadowMd01.withValues(alpha: 0.1),
+              blurRadius: 10.w,
+              offset: Offset(0, -1.w),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                RichText(
+                  text: TextSpan(
+                    children: [
+                      TextSpan(
+                        text: '${'common.total'.tr()}: ',
+                        style: TextStyle(
+                          color: context.textPrimary900,
+                          fontSize: context.textSm,
+                          height: context.leadingSm,
+                          fontWeight: FontWeight.w600,
                         ),
-                        TextSpan(
-                          text: FormatHelper.formatCurrency(purchase.payableAmount),
-                          style: TextStyle(
-                            color: context.textErrorPrimary600,
-                            fontSize: context.textLg,
-                            height: context.leadingLg,
-                            fontWeight: FontWeight.w800,
-                          ),
+                      ),
+                      TextSpan(
+                        text: FormatHelper.formatCurrency(
+                          notifier.payableAmount,
                         ),
-                      ],
-                    ),
+                        style: TextStyle(
+                          color: context.textErrorPrimary600,
+                          fontSize: context.textLg,
+                          height: context.leadingLg,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ],
                   ),
-                  SizedBox(height: 8.w),
-                  Text(
-                    '${'common.total.discount'.tr()} ${FormatHelper.formatCurrency(purchase.useDiscountCoins ? purchase.coinAmount : 0)}',
-                    style: TextStyle(
-                      color: context.textErrorPrimary600,
-                      fontSize: context.textSm,
-                      height: context.leadingSm,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ),
-              SizedBox(width: 16.w),
-              Button(
-                width: 120.w,
-                height: 40.w,
-                loading: purchase.isSubmitting,
-                onPressed: submitPayment,
-                child: Text(
-                  'common.checkout'.tr(),
+                ),
+                SizedBox(height: 8.w),
+                Text(
+                  '${'common.total.discount'.tr()} ${FormatHelper.formatCurrency(purchase.useDiscountCoins ? notifier.coinAmount : 0)}',
                   style: TextStyle(
-                    color: Colors.white,
-                    fontSize: context.textMd,
-                    height: context.leadingMd,
+                    color: context.textErrorPrimary600,
+                    fontSize: context.textSm,
+                    height: context.leadingSm,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
+              ],
+            ),
+            SizedBox(width: 16.w),
+            Button(
+              width: 120.w,
+              height: 40.w,
+              loading: purchase.isSubmitting,
+              onPressed: submitPayment,
+              child: Text(
+                'common.checkout'.tr(),
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: context.textMd,
+                  height: context.leadingMd,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
+      ),
     );
   }
 }

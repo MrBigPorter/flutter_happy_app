@@ -922,7 +922,7 @@ class _JoinTreasureSection extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
 
-    final purchase = ref.watch(purchaseProvider(treasureId));
+    final notifier = ref.watch(purchaseProvider(treasureId).notifier);
 
     return Container(
       padding: EdgeInsets.only(bottom: ViewUtils.bottomBarHeight),
@@ -963,7 +963,7 @@ class _JoinTreasureSection extends ConsumerWidget {
                         ),
                         children: [
                           TextSpan(
-                            text: '${purchase.coinsToUse}',
+                            text: '${notifier.coinsCanUse}',
                             style: TextStyle(
                               color: context.textErrorPrimary600,
                             ),
@@ -976,7 +976,7 @@ class _JoinTreasureSection extends ConsumerWidget {
                 ),
                 Spacer(),
                 Text(
-                  '-${FormatHelper.formatCurrency(purchase.coinAmount)}',
+                  '-${FormatHelper.formatCurrency(notifier.coinAmount)}',
                   style: TextStyle(
                     fontSize: context.textXs,
                     color: context.textBrandSecondary700,

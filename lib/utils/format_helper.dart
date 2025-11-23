@@ -61,7 +61,7 @@ class FormatHelper {
   /// [number] 数值 number value
   /// [decimalDigits] 小数位数 decimal places
   /// 返回格式化后的字符串 returns formatted abbreviated number string
-  static String formatCompactDecimal(num? n, {int decimalDigits = 1}) {
+  static String formatCompactDecimal(num? n, {int decimalDigits = 2}) {
     if (n == null) return '0';
     return NumberFormat.compactCurrency(
       locale: 'en_US',

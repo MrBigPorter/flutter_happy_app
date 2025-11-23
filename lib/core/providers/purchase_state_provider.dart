@@ -12,14 +12,10 @@ class PurchaseState {
   final int entries; // Number of purchase entries
   final double unitAmount; // Price per unit (PHP)
   final double maxUnitCoins; // Maximum coins per unit (coins)
-  final double balanceCoins; // User's balance coins (coins)
-  final double realBalance; // User's balance in real currency (PHP)
-  final double exchangeRate; // Exchange rate: coins per 1 PHP (后端同款)
   final int maxPerBuyQuantity; // Maximum units per purchase
   final int minBuyQuantity; // Minimum units per purchase
   final int stockLeft; // Stock left
   final num? coinAmountCap; // Optional cap on coin amount (PHP)
-  final bool isAuthenticated; // User login status
   final bool useDiscountCoins; // Whether to use discount coins
 
   final bool isSubmitting; // Submission status
@@ -28,14 +24,10 @@ class PurchaseState {
     required this.entries,
     required this.unitAmount,
     required this.maxUnitCoins,
-    required this.balanceCoins,
-    required this.realBalance,
-    required this.exchangeRate,
     required this.maxPerBuyQuantity,
     required this.minBuyQuantity,
     required this.stockLeft,
     this.coinAmountCap,
-    required this.isAuthenticated,
     required this.useDiscountCoins,
     required this.isSubmitting,
   });
@@ -48,13 +40,9 @@ class PurchaseState {
     if (stockLeft <= 0) return 0;
 
     final maxByStock = stockLeft; // 至多买到库存为止
-    final maxByLimit =
-    maxPerBuyQuantity <= 0 ? maxByStock : maxPerBuyQuantity;
+    final maxByLimit = maxPerBuyQuantity <= 0 ? maxByStock : maxPerBuyQuantity;
 
-    return math.max(
-      1,
-      math.min(maxByStock, maxByLimit),
-    );
+    return math.max(1, math.min(maxByStock, maxByLimit));
   }
 
   /// 最小可买份数：
@@ -74,48 +62,9 @@ class PurchaseState {
   /// 后端：maxUnitCoins 是 “单份最大使用金币数（coins）”
   /// 后端计算：
   ///   maxCoinUsable = maxUnitCoins * entries
-  double get _theoreticalMaxCoins {
+  double get theoreticalMaxCoins {
     if (!useDiscountCoins) return 0;
     return maxUnitCoins * entries;
-  }
-
-  /// 实际使用金币（coins）
-  /// - 未登录：用于展示“最多可用多少”，不受余额限制
-  /// - 已登录：受余额与规则共同约束
-  double get coinsToUse {
-    if (!useDiscountCoins) return 0;
-
-    final maxByRule = _theoreticalMaxCoins;
-    if (!isAuthenticated) {
-      return maxByRule;
-    }
-
-    final maxByBalance = balanceCoins;
-    return math.max(0, math.min(maxByRule, maxByBalance));
-  }
-
-  /// 金币对应折扣金额（PHP）
-  /// 后端同款：coinAmount = coins / rate
-  double get coinAmount {
-    if (!useDiscountCoins || exchangeRate <= 0) return 0;
-    return coinsToUse / exchangeRate;
-  }
-
-  /// 若有额外上限（PHP），再做一次封顶
-  num get coinAmountCapped {
-    final base = coinAmount;
-    if (coinAmountCap == null) return base;
-    return math.min(base, coinAmountCap!);
-  }
-
-  /// 实际应付金额（PHP）
-  /// - 使用金币时：subtotal - 折扣金额（不能小于 0）
-  /// - 不用金币：subtotal
-  double? get payableAmount {
-    if (!useDiscountCoins) return subtotal;
-    final discount = coinAmountCapped.toDouble();
-    final raw = subtotal - discount;
-    return raw <= 0 ? 0 : raw;
   }
 
   PurchaseState copyWith({
@@ -127,14 +76,10 @@ class PurchaseState {
       entries: entries ?? this.entries,
       unitAmount: unitAmount,
       maxUnitCoins: maxUnitCoins,
-      balanceCoins: balanceCoins,
-      exchangeRate: exchangeRate,
       maxPerBuyQuantity: maxPerBuyQuantity,
       minBuyQuantity: minBuyQuantity,
       stockLeft: stockLeft,
       coinAmountCap: coinAmountCap,
-      isAuthenticated: isAuthenticated,
-      realBalance: realBalance,
       useDiscountCoins: useDiscountCoins ?? this.useDiscountCoins,
       isSubmitting: isSubmitting ?? this.isSubmitting,
     );
@@ -186,15 +131,47 @@ class PurchaseNotifier extends StateNotifier<PurchaseState> {
   final Ref ref;
   final String treasureId;
 
+  double get _balanceCoins => ref.read(luckyProvider).balance.coinBalance;
+
+  double get _realBalance => ref.read(luckyProvider).balance.realBalance;
+
+  double get _exchangeRate => ref.read(luckyProvider).sysConfig.exChangeRate;
+
+  bool get _isAuthenticated => ref.read(authProvider).isAuthenticated;
+
+  /// 计算实际可用的金币数量
+  double get coinsCanUse {
+    if (!state.useDiscountCoins) return 0.0;
+    final maxByRule = state.theoreticalMaxCoins;
+    if (!_isAuthenticated) {
+      return maxByRule;
+    }
+    final maxByBalance = _balanceCoins;
+    return math.max(0.0, math.min(maxByRule, maxByBalance));
+  }
+
+  /// coins to PHP
+  double get coinAmount {
+    final rate = _exchangeRate;
+    if (!state.useDiscountCoins || rate <= 0) return 0.0;
+    return coinsCanUse / rate;
+  }
+
+  double get payableAmount {
+    if (!state.useDiscountCoins) return state.subtotal;
+    final raw = state.subtotal - coinAmount;
+    return raw <= 0 ? 0.0 : raw;
+  }
+
   Future<PurchaseSubmitResult> submitOrder({String? groupId}) async {
-    if(!mounted){
+    if (!mounted) {
       return PurchaseSubmitResult.error(
         PurchaseSubmitError.unknown,
         message: 'Notifier is unmounted',
       );
     }
     // need login
-    if (!state.isAuthenticated) {
+    if (!_isAuthenticated) {
       return PurchaseSubmitResult.error(PurchaseSubmitError.needLogin);
     }
 
@@ -211,8 +188,9 @@ class PurchaseNotifier extends StateNotifier<PurchaseState> {
     }*/
 
     // balance check
-    final pay = state.payableAmount ?? state.subtotal;
-    if (state.realBalance < pay) {
+    final pay = payableAmount;
+    final realBalance = _realBalance;
+    if (realBalance < pay) {
       return PurchaseSubmitResult.error(
         PurchaseSubmitError.insufficientBalance,
       );
@@ -238,31 +216,35 @@ class PurchaseNotifier extends StateNotifier<PurchaseState> {
       );
     }
     try {
-      if(!mounted){
+      if (!mounted) {
         return PurchaseSubmitResult.error(
           PurchaseSubmitError.unknown,
           message: 'Notifier is unmounted',
         );
       }
       state = state.copyWith(isSubmitting: true);
-      final orderCheckoutResult = await ref.read(orderCheckoutProvider(OrdersCheckoutParams(
-          treasureId: treasureId,
-          entries: state.entries,
-          paymentMethod: state.useDiscountCoins ? 2 : 1,
-          groupId: groupId,
-          addressId: null,
-          couponId: null
-      )).future);
-      
-      if(!mounted){
+      final orderCheckoutResult = await ref.read(
+        orderCheckoutProvider(
+          OrdersCheckoutParams(
+            treasureId: treasureId,
+            entries: state.entries,
+            paymentMethod: state.useDiscountCoins ? 2 : 1,
+            groupId: groupId,
+            addressId: null,
+            couponId: null,
+          ),
+        ).future,
+      );
+
+      if (!mounted) {
         return PurchaseSubmitResult.error(
           PurchaseSubmitError.unknown,
           message: 'Notifier is unmounted',
         );
       }
-      
+
       //refresh balance
-     await ref.read(luckyProvider.notifier).updateWalletBalance();
+      await ref.read(luckyProvider.notifier).updateWalletBalance();
       return PurchaseSubmitResult.ok(orderCheckoutResult);
     } catch (e) {
       return PurchaseSubmitResult.error(
@@ -270,7 +252,7 @@ class PurchaseNotifier extends StateNotifier<PurchaseState> {
         message: e.toString(),
       );
     } finally {
-      if(mounted){
+      if (mounted) {
         state = state.copyWith(isSubmitting: false);
       }
     }
@@ -329,25 +311,17 @@ typedef PurchaseArgs = ({
   num? coinAmountCap,
 });
 
-final purchaseProvider = StateNotifierProvider
-    .family<PurchaseNotifier, PurchaseState, String>((ref, id) {
+final purchaseProvider =
+    StateNotifierProvider.family<PurchaseNotifier, PurchaseState, String>((
+      ref,
+      id,
+    ) {
       final isAuthenticated = ref.read(
         authProvider.select((auth) => auth.isAuthenticated),
       );
       final detailAsync = ref.read(productDetailProvider(id));
       final detail = detailAsync.value;
 
-
-      final state = ref.read(
-        luckyProvider.select(
-          (s) => (
-            balanceCoins: s.balance.coinBalance,
-            realBalance: s.balance.realBalance,
-            exChangeRate: s.sysConfig.exChangeRate,
-          ),
-        ),
-      );
-      
       final stockLeft =
           (detail?.seqShelvesQuantity ?? 0) - (detail?.seqBuyQuantity ?? 0);
 
@@ -355,13 +329,9 @@ final purchaseProvider = StateNotifierProvider
         entries: stockLeft > 0 ? detail?.minBuyQuantity ?? 1 : 0,
         unitAmount: detail?.unitAmount ?? 0.0,
         maxUnitCoins: detail?.maxUnitCoins ?? 0,
-        balanceCoins: state.balanceCoins,
-        realBalance: state.realBalance,
-        exchangeRate: state.exChangeRate,
         maxPerBuyQuantity: detail?.maxPerBuyQuantity ?? math.max(1, stockLeft),
         minBuyQuantity: detail?.minBuyQuantity ?? math.min(1, stockLeft),
         stockLeft: stockLeft,
-        isAuthenticated: isAuthenticated,
         useDiscountCoins: false,
         isSubmitting: false,
       );
