@@ -99,9 +99,10 @@ class AppRouter {
             parentNavigatorKey: NavHub.key,
             pageBuilder: (ctx, state) {
               final id = state.pathParameters['id']!;
+              final  queryParams = state.uri.queryParameters;
               return fxPage(
                 key: state.pageKey,
-                child: ProductDetailPage(productId: id,),
+                child: ProductDetailPage(productId: id,queryParams:queryParams),
                 fx: RouteFx.zoomIn,
               );
             }
@@ -115,7 +116,7 @@ class AppRouter {
             final PagePaymentParams params = (
               entries: queryParams['entries'] ?? '',
               treasureId: queryParams['treasureId']?? '',
-              paymentMethod: queryParams['paymentMethod'] ?? '',
+              paymentMethod: queryParams['paymentMethod'] ?? '1',
               groupId: queryParams['groupId'] ?? '',
             );
             return fxPage(

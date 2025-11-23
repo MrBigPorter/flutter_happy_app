@@ -44,8 +44,9 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 /// ------------------------------------------------------------------
 class ProductDetailPage extends ConsumerStatefulWidget {
   final String productId;
+  final dynamic queryParams;
 
-  const ProductDetailPage({super.key, required this.productId});
+  const ProductDetailPage({super.key, required this.productId, this.queryParams});
 
   @override
   ConsumerState<ProductDetailPage> createState() => _ProductDetailPageState();
@@ -210,7 +211,7 @@ class _ProductDetailPageState extends ConsumerState<ProductDetailPage>
                   position: _offsetBarAnimation,
                   child: _JoinTreasureSection(
                     treasureId: detail.treasureId,
-                    groupId: null, //todo
+                    groupId: widget.queryParams['groupId']?? '',
                   ),
                 ),
               ),
@@ -1178,7 +1179,7 @@ class _StepperState extends ConsumerState<_Stepper> {
               queryParameters: {
                 'entries': '${purchase.entries}',
                 'treasureId': widget.treasureId,
-                'paymentMethod': 'wallet',
+                'paymentMethod': '1',
                 if (widget.groupId != null) 'groupId': widget.groupId!,
               },
             );
