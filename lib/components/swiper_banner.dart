@@ -6,26 +6,32 @@ import 'package:card_swiper/card_swiper.dart';
 import 'package:flutter_app/utils/helper.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
+import 'package:card_swiper/card_swiper.dart';
+
+import 'package:card_swiper/card_swiper.dart';
+
 class SwiperBanner<T> extends StatelessWidget {
-  final List<T> banners; // banner list
-  final String? bannerID; // optional banner ID
-  final double height; // banner height
-  final double width; // banner width
-  final bool showIndicator; // whether to show indicator
-  final Duration interval; // autoplay interval
-  final bool autoPlay; // whether to autoplay
-  final double borderRadius; // border radius
-  final Function(T item)? onTapItem; // on tap item callback
-  final Widget Function(T item)? itemBuilder; // custom item builder
+  final List<T> banners;
+  final String? bannerID;
+  final double height;
+  final double width;
+  final bool showIndicator;
+  final Duration interval;
+  final bool autoPlay;
+  final double borderRadius;
+  final Function(T item)? onTapItem;
+  final Widget Function(T item)? itemBuilder;
 
-  // dots pagination configuration
-  final double dotSize; // inactive dot size
-  final double activeDotSize; // active dot size
-  final Color? dotColor; // inactive dot color
-  final Color? activeDotColor; // active dot color
-  final double dotSpace; // space between dots
-  final double dotBorderRadius; // dot border radius
+  // dots
+  final double dotSize;
+  final double activeDotSize;
+  final Color? dotColor;
+  final Color? activeDotColor;
+  final double dotSpace;
+  final double dotBorderRadius;
 
+  final SwiperController? controller;
+  final Key? storageKey;
 
   const SwiperBanner({
     super.key,
@@ -39,58 +45,64 @@ class SwiperBanner<T> extends StatelessWidget {
     this.borderRadius = 8.0,
     this.onTapItem,
     this.itemBuilder,
-
     this.dotSize = 6.0,
     this.activeDotSize = 16.0,
     this.dotColor,
     this.activeDotColor,
     this.dotSpace = 3.0,
     this.dotBorderRadius = 3.0,
+    this.controller,
+    this.storageKey,
   });
+
 
   @override
   Widget build(BuildContext context) {
-
-
-    if(banners.isNullOrEmpty){
-      return Skeleton.react(width: width, height: height,borderRadius: BorderRadius.circular(borderRadius));
+    if (banners.isNullOrEmpty) {
+      return Skeleton.react(
+        width: width,
+        height: height,
+        borderRadius: BorderRadius.circular(borderRadius),
+      );
     }
 
     return Container(
       clipBehavior: Clip.antiAlias,
       width: double.infinity,
       height: height,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(borderRadius),
-      ),
+      decoration: BoxDecoration(borderRadius: BorderRadius.circular(borderRadius)),
+      //  给 Swiper 一个稳定的 key，避免被当成“新对象”
       child: Swiper(
-       itemCount: banners.length,
-        autoplay: autoPlay,
+        key: storageKey,
+        controller: controller,
+        itemCount: banners.length,
+        autoplay: autoPlay && banners.length > 1,
+        loop: banners.length > 1,
         autoplayDelay: interval.inMilliseconds,
-        itemBuilder: (_,index){
-         final item = banners[index];
-         return ClipRRect(
-           borderRadius: BorderRadius.circular(borderRadius),
-           child: GestureDetector(
-             onTap: ()=> onTapItem!(item),
-             child: ImageWidget(
-                 item: item,
-                 width: width,
-                 height: height,
-                 itemBuilder: itemBuilder
-             ),
-           ),
-         );
+        itemBuilder: (_, index) {
+          final item = banners[index];
+          return ClipRRect(
+            borderRadius: BorderRadius.circular(borderRadius),
+            child: GestureDetector(
+              onTap: onTapItem == null ? null : () => onTapItem!(item),
+              child: ImageWidget(
+                item: item,
+                width: width,
+                height: height,
+                itemBuilder: itemBuilder,
+              ),
+            ),
+          );
         },
-        pagination:  SwiperPagination(
+        pagination: SwiperPagination(
           builder: CustomDotPaginationBuilder(
-              showIndicator: showIndicator,
-              size: dotSize,
-              activeSize: activeDotSize,
-              color: dotColor,
-              activeColor: activeDotColor,
-              space: dotSpace,
-              borderRadius: dotBorderRadius
+            showIndicator: showIndicator,
+            size: dotSize,
+            activeSize: activeDotSize,
+            color: dotColor,
+            activeColor: activeDotColor,
+            space: dotSpace,
+            borderRadius: dotBorderRadius,
           ),
         ),
       ),

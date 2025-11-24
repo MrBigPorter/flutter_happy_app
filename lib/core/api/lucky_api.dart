@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:math';
 import 'package:flutter_app/common.dart';
 import 'package:flutter_app/core/models/coupon_threshold_data.dart';
+import 'package:flutter_app/core/models/groups.dart';
 import 'package:flutter_app/core/models/payment.dart';
 
 import 'package:flutter_app/utils/helper.dart';
@@ -236,5 +237,15 @@ class Api {
   static Future<Profile> profileApi() async {
     final res = await Http.get('/api/v1/auth/profile');
     return Profile.fromJson(res);
+  }
+
+  // group list
+  static Future<PageResult<GroupForTreasureItem>> groupsListApi(GroupsListRequestParams params) async {
+    final res = await Http.get('/api/v1/groups/list',query: {
+      'page': params.page,
+      'pageSize': params.pageSize,
+      'treasureId': params.treasureId,
+    });
+    return parsePageResponse(res, (e) => GroupForTreasureItem.fromJson(e));
   }
 }

@@ -1,4 +1,5 @@
 import 'package:flutter_app/common.dart';
+import 'package:flutter_app/core/models/groups.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_app/core/models/index.dart';
 /// Product category provider, includes "all" category
@@ -34,4 +35,10 @@ Provider.family<PageRequest<ProductListItem>, int>((ref, id) {
 /// Product detail provider
 final productDetailProvider = FutureProvider.autoDispose.family<ProductListItem, String>((ref, String productId) async {
   return Api.getProductDetail(productId);
+});
+
+
+/// group for treasure items on index page
+final groupsListProvider = FutureProvider.autoDispose.family<PageResult<GroupForTreasureItem>, GroupsListRequestParams> ((ref, params) async {
+  return Api.groupsListApi(params);
 });

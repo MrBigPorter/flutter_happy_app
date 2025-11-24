@@ -15,14 +15,14 @@ class PageResult<T> {
   final int total;
   final int page;
   final int count;
-  final int size;
+  final int pageSize;
 
   const PageResult({
     required this.list,
     required this.total,
     required this.page,
     required this.count,
-    required this.size,
+    required this.pageSize,
   });
 }
 

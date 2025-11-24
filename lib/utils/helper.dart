@@ -63,7 +63,7 @@ PageResult<T> parsePageResponse<T>(
     total: map['total'] ?? 0,
     page: map['current'] ?? 1,
     count: map['count'] ?? 0,
-    size: map['size'] ?? 10,
+    pageSize: map['pageSize'] ?? 10,
   );
 }
 
@@ -226,4 +226,13 @@ class JsonNumConverter {
     }
     return fallback;
   }
+}
+
+/// Pagination utilities
+/// - totalPages: Calculate total number of pages given total items and page size
+/// - hasMore: Determine if there are more pages available
+int totalPages(int total, int pageSize) => (total / pageSize).ceil();
+bool hasMore(int total, int page, int pageSize){
+  final pages = totalPages(total, pageSize);
+  return page < pages;
 }

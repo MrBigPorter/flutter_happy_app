@@ -1,3 +1,5 @@
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:card_swiper/card_swiper.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -7,6 +9,7 @@ import 'package:flutter_app/app/routes/app_router.dart';
 import 'package:flutter_app/common.dart';
 import 'package:flutter_app/components/skeleton.dart';
 import 'package:flutter_app/components/swiper_banner.dart';
+import 'package:flutter_app/core/models/groups.dart';
 import 'package:flutter_app/core/models/index.dart';
 import 'package:flutter_app/core/providers/index.dart';
 import 'package:flutter_app/core/providers/purchase_state_provider.dart';
@@ -58,9 +61,15 @@ class _ProductDetailPageState extends ConsumerState<ProductDetailPage>
   late final Animation<Offset> _offsetBarAnimation;
   late final Animation<double> _opacityBarAnimation;
 
+  // stable key for banner storage
+  late final PageStorageKey _bannerStorageKey;
+
   @override
   void initState() {
     super.initState();
+
+    _bannerStorageKey = PageStorageKey('product_detail_banner_${widget.productId}');
+
 
     // Initialize animation controller
     _bottomBarController = AnimationController(
@@ -155,6 +164,7 @@ class _ProductDetailPageState extends ConsumerState<ProductDetailPage>
                             opacity: t,
                             child: _BannerSection(
                               banners: detail.mainImageList,
+                              storageKey: _bannerStorageKey,
                             ),
                           ),
                           titleOpacity > 0
@@ -191,7 +201,7 @@ class _ProductDetailPageState extends ConsumerState<ProductDetailPage>
                   child: _TopTreasureSection(item: detail, url: webBaseUrl),
                 ),
                 // Group section
-                SliverToBoxAdapter(child: _GroupSection()),
+                SliverToBoxAdapter(child: RepaintBoundary(child: _GroupSection(treasureId: detail.treasureId),)),
                 // Detail content section
                 SliverToBoxAdapter(child: SizedBox(height: 8.w)),
                 // Detail content section，rules and details
@@ -328,8 +338,10 @@ class _DetailContentSectionState extends State<_DetailContentSection>
 /// 轮播图区域 banner section
 class _BannerSection extends StatelessWidget {
   final List<String>? banners;
+  final SwiperController? controller;
+  final PageStorageKey? storageKey;
 
-  const _BannerSection({required this.banners});
+  const _BannerSection({required this.banners, this.controller, this.storageKey});
 
   @override
   Widget build(BuildContext context) {
@@ -340,7 +352,7 @@ class _BannerSection extends StatelessWidget {
         borderRadius: BorderRadius.zero,
       );
     }
-    return SwiperBanner(height: 250, borderRadius: 0, banners: banners!);
+    return SwiperBanner(height: 250, borderRadius: 0, banners: banners!, controller: controller, storageKey: storageKey,);
   }
 }
 
@@ -713,202 +725,269 @@ class _CouponSection extends StatelessWidget {
   }
 }
 
+class _GroupSection extends ConsumerStatefulWidget {
+  final String treasureId;
+  const  _GroupSection({required this.treasureId});
+
+  @override
+  ConsumerState<_GroupSection> createState() => _GroupSectionState();
+}
+
 /// 组队区 group section
-class _GroupSection extends StatelessWidget {
+class _GroupSectionState extends ConsumerState<_GroupSection>{
+
+   int page = 1;
+
+  void next(bool hasMore){
+    if(!hasMore) return;
+    setState(()=> page = page + 1);
+  }
+
+  void prev(){
+    if(page <= 1) return;
+    setState(()=> page =  page - 1);
+  }
+
+  @override
+  void initState() {
+    super.initState();
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 16.w),
-      child: Container(
-        width: double.infinity,
-        decoration: BoxDecoration(
-          color: context.bgPrimary,
-          border: Border.all(color: context.borderPrimary, width: 1),
-          borderRadius: BorderRadius.all(Radius.circular(context.radiusMd)),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.w),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+    final groups = ref.watch(groupsListProvider(
+      GroupsListRequestParams(page: page, treasureId: widget.treasureId)
+    ));
+
+    return groups.when(
+      data: (data){
+       final total =  totalPages(data.total, data.pageSize);
+       final hasNext = hasMore(data.total, page, data.pageSize);
+
+        return Padding(
+          padding: EdgeInsets.symmetric(horizontal: 16.w),
+          child: Container(
+            width: double.infinity,
+             height: 590.w,
+            decoration: BoxDecoration(
+              color: context.bgPrimary,
+              border: Border.all(color: context.borderPrimary, width: 1),
+              borderRadius: BorderRadius.all(Radius.circular(context.radiusMd)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.w),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        'common.group.for.treasures'.tr(),
-                        style: TextStyle(
-                          fontSize: context.textMd,
-                          fontWeight: FontWeight.w800,
-                          color: context.fgPrimary900,
-                          height: context.leadingMd,
-                        ),
-                      ),
-                      SizedBox(height: 10.w),
-                      Container(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: 8.w,
-                          vertical: 2.w,
-                        ),
-                        decoration: BoxDecoration(
-                          color: context.utilityBrand50,
-                          borderRadius: BorderRadius.all(
-                            Radius.circular(context.radiusFull),
-                          ),
-                          border: Border.fromBorderSide(
-                            BorderSide(
-                              color: context.utilityBrand200,
-                              width: 1.w,
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'common.group.for.treasures'.tr(),
+                            style: TextStyle(
+                              fontSize: context.textMd,
+                              fontWeight: FontWeight.w800,
+                              color: context.fgPrimary900,
+                              height: context.leadingMd,
                             ),
                           ),
-                        ),
-                        child: Text(
-                          'common.users'.tr(namedArgs: {'number': '1234'}),
-                          style: TextStyle(
-                            fontSize: context.text2xs,
-                            color: context.utilityBrand700,
-                            fontWeight: FontWeight.w500,
-                            height: context.leadingXs,
+                          SizedBox(height: 10.w),
+                          Container(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 8.w,
+                              vertical: 2.w,
+                            ),
+                            decoration: BoxDecoration(
+                              color: context.utilityBrand50,
+                              borderRadius: BorderRadius.all(
+                                Radius.circular(context.radiusFull),
+                              ),
+                              border: Border.fromBorderSide(
+                                BorderSide(
+                                  color: context.utilityBrand200,
+                                  width: 1.w,
+                                ),
+                              ),
+                            ),
+                            child: Text(
+                              'common.users'.tr(namedArgs: {'number': '1234'}),
+                              style: TextStyle(
+                                fontSize: context.text2xs,
+                                color: context.utilityBrand700,
+                                fontWeight: FontWeight.w500,
+                                height: context.leadingXs,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        child: SvgPicture.asset(
+                          'assets/images/product_detail/goto.svg',
+                          width: 16.w,
+                          height: 16.w,
+                          colorFilter: ColorFilter.mode(
+                            context.fgPrimary900,
+                            BlendMode.srcIn,
                           ),
                         ),
                       ),
                     ],
                   ),
-                  GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    child: SvgPicture.asset(
-                      'assets/images/product_detail/goto.svg',
-                      width: 16.w,
-                      height: 16.w,
-                      colorFilter: ColorFilter.mode(
-                        context.fgPrimary900,
-                        BlendMode.srcIn,
-                      ),
-                    ),
+                ),
+                SizedBox(
+                  width: double.infinity,
+                  height: 72.w * 6,
+                  child: ListView.builder(
+                    padding: EdgeInsets.zero,
+                    itemExtent: 72.w,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemBuilder: (BuildContext context, int index) {
+                      final isEven = index % 2 == 0;
+                      final item = data.list[index];
+                      return Container(
+                        width: double.infinity,
+                        height: 72.w,
+                        decoration: BoxDecoration(
+                          color: context.bgPrimary,
+                          border: Border(
+                            bottom: BorderSide(
+                              color: context.borderSecondary,
+                              width: 1.w,
+                            ),
+                          ),
+                          gradient: isEven
+                              ? LinearGradient(
+                            colors: [
+                              context.alphaBlack2.withValues(alpha: 0.02),
+                              context.alphaBlack2,
+                            ],
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                          )
+                              : null,
+                        ),
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 16.w),
+                          child: Row(
+                            children: [
+                              Text(
+                                '#${index + 1}',
+                                style: TextStyle(
+                                  fontSize: context.textSm,
+                                  color: context.fgPrimary900,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              SizedBox(width: 20.w),
+                              CachedNetworkImage(
+                                imageUrl: item.creator.avatar ?? '',
+                                width: 40.w,
+                                height: 40.w,
+                                errorWidget: (context, url, error) => Container(
+                                  width: 40.w,
+                                  height: 40.w,
+                                  decoration: BoxDecoration(
+                                    color: context.bgSecondary,
+                                    borderRadius: BorderRadius.all(
+                                      Radius.circular(20.w),
+                                    ),
+                                  ),
+                                  child: Icon(
+                                    Icons.person,
+                                    size: 24.w,
+                                    color: context.fgQuaternary500,
+                                  ),
+                                ),
+                                placeholder: (_,__) => Skeleton.circle(width: 40.w, height: 40.w),
+
+                              ),
+                              Spacer(),
+                              Text(
+                                item.creator.nickname ?? '---',
+                                style: TextStyle(
+                                  fontSize: context.textSm,
+                                  color: context.fgPrimary900,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              Spacer(),
+                              Icon(
+                                Icons.chevron_right,
+                                size: 16.w,
+                                color: context.fgQuinary400,
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                    itemCount: data.list.length,
                   ),
-                ],
-              ),
-            ),
-            SizedBox(
-              width: double.infinity,
-              height: 72.w * 6,
-              child: ListView.builder(
-                padding: EdgeInsets.zero,
-                itemExtent: 72.w,
-                physics: const NeverScrollableScrollPhysics(),
-                itemBuilder: (BuildContext context, int index) {
-                  final isEven = index % 2 == 0;
-                  return Container(
-                    width: double.infinity,
-                    height: 72.w,
-                    decoration: BoxDecoration(
-                      color: context.bgPrimary,
-                      border: Border(
-                        bottom: BorderSide(
-                          color: context.borderSecondary,
-                          width: 1.w,
+                ),
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 16.w),
+                  child: Row(
+                    children: [
+                      Button(
+                        height: 36.w,
+                        alignment: MainAxisAlignment.center,
+                        variant: ButtonVariant.outline,
+                        onPressed: prev,
+                        child: Icon(
+                          Icons.arrow_back,
+                          size: 20.w,
+                          color: context.fgPrimary900,
                         ),
                       ),
-                      gradient: isEven
-                          ? LinearGradient(
-                              colors: [
-                                context.alphaBlack2.withValues(alpha: 0.02),
-                                context.alphaBlack2,
-                              ],
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                            )
-                          : null,
-                    ),
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 16.w),
-                      child: Row(
-                        children: [
-                          Text(
-                            '#${index + 1}',
-                            style: TextStyle(
-                              fontSize: context.textSm,
-                              color: context.fgPrimary900,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          SizedBox(width: 20.w),
-                          CircleAvatar(
-                            radius: 20.w,
-                            backgroundImage: NetworkImage(
-                              'https://picsum.photos/200',
-                            ),
-                          ),
-                          Spacer(),
-                          Text(
-                            'Username',
-                            style: TextStyle(
-                              fontSize: context.textSm,
-                              color: context.fgPrimary900,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          Spacer(),
-                          Icon(
-                            Icons.chevron_right,
-                            size: 16.w,
-                            color: context.fgQuinary400,
-                          ),
-                        ],
+                      Spacer(),
+                      Text(
+                        'Page $page of $total',
+                        style: TextStyle(
+                          fontSize: context.textSm,
+                          color: context.fgPrimary900,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
-                    ),
-                  );
-                },
-                itemCount: 6,
-              ),
+                      Spacer(),
+                      Button(
+                        height: 36.w,
+                        alignment: MainAxisAlignment.center,
+                        variant: ButtonVariant.outline,
+                        onPressed: () {
+                          next(hasNext);
+                        },
+                        child: Icon(
+                          Icons.arrow_forward,
+                          size: 20.w,
+                          color: context.fgPrimary900,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 16.w),
-              child: Row(
-                children: [
-                  Button(
-                    height: 36.w,
-                    alignment: MainAxisAlignment.center,
-                    variant: ButtonVariant.outline,
-                    onPressed: () {},
-                    child: Icon(
-                      Icons.arrow_back,
-                      size: 20.w,
-                      color: context.fgPrimary900,
-                    ),
-                  ),
-                  Spacer(),
-                  Text(
-                    'Page 1 of 10',
-                    style: TextStyle(
-                      fontSize: context.textSm,
-                      color: context.fgPrimary900,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  Spacer(),
-                  Button(
-                    height: 36.w,
-                    alignment: MainAxisAlignment.center,
-                    variant: ButtonVariant.outline,
-                    onPressed: () {},
-                    child: Icon(
-                      Icons.arrow_forward,
-                      size: 20.w,
-                      color: context.fgPrimary900,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
+      error: (e, s){
+        print('groups error: $e');
+        return SizedBox(height: 590.w,child: Text('loading'),);
+      },
+      loading: (){
+        print('groups loading');
+        return SizedBox(height: 590.w,child: Text('loading'),);
+      }
     );
+
+
   }
 }
 

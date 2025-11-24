@@ -63,7 +63,7 @@ WidgetbookComponent buildProductItemStories() {
             treasureCoverImg:
             'https://picsum.photos/id/1011/400/400', // mock 图
             unitAmount: price,
-            costAmount: costAmount,
+            costAmount: costAmount.toString(),
             buyQuantityRate: rate,
             imgStyleType: 1,
             lotteryMode: 1,
