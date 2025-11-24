@@ -246,6 +246,6 @@ class Api {
       'pageSize': params.pageSize,
       'treasureId': params.treasureId,
     });
-    return parsePageResponse(res, (e) => GroupForTreasureItem.fromJson(e));
+     return parsePageResponse(res, (e) => GroupForTreasureItem.fromJson(e));
   }
 }

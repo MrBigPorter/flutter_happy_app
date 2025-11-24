@@ -61,7 +61,7 @@ PageResult<T> parsePageResponse<T>(
   return PageResult<T>(
     list: parseList<T>(map['list'], fromJson),
     total: map['total'] ?? 0,
-    page: map['current'] ?? 1,
+    page: map['page'] ?? 1,
     count: map['count'] ?? 0,
     pageSize: map['pageSize'] ?? 10,
   );
