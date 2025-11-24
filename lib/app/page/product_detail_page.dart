@@ -877,7 +877,7 @@ class _GroupSectionState extends ConsumerState<_GroupSection>
                 return GestureDetector(
                   behavior: HitTestBehavior.opaque,
                   onTap: () {
-                   appRouter.push('/group-member?group_id=${item.groupId}');
+                   appRouter.push('/group-member?groupId=${item.groupId}');
                   },
                   child: Container(
                     width: double.infinity,

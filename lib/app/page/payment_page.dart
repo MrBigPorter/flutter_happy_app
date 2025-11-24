@@ -117,7 +117,7 @@ class _PaymentPageState extends ConsumerState<PaymentPage>
             },
           ),
           bottomNavigationBar: _BottomNavigationBar(
-            treasureId: params.treasureId!,
+            params: params,
             title: value.treasureName,
           ),
         );
@@ -736,10 +736,10 @@ class _PaymentMethodSection extends ConsumerWidget {
 }
 
 class _BottomNavigationBar extends ConsumerStatefulWidget {
-  final String treasureId;
   final String title;
+  final PagePaymentParams params;
 
-  const _BottomNavigationBar({required this.treasureId, required this.title});
+  const _BottomNavigationBar({required this.params ,required this.title});
 
   @override
   ConsumerState<_BottomNavigationBar> createState() =>
@@ -754,8 +754,10 @@ class _BottomNavigationBarState extends ConsumerState<_BottomNavigationBar>
   late final Animation<Offset> _slideAnimation;
 
   void submitPayment() async {
-    final action = ref.read(purchaseProvider(widget.treasureId).notifier);
-    final result = await action.submitOrder();
+    final treasureId = widget.params.treasureId ?? '';
+    if(widget.params.treasureId.isNullOrEmpty) return;
+    final action = ref.read(purchaseProvider(widget.params.treasureId ?? '').notifier);
+    final result = await action.submitOrder(groupId: widget.params.groupId);
 
     if (!context.mounted) return;
 
@@ -899,8 +901,8 @@ class _BottomNavigationBarState extends ConsumerState<_BottomNavigationBar>
 
   @override
   Widget build(BuildContext context) {
-    final notifier = ref.read(purchaseProvider(widget.treasureId).notifier);
-    final purchase = ref.watch(purchaseProvider(widget.treasureId));
+    final notifier = ref.read(purchaseProvider(widget.params.treasureId ?? '').notifier);
+    final purchase = ref.watch(purchaseProvider(widget.params.treasureId ?? ''));
 
     return AnimatedBuilder(
       animation: _animationController,

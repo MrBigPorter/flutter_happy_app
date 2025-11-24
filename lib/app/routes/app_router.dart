@@ -1,4 +1,5 @@
 import 'package:flutter/cupertino.dart';
+import 'package:flutter_app/app/page/group_member_page.dart';
 import 'package:flutter_app/app/page/payment_page.dart';
 import 'package:flutter_app/app/page/wallet_detail_page.dart';
 import 'package:flutter_app/app/routes/route_auth_config.dart';
@@ -96,13 +97,24 @@ class AppRouter {
         GoRoute(
             name: 'productDetail',
             path: '/product/:id',
-            parentNavigatorKey: NavHub.key,
             pageBuilder: (ctx, state) {
               final id = state.pathParameters['id']!;
               final  queryParams = state.uri.queryParameters;
               return fxPage(
                 key: state.pageKey,
                 child: ProductDetailPage(productId: id,queryParams:queryParams),
+                fx: RouteFx.zoomIn,
+              );
+            }
+        ),
+        GoRoute(
+            name: 'groupMember',
+            path: '/group-member',
+            pageBuilder: (ctx, state) {
+              final id = state.uri.queryParameters['groupId'] ?? '';
+              return fxPage(
+                key: state.pageKey,
+                child: GroupMemberPage(groupId:id),
                 fx: RouteFx.zoomIn,
               );
             }
