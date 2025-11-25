@@ -18,7 +18,7 @@ GroupForTreasureItem _$GroupForTreasureItemFromJson(
       (v) => (v as num).toInt(),
     ),
     maxMembers: $checkedConvert('maxMembers', (v) => (v as num).toInt()),
-    updatedAt: $checkedConvert('updatedAt', (v) => v as String),
+    updatedAt: $checkedConvert('updatedAt', (v) => v as num),
     creator: $checkedConvert(
       'creator',
       (v) => GroupUser.fromJson(v as Map<String, dynamic>),
@@ -50,7 +50,7 @@ GroupMemberPreview _$GroupMemberPreviewFromJson(Map<String, dynamic> json) =>
     $checkedCreate('GroupMemberPreview', json, ($checkedConvert) {
       final val = GroupMemberPreview(
         isOwner: $checkedConvert('isOwner', (v) => (v as num).toInt()),
-        joinedAt: $checkedConvert('joinedAt', (v) => v as String),
+        joinedAt: $checkedConvert('joinedAt', (v) => v as num),
         user: $checkedConvert(
           'user',
           (v) =>
@@ -82,3 +82,38 @@ Map<String, dynamic> _$GroupUserToJson(GroupUser instance) => <String, dynamic>{
   'nickname': instance.nickname,
   'avatar': instance.avatar,
 };
+
+GroupMemberItem _$GroupMemberItemFromJson(Map<String, dynamic> json) =>
+    $checkedCreate('GroupMemberItem', json, ($checkedConvert) {
+      final val = GroupMemberItem(
+        id: $checkedConvert('id', (v) => v as String),
+        joinedAt: $checkedConvert('joinedAt', (v) => v as num),
+        createdAt: $checkedConvert('createdAt', (v) => v as num),
+        groupId: $checkedConvert('groupId', (v) => v as String),
+        userId: $checkedConvert('userId', (v) => v as String),
+        orderId: $checkedConvert('orderId', (v) => v as String?),
+        isOwner: $checkedConvert('isOwner', (v) => (v as num).toInt()),
+        shareCoin: $checkedConvert('shareCoin', (v) => v as String),
+        shareAmount: $checkedConvert('shareAmount', (v) => v as String),
+        user: $checkedConvert(
+          'user',
+          (v) =>
+              v == null ? null : GroupUser.fromJson(v as Map<String, dynamic>),
+        ),
+      );
+      return val;
+    });
+
+Map<String, dynamic> _$GroupMemberItemToJson(GroupMemberItem instance) =>
+    <String, dynamic>{
+      'id': instance.id,
+      'joinedAt': instance.joinedAt,
+      'createdAt': instance.createdAt,
+      'groupId': instance.groupId,
+      'userId': instance.userId,
+      'orderId': instance.orderId,
+      'isOwner': instance.isOwner,
+      'shareCoin': instance.shareCoin,
+      'shareAmount': instance.shareAmount,
+      'user': instance.user,
+    };

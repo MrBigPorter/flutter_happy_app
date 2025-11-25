@@ -10,7 +10,7 @@ class GroupForTreasureItem {
   final int groupStatus;
   final int currentMembers;
   final int maxMembers;
-  final String updatedAt;
+  final num updatedAt;
 
   final GroupUser creator;
   final List<GroupMemberPreview>? members;
@@ -39,7 +39,7 @@ class GroupForTreasureItem {
 @JsonSerializable(checked: true)
 class GroupMemberPreview {
   final int isOwner;
-  final String joinedAt;
+  final num joinedAt;
   final GroupUser? user;
   GroupMemberPreview({
     required this.isOwner,
@@ -76,6 +76,43 @@ class GroupUser {
     return toJson().toString();
   }
 }
+
+@JsonSerializable(checked: true)
+class GroupMemberItem {
+  final String id;
+  final num joinedAt;
+  final num createdAt;
+  final String groupId;
+  final String userId;
+  final String? orderId;
+
+  final int isOwner;
+  final String shareCoin;
+  final String shareAmount;
+
+  final GroupUser? user;
+
+  GroupMemberItem({
+    required this.id,
+    required this.joinedAt,
+    required this.createdAt,
+    required this.groupId,
+    required this.userId,
+    this.orderId,
+    required this.isOwner,
+    required this.shareCoin,
+    required this.shareAmount,
+    this.user,
+  });
+
+  factory GroupMemberItem.fromJson(Map<String, dynamic> json) => _$GroupMemberItemFromJson(json);
+  Map<String, dynamic> toJson() => _$GroupMemberItemToJson(this);
+  @override
+  String toString() {
+    return toJson().toString();
+  }
+}
+
 
 class GroupsListRequestParams extends Equatable {
   final int page;

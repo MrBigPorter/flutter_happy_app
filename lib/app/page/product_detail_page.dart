@@ -121,7 +121,7 @@ class _ProductDetailPageState extends ConsumerState<ProductDetailPage>
     );
 
     final expandedHeight = 250.w;
-
+    
     return detail.when(
       data: (detail) {
         return Scaffold(

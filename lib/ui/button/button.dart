@@ -67,7 +67,7 @@ class Button extends StatefulWidget {
 
   const Button({
     super.key,
-    required this.onPressed,
+     this.onPressed,
     required this.child,
     this.variant = ButtonVariant.primary,
     this.disabled = false,
