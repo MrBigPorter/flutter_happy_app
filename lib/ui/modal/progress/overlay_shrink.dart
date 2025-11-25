@@ -12,7 +12,7 @@ class OverlayShrink extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = ref.watch(overlayProgressProvider);
-
+    
     if (t < 0.01) return child;
 
     final eased = Curves.easeOutCubic.transform(t);

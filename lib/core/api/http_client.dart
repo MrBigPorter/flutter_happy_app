@@ -285,7 +285,7 @@ class Http {
       final resp = await _dio.post(
           '/api/v1/auth/refresh',
           data: {
-            'refresh_token': refreshToken,
+            'refreshToken': refreshToken,
           },
           options: Options(
             extra: {
@@ -307,8 +307,8 @@ class Http {
         return false;
       }
 
-      final newAccessToken = tokensMap['access_token'] as String?;
-      final newRefreshToken = tokensMap['refresh_token'] as String?;
+      final newAccessToken = tokensMap['accessToken'] as String?;
+      final newRefreshToken = tokensMap['refreshToken'] as String?;
 
       if(newAccessToken == null || newAccessToken.isEmpty){
         return false;

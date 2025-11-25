@@ -331,7 +331,7 @@ final purchaseProvider =
         maxPerBuyQuantity: JsonNumConverter.toInt(detail?.maxPerBuyQuantity ?? math.max(1, stockLeft)),
         minBuyQuantity: detail?.minBuyQuantity ?? math.min(1, stockLeft),
         stockLeft: stockLeft,
-        useDiscountCoins: false,
+        useDiscountCoins: true,
         isSubmitting: false,
       );
       return PurchaseNotifier(ref: ref, treasureId: id, state: initialState);

@@ -46,16 +46,18 @@ class _ProductGroupPageState extends ConsumerState<ProductGroupPage> {
 
     return BaseScaffold(
       title: 'draw-team'.tr(),
-      body: PageListViewPro(
-        controller: _controller,
-        padding: EdgeInsets.only(top: 4.w, bottom: 16.w),
-        itemBuilder: (context, item, index, isLast) {
-          return GroupItem(item: item, index: index);
-        },
-        skeletonCount: 10,
-        skeletonBuilder: (context) {
-          return _GroupItemSkeleton();
-        },
+      body: _controller.wrapWithNotification(
+        child: PageListViewPro(
+          controller: _controller,
+          padding: EdgeInsets.only(top: 4.w, bottom: 16.w),
+          itemBuilder: (context, item, index, isLast) {
+            return GroupItem(item: item, index: index);
+          },
+          skeletonCount: 10,
+          skeletonBuilder: (context) {
+            return _GroupItemSkeleton();
+          },
+        ),
       ),
     );
   }

@@ -10,6 +10,7 @@ import 'package:flutter_app/core/models/payment.dart';
 import 'package:flutter_app/core/store/auth/auth_provider.dart';
 import 'package:flutter_app/ui/modal/base/modal_auto_close_observer.dart';
 import 'package:flutter_app/ui/modal/base/nav_hub.dart';
+import 'package:flutter_app/ui/modal/progress/overlay_progress_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -180,6 +181,7 @@ class AppRouter {
         return null;
       },
       errorPageBuilder: (context, state) {
+        ref.read(overlayProgressProvider.notifier).state = 1.0;
         return fxPage(
           key: state.pageKey,
           child: Page404(),
