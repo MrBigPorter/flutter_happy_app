@@ -182,14 +182,18 @@ class _TicketGridState extends State<_TicketGrid> {
 
   bool _open = false;
 
+
   @override
   Widget build(BuildContext context) {
     final shouldHide = false;
+    final itemsToShow = _open ? 10 : 4;
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         GridView.builder(
           shrinkWrap: true,
+          padding: EdgeInsets.zero,
+          physics: NeverScrollableScrollPhysics(),
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 2,
             mainAxisSpacing: 8.w,
@@ -206,7 +210,7 @@ class _TicketGridState extends State<_TicketGrid> {
               ),
             );
           },
-          itemCount: 10,
+          itemCount: itemsToShow,
         ),
         AnimatedOpacity(
             opacity: shouldHide ? 0.0 : 1.0,
@@ -218,8 +222,10 @@ class _TicketGridState extends State<_TicketGrid> {
                 });
               },
               child: Center(
-                child: Transform.rotate(
-                  angle: _open ? 3.14 : 0,
+                child: AnimatedRotation(
+                  turns: _open ? 0.5 : 0.0,
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.easeOut,
                   child: Icon(
                     Icons.keyboard_arrow_down,
                     size: 24.w,

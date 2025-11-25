@@ -115,7 +115,7 @@ class AppRouter {
               return fxPage(
                 key: state.pageKey,
                 child: GroupMemberPage(groupId:id),
-                fx: RouteFx.zoomIn,
+                fx: RouteFx.slideUp,
               );
             }
         ),
