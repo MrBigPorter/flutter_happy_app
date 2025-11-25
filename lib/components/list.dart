@@ -391,7 +391,7 @@ class PageListViewPro<T> extends StatelessWidget {
       final grid = SliverGrid(
         gridDelegate: gridDelegate!,
         delegate: SliverChildBuilderDelegate(
-              (_, __) => _DefaultSkeleton(height: skeletonHeight, padding: EdgeInsets.zero),
+              (_, __) => skeletonBuilder?.call(context) ?? _DefaultSkeleton(height: skeletonHeight, padding: EdgeInsets.zero),
           childCount: skeletonCount,
         ),
       );
@@ -404,7 +404,7 @@ class PageListViewPro<T> extends StatelessWidget {
       itemCount: skeletonCount,
       separatorBuilder: (_, __) => SizedBox(height: separatorSpace.w),
       itemBuilder: (_, __) =>
-          _DefaultSkeleton(height: skeletonHeight, padding: skeletonPadding),
+      skeletonBuilder?.call(context) ?? _DefaultSkeleton(height: skeletonHeight, padding: skeletonPadding),
     );
   }
 

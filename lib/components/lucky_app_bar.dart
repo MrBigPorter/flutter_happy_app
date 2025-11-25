@@ -116,7 +116,7 @@ class _BackIcon  extends StatelessWidget {
       return IconButton(
         icon: backIconPath != null
             ? Image.asset(backIconPath!)
-            : Icon(Icons.chevron_left, size: 24.h),
+            : Icon(Icons.chevron_left, size: 30.h, color: context.fgPrimary900,),
         onPressed: (){
           if (appRouter.canPop()) {
             appRouter.pop();

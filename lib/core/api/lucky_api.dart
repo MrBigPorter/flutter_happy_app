@@ -255,6 +255,7 @@ class Api {
       'page': params.page,
       'pageSize': params.pageSize,
     });
+
      return parsePageResponse(res, (e) => GroupMemberItem.fromJson(e));
   }
 }
