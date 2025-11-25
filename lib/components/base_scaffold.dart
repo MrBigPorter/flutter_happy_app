@@ -15,6 +15,7 @@ class BaseScaffold extends StatelessWidget {
   final String? backIconPath; // custom back icon path
   final Widget? bottomNavigationBar; // scaffold bottom navigation bar
   final bool? resizeToAvoidBottomInset; // whether resize to avoid bottom inset
+  final double? elevation; // app bar elevation
 
   const BaseScaffold({
     super.key,
@@ -26,6 +27,7 @@ class BaseScaffold extends StatelessWidget {
     this.backIconPath,
     this.bottomNavigationBar,
     this.resizeToAvoidBottomInset,
+    this.elevation,
   });
 
   @override
@@ -36,6 +38,7 @@ class BaseScaffold extends StatelessWidget {
               actions: actions,
               showBack: showBack,
               backIconPath: backIconPath,
+              elevation: elevation,
             )
           : null,
       body: body,

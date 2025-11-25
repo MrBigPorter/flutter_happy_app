@@ -10,8 +10,9 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 class GroupUserItem extends StatefulWidget {
   final GroupMemberItem item;
+  final EdgeInsetsGeometry? padding;
 
-  const GroupUserItem({super.key, required this.item});
+  const GroupUserItem({super.key, required this.item, this.padding});
 
 
   @override
@@ -28,7 +29,7 @@ class GroupUserItemState extends State<GroupUserItem> {
     final item = widget.item;
 
     return Padding(
-      padding: EdgeInsets.all(16.w),
+      padding: widget.padding ?? EdgeInsets.all(16.w),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -66,7 +67,7 @@ class _Avatar extends StatelessWidget {
         alignment: Alignment.center,
         children: [
           CachedNetworkImage(
-              imageUrl: avatarUrl ?? '',
+              imageUrl: avatarUrl ?? '/assets/images/avatar01.png',
               width: 40.w,
               height: 40.w,
               memCacheWidth: (40.w * ViewUtils.dpr).toInt(),
@@ -177,7 +178,7 @@ class _TicketGrid extends StatefulWidget {
   State<_TicketGrid> createState() => _TicketGridState();
 }
 
-class _TicketGridState extends State<_TicketGrid> {
+class _TicketGridState extends State<_TicketGrid> with SingleTickerProviderStateMixin{
 
   bool _open = false;
 

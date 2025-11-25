@@ -85,6 +85,7 @@ class _ProductPageState extends ConsumerState<ProductPage> with SingleTickerProv
 
     return BaseScaffold(
       showBack: false,
+      elevation: 0,
       body: LuckyCustomMaterialIndicator(
           onRefresh: onRefresh,
           child: NestedScrollViewPlus(

@@ -113,7 +113,7 @@ class AppRouter {
             name: 'productGroup',
             path: '/product/:id/group',
             pageBuilder: (ctx, state) {
-              final  id = state.uri.queryParameters['id'] ?? '';
+              final  id = state.pathParameters['id'] ?? '';
               return fxPage(
                 key: state.pageKey,
                 child: ProductGroupPage(treasureId: id),

@@ -474,7 +474,6 @@ class PageListViewPro<T> extends StatelessWidget {
       }
 
 
-      print('Building grid list with ${list.length} items');
       Widget listCore = CustomScrollView(
         controller: controller.scrollController,
         primary: false,

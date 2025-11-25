@@ -16,6 +16,7 @@ class LuckyAppBar extends StatelessWidget implements PreferredSizeWidget {
   final List<Widget>? actions; // app bar actions
   final bool showBack; // whether show back button
   final String? backIconPath; // custom back icon path
+  final double? elevation; // app bar elevation
 
   const LuckyAppBar({
     super.key,
@@ -23,6 +24,7 @@ class LuckyAppBar extends StatelessWidget implements PreferredSizeWidget {
     this.actions,
     this.showBack = true,
     this.backIconPath,
+    this.elevation,
   });
 
   @override
@@ -32,6 +34,7 @@ class LuckyAppBar extends StatelessWidget implements PreferredSizeWidget {
   Widget build(BuildContext context) {
     return Material(
       color: context.bgPrimary,
+      elevation: elevation ?? 0.1,
       child: SafeArea(
         bottom: false,
         child: Container(

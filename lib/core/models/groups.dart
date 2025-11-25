@@ -13,7 +13,7 @@ class GroupForTreasureItem {
   final num updatedAt;
 
   final GroupUser creator;
-  final List<GroupMemberPreview>? members;
+  final List<GroupMemberItem>? members;
 
   GroupForTreasureItem({
     required this.groupId,

@@ -26,7 +26,7 @@ GroupForTreasureItem _$GroupForTreasureItemFromJson(
     members: $checkedConvert(
       'members',
       (v) => (v as List<dynamic>?)
-          ?.map((e) => GroupMemberPreview.fromJson(e as Map<String, dynamic>))
+          ?.map((e) => GroupMemberItem.fromJson(e as Map<String, dynamic>))
           .toList(),
     ),
   );

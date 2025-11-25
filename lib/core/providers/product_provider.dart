@@ -48,6 +48,19 @@ final groupsListProvider = FutureProvider.autoDispose.family<
   return Api.groupsListApi(params);
 });
 
+/// group list provider for treasure detail page
+final groupsPageListProvider = Provider.family<PageRequest, String> ((ref, treasureId) {
+  return ({required int pageSize, required int page}) {
+    return Api.groupsListApi(
+        GroupsListRequestParams(
+            treasureId: treasureId,
+            page: page,
+            pageSize: pageSize
+        )
+    );
+  };
+});
+
 /// group member list provider
 final groupMemberListProvider =
 Provider.family<PageRequest<GroupMemberItem>, String>((ref, groupId) {
