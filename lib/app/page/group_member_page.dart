@@ -1,7 +1,7 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_app/app/page/group_components/group_item.dart';
+import 'package:flutter_app/app/page/group_components/group_user_item.dart';
 import 'package:flutter_app/components/base_scaffold.dart';
 import 'package:flutter_app/components/list.dart';
 import 'package:flutter_app/components/skeleton.dart';
@@ -55,7 +55,7 @@ class _GroupMemberPageState extends ConsumerState<GroupMemberPage> {
             return _GroupItemSkeleton();
           },
           itemBuilder: (context, item, index, isLast) {
-            return GroupItem(item: item);
+            return GroupUserItem(item: item);
           },
         ),
       ),

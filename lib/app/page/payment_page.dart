@@ -749,14 +749,13 @@ class _BottomNavigationBar extends ConsumerStatefulWidget {
 class _BottomNavigationBarState extends ConsumerState<_BottomNavigationBar>
     with SingleTickerProviderStateMixin {
   late final AnimationController _animationController;
-  late final Animation<double> _animation;
   late final Animation<double> _fadeAnimation;
   late final Animation<Offset> _slideAnimation;
 
   void submitPayment() async {
     final treasureId = widget.params.treasureId ?? '';
     if(widget.params.treasureId.isNullOrEmpty) return;
-    final action = ref.read(purchaseProvider(widget.params.treasureId ?? '').notifier);
+    final action = ref.read(purchaseProvider(treasureId).notifier);
     final result = await action.submitOrder(groupId: widget.params.groupId);
 
     if (!context.mounted) return;
@@ -871,11 +870,6 @@ class _BottomNavigationBarState extends ConsumerState<_BottomNavigationBar>
       duration: const Duration(milliseconds: 1000),
     );
 
-    _animation = CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.easeOutCubic,
-      reverseCurve: Curves.easeInCubic,
-    );
 
     _fadeAnimation = Tween(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),

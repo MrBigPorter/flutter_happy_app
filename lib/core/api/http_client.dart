@@ -28,7 +28,6 @@ class Http {
     ),
   );
 
-  static const _kTokenKey = '__t__';
   static const _successCodes = <int>[10000];
   static const _tokenErrorCodes = <int>[40100];
   static bool _navigatingToLogin = false;

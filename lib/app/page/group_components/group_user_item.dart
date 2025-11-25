@@ -3,26 +3,25 @@ import 'package:flutter/material.dart';
 import 'package:flutter_app/common.dart';
 import 'package:flutter_app/components/skeleton.dart';
 import 'package:flutter_app/core/models/groups.dart';
-import 'package:flutter_app/ui/button/button.dart';
 import 'package:flutter_app/ui/button/index.dart';
 import 'package:flutter_app/utils/date_helper.dart';
 import 'package:flutter_app/utils/helper.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
-class GroupItem extends StatefulWidget {
+class GroupUserItem extends StatefulWidget {
   final GroupMemberItem item;
 
-  const GroupItem({super.key, required this.item});
+  const GroupUserItem({super.key, required this.item});
 
 
   @override
-  GroupItemState createState() => GroupItemState();
+  GroupUserItemState createState() => GroupUserItemState();
 }
 
-class GroupItemState extends State<GroupItem> {
+class GroupUserItemState extends State<GroupUserItem> {
   final bool showInviterNickname;
 
-  GroupItemState({this.showInviterNickname = false});
+  GroupUserItemState({this.showInviterNickname = false});
 
   @override
   Widget build(BuildContext context) {
@@ -185,7 +184,6 @@ class _TicketGridState extends State<_TicketGrid> {
 
   @override
   Widget build(BuildContext context) {
-    final shouldHide = false;
     final itemsToShow = _open ? 10 : 4;
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -213,7 +211,7 @@ class _TicketGridState extends State<_TicketGrid> {
           itemCount: itemsToShow,
         ),
         AnimatedOpacity(
-            opacity: shouldHide ? 0.0 : 1.0,
+            opacity: 1.0,
             duration: const Duration(milliseconds: 300),
             child: GestureDetector(
               onTap: (){

@@ -317,9 +317,7 @@ final purchaseProvider =
       ref,
       id,
     ) {
-      final isAuthenticated = ref.read(
-        authProvider.select((auth) => auth.isAuthenticated),
-      );
+
       final detailAsync = ref.read(productDetailProvider(id));
       final detail = detailAsync.value;
 

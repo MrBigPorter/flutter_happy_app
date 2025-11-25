@@ -6,9 +6,7 @@ import 'package:card_swiper/card_swiper.dart';
 import 'package:flutter_app/utils/helper.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
-import 'package:card_swiper/card_swiper.dart';
 
-import 'package:card_swiper/card_swiper.dart';
 
 class SwiperBanner<T> extends StatelessWidget {
   final List<T> banners;

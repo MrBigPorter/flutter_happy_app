@@ -1,5 +1,4 @@
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:card_swiper/card_swiper.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -345,13 +344,11 @@ class _DetailContentSectionState extends State<_DetailContentSection>
 /// 轮播图区域 banner section
 class _BannerSection extends StatelessWidget {
   final List<String>? banners;
-  final SwiperController? controller;
   final PageStorageKey? storageKey;
   final double? height;
 
   const _BannerSection({
     required this.banners,
-    this.controller,
     this.storageKey,
     this.height,
   });
@@ -369,7 +366,6 @@ class _BannerSection extends StatelessWidget {
       height: height ?? 250.w,
       borderRadius: 0,
       banners: banners!,
-      controller: controller,
       storageKey: storageKey,
     );
   }
@@ -1020,7 +1016,7 @@ class _JoinTreasureSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final purchase = ref.watch(purchaseProvider(treasureId));
+     ref.watch(purchaseProvider(treasureId));
     final notifier = ref.read(purchaseProvider(treasureId).notifier);
 
     return Container(
@@ -1301,7 +1297,7 @@ class _StepperState extends ConsumerState<_Stepper> {
 }
 
 class _ProductDetailSkeleton extends StatelessWidget {
-  const _ProductDetailSkeleton({super.key});
+  const _ProductDetailSkeleton();
 
   @override
   Widget build(BuildContext context) {
@@ -1328,7 +1324,7 @@ class _ProductDetailSkeleton extends StatelessWidget {
 }
 
 class _BannerSectionSkeleton extends StatelessWidget {
-  const _BannerSectionSkeleton({super.key});
+  const _BannerSectionSkeleton();
 
   @override
   Widget build(BuildContext context) {
@@ -1341,7 +1337,7 @@ class _BannerSectionSkeleton extends StatelessWidget {
 }
 
 class _CouponSectionSkeleton extends StatelessWidget {
-  const _CouponSectionSkeleton({super.key});
+  const _CouponSectionSkeleton();
 
   @override
   Widget build(BuildContext context) {
@@ -1390,7 +1386,7 @@ class _CouponSectionSkeleton extends StatelessWidget {
 }
 
 class _TopSectionSkeleton extends StatelessWidget {
-  const _TopSectionSkeleton({super.key});
+  const _TopSectionSkeleton();
 
   @override
   Widget build(BuildContext context) {
@@ -1468,7 +1464,7 @@ class _TopSectionSkeleton extends StatelessWidget {
 }
 
 class _GroupSectionSkeleton extends StatelessWidget {
-  const _GroupSectionSkeleton({super.key});
+  const _GroupSectionSkeleton();
 
   @override
   Widget build(BuildContext context) {
@@ -1549,7 +1545,7 @@ class _GroupSectionSkeleton extends StatelessWidget {
 }
 
 class _DetailContentSectionSkeleton extends StatelessWidget {
-  const _DetailContentSectionSkeleton({super.key});
+  const _DetailContentSectionSkeleton();
 
   @override
   Widget build(BuildContext context) {
@@ -1615,7 +1611,7 @@ class _DetailContentSectionSkeleton extends StatelessWidget {
 }
 
 class _JoinTreasureSectionSkeleton extends StatelessWidget {
-  const _JoinTreasureSectionSkeleton({super.key});
+  const _JoinTreasureSectionSkeleton();
 
   @override
   Widget build(BuildContext context) {
