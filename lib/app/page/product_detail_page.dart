@@ -784,6 +784,11 @@ class _GroupSectionState extends ConsumerState<_GroupSection>
     }
 
 
+    // no data
+    if(data.list.isEmpty){
+      return SizedBox.shrink();
+    }
+
     final total = totalPages(data.total, data.pageSize);
     final hasNext = hasMore(data.total, showPage, data.pageSize);
     final int startNo = (showPage - 1) * data.pageSize + 1;

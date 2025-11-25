@@ -2,9 +2,10 @@ import 'package:flutter_app/common.dart';
 import 'package:flutter_app/core/models/groups.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_app/core/models/index.dart';
+
 /// Product category provider, includes "all" category
 final categoryProvider = FutureProvider.autoDispose((ref) async {
- final res =  await Api.getProductCategoryList();
+  final res = await Api.getProductCategoryList();
   return [
     ProductCategoryItem(name: "all", id: 0),
     ...res
@@ -33,12 +34,31 @@ Provider.family<PageRequest<ProductListItem>, int>((ref, id) {
 
 
 /// Product detail provider
-final productDetailProvider = FutureProvider.autoDispose.family<ProductListItem, String>((ref, String productId) async {
+final productDetailProvider = FutureProvider.autoDispose.family<
+    ProductListItem,
+    String>((ref, String productId) async {
   return Api.getProductDetail(productId);
 });
 
 
 /// group for treasure items on index page
-final groupsListProvider = FutureProvider.autoDispose.family<PageResult<GroupForTreasureItem>, GroupsListRequestParams> ((ref, params) async {
+final groupsListProvider = FutureProvider.autoDispose.family<
+    PageResult<GroupForTreasureItem>,
+    GroupsListRequestParams>((ref, params) async {
   return Api.groupsListApi(params);
 });
+
+/// group member list provider
+final groupMemberListProvider =
+Provider.family<PageRequest<GroupMemberItem>, String>((ref, groupId) {
+  return ({required int pageSize, required int page}) {
+    return Api.groupMemberListApi(
+        GroupMemberListRequestParams(
+            groupId: groupId,
+            page: page,
+            pageSize: 3
+        )
+    );
+  };
+});
+

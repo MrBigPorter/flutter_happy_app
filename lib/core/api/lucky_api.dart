@@ -248,4 +248,15 @@ class Api {
     });
      return parsePageResponse(res, (e) => GroupForTreasureItem.fromJson(e));
   }
+
+  // group member list
+  static Future<PageResult<GroupMemberItem>> groupMemberListApi(GroupMemberListRequestParams params) async {
+    final res = await Http.get('/api/v1/groups/${params.groupId}/members',query: {
+      'page': params.page,
+      'pageSize': params.pageSize,
+    });
+     return parsePageResponse(res, (e) => GroupMemberItem.fromJson(e));
+  }
 }
+
+

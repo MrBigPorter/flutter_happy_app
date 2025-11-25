@@ -129,3 +129,19 @@ class GroupsListRequestParams extends Equatable {
   List<Object?> get props => [page, pageSize, treasureId];
 }
 
+class GroupMemberListRequestParams extends Equatable {
+  final String groupId;
+  final int page;
+  final int pageSize;
+
+  const GroupMemberListRequestParams({
+    required this.groupId,
+    required this.page,
+    required this.pageSize,
+
+  });
+
+  @override
+  List<Object?> get props => [groupId, page, pageSize];
+}
+

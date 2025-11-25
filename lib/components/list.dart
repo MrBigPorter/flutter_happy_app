@@ -98,10 +98,18 @@ class PageListState<T> {
   }
 }
 
-// ────────────────────────────────────────────────────────────────────────────────
-//  Controller (decouples pagination logic from UI)
-// ────────────────────────────────────────────────────────────────────────────────
-
+/// Usage:
+/// final controller = PageListController<YourItemType>(
+///  request: yourPageRequestFunction,
+///  pageSize: 20,
+///  scrollController: yourScrollController, // optional
+///  preprocess: yourPreprocessFunction, // optional
+///  requestKey: yourRequestKey, // optional
+///  );
+///  also listen to controller for state changes if needed
+///  PageListNotificationX.wrapWithNotification(
+///  child:) yourScrollableWidget,
+///  );
 class PageListController<T> extends ValueNotifier<PageListState<T>> {
   final Future<PageResult<T>> Function({
     required int pageSize,
@@ -179,11 +187,13 @@ class PageListController<T> extends ValueNotifier<PageListState<T>> {
       List<T> data = res.list;
       if (preprocess != null) data = preprocess!(data);
 
+      final int totalItems = res.total;
       final bool noMoreBySize = res.list.length < pageSize;
-      final bool hasMore = (res.total > 0)
-          ? (value.currentPage < res.total)
+      final bool hasMore = totalItems > 0
+          ? data.length < totalItems
           : !noMoreBySize;
-      _noMoreFallback = (res.total <= 0 && noMoreBySize);
+
+      _noMoreFallback = _noMoreFallback || (totalItems <= 0 && noMoreBySize);
 
       if (_isDisposed) return;
       value = value.copyWith(
@@ -228,11 +238,12 @@ class PageListController<T> extends ValueNotifier<PageListState<T>> {
 
           if (_isDisposed) return;
           final merged = <T>[...value.items, ...nextPage];
+
+          final int totalItems = res.total;
           final bool noMoreBySize = res.list.length < pageSize;
-          final bool hasMore = (res.total > 0)
-              ? (value.currentPage < res.total)
+          final bool hasMore = totalItems > 0 ? merged.length < totalItems
               : !noMoreBySize;
-          _noMoreFallback = _noMoreFallback || (res.total <= 0 && noMoreBySize);
+          _noMoreFallback = _noMoreFallback || (totalItems <= 0 && noMoreBySize);
 
           value = value.copyWith(
             items: merged,
@@ -411,6 +422,7 @@ class PageListViewPro<T> extends StatelessWidget {
 
   Widget _buildList(BuildContext context, PageListState<T> state) {
     final list = state.items;
+    
 
     // 是否显示底部状态（loadingMore / error / hasMore）
     final bool showBottom =
@@ -462,6 +474,7 @@ class PageListViewPro<T> extends StatelessWidget {
       }
 
 
+      print('Building grid list with ${list.length} items');
       Widget listCore = CustomScrollView(
         controller: controller.scrollController,
         primary: false,
@@ -477,6 +490,7 @@ class PageListViewPro<T> extends StatelessWidget {
       }
       return listCore;
     }
+
 
     final totalCount = list.length;
 
@@ -515,11 +529,12 @@ class PageListViewPro<T> extends StatelessWidget {
           : core;
     }
 
+
     return CustomScrollView(
       controller: controller.scrollController,
       primary: false,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
+      shrinkWrap: false,
+      physics: !sliverMode ? const AlwaysScrollableScrollPhysics() : const NeverScrollableScrollPhysics(),
       slivers: [
         if (padding != null) SliverPadding(padding: padding!),
         if (itemExtent != null)
