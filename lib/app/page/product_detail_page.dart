@@ -854,19 +854,23 @@ class _GroupSectionState extends ConsumerState<_GroupSection>
                   GestureDetector(
                     behavior: HitTestBehavior.opaque,
                     onTap: () {
-                      //todo
-                      appRouter.push('/product/group?treasureId=${widget.treasureId}');
+                      appRouter.push('/product/${widget.treasureId}/group');
                     },
-                    child: SvgPicture.asset(
-                      'assets/images/product_detail/goto.svg',
-                      width: 16.w,
-                      height: 16.w,
-                      colorFilter: ColorFilter.mode(
-                        context.fgPrimary900,
-                        BlendMode.srcIn,
+                    child: Container(
+                      width: 40.w,
+                      height: 40.w,
+                      alignment: Alignment.centerRight,
+                      child: SvgPicture.asset(
+                        'assets/images/product_detail/goto.svg',
+                        width: 16.w,
+                        height: 16.w,
+                        colorFilter: ColorFilter.mode(
+                          context.fgPrimary900,
+                          BlendMode.srcIn,
+                        ),
                       ),
                     ),
-                  ),
+                  )
                 ],
               ),
             ),

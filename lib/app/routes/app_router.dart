@@ -1,6 +1,8 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_app/app/page/group_member_page.dart';
+import 'package:flutter_app/app/page/page_404.dart';
 import 'package:flutter_app/app/page/payment_page.dart';
+import 'package:flutter_app/app/page/product_group_page.dart';
 import 'package:flutter_app/app/page/wallet_detail_page.dart';
 import 'package:flutter_app/app/routes/route_auth_config.dart';
 import 'package:flutter_app/app/routes/transitions.dart';
@@ -108,6 +110,18 @@ class AppRouter {
             }
         ),
         GoRoute(
+            name: 'productGroup',
+            path: '/product/:id/group',
+            pageBuilder: (ctx, state) {
+              final  id = state.uri.queryParameters['id'] ?? '';
+              return fxPage(
+                key: state.pageKey,
+                child: ProductGroupPage(treasureId: id),
+                fx: RouteFx.slideUp,
+              );
+            }
+        ),
+        GoRoute(
             name: 'groupMember',
             path: '/group-member',
             pageBuilder: (ctx, state) {
@@ -160,10 +174,19 @@ class AppRouter {
           // If the user is authenticated and tries to access the login page, redirect to home
           return '/home';
         }
-        
+
+
         // Add global redirect logic here
         return null;
-      }
+      },
+      errorPageBuilder: (context, state) {
+        return fxPage(
+          key: state.pageKey,
+          child: Page404(),
+          fx: RouteFx.fadeThrough,
+        );
+      },
+
     );
 
     // assign to the global instance, so that other parts of the app can access it
