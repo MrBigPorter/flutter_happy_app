@@ -191,12 +191,13 @@ class Api {
   static Future<PageResult<OrderItem>> orderListApi(
     OrderListParams params,
   ) async {
-    final res = await Http.get(
-      '/userOrderList.json',
-      queryParameters: {
-        "order_state": params.orderState,
+    final res = await Http.post(
+      '/api/v1/orders/list',
+      data: {
+        "status": params.status,
+        "treasureId": params.treasureId,
         "page": params.page,
-        "size": params.size,
+        "pageSize": params.pageSize,
       },
     );
     final result = parsePageResponse(res, (e) => OrderItem.fromJson(e));

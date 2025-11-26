@@ -6,94 +6,56 @@ part 'order_item.g.dart';
 
 @JsonSerializable(checked: true)
 class OrderItem {
+  final String orderId;
+  final String orderNo;
+  final num? createAt;
+  final num? updateAt;
+  final num buyQuantity;
+  final num? stockQuantity;
+  final String treasureId;
+  final String unitPrice;
+  final String originalAmount;
+  final String discountAmount;
+  final String couponAmount;
+  final String coinAmount;
+  final String finalAmount;
+  final int orderStatus;
+  final int payStatus;
+  final int refundStatus;
+  final num? paidAt;
+  final Treasure treasure;
+  final Group? group;
+
+
   final String? addressId;
   final AddressRes? addressResp;
-  final double? amountCoin;
-  final String? awardTicket;
-  final double? betAmount;
-  final double? currentStatus;
-  final String? denomination;
-  final double entries;
-  final String? friend;
-  final String? friendTicket;
-  final String? groupId;
-  final double? handleStatus;
-  final String id;
-  final double? isOwn;
-  final int? lotteryTime;
-  final String? mainImages;
-  final String? myTicket;
-  final int orderStatus;
-  final int? payTime;
-  final double? paymentMethod;
-  final double? prizeAmount;
-  final double? prizeCoin;
-  final double? productActualId;
-  final String productName;
-  final double purchaseCount;
-  final double? shareAmount;
-  final int? shareCoin;
-  final double stockQuantity;
   final List<TicketItem>? ticketList;
-  final double totalAmount;
-  final double treasureId;
-  final String? userId;
-  final String? userPhone;
-  final int virtual;
-  final String? virtualAccount;
-  final String? virtualCode;
-  final String treasureCoverImg;
-  final String treasureName;
   final String? refundReason;
-  final int? cashState;
-  final double? cashAmount;
-  final String? cashEmail;
-  final int? confirmState;
 
-  const OrderItem({
-    required this.addressId,
-    required this.addressResp,
-    required this.amountCoin,
-    required this.awardTicket,
-    required this.betAmount,
-    required this.currentStatus,
-    required this.denomination,
-    required this.entries,
-    required this.friend,
-    required this.friendTicket,
-    required this.groupId,
-    required this.handleStatus,
-    required this.id,
-    required this.isOwn,
-    required this.lotteryTime,
-    required this.mainImages,
-    required this.myTicket,
-    required this.orderStatus,
-    required this.payTime,
-    required this.paymentMethod,
-    required this.prizeAmount,
-    required this.prizeCoin,
-    required this.productActualId,
-    required this.productName,
-    required this.purchaseCount,
-    required this.shareAmount,
-    required this.shareCoin,
-    required this.stockQuantity,
-    required this.ticketList,
-    required this.totalAmount,
+  const OrderItem( {
+    required this.orderId,
+    required this.orderNo,
+     this.createAt,
+     this.updateAt,
+    required this.buyQuantity,
+     this.stockQuantity,
     required this.treasureId,
-    required this.userId,
-    required this.userPhone,
-    required this.virtual,
-    required this.virtualAccount,
-    required this.virtualCode,
-    required this.treasureCoverImg,
-    required this.treasureName,
+    required this.unitPrice,
+    required this.originalAmount,
+    required this.discountAmount,
+    required this.couponAmount,
+    required this.coinAmount,
+    required this.finalAmount,
+    required this.orderStatus,
+    required this.payStatus,
+    required this.refundStatus,
+    required this.treasure,
+    this.paidAt,
+    this.addressId,
+    this.addressResp,
+    this.ticketList,
     this.refundReason,
-    this.cashState,
-    this.cashAmount,
-    this.cashEmail,
-    required this.confirmState,
+    this.group,
   });
 
   factory OrderItem.fromJson(Map<String, dynamic> json) =>
@@ -105,6 +67,60 @@ class OrderItem {
   String toString() {
     return toJson().toString();
   }
+}
+
+@JsonSerializable(checked: true)
+class Treasure {
+  final String treasureName;
+  final String treasureCoverImg;
+  final String productName;
+  final int virtual;
+  final String? cashAmount;
+  final int? cashState;
+
+  const Treasure({
+    required this.treasureName,
+    required this.treasureCoverImg,
+    required this.productName,
+    required this.virtual,
+     this.cashAmount,
+     this.cashState,
+  });
+
+  factory Treasure.fromJson(Map<String, dynamic> json) =>
+      _$TreasureFromJson(json);
+
+  Map<String, dynamic> toJson() => _$TreasureToJson(this);
+
+  @override
+  String toString() {
+    return toJson().toString();
+  }
+}
+
+@JsonSerializable(checked: true)
+class Group {
+  final String groupId;
+  final int groupStatus;
+  final int currentMembers;
+  final int maxMembers;
+
+  Group({
+    required this.groupId,
+    required this.groupStatus,
+    required this.currentMembers,
+    required this.maxMembers,
+  });
+
+  factory Group.fromJson(Map<String, dynamic> json) =>
+      _$GroupFromJson(json);
+  Map<String, dynamic> toJson() => _$GroupToJson(this);
+
+  @override
+  String toString() {
+    return toJson().toString();
+  }
+
 }
 
 @JsonSerializable(checked: true)
@@ -122,24 +138,26 @@ class TicketItem {
 
 @JsonSerializable(checked: true)
 class OrderCount {
-  final double activeCount;
-  final double endCount;
-  final double refundCount;
+  final int paid;
+  final int unpaid;
+  final int refunded;
+  final int cancelled;
 
   const OrderCount({
-    required this.activeCount,
-    required this.endCount,
-    required this.refundCount,
+    required this.paid,
+    required this.unpaid,
+    required this.refunded,
+    required this.cancelled,
   });
 
-  Map<String, dynamic> asMap() {
+  Map<String,int> asMap() {
     return {
-      'activeCount': activeCount,
-      'endCount': endCount,
-      'refundCount': refundCount,
+      'paid': paid,
+      'unpaid': unpaid,
+      'refunded': refunded,
+      'cancelled': cancelled,
     };
   }
-
 
   factory OrderCount.fromJson(Map<String, dynamic> json) =>
       _$OrderCountFromJson(json);
@@ -155,14 +173,16 @@ class OrderCount {
 
 @JsonSerializable(checked: true)
 class OrderListParams {
-  final int orderState;
+  final String status;
+  final String? treasureId;
   final int page;
-  final int size;
+  final int pageSize;
 
   const OrderListParams({
-    required this.orderState,
     required this.page,
-    required this.size,
+    required this.pageSize,
+    required this.status,
+    this.treasureId,
   });
 
 
@@ -173,11 +193,10 @@ class OrderListParams {
 /// model for tab item in order screen
 class TabItem {
   final String name;
-  final int value;
   final int total;
   final String key;
 
-  TabItem({required this.name, required this.value, required this.total, required this.key});
+  TabItem({required this.name, required this.total, required this.key});
 
   TabItem copyWith({
     String? name,
@@ -187,7 +206,6 @@ class TabItem {
   }) {
     return TabItem(
       name: name ?? this.name,
-      value: value ?? this.value,
       total: total ?? this.total,
       key: key ?? this.key,
     );
@@ -228,29 +246,29 @@ extension OrderItemExtension on OrderItem {
       isGroupSuccess || isWon;
 
   // 是否实物订单
-  bool get isPhysical => virtual == 1;
+  bool get isPhysical => treasure?.virtual == 1;
   // 是否虚拟订单
-  bool get isVirtual => virtual == 2;
+  bool get isVirtual => treasure?.virtual == 2;
 
   /// 奖励状态语义
-  bool get isRewardClaim => confirmState == 2;
+/*  bool get isRewardClaim => confirmState == 2;
   bool get isRewardCashOut => confirmState == 3;
-  bool get isRewardPending => confirmState == 1;
+  bool get isRewardPending => confirmState == 1;*/
 
 
   /// 处理状态语义
-  bool get isHandlePending => handleStatus == 1;
+/*  bool get isHandlePending => handleStatus == 1;
   bool get isHandleConfirmed => handleStatus == 2;
   bool get isHandleProcessed => handleStatus == 3;
   bool get isHandleShipped => handleStatus == 4;
   bool get isHandleDelivered => handleStatus == 5;
-  bool get isHandleCanceled => handleStatus == 6;
+  bool get isHandleCanceled => handleStatus == 6;*/
 
   /// 物流状态语义
-  bool get isShipping => currentStatus == 3 || currentStatus == 4;
+/*  bool get isShipping => currentStatus == 3 || currentStatus == 4;
   bool get isCurrentDelivered => currentStatus == 5;
   bool get isCurrentCanceled => currentStatus == 7;
-  bool get isShippingFailed => currentStatus == 6;
+  bool get isShippingFailed => currentStatus == 6;*/
 
   /// 配送方式
   //bool get isSelfPickup => deliveryWay== 1;

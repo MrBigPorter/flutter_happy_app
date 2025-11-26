@@ -6,127 +6,124 @@ part of 'order_item.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-OrderItem _$OrderItemFromJson(
-  Map<String, dynamic> json,
-) => $checkedCreate('OrderItem', json, ($checkedConvert) {
-  final val = OrderItem(
-    addressId: $checkedConvert('addressId', (v) => v as String?),
-    addressResp: $checkedConvert(
-      'addressResp',
-      (v) => v == null ? null : AddressRes.fromJson(v as Map<String, dynamic>),
-    ),
-    amountCoin: $checkedConvert('amountCoin', (v) => (v as num?)?.toDouble()),
-    awardTicket: $checkedConvert('awardTicket', (v) => v as String?),
-    betAmount: $checkedConvert('betAmount', (v) => (v as num?)?.toDouble()),
-    currentStatus: $checkedConvert(
-      'currentStatus',
-      (v) => (v as num?)?.toDouble(),
-    ),
-    denomination: $checkedConvert('denomination', (v) => v as String?),
-    entries: $checkedConvert('entries', (v) => (v as num).toDouble()),
-    friend: $checkedConvert('friend', (v) => v as String?),
-    friendTicket: $checkedConvert('friendTicket', (v) => v as String?),
-    groupId: $checkedConvert('groupId', (v) => v as String?),
-    handleStatus: $checkedConvert(
-      'handleStatus',
-      (v) => (v as num?)?.toDouble(),
-    ),
-    id: $checkedConvert('id', (v) => v as String),
-    isOwn: $checkedConvert('isOwn', (v) => (v as num?)?.toDouble()),
-    lotteryTime: $checkedConvert('lotteryTime', (v) => (v as num?)?.toInt()),
-    mainImages: $checkedConvert('mainImages', (v) => v as String?),
-    myTicket: $checkedConvert('myTicket', (v) => v as String?),
-    orderStatus: $checkedConvert('orderStatus', (v) => (v as num).toInt()),
-    payTime: $checkedConvert('payTime', (v) => (v as num?)?.toInt()),
-    paymentMethod: $checkedConvert(
-      'paymentMethod',
-      (v) => (v as num?)?.toDouble(),
-    ),
-    prizeAmount: $checkedConvert('prizeAmount', (v) => (v as num?)?.toDouble()),
-    prizeCoin: $checkedConvert('prizeCoin', (v) => (v as num?)?.toDouble()),
-    productActualId: $checkedConvert(
-      'productActualId',
-      (v) => (v as num?)?.toDouble(),
-    ),
-    productName: $checkedConvert('productName', (v) => v as String),
-    purchaseCount: $checkedConvert(
-      'purchaseCount',
-      (v) => (v as num).toDouble(),
-    ),
-    shareAmount: $checkedConvert('shareAmount', (v) => (v as num?)?.toDouble()),
-    shareCoin: $checkedConvert('shareCoin', (v) => (v as num?)?.toInt()),
-    stockQuantity: $checkedConvert(
-      'stockQuantity',
-      (v) => (v as num).toDouble(),
-    ),
-    ticketList: $checkedConvert(
-      'ticketList',
-      (v) => (v as List<dynamic>?)
-          ?.map((e) => TicketItem.fromJson(e as Map<String, dynamic>))
-          .toList(),
-    ),
-    totalAmount: $checkedConvert('totalAmount', (v) => (v as num).toDouble()),
-    treasureId: $checkedConvert('treasureId', (v) => (v as num).toDouble()),
-    userId: $checkedConvert('userId', (v) => v as String?),
-    userPhone: $checkedConvert('userPhone', (v) => v as String?),
-    virtual: $checkedConvert('virtual', (v) => (v as num).toInt()),
-    virtualAccount: $checkedConvert('virtualAccount', (v) => v as String?),
-    virtualCode: $checkedConvert('virtualCode', (v) => v as String?),
-    treasureCoverImg: $checkedConvert('treasureCoverImg', (v) => v as String),
-    treasureName: $checkedConvert('treasureName', (v) => v as String),
-    refundReason: $checkedConvert('refundReason', (v) => v as String?),
-    cashState: $checkedConvert('cashState', (v) => (v as num?)?.toInt()),
-    cashAmount: $checkedConvert('cashAmount', (v) => (v as num?)?.toDouble()),
-    cashEmail: $checkedConvert('cashEmail', (v) => v as String?),
-    confirmState: $checkedConvert('confirmState', (v) => (v as num?)?.toInt()),
-  );
-  return val;
-});
+OrderItem _$OrderItemFromJson(Map<String, dynamic> json) => $checkedCreate(
+  'OrderItem',
+  json,
+  ($checkedConvert) {
+    final val = OrderItem(
+      orderId: $checkedConvert('orderId', (v) => v as String),
+      orderNo: $checkedConvert('orderNo', (v) => v as String),
+      createAt: $checkedConvert('createAt', (v) => v as num?),
+      updateAt: $checkedConvert('updateAt', (v) => v as num?),
+      buyQuantity: $checkedConvert('buyQuantity', (v) => v as num),
+      stockQuantity: $checkedConvert('stockQuantity', (v) => v as num?),
+      treasureId: $checkedConvert('treasureId', (v) => v as String),
+      unitPrice: $checkedConvert('unitPrice', (v) => v as String),
+      originalAmount: $checkedConvert('originalAmount', (v) => v as String),
+      discountAmount: $checkedConvert('discountAmount', (v) => v as String),
+      couponAmount: $checkedConvert('couponAmount', (v) => v as String),
+      coinAmount: $checkedConvert('coinAmount', (v) => v as String),
+      finalAmount: $checkedConvert('finalAmount', (v) => v as String),
+      orderStatus: $checkedConvert('orderStatus', (v) => (v as num).toInt()),
+      payStatus: $checkedConvert('payStatus', (v) => (v as num).toInt()),
+      refundStatus: $checkedConvert('refundStatus', (v) => (v as num).toInt()),
+      treasure: $checkedConvert(
+        'treasure',
+        (v) => Treasure.fromJson(v as Map<String, dynamic>),
+      ),
+      paidAt: $checkedConvert('paidAt', (v) => v as num?),
+      addressId: $checkedConvert('addressId', (v) => v as String?),
+      addressResp: $checkedConvert(
+        'addressResp',
+        (v) =>
+            v == null ? null : AddressRes.fromJson(v as Map<String, dynamic>),
+      ),
+      ticketList: $checkedConvert(
+        'ticketList',
+        (v) => (v as List<dynamic>?)
+            ?.map((e) => TicketItem.fromJson(e as Map<String, dynamic>))
+            .toList(),
+      ),
+      refundReason: $checkedConvert('refundReason', (v) => v as String?),
+      group: $checkedConvert(
+        'group',
+        (v) => v == null ? null : Group.fromJson(v as Map<String, dynamic>),
+      ),
+    );
+    return val;
+  },
+);
 
 Map<String, dynamic> _$OrderItemToJson(OrderItem instance) => <String, dynamic>{
+  'orderId': instance.orderId,
+  'orderNo': instance.orderNo,
+  'createAt': instance.createAt,
+  'updateAt': instance.updateAt,
+  'buyQuantity': instance.buyQuantity,
+  'stockQuantity': instance.stockQuantity,
+  'treasureId': instance.treasureId,
+  'unitPrice': instance.unitPrice,
+  'originalAmount': instance.originalAmount,
+  'discountAmount': instance.discountAmount,
+  'couponAmount': instance.couponAmount,
+  'coinAmount': instance.coinAmount,
+  'finalAmount': instance.finalAmount,
+  'orderStatus': instance.orderStatus,
+  'payStatus': instance.payStatus,
+  'refundStatus': instance.refundStatus,
+  'paidAt': instance.paidAt,
+  'treasure': instance.treasure,
+  'group': instance.group,
   'addressId': instance.addressId,
   'addressResp': instance.addressResp,
-  'amountCoin': instance.amountCoin,
-  'awardTicket': instance.awardTicket,
-  'betAmount': instance.betAmount,
-  'currentStatus': instance.currentStatus,
-  'denomination': instance.denomination,
-  'entries': instance.entries,
-  'friend': instance.friend,
-  'friendTicket': instance.friendTicket,
-  'groupId': instance.groupId,
-  'handleStatus': instance.handleStatus,
-  'id': instance.id,
-  'isOwn': instance.isOwn,
-  'lotteryTime': instance.lotteryTime,
-  'mainImages': instance.mainImages,
-  'myTicket': instance.myTicket,
-  'orderStatus': instance.orderStatus,
-  'payTime': instance.payTime,
-  'paymentMethod': instance.paymentMethod,
-  'prizeAmount': instance.prizeAmount,
-  'prizeCoin': instance.prizeCoin,
-  'productActualId': instance.productActualId,
-  'productName': instance.productName,
-  'purchaseCount': instance.purchaseCount,
-  'shareAmount': instance.shareAmount,
-  'shareCoin': instance.shareCoin,
-  'stockQuantity': instance.stockQuantity,
   'ticketList': instance.ticketList,
-  'totalAmount': instance.totalAmount,
-  'treasureId': instance.treasureId,
-  'userId': instance.userId,
-  'userPhone': instance.userPhone,
-  'virtual': instance.virtual,
-  'virtualAccount': instance.virtualAccount,
-  'virtualCode': instance.virtualCode,
-  'treasureCoverImg': instance.treasureCoverImg,
-  'treasureName': instance.treasureName,
   'refundReason': instance.refundReason,
-  'cashState': instance.cashState,
+};
+
+Treasure _$TreasureFromJson(Map<String, dynamic> json) => $checkedCreate(
+  'Treasure',
+  json,
+  ($checkedConvert) {
+    final val = Treasure(
+      treasureName: $checkedConvert('treasureName', (v) => v as String),
+      treasureCoverImg: $checkedConvert('treasureCoverImg', (v) => v as String),
+      productName: $checkedConvert('productName', (v) => v as String),
+      virtual: $checkedConvert('virtual', (v) => (v as num).toInt()),
+      cashAmount: $checkedConvert('cashAmount', (v) => v as String?),
+      cashState: $checkedConvert('cashState', (v) => (v as num?)?.toInt()),
+    );
+    return val;
+  },
+);
+
+Map<String, dynamic> _$TreasureToJson(Treasure instance) => <String, dynamic>{
+  'treasureName': instance.treasureName,
+  'treasureCoverImg': instance.treasureCoverImg,
+  'productName': instance.productName,
+  'virtual': instance.virtual,
   'cashAmount': instance.cashAmount,
-  'cashEmail': instance.cashEmail,
-  'confirmState': instance.confirmState,
+  'cashState': instance.cashState,
+};
+
+Group _$GroupFromJson(Map<String, dynamic> json) =>
+    $checkedCreate('Group', json, ($checkedConvert) {
+      final val = Group(
+        groupId: $checkedConvert('groupId', (v) => v as String),
+        groupStatus: $checkedConvert('groupStatus', (v) => (v as num).toInt()),
+        currentMembers: $checkedConvert(
+          'currentMembers',
+          (v) => (v as num).toInt(),
+        ),
+        maxMembers: $checkedConvert('maxMembers', (v) => (v as num).toInt()),
+      );
+      return val;
+    });
+
+Map<String, dynamic> _$GroupToJson(Group instance) => <String, dynamic>{
+  'groupId': instance.groupId,
+  'groupStatus': instance.groupStatus,
+  'currentMembers': instance.currentMembers,
+  'maxMembers': instance.maxMembers,
 };
 
 TicketItem _$TicketItemFromJson(Map<String, dynamic> json) =>
@@ -141,39 +138,40 @@ TicketItem _$TicketItemFromJson(Map<String, dynamic> json) =>
 Map<String, dynamic> _$TicketItemToJson(TicketItem instance) =>
     <String, dynamic>{'status': instance.status, 'ticket': instance.ticket};
 
-OrderCount _$OrderCountFromJson(Map<String, dynamic> json) => $checkedCreate(
-  'OrderCount',
-  json,
-  ($checkedConvert) {
-    final val = OrderCount(
-      activeCount: $checkedConvert('activeCount', (v) => (v as num).toDouble()),
-      endCount: $checkedConvert('endCount', (v) => (v as num).toDouble()),
-      refundCount: $checkedConvert('refundCount', (v) => (v as num).toDouble()),
-    );
-    return val;
-  },
-);
+OrderCount _$OrderCountFromJson(Map<String, dynamic> json) =>
+    $checkedCreate('OrderCount', json, ($checkedConvert) {
+      final val = OrderCount(
+        paid: $checkedConvert('paid', (v) => (v as num).toInt()),
+        unpaid: $checkedConvert('unpaid', (v) => (v as num).toInt()),
+        refunded: $checkedConvert('refunded', (v) => (v as num).toInt()),
+        cancelled: $checkedConvert('cancelled', (v) => (v as num).toInt()),
+      );
+      return val;
+    });
 
 Map<String, dynamic> _$OrderCountToJson(OrderCount instance) =>
     <String, dynamic>{
-      'activeCount': instance.activeCount,
-      'endCount': instance.endCount,
-      'refundCount': instance.refundCount,
+      'paid': instance.paid,
+      'unpaid': instance.unpaid,
+      'refunded': instance.refunded,
+      'cancelled': instance.cancelled,
     };
 
 OrderListParams _$OrderListParamsFromJson(Map<String, dynamic> json) =>
     $checkedCreate('OrderListParams', json, ($checkedConvert) {
       final val = OrderListParams(
-        orderState: $checkedConvert('orderState', (v) => (v as num).toInt()),
         page: $checkedConvert('page', (v) => (v as num).toInt()),
-        size: $checkedConvert('size', (v) => (v as num).toInt()),
+        pageSize: $checkedConvert('pageSize', (v) => (v as num).toInt()),
+        status: $checkedConvert('status', (v) => v as String),
+        treasureId: $checkedConvert('treasureId', (v) => v as String?),
       );
       return val;
     });
 
 Map<String, dynamic> _$OrderListParamsToJson(OrderListParams instance) =>
     <String, dynamic>{
-      'orderState': instance.orderState,
+      'status': instance.status,
+      'treasureId': instance.treasureId,
       'page': instance.page,
-      'size': instance.size,
+      'pageSize': instance.pageSize,
     };

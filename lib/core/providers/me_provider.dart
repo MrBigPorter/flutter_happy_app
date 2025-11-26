@@ -9,13 +9,15 @@ final thresholdListProvider = FutureProvider((ref) async {
 });
 
 /// Order list request provider with pagination and status filter
-final orderListProvider = Provider.family((ref, int status){
+ typedef OrderProviderParam = ({String status,String? treasureId});
+final orderListProvider = Provider.family((ref, OrderProviderParam params) {
   return ({required int pageSize, required int page}) {
     return Api.orderListApi(
       OrderListParams(
-        orderState: status,
+        status: params.status,
+        treasureId: params.treasureId,
         page: page,
-        size: pageSize,
+        pageSize: pageSize,
       ),
     );
   };
@@ -32,10 +34,9 @@ final orderCountProvider = FutureProvider((ref) async {
 
 final activeOrderTabProvider = StateProvider<TabItem>((ref) {
   return TabItem(
-    name: 'common.active',
-    value: 1,
+    name: 'paid',
     total: 0,
-    key: 'active_count',
+    key: 'paid',
   );
 });
 
@@ -44,9 +45,10 @@ final activeOrderTabProvider = StateProvider<TabItem>((ref) {
 /// Used to display order tabs with counts
 class TabOrderStateNotifier extends StateNotifier<List<TabItem>> {
    TabOrderStateNotifier():super([
-       TabItem(name: 'common.active', key:'active_count', value: 1, total: 0),
-       TabItem(name: 'common.ended', key:'end_count',value: 2, total: 0),
-       TabItem(name: 'common.refund',key:'refund_count', value: 4, total: 0),
+       TabItem(name: 'paid', key:'paid', total: 0),
+       TabItem(name: 'unpaid', key:'unpaid',total: 0),
+       TabItem(name: 'refunded',key:'refunded',total: 0),
+       TabItem(name: 'cancelled',key:'cancelled', total: 0),
      ]);
 
    void updateTabOrderTotal(OrderCount newCountMap) {

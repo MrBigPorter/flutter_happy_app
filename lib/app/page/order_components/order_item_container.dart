@@ -6,7 +6,6 @@ import 'package:flutter_app/common.dart';
 import 'package:flutter_app/components/skeleton.dart';
 import 'package:flutter_app/core/models/index.dart';
 import 'package:flutter_app/ui/button/index.dart';
-import 'package:flutter_app/utils/date_helper.dart';
 import 'package:flutter_app/utils/format_helper.dart';
 import 'package:flutter_app/utils/helper.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -88,13 +87,13 @@ class OrderItemContainer extends StatelessWidget {
                   //todo
                 },
                 onViewRewardDetails: () {
-                  appRouter.go('/me/order/${item.id}/reward-details');
+                  appRouter.go('/me/order/${item.orderId}/reward-details');
                 },
                 onTeamUp: () {
-                  appRouter.go('/me/order/${item.id}/team-up');
+                  appRouter.go('/me/order/${item.orderId}/team-up');
                 },
                 onClaimPrize: () {
-                  appRouter.go('/me/order/${item.id}/claim-prize');
+                  appRouter.go('/me/order/${item.orderId}/claim-prize');
                 },
             ),
           ],
@@ -120,7 +119,7 @@ class _OrderItemHeader extends StatelessWidget {
           clipBehavior: Clip.hardEdge,
           borderRadius: BorderRadius.circular(8.w),
           child: CachedNetworkImage(
-            imageUrl: proxied(item.treasureCoverImg),
+            imageUrl: proxied(item.treasure!.treasureCoverImg),
             width: 80.w,
             height: 80.w,
             fit: BoxFit.cover,
@@ -156,7 +155,7 @@ class _OrderItemHeader extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                item.treasureName,
+                item.treasure.treasureName,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
@@ -178,7 +177,7 @@ class _OrderItemHeader extends StatelessWidget {
                   children: [
                     TextSpan(
                       text:
-                          '${FormatHelper.formatWithCommas(item.purchaseCount)}/${FormatHelper.formatWithCommas(item.stockQuantity)}',
+                          '${FormatHelper.formatWithCommas(item.buyQuantity)}/${FormatHelper.formatWithCommas(item.stockQuantity)}',
                     ),
                     TextSpan(text: ' '),
                     TextSpan(text: 'common.sold.lowercase'.tr()),
@@ -235,24 +234,24 @@ class _OrderItemInfo extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (!item.lotteryTime.isNullOrEmpty)
+       /* if (!item.lotteryTime.isNullOrEmpty)
           line(
             'common.draw.date'.tr(),
             DateFormatHelper.formatFull(item.lotteryTime),
           ),
-        SizedBox(height: 12.w),
+        SizedBox(height: 12.w),*/
         line(
           'common.ticket.price'.tr(),
           FormatHelper.formatWithCommasAndDecimals(
-            item.totalAmount / item.entries,
+            item.unitPrice,
           ),
         ),
         SizedBox(height: 12.w),
-        line('common.tickets.number'.tr(), '${item.entries}'),
+        line('common.tickets.number'.tr(), '${item.buyQuantity}'),
         SizedBox(height: 12.w),
         line(
           item.isRefunded ? 'common.refund'.tr() : 'common.total.price'.tr(),
-          '₱${item.totalAmount}',
+          '₱${item.finalAmount}',
         ),
       ],
     );
@@ -341,7 +340,7 @@ class _OrderItemActions extends StatelessWidget {
           },
           child: null,
         ),
-        if(item.isRewardPending) ...[
+        /*if(item.isRewardPending) ...[
           Button(
               width: double.infinity,
               onPressed: (){
@@ -360,7 +359,7 @@ class _OrderItemActions extends StatelessWidget {
               },
               child: Text('confirm.win.check.award.information'.tr())
           )
-        ]
+        ]*/
 
       ]
     ];
@@ -410,7 +409,7 @@ class _OrderItemGroupSuccess extends StatelessWidget {
                   height: context.leadingSm,
                 ),
               ),
-              Text(
+              /*Text(
                 '${item.friend != "" ? item.friend : '----'}',
                 style: TextStyle(
                   fontSize: context.textSm,
@@ -418,7 +417,7 @@ class _OrderItemGroupSuccess extends StatelessWidget {
                   color: context.textPrimary900,
                   height: context.leadingSm,
                 ),
-              ),
+              ),*/
             ],
           ),
           SizedBox(height: 12.w),
@@ -438,7 +437,8 @@ class _OrderItemGroupSuccess extends StatelessWidget {
                 children: [
                   Text(
                     'number.treasure.coin'.tr(
-                      namedArgs: {'number': item.prizeCoin.toString()},
+                      // namedArgs: {'number': item.prizeCoin.toString()}, todo
+                      namedArgs: {'number': '11111'},
                     ),
                     style: TextStyle(
                       fontWeight: FontWeight.w800,
@@ -451,7 +451,8 @@ class _OrderItemGroupSuccess extends StatelessWidget {
                     'redeem.worth.number'.tr(
                       namedArgs: {
                         'number': FormatHelper.formatWithCommasAndDecimals(
-                          item.prizeAmount ?? 0,
+                          // item.prizeAmount ?? 0,
+                          0,//todo
                         ),
                       },
                     ),
@@ -485,7 +486,8 @@ class _OrderItemGroupSuccess extends StatelessWidget {
               Column(
                 children: [
                   Text(
-                    '${item.shareCoin ?? 0} ${'common.treasureCoins'.tr()}',
+                    // '${item.shareCoin ?? 0} ${'common.treasureCoins'.tr()}',todo
+                    '${0} ${'common.treasureCoins'.tr()}',
                     style: TextStyle(
                       fontWeight: FontWeight.w800,
                       color: context.textBrandSecondary700,
@@ -497,7 +499,8 @@ class _OrderItemGroupSuccess extends StatelessWidget {
                     'redeem.worth.number'.tr(
                       namedArgs: {
                         'number': FormatHelper.formatWithCommasAndDecimals(
-                          int.tryParse('${item.denomination}') ?? 0,
+                          // int.tryParse('${item.denomination}') ?? 0,todo
+                          0
                         ),
                       },
                     ),

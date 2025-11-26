@@ -10,7 +10,7 @@ import 'package:flutter_app/core/providers/me_provider.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 class OrderList extends ConsumerStatefulWidget {
-  final int status;
+  final String status;
   const OrderList({super.key,required this.status});
 
   @override
@@ -33,7 +33,7 @@ class _OrderListState extends ConsumerState<OrderList> with AutomaticKeepAliveCl
       request: ({required int pageSize, required int page}) {
         //  用入参 status，不依赖外部 provider no rely on external provider
         final tab = ref.read(activeOrderTabProvider.notifier).state;
-        return ref.read(orderListProvider(tab.value))(
+        return ref.read(orderListProvider((status: tab.key, treasureId: null)))(
           pageSize: pageSize,
           page: page,
         );
@@ -55,18 +55,13 @@ class _OrderListState extends ConsumerState<OrderList> with AutomaticKeepAliveCl
         uniqueKey: Key('order_list_visibility_${widget.status}'),
         child: CustomScrollView(
           key: PageStorageKey('order_list_${widget.status}'),//记住滚动位置 remember scroll position
-          physics: platformScrollPhysics(),
+          physics: platformScrollPhysics(alwaysScrollable: true),
           cacheExtent: 600, // CustomScrollView 加 cacheExtent，在视窗外提前布局一些像素：
           slivers: [
             PageListViewPro<OrderItem>(
               controller: _ctl,
               sliverMode: true,
               separatorSpace: 16,
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 1,
-                mainAxisSpacing: 16.w,
-                childAspectRatio: 375.w / 120.w,
-              ),
               itemBuilder: (context, item, index, isLast) {
                 return OrderItemContainer(item: item, isLast: isLast);
               },

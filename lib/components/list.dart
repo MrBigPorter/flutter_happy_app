@@ -387,18 +387,47 @@ class PageListViewPro<T> extends StatelessWidget {
   // ── UI builders ──────────────────────────────────────────────────────────────
 
   Widget _buildSkeleton(BuildContext context) {
-    if (gridDelegate != null) {
-      final grid = SliverGrid(
-        gridDelegate: gridDelegate!,
-        delegate: SliverChildBuilderDelegate(
-              (_, __) => skeletonBuilder?.call(context) ?? _DefaultSkeleton(height: skeletonHeight, padding: EdgeInsets.zero),
-          childCount: skeletonCount,
-        ),
+    if(sliverMode){
+      if (gridDelegate != null) {
+        final grid = SliverGrid(
+          gridDelegate: gridDelegate!,
+          delegate: SliverChildBuilderDelegate(
+                (_, __) => skeletonBuilder?.call(context) ?? _DefaultSkeleton(height: skeletonHeight, padding: EdgeInsets.zero),
+            childCount: skeletonCount,
+          ),
+        );
+        final core =  padding != null
+            ? SliverPadding(padding: padding!, sliver: grid)
+            : grid;
+         if(fillRemainingWhenShort){
+           return MultiSliver(children: [
+             core,
+             const SliverFillRemaining(hasScrollBody: false, child: SizedBox()),
+           ]);
+         }
+        return core;
+      }
+
+      // non-grid sliver skeleton
+      final delegate = SliverChildBuilderDelegate(
+            (_, __) => skeletonBuilder?.call(context) ?? _DefaultSkeleton(height: skeletonHeight, padding: EdgeInsets.zero),
+        childCount: skeletonCount,
       );
+
+      final sliver = SliverList(delegate: delegate);
+      if(fillRemainingWhenShort){
+        return MultiSliver(children: [
+          if (padding != null) SliverPadding(padding: padding!, sliver: sliver) else sliver,
+          const SliverFillRemaining(hasScrollBody: false, child: SizedBox()),
+        ]);
+      }
       return padding != null
-          ? SliverPadding(padding: padding!, sliver: grid)
-          : grid;
+          ? SliverPadding(padding: padding!, sliver: sliver)
+          : sliver;
     }
+
+
+    // non-sliver skeleton list
     return ListView.separated(
       padding: padding ?? EdgeInsets.zero,
       itemCount: skeletonCount,
@@ -410,14 +439,38 @@ class PageListViewPro<T> extends StatelessWidget {
 
   Widget _buildEmpty(BuildContext context) {
     final w = emptyBuilder?.call(context) ?? const _DefaultEmpty();
-    return sliverMode ? SliverFillRemaining(hasScrollBody: false, child: w) : w;
+
+    if (!sliverMode) return w;
+
+    return MultiSliver(children: [
+      SliverFillRemaining(
+        hasScrollBody: true,
+        child: w,
+      ),
+    ]);
   }
 
   Widget _buildError(BuildContext context, Object? error) {
     final w = (errorBuilder != null)
         ? errorBuilder!(context, error ?? 'Unknown error', controller.loadFirst)
         : _DefaultError(onRetry: controller.loadFirst, error: error);
-    return sliverMode ? SliverFillRemaining(hasScrollBody: false, child: w) : w;
+
+    if (!sliverMode) return w;
+
+    final content = SliverToBoxAdapter(
+      child: Padding(
+        padding: padding ?? EdgeInsets.zero,
+        child: w,
+      ),
+    );
+
+    return MultiSliver(children: [
+      content,
+      const SliverFillRemaining(
+        hasScrollBody: false,
+        child: SizedBox.shrink(),
+      ),
+    ]);
   }
 
   Widget _buildList(BuildContext context, PageListState<T> state) {

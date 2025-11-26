@@ -39,13 +39,10 @@ class _MePageState extends ConsumerState<MePage>
   @override
   void initState() {
     super.initState();
-    // 只用 read 拿“初始的三个 tab”，马上建 controller
     _tabs = ref.read(tabOrderStateProvider);
     _tabController = TabController(length: _tabs.length, vsync: this);
 
-    // 首屏拉一次数量，orderCountProvider 只负责更新 totals
-    Future.microtask(() => ref.refresh(orderCountProvider));
-
+    // Future.microtask(() => ref.refresh(orderCountProvider));
 
   }
 
@@ -84,6 +81,7 @@ class _MePageState extends ConsumerState<MePage>
 
     return BaseScaffold(
       showBack: false,
+      elevation: 0,
       body: LuckyCustomMaterialIndicator(
         onRefresh: _onRefresh,
         child: NestedScrollViewPlus(
@@ -132,7 +130,7 @@ class _MePageState extends ConsumerState<MePage>
                     ref.read(activeOrderTabProvider.notifier).state = item;
                   },
                   renderItem: (item) =>
-                      Text('${item.name.tr()}(${item.total})'),
+                      Text('${item.name}(${item.total})'),
                 ),
               ),
             ],
@@ -140,7 +138,7 @@ class _MePageState extends ConsumerState<MePage>
           body: SafeTabBarView(
             controller: _tabController,
             children: tabs.map((item) {
-              return OrderList(status: item.value);
+              return OrderList(status: item.key);
             }).toList(),
           ),
         ),
