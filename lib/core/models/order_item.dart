@@ -246,9 +246,9 @@ extension OrderItemExtension on OrderItem {
       isGroupSuccess || isWon;
 
   // 是否实物订单
-  bool get isPhysical => treasure?.virtual == 1;
+  bool get isPhysical => treasure.virtual == 1;
   // 是否虚拟订单
-  bool get isVirtual => treasure?.virtual == 2;
+  bool get isVirtual => treasure.virtual == 2;
 
   /// 奖励状态语义
 /*  bool get isRewardClaim => confirmState == 2;

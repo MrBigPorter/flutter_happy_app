@@ -51,7 +51,7 @@ class _GroupMemberPageState extends ConsumerState<GroupMemberPage> {
         child: PageListViewPro(
           controller: _controller,
           gridDelegate: null,
-          skeletonBuilder: (context){
+          skeletonBuilder: (context, {bool isLast = false}) {
             return _GroupItemSkeleton();
           },
           itemBuilder: (context, item, index, isLast) {

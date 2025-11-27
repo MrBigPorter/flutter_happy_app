@@ -333,7 +333,7 @@ class PageListViewPro<T> extends StatelessWidget {
   final Widget Function(BuildContext context)? emptyBuilder;
   final Widget Function(BuildContext context, Object error, VoidCallback retry)?
   errorBuilder;
-  final Widget Function(BuildContext context)?
+  final Widget Function(BuildContext context, {bool isLast})?
   skeletonBuilder; // first-load placeholder
   final int skeletonCount;
   final double skeletonHeight;
@@ -359,7 +359,7 @@ class PageListViewPro<T> extends StatelessWidget {
     this.skeletonSpace = 12,
     this.skeletonPadding = const EdgeInsets.symmetric(horizontal: 10),
     this.gridDelegate,
-    this.fillRemainingWhenShort = true,
+    this.fillRemainingWhenShort = false,
   }) : assert(
          itemExtent == null || prototypeItem == null,
          'Provide either itemExtent or prototypeItem.',
@@ -392,7 +392,7 @@ class PageListViewPro<T> extends StatelessWidget {
         final grid = SliverGrid(
           gridDelegate: gridDelegate!,
           delegate: SliverChildBuilderDelegate(
-                (_, __) => skeletonBuilder?.call(context) ?? _DefaultSkeleton(height: skeletonHeight, padding: EdgeInsets.zero),
+                (_, __) => skeletonBuilder?.call(context,isLast:false) ?? _DefaultSkeleton(height: skeletonHeight, padding: EdgeInsets.zero),
             childCount: skeletonCount,
           ),
         );
@@ -410,30 +410,34 @@ class PageListViewPro<T> extends StatelessWidget {
 
       // non-grid sliver skeleton
       final delegate = SliverChildBuilderDelegate(
-            (_, __) => skeletonBuilder?.call(context) ?? _DefaultSkeleton(height: skeletonHeight, padding: EdgeInsets.zero),
+            (_, __){
+              return skeletonBuilder?.call(context,isLast: __ == skeletonCount -1) ?? _DefaultSkeleton(height: skeletonHeight, padding: EdgeInsets.zero);
+            },
         childCount: skeletonCount,
       );
 
       final sliver = SliverList(delegate: delegate);
       if(fillRemainingWhenShort){
         return MultiSliver(children: [
-          if (padding != null) SliverPadding(padding: padding!, sliver: sliver) else sliver,
-          const SliverFillRemaining(hasScrollBody: false, child: SizedBox()),
+          if (padding != null) SliverPadding(padding: skeletonPadding, sliver: sliver) else sliver,
+          const SliverFillRemaining(hasScrollBody: true, child: SizedBox()),
         ]);
       }
       return padding != null
-          ? SliverPadding(padding: padding!, sliver: sliver)
+          ? SliverPadding(padding: skeletonPadding, sliver: sliver)
           : sliver;
     }
 
 
     // non-sliver skeleton list
     return ListView.separated(
-      padding: padding ?? EdgeInsets.zero,
+      padding: skeletonPadding ?? EdgeInsets.zero,
       itemCount: skeletonCount,
       separatorBuilder: (_, __) => SizedBox(height: separatorSpace.w),
-      itemBuilder: (_, __) =>
-      skeletonBuilder?.call(context) ?? _DefaultSkeleton(height: skeletonHeight, padding: skeletonPadding),
+      itemBuilder: (_, index) {
+        final isLast = index == skeletonCount - 1;
+       return skeletonBuilder?.call(context,isLast:isLast) ?? _DefaultSkeleton(height: skeletonHeight, padding: skeletonPadding);
+      }
     );
   }
 
@@ -442,12 +446,11 @@ class PageListViewPro<T> extends StatelessWidget {
 
     if (!sliverMode) return w;
 
-    return MultiSliver(children: [
-      SliverFillRemaining(
-        hasScrollBody: true,
-        child: w,
-      ),
-    ]);
+    final content =  SliverFillRemaining(
+      hasScrollBody: false,
+      child: Center(child: w),
+    );
+    return content;
   }
 
   Widget _buildError(BuildContext context, Object? error) {
@@ -457,20 +460,12 @@ class PageListViewPro<T> extends StatelessWidget {
 
     if (!sliverMode) return w;
 
-    final content = SliverToBoxAdapter(
-      child: Padding(
-        padding: padding ?? EdgeInsets.zero,
-        child: w,
-      ),
+    final content =  SliverFillRemaining(
+      hasScrollBody: false,
+      child: Center(child: w),
     );
 
-    return MultiSliver(children: [
-      content,
-      const SliverFillRemaining(
-        hasScrollBody: false,
-        child: SizedBox.shrink(),
-      ),
-    ]);
+    return content;
   }
 
   Widget _buildList(BuildContext context, PageListState<T> state) {

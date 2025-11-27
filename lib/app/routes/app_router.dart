@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_app/app/page/group_member_page.dart';
+import 'package:flutter_app/app/page/order_list_page.dart';
 import 'package:flutter_app/app/page/page_404.dart';
 import 'package:flutter_app/app/page/payment_page.dart';
 import 'package:flutter_app/app/page/product_group_page.dart';
@@ -152,6 +153,14 @@ class AppRouter {
                 fx: RouteFx.slideUp
             );
            }
+        ),
+        GoRoute(
+          name:"orderList",
+          path:'/order/list',
+          builder: (context,state){
+            final queryParams = state.uri.queryParameters;
+            return OrderListPage(args: queryParams,);
+          }
         )
       ],
       redirect: (context,state){

@@ -36,6 +36,8 @@ class LuckySliverTabBarDelegate<T> extends SliverPersistentHeaderDelegate {
   late final ValueListenable<double>? progress; // 是否在顶部 is at top
   final bool showPersistentBg; // 是否显示持久化背景颜色 whether to show persistent background color
   final bool enableUnderLine; // 是否启用下划线 whether to enable underline
+  final double elevation; // 阴影高度 shadow elevation
+
 
   LuckySliverTabBarDelegate({
     required this.controller,
@@ -56,13 +58,15 @@ class LuckySliverTabBarDelegate<T> extends SliverPersistentHeaderDelegate {
     this.progress,
     this.showPersistentBg = false,
     this.enableUnderLine = false,
+    this.elevation = 0,
+
   });
 
   @override
-  double get maxExtent => height.h;
+  double get maxExtent => height;
 
   @override
-  double get minExtent => height.h;
+  double get minExtent => height;
 
   @override
   Widget build(
@@ -105,68 +109,61 @@ class LuckySliverTabBarDelegate<T> extends SliverPersistentHeaderDelegate {
 
         final blended = Color.lerp(Colors.transparent, base, t);
 
-        return Container(
-          height: height.h,
-          padding: EdgeInsets.symmetric(horizontal: 8.w).add(padding),
-          alignment: Alignment.centerLeft,
-          decoration: BoxDecoration(
-            color: blended,
-            boxShadow: [
-              if (t >= 1 && !showPersistentBg)
-                BoxShadow(
-                  color: Colors.black.withAlpha(15),
-                  blurRadius: 10.w,
-                  offset: Offset(0, 2.w),
-                ),
-            ]
-          ),
-          child: TabBar(
-            controller: controller,
-            isScrollable: true,
-            overlayColor: WidgetStateProperty.all(Colors.transparent),
-            labelPadding: EdgeInsets.symmetric(horizontal: 0),
-            labelStyle: labelStyle??TextStyle(
-                fontWeight: FontWeight.w500,
-                fontSize: 14.w,
-                color: context.textPrimaryOnBrand
+        return Material(
+          color: blended,
+          elevation: elevation,
+          child: Container(
+            height: height,
+            padding: EdgeInsets.symmetric(horizontal: 8.w).add(padding),
+            alignment: Alignment.centerLeft,
+            child: TabBar(
+              controller: controller,
+              isScrollable: true,
+              overlayColor: WidgetStateProperty.all(Colors.transparent),
+              labelPadding: EdgeInsets.symmetric(horizontal: 0),
+              labelStyle: labelStyle??TextStyle(
+                  fontWeight: FontWeight.w500,
+                  fontSize: 14.w,
+                  color: context.textPrimaryOnBrand
+              ),
+              indicatorSize: TabBarIndicatorSize.label,
+              unselectedLabelStyle: unselectedLabelStyle ?? TextStyle(
+                  fontWeight: FontWeight.w500,
+                  fontSize: 14.w,
+                  color: context.textQuaternary500
+              ),
+              indicator: enableUnderLine ? null : _LuckyIndicator(
+                color: indicatorColor??context.bgBrandSolid,
+                controller: controller!,
+                height: height,
+                radius: radius,
+                indicatorMinWidth: indicatorMinWidth,
+                indicatorHeight: indicatorHeight,
+                itemPaddingX: itemPaddingX,
+              ),
+              dividerColor: Colors.transparent,
+              tabAlignment: TabAlignment.start,
+              splashFactory: NoSplash.splashFactory,
+              splashBorderRadius: BorderRadius.circular(0),
+              indicatorColor: indicatorColor ?? context.bgBrandSolid,
+              /// 禁用水波纹效果 disable ripple effect
+              enableFeedback: false,
+              onTap: (index) {
+                if (onTap != null) {
+                  onTap!(tabs[index]);
+                }
+              },
+              tabs:[
+                for (final item in tabs)
+                  Tab(
+                    height: height,
+                    child: Padding(
+                      padding:  EdgeInsets.symmetric(horizontal:20.w, vertical: 0),
+                      child: renderItem(item),
+                    ),
+                  )
+              ],
             ),
-            indicatorSize: TabBarIndicatorSize.label,
-            unselectedLabelStyle: unselectedLabelStyle ?? TextStyle(
-                fontWeight: FontWeight.w500,
-                fontSize: 14.w,
-                color: context.textQuaternary500
-            ),
-            indicator: enableUnderLine ? null : _LuckyIndicator(
-              color: indicatorColor??context.bgBrandSolid,
-              controller: controller!,
-              height: height,
-              radius: radius,
-              indicatorMinWidth: indicatorMinWidth,
-              indicatorHeight: indicatorHeight,
-              itemPaddingX: itemPaddingX,
-            ),
-            dividerColor: Colors.transparent,
-            tabAlignment: TabAlignment.start,
-            splashFactory: NoSplash.splashFactory,
-            splashBorderRadius: BorderRadius.circular(0),
-            indicatorColor: indicatorColor ?? context.bgBrandSolid,
-            /// 禁用水波纹效果 disable ripple effect
-            enableFeedback: false,
-            onTap: (index) {
-              if (onTap != null) {
-                onTap!(tabs[index]);
-              }
-            },
-            tabs:[
-              for (final item in tabs)
-               Tab(
-                  height: height.h,
-                  child: Padding(
-                    padding:  EdgeInsets.symmetric(horizontal:20.w, vertical: 0),
-                    child: renderItem(item),
-                  ),
-               )
-            ],
           ),
         );
       },

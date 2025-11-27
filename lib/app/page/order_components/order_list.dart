@@ -9,6 +9,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_app/core/providers/me_provider.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
+
 class OrderList extends ConsumerStatefulWidget {
   final String status;
   const OrderList({super.key,required this.status});
@@ -20,7 +21,6 @@ class OrderList extends ConsumerStatefulWidget {
 class _OrderListState extends ConsumerState<OrderList> with AutomaticKeepAliveClientMixin{
   late final PageListController<OrderItem> _ctl;
 
-  //  切换不重建 no rebuild on switch
   @override
   bool get wantKeepAlive => true;
 
@@ -50,6 +50,8 @@ class _OrderListState extends ConsumerState<OrderList> with AutomaticKeepAliveCl
   @override
   Widget build(BuildContext context) {
     super.build(context);
+
+
     return _ctl.wrapWithNotification(
       child: ExtendedVisibilityDetector(
         uniqueKey: Key('order_list_visibility_${widget.status}'),
@@ -62,8 +64,13 @@ class _OrderListState extends ConsumerState<OrderList> with AutomaticKeepAliveCl
               controller: _ctl,
               sliverMode: true,
               separatorSpace: 16,
+              padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 16.w),
+              skeletonPadding: const EdgeInsets.all(0),
               itemBuilder: (context, item, index, isLast) {
                 return OrderItemContainer(item: item, isLast: isLast);
+              },
+              skeletonBuilder: (context, {bool isLast = false}) {
+                return  OrderItemContainerSkeleton(isLast: isLast);
               },
             ),
           ],
@@ -72,3 +79,4 @@ class _OrderListState extends ConsumerState<OrderList> with AutomaticKeepAliveCl
     );
   }
 }
+

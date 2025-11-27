@@ -54,7 +54,7 @@ class _ProductGroupPageState extends ConsumerState<ProductGroupPage> {
             return GroupItem(item: item, index: index);
           },
           skeletonCount: 10,
-          skeletonBuilder: (context) {
+          skeletonBuilder: (context, {bool isLast = false}) {
             return _GroupItemSkeleton();
           },
         ),

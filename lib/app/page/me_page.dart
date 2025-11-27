@@ -21,8 +21,6 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:nested_scroll_view_plus/nested_scroll_view_plus.dart';
 
-import 'order_components/order_list.dart';
-
 class MePage extends ConsumerStatefulWidget {
   const MePage({super.key});
 
@@ -30,48 +28,17 @@ class MePage extends ConsumerStatefulWidget {
   ConsumerState<MePage> createState() => _MePageState();
 }
 
-class _MePageState extends ConsumerState<MePage>
-    with SingleTickerProviderStateMixin {
-  late TabController _tabController;
-  late List<TabItem> _tabs;
-  final _outerCtl = ScrollController();
-
-  @override
-  void initState() {
-    super.initState();
-    _tabs = ref.read(tabOrderStateProvider);
-    _tabController = TabController(length: _tabs.length, vsync: this);
-
-    // Future.microtask(() => ref.refresh(orderCountProvider));
-
-  }
+class _MePageState extends ConsumerState<MePage>{
 
   Future<void> _onRefresh() async {
     Future.wait([
-      ref.refresh(luckyProvider.notifier).updateWalletBalance(),
-      ref.refresh(orderCountProvider.future),
     ]);
   }
 
   @override
-  void dispose() {
-    _tabController.dispose();
-    _outerCtl.dispose();
-    super.dispose();
-  }
-
-
-
-  @override
   Widget build(BuildContext context) {
-    // UI 只 watch tabOrderStateProvider
-    final tabs = ref.watch(tabOrderStateProvider);
 
-    // 只有长度变化才重建，一般不会变
-    if (tabs.length != _tabController.length) {
-      _tabController.dispose();
-      _tabController = TabController(length: tabs.length, vsync: this);
-    }
+
     // check if user is authenticated
     var isAuthenticated = ref.watch(
       authProvider.select((s) => s.isAuthenticated),
@@ -84,11 +51,9 @@ class _MePageState extends ConsumerState<MePage>
       elevation: 0,
       body: LuckyCustomMaterialIndicator(
         onRefresh: _onRefresh,
-        child: NestedScrollViewPlus(
-          controller: _outerCtl,
-          overscrollBehavior: OverscrollBehavior.outer,
+        child: CustomScrollView(
           physics: platformScrollPhysics(),
-          headerSliverBuilder: (context, _) => [
+          slivers: [
             SliverToBoxAdapter(
               child: RepaintBoundary(
                 child: Padding(
@@ -115,32 +80,7 @@ class _MePageState extends ConsumerState<MePage>
                 child: _OrderArea(isAuthenticated: isAuthenticated),
               ),
             ),
-
-            if (isAuthenticated) ...[
-              SliverPersistentHeader(
-                pinned: true,
-                delegate: LuckySliverTabBarDelegate(
-                  height: 38,
-                  labelStyle: TextStyle(color: context.textBrandSecondary700),
-                  enableUnderLine: true,
-                  showPersistentBg: true,
-                  controller: _tabController,
-                  tabs: tabs,
-                  onTap: (item) {
-                    ref.read(activeOrderTabProvider.notifier).state = item;
-                  },
-                  renderItem: (item) =>
-                      Text('${item.name}(${item.total})'),
-                ),
-              ),
-            ],
           ],
-          body: SafeTabBarView(
-            controller: _tabController,
-            children: tabs.map((item) {
-              return OrderList(status: item.key);
-            }).toList(),
-          ),
         ),
       ),
     );
@@ -268,7 +208,7 @@ class _MenuArea extends StatelessWidget {
         children: menuItems.map((item) {
           return InkWell(
             onTap: () {
-              appRouter.go(item.path);
+              appRouter.push(item.path);
             },
             child: Column(
               children: [
@@ -343,7 +283,7 @@ class _WalletArea extends StatelessWidget {
                   color: context.textPrimary900,
                 ),
                 onPressed: () {
-                  appRouter.go('/me/wallet/treasure-coins/redeem');
+                  appRouter.push('/me/wallet/treasure-coins/redeem');
                 },
                 child: Text(
                   'redemption.code'.tr(),
@@ -362,7 +302,7 @@ class _WalletArea extends StatelessWidget {
               Expanded(
                 child: InkWell(
                   onTap: () {
-                    appRouter.go('/me/wallet');
+                    appRouter.push('/me/wallet');
                   },
                   child: Container(
                     padding: EdgeInsets.symmetric(
@@ -435,7 +375,7 @@ class _WalletArea extends StatelessWidget {
               Expanded(
                 child: InkWell(
                   onTap: () {
-                    appRouter.go('/me/wallet');
+                    appRouter.push('/me/wallet');
                   },
                   child: Container(
                     padding: EdgeInsets.symmetric(
@@ -747,7 +687,7 @@ class _OrderArea extends StatelessWidget {
               Button(
                 variant: ButtonVariant.text,
                 onPressed: () {
-                  appRouter.go('/me/order');
+                  appRouter.push('/order/list');
                 },
                 height: 20.w,
                 paddingX: 0,
