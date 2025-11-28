@@ -29,12 +29,6 @@ class OrderItemContainer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return  OpenContainer(
-      openColor: Colors.transparent,
-        openElevation: 0,
-
-        openShape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(0), // 全屏时不强制圆角
-        ),
 
         closedBuilder: (context, openBuilder) {
           return Padding(
