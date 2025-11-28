@@ -188,6 +188,7 @@ class Api {
     return OrderCount.fromJson(res);
   }
 
+  /// 订单列表 order list
   static Future<PageResult<OrderItem>> orderListApi(
     OrderListParams params,
   ) async {
@@ -202,6 +203,12 @@ class Api {
     );
     final result = parsePageResponse(res, (e) => OrderItem.fromJson(e));
     return result;
+  }
+
+  /// order detail
+  static Future<OrderDetailItem> orderDetailApi(String orderId) async {
+    final res = await Http.post('/api/v1/orders/detail',data: {'orderId':orderId});
+    return OrderDetailItem.fromJson(res);
   }
 
   // otp request

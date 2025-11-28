@@ -8,10 +8,9 @@ part 'order_item.g.dart';
 class OrderItem {
   final String orderId;
   final String orderNo;
-  final num? createAt;
-  final num? updateAt;
+  final num? createdAt;
+  final num? updatedAt;
   final num buyQuantity;
-  final num? stockQuantity;
   final String treasureId;
   final String unitPrice;
   final String originalAmount;
@@ -35,10 +34,9 @@ class OrderItem {
   const OrderItem( {
     required this.orderId,
     required this.orderNo,
-     this.createAt,
-     this.updateAt,
+     this.createdAt,
+     this.updatedAt,
     required this.buyQuantity,
-     this.stockQuantity,
     required this.treasureId,
     required this.unitPrice,
     required this.originalAmount,
@@ -70,6 +68,51 @@ class OrderItem {
 }
 
 @JsonSerializable(checked: true)
+class OrderDetailItem extends OrderItem {
+
+  final List<WalletTransaction> transactions;
+
+  OrderDetailItem({
+    required super.orderId,
+    required super.orderNo,
+    super.createdAt,
+    super.updatedAt,
+    required super.buyQuantity,
+    required super.treasureId,
+    required super.unitPrice,
+    required super.originalAmount,
+    required super.discountAmount,
+    required super.couponAmount,
+    required super.coinAmount,
+    required super.finalAmount,
+    required super.orderStatus,
+    required super.payStatus,
+    required super.refundStatus,
+    required super.treasure,
+    super.paidAt,
+    super.addressId,
+    super.addressResp,
+    super.ticketList,
+    super.refundReason,
+    super.group,
+    required this.transactions,
+  });
+
+  factory OrderDetailItem.fromJson(Map<String, dynamic> json) =>
+      _$OrderDetailItemFromJson(json);
+
+  @override
+  Map<String, dynamic> toJson() => _$OrderDetailItemToJson(this);
+
+  @override
+  String toString() {
+    return toJson().toString();
+  }
+}
+
+
+
+@JsonSerializable(checked: true)
 class Treasure {
   final String treasureName;
   final String treasureCoverImg;
@@ -77,6 +120,9 @@ class Treasure {
   final int virtual;
   final String? cashAmount;
   final int? cashState;
+  final num? seqShelvesQuantity;
+  final num? seqBuyQuantity;
+
 
   const Treasure({
     required this.treasureName,
@@ -85,12 +131,40 @@ class Treasure {
     required this.virtual,
      this.cashAmount,
      this.cashState,
+      this.seqShelvesQuantity,
+      this.seqBuyQuantity,
   });
 
   factory Treasure.fromJson(Map<String, dynamic> json) =>
       _$TreasureFromJson(json);
 
   Map<String, dynamic> toJson() => _$TreasureToJson(this);
+
+  @override
+  String toString() {
+    return toJson().toString();
+  }
+}
+
+@JsonSerializable(checked: true)
+class WalletTransaction{
+  final String transactionNo;
+  final String amount;
+  final int balanceType;
+  final int status;
+  final num createdAt;
+
+  WalletTransaction({
+    required this.transactionNo,
+    required this.amount,
+    required this.balanceType,
+    required this.status,
+    required this.createdAt,
+  });
+
+  factory WalletTransaction.fromJson(Map<String, dynamic> json) =>
+      _$WalletTransactionFromJson(json);
+  Map<String, dynamic> toJson() => _$WalletTransactionToJson(this);
 
   @override
   String toString() {

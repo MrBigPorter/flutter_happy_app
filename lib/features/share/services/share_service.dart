@@ -156,6 +156,7 @@ class ShareService {
     // Try to open the native share dialog first
     try {
 
+
       if( kIsWeb && openSheet != null){
         // On web, directly open the custom share sheet if provided
         await openSheet();
@@ -173,6 +174,7 @@ class ShareService {
         ),
       );
     } catch (e) {
+      print('ShareService: Failed to open system share dialog: $e');
       // If it fails, open the custom share sheet if provided
       if (openSheet != null) {
         await openSheet();

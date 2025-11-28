@@ -27,6 +27,7 @@ class SwiperBanner<T> extends StatelessWidget {
   final Color? activeDotColor;
   final double dotSpace;
   final double dotBorderRadius;
+  final void Function(int index)? onIndexChanged;
 
   final SwiperController? controller;
   final Key? storageKey;
@@ -51,6 +52,7 @@ class SwiperBanner<T> extends StatelessWidget {
     this.dotBorderRadius = 3.0,
     this.controller,
     this.storageKey,
+    this.onIndexChanged,
   });
 
 
@@ -77,6 +79,9 @@ class SwiperBanner<T> extends StatelessWidget {
         autoplay: autoPlay && banners.length > 1,
         loop: banners.length > 1,
         autoplayDelay: interval.inMilliseconds,
+        onIndexChanged: (index) {
+           onIndexChanged?.call(index);
+        },
         itemBuilder: (_, index) {
           final item = banners[index];
           return ClipRRect(

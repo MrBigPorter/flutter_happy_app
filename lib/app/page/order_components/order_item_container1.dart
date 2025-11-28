@@ -28,106 +28,86 @@ class OrderItemContainer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return  OpenContainer(
-      openColor: Colors.transparent,
-        openElevation: 0,
-
-        openShape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(0), // 全屏时不强制圆角
+    return  Padding(
+      padding: isLast ? EdgeInsets.only( bottom: 32.w) : EdgeInsets.zero,
+      child: Container(
+        width: double.infinity,
+        padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.w),
+        decoration: BoxDecoration(
+            color: context.bgPrimary,
+            borderRadius: BorderRadius.circular(8.w),
+            boxShadow: [
+              BoxShadow(
+                color: context.fgPrimary900.withValues(alpha: 0.09),
+                blurRadius: 12.w,
+                offset: Offset(0, 4.w),
+              ),
+            ]
         ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            /// Order item header section
+            _OrderItemHeader(item: item),
+            SizedBox(height: 8.w),
 
-        closedBuilder: (context, openBuilder) {
-          return Padding(
-            padding: isLast ? EdgeInsets.only( bottom: 32.w) : EdgeInsets.zero,
-            child: Container(
-              width: double.infinity,
-              padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.w),
-              decoration: BoxDecoration(
-                  color: context.bgPrimary,
-                  borderRadius: BorderRadius.circular(8.w),
-                  boxShadow: [
-                    BoxShadow(
-                      color: context.fgPrimary900.withValues(alpha: 0.09),
-                      blurRadius: 12.w,
-                      offset: Offset(0, 4.w),
-                    ),
-                  ]
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  /// Order item header section
-                  _OrderItemHeader(item: item),
-                  SizedBox(height: 8.w),
+            /// Order item information section
+            _OrderItemInfo(item: item),
 
-                  /// Order item information section
-                  _OrderItemInfo(item: item),
+            /// group success info, winning info
+            _OrderItemGroupSuccess(item: item),
+            if (item.isRefunded) ...[
+              SizedBox(height: 12.w),
 
-                  /// group success info, winning info
-                  _OrderItemGroupSuccess(item: item),
-                  if (item.isRefunded) ...[
-                    SizedBox(height: 12.w),
-
-                    /// Order item refund information section
-                    _OrderItemRefundInfo(item: item),
-                  ],
-                  if (item.isWon) ...[
-                    SizedBox(height: 12.w),
-
-                    /// tip fro other bag
-                    Container(
-                      padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.w),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(8.w),
-                        color: context.alphaBlack5,
-                      ),
-                      child: Text(
-                        'the-other-bag'.tr(),
-                        style: TextStyle(
-                          fontSize: context.textXs,
-                          fontWeight: FontWeight.w600,
-                          color: context.textSecondary700,
-                          height: context.leadingXs,
-                        ),
-                      ),
-                    ),
-                  ],
-
-                  if (!item.isRefunded) ...[
-                    SizedBox(height: 12.w),
-
-                    /// Order item actions section
-                    _OrderItemActions(
-                      item: item,
-                      onViewFriends: () {
-                        appRouter.push('/group-member/?groupId=${item.group?.groupId}');
-                      },
-                      onViewRewardDetails: () {
-                           openBuilder();
-                      },
-                      onTeamUp: () {
-                        appRouter.push('/me/order/${item.orderId}/team-up');
-                      },
-                      onClaimPrize: () {
-                        appRouter.push('/me/order/${item.orderId}/claim-prize');
-                      },
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          );
-        },
-        openBuilder: (context, closeBuilder) {
-          return OrderDetailWrapper(
-            orderId: item.orderId,
-            imageList: [
-              item.treasure.treasureCoverImg,
-              item.treasure.treasureCoverImg,
+              /// Order item refund information section
+              _OrderItemRefundInfo(item: item),
             ],
-          );
-        }
+            if (item.isWon) ...[
+              SizedBox(height: 12.w),
+
+              /// tip fro other bag
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.w),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8.w),
+                  color: context.alphaBlack5,
+                ),
+                child: Text(
+                  'the-other-bag'.tr(),
+                  style: TextStyle(
+                    fontSize: context.textXs,
+                    fontWeight: FontWeight.w600,
+                    color: context.textSecondary700,
+                    height: context.leadingXs,
+                  ),
+                ),
+              ),
+            ],
+
+            if (!item.isRefunded) ...[
+              SizedBox(height: 12.w),
+
+              /// Order item actions section
+              _OrderItemActions(
+                item: item,
+                onViewFriends: () {
+                  appRouter.push('/group-member/?groupId=${item.group?.groupId}');
+                },
+                onViewRewardDetails: () {
+
+                },
+                onTeamUp: () {
+                  appRouter.push('/me/order/${item.orderId}/team-up');
+                },
+                onClaimPrize: () {
+                  appRouter.push('/me/order/${item.orderId}/claim-prize');
+                },
+              ),
+            ],
+          ],
+        ),
+      ),
     );
   }
 }
@@ -283,43 +263,6 @@ class _OrderItemInfo extends StatelessWidget {
           '₱${item.finalAmount}',
         ),
       ],
-    );
-  }
-}
-
-
-class OrderDetailWrapper extends StatefulWidget {
-  final String orderId;
-  final List<String> imageList;
-
-  const OrderDetailWrapper({
-    super.key,
-    required this.orderId,
-    required this.imageList,
-  });
-
-  @override
-  State<OrderDetailWrapper> createState() => _OrderDetailWrapperState();
-}
-
-class _OrderDetailWrapperState extends State<OrderDetailWrapper> {
-  bool _isDragging = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return DismissiblePage(
-      direction: DismissiblePageDismissDirection.down,
-      onDismissed: () => Navigator.of(context).pop(),
-      // 监听拖拽开始与结束，更新标志位
-      isFullScreen: true,
-      minScale: 0.4,
-      maxRadius: 32,
-      backgroundColor: Colors.black.withOpacity(0.45),
-      child: OrderDetailContent(
-        orderId: widget.orderId,
-        imageList: widget.imageList,
-        disableScroll: _isDragging,  // 把拖拽标志传给内容页
-      ),
     );
   }
 }
