@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:animations/animations.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:easy_localization/easy_localization.dart';
@@ -17,7 +19,6 @@ import 'package:dismissible_page/dismissible_page.dart';
 
 import 'airbnb_expandable_card.dart';
 
-
 class OrderItemContainer extends StatelessWidget {
   final OrderItem item;
   final bool isLast;
@@ -31,104 +32,166 @@ class OrderItemContainer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AirbnbExpandableCard(
-        transitionDuration: const Duration(milliseconds: 400),
-        reverseTransitionDuration: const Duration(milliseconds: 300),
-        maxHeightFactor: 1.0,
-        maxWidthFactor: 1.0,
-        closedBuilder:(context,open){
-          return  Padding(
-            padding: isLast ? EdgeInsets.only( bottom: 32.w) : EdgeInsets.zero,
-            child: Container(
-              width: double.infinity,
-              padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.w),
-              decoration: BoxDecoration(
-                  color: context.bgPrimary,
-                  borderRadius: BorderRadius.circular(8.w),
-                  boxShadow: [
-                    BoxShadow(
-                      color: context.fgPrimary900.withValues(alpha: 0.09),
-                      blurRadius: 12.w,
-                      offset: Offset(0, 4.w),
-                    ),
-                  ]
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  /// Order item header section
-                  _OrderItemHeader(item: item),
-                  SizedBox(height: 8.w),
-
-                  /// Order item information section
-                  _OrderItemInfo(item: item),
-
-                  /// group success info, winning info
-                  _OrderItemGroupSuccess(item: item),
-                  if (item.isRefunded) ...[
-                    SizedBox(height: 12.w),
-
-                    /// Order item refund information section
-                    _OrderItemRefundInfo(item: item),
-                  ],
-                  if (item.isWon) ...[
-                    SizedBox(height: 12.w),
-
-                    /// tip fro other bag
-                    Container(
-                      padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.w),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(8.w),
-                        color: context.alphaBlack5,
-                      ),
-                      child: Text(
-                        'the-other-bag'.tr(),
-                        style: TextStyle(
-                          fontSize: context.textXs,
-                          fontWeight: FontWeight.w600,
-                          color: context.textSecondary700,
-                          height: context.leadingXs,
-                        ),
-                      ),
-                    ),
-                  ],
-
-                  if (!item.isRefunded) ...[
-                    SizedBox(height: 12.w),
-
-                    /// Order item actions section
-                    _OrderItemActions(
-                      item: item,
-                      onViewFriends: () {
-                        appRouter.push('/group-member/?groupId=${item.group?.groupId}');
-                      },
-                      onViewRewardDetails: () {
-                        open();
-                      },
-                      onTeamUp: () {
-                        appRouter.push('/me/order/${item.orderId}/team-up');
-                      },
-                      onClaimPrize: () {
-                        appRouter.push('/me/order/${item.orderId}/claim-prize');
-                      },
-                    ),
-                  ],
-                ],
-              ),
+      transitionDuration: const Duration(milliseconds: 400),
+      reverseTransitionDuration: const Duration(milliseconds: 300),
+      maxHeightFactor: 1.0,
+      maxWidthFactor: 1.0,
+      closedBuilder: (context, open) {
+        return Padding(
+          padding: isLast ? EdgeInsets.only(bottom: 32.w) : EdgeInsets.zero,
+          child: Container(
+            width: double.infinity,
+            padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.w),
+            decoration: BoxDecoration(
+              color: context.bgPrimary,
+              borderRadius: BorderRadius.circular(8.w),
+              boxShadow: [
+                BoxShadow(
+                  color: context.fgPrimary900.withValues(alpha: 0.09),
+                  blurRadius: 12.w,
+                  offset: Offset(0, 4.w),
+                ),
+              ],
             ),
-          );
-        },
-        openBuilder: (context, scrollOffset, close) {
-          return OrderDetailPage(
-            orderId: item.orderId,
-            imageList: [item.treasure.treasureCoverImg],
-            scrollOffset: scrollOffset,
-            onClose: close,
-          );
-        }
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                /// Order item header section
+                _OrderItemHeader(item: item),
+                SizedBox(height: 8.w),
+
+                /// Order item information section
+                _OrderItemInfo(item: item),
+
+                /// group success info, winning info
+                _OrderItemGroupSuccess(item: item),
+                if (item.isRefunded) ...[
+                  SizedBox(height: 12.w),
+
+                  /// Order item refund information section
+                  _OrderItemRefundInfo(item: item),
+                ],
+                if (item.isWon) ...[
+                  SizedBox(height: 12.w),
+
+                  /// tip fro other bag
+                  Container(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: 10.w,
+                      vertical: 4.w,
+                    ),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(8.w),
+                      color: context.alphaBlack5,
+                    ),
+                    child: Text(
+                      'the-other-bag'.tr(),
+                      style: TextStyle(
+                        fontSize: context.textXs,
+                        fontWeight: FontWeight.w600,
+                        color: context.textSecondary700,
+                        height: context.leadingXs,
+                      ),
+                    ),
+                  ),
+                ],
+
+                if (!item.isRefunded) ...[
+                  SizedBox(height: 12.w),
+
+                  /// Order item actions section
+                  _OrderItemActions(
+                    item: item,
+                    onViewFriends: () {
+                      appRouter.push(
+                        '/group-member/?groupId=${item.group?.groupId}',
+                      );
+                    },
+                    onViewRewardDetails: () {
+                      open();
+                    },
+                    onTeamUp: () {
+                      appRouter.push('/me/order/${item.orderId}/team-up');
+                    },
+                    onClaimPrize: () {
+                      appRouter.push('/me/order/${item.orderId}/claim-prize');
+                    },
+                  ),
+                ],
+              ],
+            ),
+          ),
+        );
+      },
+      headerBuilder: (context, scrollOffset, close) {
+        final media = MediaQuery.of(context);
+        final safeTop = media.padding.top;
+
+        // 头图最大高度
+        final double maxHeaderHeight = 260.w;
+        final double minHeaderHeight = safeTop + kToolbarHeight;
+
+        // 根据滚动量 0~1 插值
+        final t = (scrollOffset / 160.0).clamp(0.0, 1.0);
+
+        final double headerHeight =
+        lerpDouble(maxHeaderHeight, minHeaderHeight, t)!;
+
+        final double bannerOpacity = 1.0 - t;         // banner 渐隐
+        final double appbarOpacity = t;
+
+        return SizedBox(
+          height: headerHeight,
+          child: ClipRRect(
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(28.w),
+              topRight: Radius.circular(28.w),
+            ),
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                OrderDetailToHeader(
+                  onClose: close,
+                  opacity: 1,
+                  title: item.treasure.treasureName,
+                ),
+                Align(
+                  alignment: Alignment.bottomCenter,
+                  child: Container(
+                    height: 16.w, // 高度可以按视觉调
+                    decoration: BoxDecoration(
+                      color: context.bgPrimary, // 你的内容背景色
+                      borderRadius: BorderRadius.vertical(
+                        top: Radius.circular(28.w),
+                      ),
+                    ),
+                  ),
+                ),
+                OrderDetailBannerSection(
+                    imageList: [item.treasure.treasureCoverImg],
+                    height: headerHeight,
+                    onClose: close,
+                    opacity: bannerOpacity
+                )
+
+              ],
+            ),
+          ),
+        );
+      },
+      bottomBarBuilder: (context, scrollOffset, close) {
+        return OrderDetailBottom(treasureId: item.treasureId);
+      },
+      openBodyBuilder: (context, scrollController, scrollOffset, close) {
+        return OrderDetailPage(
+          orderId: item.orderId,
+          scrollOffset: scrollOffset,
+          onClose: close,
+          imageList: [item.treasure.treasureCoverImg],
+        );
+      },
     );
-
-
   }
 }
 
@@ -153,8 +216,10 @@ class _OrderItemHeader extends StatelessWidget {
             height: 80.w,
             fit: BoxFit.cover,
             //CachedNetworkImage 默认会按原图解码，80×80 的视图没必要解 1000px 原图,按像素密度下采样
-            memCacheWidth: (80.w * MediaQuery.of(context).devicePixelRatio).round(),
-            memCacheHeight: (80.w * MediaQuery.of(context).devicePixelRatio).round(),
+            memCacheWidth: (80.w * MediaQuery.of(context).devicePixelRatio)
+                .round(),
+            memCacheHeight: (80.w * MediaQuery.of(context).devicePixelRatio)
+                .round(),
             fadeInDuration: const Duration(milliseconds: 120),
             fadeOutDuration: const Duration(milliseconds: 120),
             errorWidget: (_, __, ___) => Container(
@@ -206,7 +271,7 @@ class _OrderItemHeader extends StatelessWidget {
                   children: [
                     TextSpan(
                       text:
-                      '${FormatHelper.formatWithCommas(item.buyQuantity)}/${FormatHelper.formatWithCommas(item.treasure.seqShelvesQuantity)}',
+                          '${FormatHelper.formatWithCommas(item.buyQuantity)}/${FormatHelper.formatWithCommas(item.treasure.seqShelvesQuantity)}',
                     ),
                     TextSpan(text: ' '),
                     TextSpan(text: 'common.sold.lowercase'.tr()),
@@ -271,9 +336,7 @@ class _OrderItemInfo extends StatelessWidget {
         SizedBox(height: 12.w),*/
         line(
           'common.ticket.price'.tr(),
-          FormatHelper.formatWithCommasAndDecimals(
-            item.unitPrice,
-          ),
+          FormatHelper.formatWithCommasAndDecimals(item.unitPrice),
         ),
         SizedBox(height: 12.w),
         line('common.tickets.number'.tr(), '${item.buyQuantity}'),
@@ -313,7 +376,7 @@ class _OrderItemActions extends StatelessWidget {
         height: 44.w,
         variant: ButtonVariant.outline,
         onPressed: () {
-          if(onViewFriends != null){
+          if (onViewFriends != null) {
             onViewFriends!();
           }
         },
@@ -325,7 +388,7 @@ class _OrderItemActions extends StatelessWidget {
           variant: ButtonVariant.outline,
           height: 44.w,
           onPressed: () {
-            if(onViewRewardDetails != null){
+            if (onViewRewardDetails != null) {
               onViewRewardDetails!();
             }
           },
@@ -338,20 +401,17 @@ class _OrderItemActions extends StatelessWidget {
             'assets/images/team-up.svg',
             width: 20.w,
             height: 20.w,
-            colorFilter: ColorFilter.mode(
-              context.textWhite,
-              BlendMode.srcIn,
-            ),
+            colorFilter: ColorFilter.mode(context.textWhite, BlendMode.srcIn),
           ),
           onPressed: () {
-            if(onTeamUp != null){
+            if (onTeamUp != null) {
               onTeamUp!();
             }
           },
           child: Text('common.team.up').tr(),
         ),
 
-      if (item.isWon) ... [
+      if (item.isWon) ...[
         Button(
           paddingX: 12.w,
           height: 44.w,
@@ -363,12 +423,13 @@ class _OrderItemActions extends StatelessWidget {
             colorFilter: ColorFilter.mode(context.textWhite, BlendMode.srcIn),
           ),
           onPressed: () {
-            if(onTeamUp != null){
+            if (onTeamUp != null) {
               onTeamUp!();
             }
           },
           child: null,
         ),
+
         /*if(item.isRewardPending) ...[
           Button(
               width: double.infinity,
@@ -389,8 +450,7 @@ class _OrderItemActions extends StatelessWidget {
               child: Text('confirm.win.check.award.information'.tr())
           )
         ]*/
-
-      ]
+      ],
     ];
 
     return Row(
@@ -398,12 +458,12 @@ class _OrderItemActions extends StatelessWidget {
       children: [
         Flexible(
           child: Wrap(
-              spacing: 8.w,
-              runSpacing: 8.w,
-              alignment: WrapAlignment.end,
-              children: right
+            spacing: 8.w,
+            runSpacing: 8.w,
+            alignment: WrapAlignment.end,
+            children: right,
           ),
-        )
+        ),
       ],
     );
   }
@@ -481,7 +541,7 @@ class _OrderItemGroupSuccess extends StatelessWidget {
                       namedArgs: {
                         'number': FormatHelper.formatWithCommasAndDecimals(
                           // item.prizeAmount ?? 0,
-                          0,//todo
+                          0, //todo
                         ),
                       },
                     ),
@@ -529,7 +589,7 @@ class _OrderItemGroupSuccess extends StatelessWidget {
                       namedArgs: {
                         'number': FormatHelper.formatWithCommasAndDecimals(
                           // int.tryParse('${item.denomination}') ?? 0,todo
-                            0
+                          0,
                         ),
                       },
                     ),
@@ -626,19 +686,22 @@ class _OrderItemRefundInfoState extends State<_OrderItemRefundInfo>
 
 class OrderItemContainerSkeleton extends StatelessWidget {
   final bool isLast;
+
   const OrderItemContainerSkeleton({super.key, required this.isLast});
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: isLast?EdgeInsets.only( left: 16.w,right: 16.w, top: 16.w, bottom: 32.w):EdgeInsets.only(left: 16.w,right: 16.w, top: 16.w),
-      child:Container(
+      padding: isLast
+          ? EdgeInsets.only(left: 16.w, right: 16.w, top: 16.w, bottom: 32.w)
+          : EdgeInsets.only(left: 16.w, right: 16.w, top: 16.w),
+      child: Container(
         padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 16.w),
         decoration: BoxDecoration(
           color: context.bgPrimary,
           borderRadius: BorderRadius.circular(8.w),
         ),
-        child:  Column(
+        child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -657,35 +720,20 @@ class OrderItemContainerSkeleton extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.start,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Skeleton.react(
-                        width: double.infinity,
-                        height: 14.h,
-                      ),
+                      Skeleton.react(width: double.infinity, height: 14.h),
                       SizedBox(height: 9.w),
-                      Skeleton.react(
-                        width: 120.w,
-                        height: 12.h,
-                      ),
+                      Skeleton.react(width: 120.w, height: 12.h),
                     ],
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 12),
-            Skeleton.react(
-              width: double.infinity,
-              height: 12.w,
-            ),
+            Skeleton.react(width: double.infinity, height: 12.w),
             const SizedBox(height: 12),
-            Skeleton.react(
-              width: double.infinity,
-              height: 12.w,
-            ),
+            Skeleton.react(width: double.infinity, height: 12.w),
             const SizedBox(height: 12),
-            Skeleton.react(
-              width: double.infinity,
-              height: 12.w,
-            ),
+            Skeleton.react(width: double.infinity, height: 12.w),
             const SizedBox(height: 12),
             Row(
               children: [
@@ -702,7 +750,7 @@ class OrderItemContainerSkeleton extends StatelessWidget {
                   borderRadius: BorderRadius.circular(8.w),
                 ),
               ],
-            )
+            ),
           ],
         ),
       ),

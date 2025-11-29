@@ -1,15 +1,32 @@
 // airbnb_expandable_card.dart
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:flutter_app/app/page/order_components/zoomable_edge_scroll_view.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+
+import 'zoomable_edge_scroll_view.dart';
 
 typedef AirbnbClosedBuilder = Widget Function(
     BuildContext context,
     VoidCallback open,
     );
 
-typedef AirbnbOpenBuilder = Widget Function(
+/// 中间可滚 body
+typedef AirbnbOpenBodyBuilder = Widget Function(
+    BuildContext context,
+    ScrollController scrollController,
+    double scrollOffset,
+    VoidCallback close,
+    );
+
+/// 顶部 Header（固定在卡片内部）
+typedef AirbnbHeaderBuilder = Widget Function(
+    BuildContext context,
+    double scrollOffset,
+    VoidCallback close,
+    );
+
+/// 底部 BottomBar（固定在卡片内部）
+typedef AirbnbBottomBarBuilder = Widget Function(
     BuildContext context,
     double scrollOffset,
     VoidCallback close,
@@ -17,30 +34,24 @@ typedef AirbnbOpenBuilder = Widget Function(
 
 class AirbnbExpandableCard extends StatefulWidget {
   final AirbnbClosedBuilder closedBuilder;
-  final AirbnbOpenBuilder openBuilder;
+  final AirbnbOpenBodyBuilder openBodyBuilder;
 
-  /// 展开后卡片最大宽度占屏幕宽度比例
+  final AirbnbHeaderBuilder? headerBuilder;
+  final AirbnbBottomBarBuilder? bottomBarBuilder;
+
   final double maxWidthFactor;
-
-  /// 展开后卡片最大高度占屏幕高度比例
   final double maxHeightFactor;
-
-  /// 卡片圆角（收起态用）
   final double borderRadius;
-
-  /// 展开动画时长
   final Duration transitionDuration;
-
-  /// 收起动画时长
   final Duration reverseTransitionDuration;
-
-  /// 遮罩基础颜色（逻辑上用这个，但真正 alpha 会跟动画和拖动一起变）
   final Color barrierColor;
 
   const AirbnbExpandableCard({
     super.key,
     required this.closedBuilder,
-    required this.openBuilder,
+    required this.openBodyBuilder,
+    this.headerBuilder,
+    this.bottomBarBuilder,
     this.maxWidthFactor = 0.96,
     this.maxHeightFactor = 0.92,
     this.borderRadius = 28.0,
@@ -50,23 +61,19 @@ class AirbnbExpandableCard extends StatefulWidget {
   });
 
   @override
-  State<AirbnbExpandableCard> createState() => _AirbnbExpandableCardState();
+  State<AirbnbExpandableCard> createState() =>
+      _AirbnbExpandableCardState();
 }
 
 class _AirbnbExpandableCardState extends State<AirbnbExpandableCard>
     with SingleTickerProviderStateMixin {
-  /// 列表中“收起态卡片”的位置
   final GlobalKey _cardKey = GlobalKey();
-
-  /// 当前这张卡片是否已经在展开态（Overlay 上那张）
   bool _isExpanded = false;
 
-  /// 关闭回来时，底部这张卡片的小回弹动画
   late final AnimationController _reboundCtrl;
   late final Animation<double> _reboundCurve;
-
-  /// hero 动画进度（0 → 1），由 overlay 那张卡片驱动
-  final ValueNotifier<double> _heroProgress = ValueNotifier<double>(0.0);
+  final ValueNotifier<double> _heroProgress =
+  ValueNotifier<double>(0.0);
 
   @override
   void initState() {
@@ -77,7 +84,7 @@ class _AirbnbExpandableCardState extends State<AirbnbExpandableCard>
     );
     _reboundCurve = CurvedAnimation(
       parent: _reboundCtrl,
-      curve: Curves.easeOutBack, // 关闭时的“韧性”
+      curve: Curves.easeOutBack,
     );
   }
 
@@ -94,7 +101,6 @@ class _AirbnbExpandableCardState extends State<AirbnbExpandableCard>
     final box = ctx.findRenderObject() as RenderBox?;
     if (box == null) return;
 
-    // 1️⃣ 当前卡片在屏幕坐标系里的 Rect
     final offset = box.localToGlobal(Offset.zero);
     final size = box.size;
     final fromRect = Rect.fromLTWH(
@@ -104,17 +110,14 @@ class _AirbnbExpandableCardState extends State<AirbnbExpandableCard>
       size.height,
     );
 
-    // 展开前把回弹动画停掉 & 归零
     _reboundCtrl.stop();
     _reboundCtrl.value = 0.0;
     _heroProgress.value = 0.0;
 
-    // 2️⃣ 标记：列表里的这张卡片进入“背景态”
     setState(() {
       _isExpanded = true;
     });
 
-    // 3️⃣ 推透明路由 + RectTween 动画
     await Navigator.of(context).push(
       PageRouteBuilder(
         opaque: false,
@@ -127,22 +130,23 @@ class _AirbnbExpandableCardState extends State<AirbnbExpandableCard>
             closedRadius: widget.borderRadius,
             maxWidthFactor: widget.maxWidthFactor,
             maxHeightFactor: widget.maxHeightFactor,
-            openBuilder: widget.openBuilder,
+            openBodyBuilder: widget.openBodyBuilder,
+            headerBuilder: widget.headerBuilder,
+            bottomBarBuilder: widget.bottomBarBuilder,
             barrierColor: widget.barrierColor,
-            heroProgress: _heroProgress, // 👈 同步进度
+            heroProgress: _heroProgress,
           );
         },
         transitionsBuilder: (ctx, animation, secondaryAnimation, child) {
-          return child; // 不再额外 Fade 一遍，避免“闪一下”
+          return child;
         },
       ),
     );
 
-    // 4️⃣ 关闭回来：让 closed 卡片做一个“收紧 + 轻轻落地”的小回弹
     if (!mounted) return;
     setState(() {
       _isExpanded = false;
-      _heroProgress.value = 0.0; // 回到初始
+      _heroProgress.value = 0.0;
     });
     _reboundCtrl.forward(from: 0.0);
   }
@@ -150,7 +154,6 @@ class _AirbnbExpandableCardState extends State<AirbnbExpandableCard>
   @override
   Widget build(BuildContext context) {
     return IgnorePointer(
-      // 展开的时候避免底下还能点到
       ignoring: _isExpanded,
       child: AnimatedBuilder(
         animation: Listenable.merge([
@@ -158,17 +161,17 @@ class _AirbnbExpandableCardState extends State<AirbnbExpandableCard>
           _heroProgress,
         ]),
         builder: (context, child) {
-          final tHero = _heroProgress.value; // 0 → 1
+          final tHero = _heroProgress.value;
 
-          // 🔥 加强一点：底部卡片明显“沉下去、暗下去”
-          final baseScale = lerpDouble(1.0, 0.93, tHero)!; // 原来 0.97
-          final baseOpacity = lerpDouble(1.0, 0.32, tHero)!; // 原来 0.55
-          final baseDy = lerpDouble(0.0, 6.w, tHero)!; // 下沉一点
+          final baseScale = lerpDouble(1.0, 0.93, tHero)!;
+          final baseOpacity = lerpDouble(1.0, 0.32, tHero)!;
+          final baseDy = lerpDouble(0.0, 6.w, tHero)!;
 
-          // 回弹：1.02 → 1.0（很轻），只在关闭后那一小段时间起作用
-          final reboundT = _reboundCurve.value; // 0 → 1
-          final reboundScale = lerpDouble(1.02, 1.0, reboundT)!;
-          final reboundDy = lerpDouble(-2.w, 0.0, reboundT)!;
+          final reboundT = _reboundCurve.value;
+          final reboundScale =
+          lerpDouble(1.02, 1.0, reboundT)!;
+          final reboundDy =
+          lerpDouble(-2.w, 0.0, reboundT)!;
 
           final scale = baseScale * reboundScale;
           final dy = baseDy + reboundDy;
@@ -194,28 +197,30 @@ class _AirbnbExpandableCardState extends State<AirbnbExpandableCard>
   }
 }
 
-// ==================== 下面 overlay / hero 部分保持上一版不变 ====================
+// ==================== overlay / hero 部分 ====================
 
 class _AirbnbOverlayRouteBody extends StatelessWidget {
   final Rect fromRect;
   final double closedRadius;
   final double maxWidthFactor;
   final double maxHeightFactor;
-  final AirbnbOpenBuilder openBuilder;
+  final AirbnbOpenBodyBuilder openBodyBuilder;
+  final AirbnbHeaderBuilder? headerBuilder;
+  final AirbnbBottomBarBuilder? bottomBarBuilder;
   final Color barrierColor;
-
-  /// hero 进度同步给列表里的 closedBuilder
   final ValueNotifier<double> heroProgress;
 
-  // 拖动时的“亮度/遮罩”因子（0 ~ 1）
-  final ValueNotifier<double> dimFactor = ValueNotifier<double>(1.0);
+  final ValueNotifier<double> dimFactor =
+  ValueNotifier<double>(1.0);
 
   _AirbnbOverlayRouteBody({
     required this.fromRect,
     required this.closedRadius,
     required this.maxWidthFactor,
     required this.maxHeightFactor,
-    required this.openBuilder,
+    required this.openBodyBuilder,
+    required this.headerBuilder,
+    required this.bottomBarBuilder,
     required this.barrierColor,
     required this.heroProgress,
   });
@@ -224,7 +229,6 @@ class _AirbnbOverlayRouteBody extends StatelessWidget {
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
 
-    // 用比例 + 居中（maxWidthFactor / maxHeightFactor = 1 就是全屏）
     final double targetWidth = size.width * maxWidthFactor;
     final double targetHeight = size.height * maxHeightFactor;
 
@@ -253,14 +257,13 @@ class _AirbnbOverlayRouteBody extends StatelessWidget {
         return ValueListenableBuilder<double>(
           valueListenable: dimFactor,
           builder: (context, dim, __) {
-            // 背景遮罩 alpha/模糊 跟 route 动画 + 拖动一起变
             final baseAlpha = barrierColor.opacity;
             final currentAlpha = baseAlpha * maskCurve.value * dim;
             final currentBlur = 18 * maskCurve.value * dim;
 
             return Stack(
               children: [
-                // 1️⃣ 背景虚化 + 遮罩（完全拦截手势）
+                // 背景虚化 + 遮罩
                 Positioned.fill(
                   child: GestureDetector(
                     behavior: HitTestBehavior.opaque,
@@ -276,17 +279,17 @@ class _AirbnbOverlayRouteBody extends StatelessWidget {
                     ),
                   ),
                 ),
-
-                // 2️⃣ fromRect → heroRect → toRect 的卡片
+                // 卡片本体
                 _AnimatedCardFromRect(
                   fromRect: fromRect,
                   toRect: toRect,
-                  heroProgress: heroProgress, // 👈 把进度写回去
+                  heroProgress: heroProgress,
                   child: _ZoomableDialogShell(
                     borderRadius: closedRadius,
-                    openBuilder: openBuilder,
+                    openBodyBuilder: openBodyBuilder,
+                    headerBuilder: headerBuilder,
+                    bottomBarBuilder: bottomBarBuilder,
                     onClose: close,
-                    // 👇 下拉时实时调节 dimFactor，拖得越多越亮
                     onDimFactorChanged: (value) {
                       dimFactor.value = value;
                     },
@@ -303,16 +306,18 @@ class _AirbnbOverlayRouteBody extends StatelessWidget {
 
 class _ZoomableDialogShell extends StatelessWidget {
   final double borderRadius;
-  final AirbnbOpenBuilder openBuilder;
+  final AirbnbOpenBodyBuilder openBodyBuilder;
+  final AirbnbHeaderBuilder? headerBuilder;
+  final AirbnbBottomBarBuilder? bottomBarBuilder;
   final VoidCallback onClose;
-
-  /// 下拉时修改遮罩亮度的回调（0 ~ 1）
   final ValueChanged<double>? onDimFactorChanged;
 
   const _ZoomableDialogShell({
     required this.borderRadius,
-    required this.openBuilder,
+    required this.openBodyBuilder,
     required this.onClose,
+    this.headerBuilder,
+    this.bottomBarBuilder,
     this.onDimFactorChanged,
   });
 
@@ -325,20 +330,36 @@ class _ZoomableDialogShell extends StatelessWidget {
       minScale: 0.96,
       scaleAlignment: Alignment.topCenter,
       baseRadius: borderRadius,
-      maxRadius: borderRadius == 0 ? 0 : borderRadius + 8.w,
+      maxRadius: borderRadius,
       onDismiss: onClose,
-      builder: (context, scrollOffset) {
-        // 利用 scrollOffset < 0 代表下拉的距离，来调节遮罩亮度
-        if (onDimFactorChanged != null) {
-          double drag = 0;
-          if (scrollOffset < 0) {
-            drag = (-scrollOffset / 220.0).clamp(0.0, 1.0);
-          }
-          final dim = 1.0 - drag * 0.8; // 最多亮到 20%
-          onDimFactorChanged!(dim);
-        }
 
-        return openBuilder(context, scrollOffset, onClose);
+      // 顶部固定 header
+      headerBuilder: headerBuilder == null
+          ? null
+          : (ctx, scrollOffset) {
+        return headerBuilder!(ctx, scrollOffset, onClose);
+      },
+
+      // 底部固定 bottomBar
+      bottomBuilder: bottomBarBuilder == null
+          ? null
+          : (ctx, scrollOffset) {
+        return bottomBarBuilder!(ctx, scrollOffset, onClose);
+      },
+
+      // 中间可滚 body
+      bodyBuilder:
+          (ctx, scrollController, scrollOffset) {
+        if (onDimFactorChanged != null) {
+          // 暂时先固定 1.0，有需要你可以用 scrollOffset / 下拉距离去算
+          onDimFactorChanged!(1.0);
+        }
+        return openBodyBuilder(
+          ctx,
+          scrollController,
+          scrollOffset,
+          onClose,
+        );
       },
     );
   }
@@ -371,10 +392,14 @@ class _AnimatedCardFromRect extends StatelessWidget {
     return AnimatedBuilder(
       animation: curved,
       builder: (context, _) {
-        final t = curved.value; // 0 → 1 / 1 → 0
-        heroProgress?.value = t; // 👈 同步给 closedBuilder
+        final t = curved.value;
 
-        // ① hero 中间态：模拟从列表里“站起来”
+        if (heroProgress != null) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            heroProgress!.value = t;
+          });
+        }
+
         final center = fromRect.center;
         const double scaleW = 1.06;
         const double scaleH = 1.08;
@@ -384,7 +409,8 @@ class _AnimatedCardFromRect extends StatelessWidget {
         double heroHeight = fromRect.height * scaleH;
 
         heroWidth = heroWidth.clamp(fromRect.width, toRect.width);
-        heroHeight = heroHeight.clamp(fromRect.height, toRect.height * 0.96);
+        heroHeight =
+            heroHeight.clamp(fromRect.height, toRect.height * 0.96);
 
         Rect heroRect = Rect.fromCenter(
           center: center,
@@ -398,17 +424,17 @@ class _AnimatedCardFromRect extends StatelessWidget {
           heroRect = heroRect.translate(0, dyFix);
         }
 
-        // ② 两段插值：前 38% “站起来”，后面飞到目标位
         const double midT = 0.38;
-
         Rect current;
         if (t <= midT) {
           final phase = (t / midT).clamp(0.0, 1.0);
           final eased = Curves.easeOutCubic.transform(phase);
           current = Rect.lerp(fromRect, heroRect, eased)!;
         } else {
-          final phase = ((t - midT) / (1 - midT)).clamp(0.0, 1.0);
-          final eased = Curves.easeInOutCubic.transform(phase);
+          final phase =
+          ((t - midT) / (1 - midT)).clamp(0.0, 1.0);
+          final eased =
+          Curves.easeInOutCubic.transform(phase);
           current = Rect.lerp(heroRect, toRect, eased)!;
         }
 

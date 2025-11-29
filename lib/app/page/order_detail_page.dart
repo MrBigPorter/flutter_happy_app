@@ -67,7 +67,6 @@ class OrderDetailPage extends ConsumerWidget {
         return Container(
           decoration: BoxDecoration(
             color: context.bgPrimary,
-            borderRadius: BorderRadius.circular(28.w),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withOpacity(0.22),
@@ -76,41 +75,9 @@ class OrderDetailPage extends ConsumerWidget {
               ),
             ],
           ),
-          child: Stack(
-            children: [
-              // 1️⃣ 主体内容：banner + 明细 + 底部按钮
-              Column(
-                children: [
-                  SizedBox(
-                    height: _bannerHeight,
-                    child: _BannerSection(
-                      imageList: imageList,
-                      height: _bannerHeight,
-                      onClose: onClose,
-                      opacity: bannerOpacity, // 👈 用新的 opacity
-                    ),
-                  ),
-                  Padding(
-                    padding: EdgeInsets.only(
-                      bottom: _bottomBarHeight.w + 24.w,
-                      top: 16.w,
-                    ),
-                    child: _OrderDetailBody(
-                      orderDetail: orderDetail,
-                      bottomBarHeight: _bottomBarHeight,
-                    ),
-                  ),
-                  _BottomBar(orderDetail: orderDetail),
-                ],
-              ),
-
-              // 2️⃣ 顶部渐显 Header
-              _TopHeader(
-                opacity: headerOpacity,
-                title: orderDetail.treasure.treasureName,
-                onClose: onClose,
-              ),
-            ],
+          child: _OrderDetailBody(
+            orderDetail: orderDetail,
+            bottomBarHeight: _bottomBarHeight,
           ),
         );
       },
@@ -118,12 +85,12 @@ class OrderDetailPage extends ConsumerWidget {
   }
 }
 
-class _TopHeader extends StatelessWidget {
+class OrderDetailToHeader extends StatelessWidget {
   final double opacity;
   final String title;
   final VoidCallback onClose;
 
-  const _TopHeader({
+  const OrderDetailToHeader({
     super.key,
     required this.opacity,
     required this.title,
@@ -221,13 +188,13 @@ class _OrderDetailBody extends StatelessWidget {
     );
   }
 }
-class _BannerSection extends ConsumerStatefulWidget {
+class OrderDetailBannerSection extends ConsumerStatefulWidget {
   final List<String> imageList;
   final double height;
   final VoidCallback onClose;
   final double opacity; // 👈 新增
 
-  const _BannerSection({
+  const OrderDetailBannerSection({
     super.key,
     required this.imageList,
     required this.height,
@@ -236,10 +203,10 @@ class _BannerSection extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<_BannerSection> createState() => _BannerSectionState();
+  ConsumerState<OrderDetailBannerSection> createState() => BannerSectionState();
 }
 
-class _BannerSectionState extends ConsumerState<_BannerSection> {
+class BannerSectionState extends ConsumerState<OrderDetailBannerSection> {
   final sharePosterKey = GlobalKey<SharePostState>();
   int currentIndex = 0;
 
@@ -493,7 +460,7 @@ class _OrderInfoSection extends StatelessWidget {
                   _OrderInfoRow(title: 'amount', value: item.amount),
                   const SizedBox(height: 12),
                   _OrderInfoRow(
-                    title: 'payment-metho'.tr(),
+                    title: 'payment method',
                     value: '${item.balanceType}',
                   ),
                   const SizedBox(height: 12),
@@ -548,14 +515,18 @@ class _OrderInfoRow extends StatelessWidget {
   }
 }
 
-class _BottomBar extends StatelessWidget {
-  final OrderDetailItem? orderDetail;
+class OrderDetailBottom extends StatelessWidget {
 
-  const _BottomBar({this.orderDetail});
+  final String treasureId;
+
+  const OrderDetailBottom({
+    super.key,
+    required this.treasureId,
+  });
+
 
   @override
   Widget build(BuildContext context) {
-    if (orderDetail == null) return const SizedBox.shrink();
 
     return Container(
       height: 80.w,
@@ -577,7 +548,7 @@ class _BottomBar extends StatelessWidget {
             width: 150.w,
             onPressed: () {
               appRouter.push(
-                '/product/${orderDetail?.group?.groupId}/group',
+                '/product/$treasureId',
               );
             },
             child: Text('common.view.friends'.tr()),
