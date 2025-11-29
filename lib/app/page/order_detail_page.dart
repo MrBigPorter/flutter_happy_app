@@ -1,259 +1,589 @@
+import 'package:easy_localization/easy_localization.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_app/app/routes/app_router.dart';
+import 'package:flutter_app/common.dart';
+import 'package:flutter_app/components/share_sheet.dart';
+import 'package:flutter_app/components/swiper_banner.dart';
+import 'package:flutter_app/core/models/index.dart';
+import 'package:flutter_app/core/store/lucky_store.dart';
+import 'package:flutter_app/features/share/index.dart';
+import 'package:flutter_app/ui/button/button.dart';
+import 'package:flutter_app/ui/modal/index.dart';
+import 'package:flutter_app/utils/date_helper.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../core/providers/order_provider.dart';
 
-class OrderDetailContent extends StatefulWidget {
+class OrderDetailPage extends ConsumerWidget {
   final String orderId;
   final List<String> imageList;
-  final bool disableScroll;
+  final double scrollOffset;   // 👈 外层 ZoomableEdgeScrollView 传进来的
+  final VoidCallback onClose;  // 👈 让卡片按“从当前 item 缩回去”的动画关闭
 
-  const OrderDetailContent({
+  static const double _bannerHeight = 356.0;
+  static const double _bottomBarHeight = 80.0;
+
+  const OrderDetailPage({
     super.key,
     required this.orderId,
     required this.imageList,
-    required this.disableScroll,
+    required this.onClose,
+    required this.scrollOffset,
   });
 
   @override
-  State<OrderDetailContent> createState() => _OrderDetailContentState();
+  Widget build(BuildContext context, WidgetRef ref) {
+    final orderDetailAsyncValue = ref.watch(orderDetailProvider(orderId));
+
+    // 👉 先用一个“很容易触发”的范围测试手感：
+    // 0 开始淡，滚到 140 左右就全显
+    final double fadeStart = 0;
+    final double fadeEnd = 140.w; // 用 w，跟你的布局单位一致
+
+    double t;
+    if (scrollOffset <= fadeStart) {
+      t = 0;
+    } else if (scrollOffset >= fadeEnd) {
+      t = 1;
+    } else {
+      t = ((scrollOffset - fadeStart) / (fadeEnd - fadeStart))
+          .clamp(0.0, 1.0);
+    }
+
+    // 做一点曲线，让出现更柔和
+    final eased = Curves.easeOut.transform(t);
+
+    // header 从 0 → 1
+    final double headerOpacity = eased;
+    // banner 从 1 → 0（稍微保留一点点）
+    final double bannerOpacity = 1.0 - eased * 0.9;
+
+    return orderDetailAsyncValue.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (error, stack) => Center(child: Text('Error: $error')),
+      data: (orderDetail) {
+        return Container(
+          decoration: BoxDecoration(
+            color: context.bgPrimary,
+            borderRadius: BorderRadius.circular(28.w),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.22),
+                blurRadius: 22,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: Stack(
+            children: [
+              // 1️⃣ 主体内容：banner + 明细 + 底部按钮
+              Column(
+                children: [
+                  SizedBox(
+                    height: _bannerHeight,
+                    child: _BannerSection(
+                      imageList: imageList,
+                      height: _bannerHeight,
+                      onClose: onClose,
+                      opacity: bannerOpacity, // 👈 用新的 opacity
+                    ),
+                  ),
+                  Padding(
+                    padding: EdgeInsets.only(
+                      bottom: _bottomBarHeight.w + 24.w,
+                      top: 16.w,
+                    ),
+                    child: _OrderDetailBody(
+                      orderDetail: orderDetail,
+                      bottomBarHeight: _bottomBarHeight,
+                    ),
+                  ),
+                  _BottomBar(orderDetail: orderDetail),
+                ],
+              ),
+
+              // 2️⃣ 顶部渐显 Header
+              _TopHeader(
+                opacity: headerOpacity,
+                title: orderDetail.treasure.treasureName,
+                onClose: onClose,
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
 }
 
-class _OrderDetailContentState extends State<OrderDetailContent> {
-  final ScrollController _scrollController = ScrollController();
+class _TopHeader extends StatelessWidget {
+  final double opacity;
+  final String title;
+  final VoidCallback onClose;
 
-  double _bannerOpacity = 1.0;
-  double _headerOpacity = 0.0;
-
-  @override
-  void initState() {
-    super.initState();
-    _scrollController.addListener(_handleScroll);
-  }
-
-  void _handleScroll() {
-    // 根据滚动距离控制 Banner 渐隐 & Header 渐显
-    const double fadeStart = 80.0; // 开始渐隐的偏移
-    const double fadeEnd   = 160.0; // 完全隐去/显现的偏移
-    final double offset    = _scrollController.offset;
-
-    double bannerOp, headerOp;
-    if (offset <= fadeStart) {
-      bannerOp = 1.0; headerOp = 0.0;
-    } else if (offset >= fadeEnd) {
-      bannerOp = 0.0; headerOp = 1.0;
-    } else {
-      final t = (offset - fadeStart) / (fadeEnd - fadeStart);
-      bannerOp = 1.0 - t;
-      headerOp = t;
-    }
-
-    if (bannerOp != _bannerOpacity || headerOp != _headerOpacity) {
-      setState(() {
-        _bannerOpacity = bannerOp;
-        _headerOpacity = headerOp;
-      });
-    }
-  }
+  const _TopHeader({
+    super.key,
+    required this.opacity,
+    required this.title,
+    required this.onClose,
+  });
 
   @override
-  void dispose() {
-    _scrollController.dispose();
-    super.dispose();
+  Widget build(BuildContext context) {
+    final padding = MediaQuery.of(context).padding;
+    const double toolbarHeight = kToolbarHeight;
+
+    return AnimatedOpacity(
+      duration: const Duration(milliseconds: 180),
+      opacity: opacity,
+      child: Container(
+        height: padding.top + toolbarHeight,
+        padding: EdgeInsets.only(
+          top: padding.top,
+          left: 16.w,
+          right: 16.w,
+        ),
+        decoration: BoxDecoration(
+          color: context.bgPrimary,
+          boxShadow: opacity > 0.95
+              ? [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.06),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            )
+          ]
+              : null,
+        ),
+        child: Row(
+          children: [
+            GestureDetector(
+              onTap: onClose,
+              child: Icon(
+                Icons.arrow_back,
+                size: 22.w,
+                color: context.textPrimary900,
+              ),
+            ),
+            SizedBox(width: 12.w),
+            Expanded(
+              child: Text(
+                title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: context.textMd,
+                  fontWeight: FontWeight.w700,
+                  color: context.textPrimary900,
+                ),
+              ),
+            ),
+            IconButton(
+              icon: Icon(
+                Icons.ios_share,
+                size: 20.w,
+                color: context.textSecondary700,
+              ),
+              onPressed: () {},
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ↓↓↓ 下面这几个类我们只把类型 & 关闭回调调一下，其余保持你原来的实现风格 ↓↓↓
+
+class _OrderDetailBody extends StatelessWidget {
+  final OrderDetailItem orderDetail;
+  final double bottomBarHeight;
+
+  const _OrderDetailBody({
+    super.key,
+    required this.orderDetail,
+    required this.bottomBarHeight,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _ProductSection(orderDetail: orderDetail),
+        _OrderInfoSection(orderDetail: orderDetail),
+        // 这里你是为了撑高度测试多写了一次，我先保留
+        _ProductSection(orderDetail: orderDetail),
+        _OrderInfoSection(orderDetail: orderDetail),
+      ],
+    );
+  }
+}
+class _BannerSection extends ConsumerStatefulWidget {
+  final List<String> imageList;
+  final double height;
+  final VoidCallback onClose;
+  final double opacity; // 👈 新增
+
+  const _BannerSection({
+    super.key,
+    required this.imageList,
+    required this.height,
+    required this.onClose,
+    required this.opacity,
+  });
+
+  @override
+  ConsumerState<_BannerSection> createState() => _BannerSectionState();
+}
+
+class _BannerSectionState extends ConsumerState<_BannerSection> {
+  final sharePosterKey = GlobalKey<SharePostState>();
+  int currentIndex = 0;
+
+  void openShareSheet(BuildContext context, ShareData data) {
+    final webBaseUrl = ref.read(
+      luckyProvider.select((state) => state.sysConfig.webBaseUrl),
+    );
+
+    ShareService.openSystemOrSheet(
+      data,
+          () async {
+        RadixSheet.show(
+          headerBuilder: (context) => Padding(
+            padding: EdgeInsets.only(bottom: 20.w),
+            child: SharePost(
+              data: ShareData(
+                title: data.title,
+                url: data.url,
+                text: data.text,
+                imageUrl: data.imageUrl,
+              ),
+            ),
+          ),
+          builder: (context, close) {
+            return ShareSheet(
+              showDownButton: true,
+              data: ShareData(
+                title: data.title,
+                url: '$webBaseUrl/${widget.imageList.first}',
+                text: data.text,
+                imageUrl: widget.imageList.first,
+              ),
+              onDownloadPoster: () async {
+                sharePosterKey.currentState?.saveToGallery();
+                HapticFeedback.mediumImpact();
+                close();
+              },
+            );
+          },
+        );
+      },
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    const double bannerHeight = 350.0;
-    const double overlap      = 24.0; // 白卡片往上覆盖的高度
+    final webBaseUrl = ref.read(
+      luckyProvider.select((state) => state.sysConfig.webBaseUrl),
+    );
 
-    return Scaffold(
-      body: Stack(
-        children: [
-          // 整个内容都放在一个滚动视图里
-          SingleChildScrollView(
-            controller: _scrollController,
-            physics: widget.disableScroll
-                ? const NeverScrollableScrollPhysics()
-                : const ClampingScrollPhysics(),
-            child: Column(
-              children: [
-                // 顶部 Banner，加 opacity 控制淡出
-                Opacity(
-                  opacity: _bannerOpacity,
-                  child: SizedBox(
-                    height: bannerHeight,
-                    child: PageView.builder(
-                      itemCount: widget.imageList.length,
-                      itemBuilder: (context, index) {
-                        return Image.network(
-                          widget.imageList[index],
-                          fit: BoxFit.cover,
-                        );
-                      },
+    // 用 opacity 做一点轻微上移，模拟被内容「推上去」的感觉
+    final double translateY = 12.w * (1 - widget.opacity);
+
+    return Transform.translate(
+      offset: Offset(0, -translateY),
+      child: Opacity(
+        opacity: widget.opacity.clamp(0.0, 1.0),
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: SwiperBanner(
+                banners: widget.imageList,
+                height: widget.height,
+                showIndicator: false,
+                borderRadius: 0,
+                onIndexChanged: (index) {
+                  if (mounted && index != currentIndex) {
+                    setState(() {
+                      currentIndex = index;
+                    });
+                  }
+                },
+              ),
+            ),
+            Positioned(
+              top: MediaQuery.of(context).padding.top + 10,
+              left: 16,
+              right: 16,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  CircleAvatar(
+                    backgroundColor: Colors.black38,
+                    child: IconButton(
+                      icon: const Icon(Icons.arrow_back, color: Colors.white),
+                      constraints: const BoxConstraints(),
+                      onPressed: widget.onClose,
                     ),
                   ),
-                ),
-
-                // 主体内容，整体往上移动 overlap 像素来覆盖 Banner 底部
-                Transform.translate(
-                  offset: const Offset(0, -overlap),
-                  child: Container(
-                    decoration: const BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.vertical(
-                        top: Radius.circular(28),
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black12,
-                          blurRadius: 8,
-                          offset: Offset(0, -2),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      CircleAvatar(
+                        backgroundColor: Colors.black38,
+                        child: IconButton(
+                          icon: const Icon(Icons.share, color: Colors.white),
+                          constraints: const BoxConstraints(),
+                          onPressed: () {
+                            openShareSheet(
+                              context,
+                              ShareData(
+                                title: 'wwwww',
+                                url: '$webBaseUrl/${widget.imageList.first}',
+                                text:
+                                'Amazing product I just ordered. Highly recommend it!',
+                                imageUrl: widget.imageList.first,
+                              ),
+                            );
+                          },
                         ),
-                      ],
-                    ),
-                    padding: const EdgeInsets.all(16),
-                    child: _buildBody(context), // 放订单信息列表
+                      ),
+                      const SizedBox(width: 10),
+                      const CircleAvatar(
+                        backgroundColor: Colors.black38,
+                        child: IconButton(
+                          icon: Icon(Icons.favorite_border, color: Colors.white),
+                          constraints: BoxConstraints(),
+                          onPressed: null,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            Positioned(
+              bottom: 55.w,
+              right: 16.w,
+              child: Container(
+                padding: EdgeInsets.symmetric(horizontal: 9.w, vertical: 4.w),
+                decoration: BoxDecoration(
+                  color: context.fgPrimary900.withValues(alpha: .5),
+                  borderRadius: BorderRadius.circular(8.w),
+                ),
+                child: Text(
+                  '${currentIndex + 1}/${widget.imageList.length}',
+                  style: TextStyle(
+                    color: context.textWhite,
+                    fontSize: context.textSm,
+                    fontWeight: FontWeight.w800,
                   ),
                 ),
-              ],
+              ),
             ),
-          ),
-
-          // 渐显 Header，透明度由 _headerOpacity 控制
-          Opacity(
-            opacity: _headerOpacity,
-            child: _buildHeader(context),
-          ),
-        ],
-      ),
-      bottomNavigationBar: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: ElevatedButton(
-          onPressed: () {
-            // 处理继续购买逻辑
-          },
-          style: ElevatedButton.styleFrom(
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-          ),
-          child: const Text(
-            'Continue Buying',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
-          ),
+          ],
         ),
       ),
     );
   }
+}
 
-  Widget _buildHeader(BuildContext context) {
-    final double topPadding = MediaQuery.of(context).padding.top;
-    return Container(
-      height: kToolbarHeight + topPadding,
-      padding: EdgeInsets.only(top: topPadding),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(
-          top: Radius.circular(28),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black38,
-            blurRadius: 6,
-            offset: Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          IconButton(
-            icon: const Icon(Icons.arrow_back),
-            onPressed: () => Navigator.of(context).pop(),
-          ),
-          Expanded(
-            child: Text(
-              '₱3,000 Cash Prize', // 可以换成根据 orderId 获取的标题
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-          ),
-          IconButton(
-            icon: const Icon(Icons.favorite_border),
-            onPressed: () {},
-          ),
-          IconButton(
-            icon: const Icon(Icons.share),
-            onPressed: () {},
-          ),
-        ],
-      ),
-    );
-  }
+class _ProductSection extends StatelessWidget {
+  final OrderDetailItem orderDetail;
+  const _ProductSection({required this.orderDetail});
 
-  Widget _buildBody(BuildContext context) {
-    // 根据订单实际信息自定义内容，这里示例：
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          '₱3,000 Cash Prize',
-          style: Theme.of(context).textTheme.titleLarge,
-        ),
-        const SizedBox(height: 4),
-        Text(
-          '1/800 sold',
-          style: Theme.of(context).textTheme.bodySmall,
-        ),
-        const SizedBox(height: 24),
-        _buildInfoRow('Ticket Price', '10'),
-        _buildInfoRow('Number of tickets', '1'),
-        _buildInfoRow('Total Price', '10'),
-        const Divider(),
-        _buildInfoRow('Treasure Coins', '-10'),
-        _buildInfoRow('Total Payment Amount', '0'),
-        const Divider(),
-        _buildInfoRow('Payment Method', 'Wallet'),
-        _buildInfoRow('Order ID', 'ORD20251234'),
-        _buildInfoRow('Payment Time', '2025-11-28 21:10:10'),
-        const SizedBox(height: 80), // 留出底部按钮空间
-        Text(
-          '₱3,000 Cash Prize',
-          style: Theme.of(context).textTheme.titleLarge,
-        ),
-        const SizedBox(height: 4),
-        Text(
-          '1/800 sold',
-          style: Theme.of(context).textTheme.bodySmall,
-        ),
-        const SizedBox(height: 24),
-        _buildInfoRow('Ticket Price', '10'),
-        _buildInfoRow('Number of tickets', '1'),
-        _buildInfoRow('Total Price', '10'),
-        const Divider(),
-        _buildInfoRow('Treasure Coins', '-10'),
-        _buildInfoRow('Total Payment Amount', '0'),
-        const Divider(),
-        _buildInfoRow('Payment Method', 'Wallet'),
-        _buildInfoRow('Order ID', 'ORD20251234'),
-        _buildInfoRow('Payment Time', '2025-11-28 21:10:10'),
-        const SizedBox(height: 80), // 留出底部按钮空间
-      ],
-    );
-  }
-
-  Widget _buildInfoRow(String title, String value) {
+  @override
+  Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
+      padding: EdgeInsets.all(16.w),
+      child: Column(
         children: [
-          Text(title,
-              style: const TextStyle(fontWeight: FontWeight.w600)),
-          const Spacer(),
-          Text(value,
-              style: const TextStyle(fontWeight: FontWeight.w800)),
+          Text(
+            orderDetail.treasure.treasureName,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: context.textLg,
+              fontWeight: FontWeight.w800,
+              color: context.textPrimary900,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            '${orderDetail.buyQuantity}/${orderDetail.treasure.seqShelvesQuantity} ${'common.sold.lowercase'.tr()}',
+            style: TextStyle(
+              fontSize: context.textSm,
+              color: context.textSecondary700,
+            ),
+          ),
         ],
       ),
     );
   }
 }
 
+class _OrderInfoSection extends StatelessWidget {
+  final OrderDetailItem orderDetail;
+  const _OrderInfoSection({required this.orderDetail});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: 16.w),
+      child: Column(
+        children: [
+          _OrderInfoRow(
+            title: 'common.ticket.price'.tr(),
+            value: orderDetail.unitPrice,
+          ),
+          const SizedBox(height: 12),
+          _OrderInfoRow(
+            title: 'common.tickets.number'.tr(),
+            value: ' ${orderDetail.buyQuantity} ',
+          ),
+          const SizedBox(height: 12),
+          _OrderInfoRow(
+            title: 'common.total.price'.tr(),
+            value: orderDetail.originalAmount,
+          ),
+          const SizedBox(height: 12),
+          Divider(color: context.borderSecondary, thickness: 1),
+          const SizedBox(height: 12),
+          _OrderInfoRow(
+            title: 'order.detail.treasure.coupon'.tr(),
+            value: '- ${orderDetail.coinAmount} ',
+          ),
+          const SizedBox(height: 12),
+          _OrderInfoRow(
+            title: 'common.total.payment'.tr(),
+            value: orderDetail.finalAmount,
+          ),
+          const SizedBox(height: 12),
+          Divider(color: context.borderSecondary, thickness: 1),
+          const SizedBox(height: 12),
+          _OrderInfoRow(
+            title: 'order-id'.tr(),
+            value: orderDetail.orderNo,
+          ),
+          const SizedBox(height: 12),
+          _OrderInfoRow(
+            title: 'payment-time'.tr(),
+            value: DateFormatHelper.formatFull(
+              DateTime.fromMillisecondsSinceEpoch(
+                orderDetail.createdAt!.toInt(),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Divider(color: context.borderSecondary, thickness: 1),
+          const SizedBox(height: 12),
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            children: orderDetail.transactions.map((item) {
+              return Column(
+                children: [
+                  _OrderInfoRow(
+                    title: 'transactionNo',
+                    value: item.transactionNo,
+                  ),
+                  const SizedBox(height: 12),
+                  _OrderInfoRow(title: 'amount', value: item.amount),
+                  const SizedBox(height: 12),
+                  _OrderInfoRow(
+                    title: 'payment-metho'.tr(),
+                    value: '${item.balanceType}',
+                  ),
+                  const SizedBox(height: 12),
+                  Divider(color: context.borderSecondary, thickness: 1),
+                ],
+              );
+            }).toList(),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _OrderInfoRow extends StatelessWidget {
+  final String title;
+  final String value;
+  final Widget? trailing;
+
+  const _OrderInfoRow({
+    required this.title,
+    required this.value,
+    this.trailing,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Text(
+          title,
+          style: TextStyle(
+            fontSize: context.textSm,
+            color: context.textPrimary900,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const Spacer(),
+        if (trailing != null)
+          trailing!
+        else
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: context.textSm,
+              color: context.textSecondary700,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _BottomBar extends StatelessWidget {
+  final OrderDetailItem? orderDetail;
+
+  const _BottomBar({this.orderDetail});
+
+  @override
+  Widget build(BuildContext context) {
+    if (orderDetail == null) return const SizedBox.shrink();
+
+    return Container(
+      height: 80.w,
+      padding: EdgeInsets.symmetric(horizontal: 32.w, vertical: 16.w),
+      decoration: BoxDecoration(
+        color: context.bgPrimary,
+        boxShadow: [
+          BoxShadow(
+            color: context.fgPrimary900.withValues(alpha: .1),
+            blurRadius: 10.w,
+            offset: Offset(0, -2.w),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Button(
+            width: 150.w,
+            onPressed: () {
+              appRouter.push(
+                '/product/${orderDetail?.group?.groupId}/group',
+              );
+            },
+            child: Text('common.view.friends'.tr()),
+          ),
+        ],
+      ),
+    );
+  }
+}

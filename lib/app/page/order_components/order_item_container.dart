@@ -15,6 +15,8 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:dismissible_page/dismissible_page.dart';
 
+import 'airbnb_expandable_card.dart';
+
 
 class OrderItemContainer extends StatelessWidget {
   final OrderItem item;
@@ -28,10 +30,13 @@ class OrderItemContainer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return  OpenContainer(
-
-        closedBuilder: (context, openBuilder) {
-          return Padding(
+    return AirbnbExpandableCard(
+        transitionDuration: const Duration(milliseconds: 400),
+        reverseTransitionDuration: const Duration(milliseconds: 300),
+        maxHeightFactor: 1.0,
+        maxWidthFactor: 1.0,
+        closedBuilder:(context,open){
+          return  Padding(
             padding: isLast ? EdgeInsets.only( bottom: 32.w) : EdgeInsets.zero,
             child: Container(
               width: double.infinity,
@@ -98,7 +103,7 @@ class OrderItemContainer extends StatelessWidget {
                         appRouter.push('/group-member/?groupId=${item.group?.groupId}');
                       },
                       onViewRewardDetails: () {
-                           openBuilder();
+                        open();
                       },
                       onTeamUp: () {
                         appRouter.push('/me/order/${item.orderId}/team-up');
@@ -113,16 +118,17 @@ class OrderItemContainer extends StatelessWidget {
             ),
           );
         },
-        openBuilder: (context, closeBuilder) {
-          return OrderDetailWrapper(
+        openBuilder: (context, scrollOffset, close) {
+          return OrderDetailPage(
             orderId: item.orderId,
-            imageList: [
-              item.treasure.treasureCoverImg,
-              item.treasure.treasureCoverImg,
-            ],
+            imageList: [item.treasure.treasureCoverImg],
+            scrollOffset: scrollOffset,
+            onClose: close,
           );
         }
     );
+
+
   }
 }
 
@@ -200,7 +206,7 @@ class _OrderItemHeader extends StatelessWidget {
                   children: [
                     TextSpan(
                       text:
-                          '${FormatHelper.formatWithCommas(item.buyQuantity)}/${FormatHelper.formatWithCommas(item.treasure.seqShelvesQuantity)}',
+                      '${FormatHelper.formatWithCommas(item.buyQuantity)}/${FormatHelper.formatWithCommas(item.treasure.seqShelvesQuantity)}',
                     ),
                     TextSpan(text: ' '),
                     TextSpan(text: 'common.sold.lowercase'.tr()),
@@ -257,7 +263,7 @@ class _OrderItemInfo extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-       /* if (!item.lotteryTime.isNullOrEmpty)
+        /* if (!item.lotteryTime.isNullOrEmpty)
           line(
             'common.draw.date'.tr(),
             DateFormatHelper.formatFull(item.lotteryTime),
@@ -277,43 +283,6 @@ class _OrderItemInfo extends StatelessWidget {
           '₱${item.finalAmount}',
         ),
       ],
-    );
-  }
-}
-
-
-class OrderDetailWrapper extends StatefulWidget {
-  final String orderId;
-  final List<String> imageList;
-
-  const OrderDetailWrapper({
-    super.key,
-    required this.orderId,
-    required this.imageList,
-  });
-
-  @override
-  State<OrderDetailWrapper> createState() => _OrderDetailWrapperState();
-}
-
-class _OrderDetailWrapperState extends State<OrderDetailWrapper> {
-  bool _isDragging = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return DismissiblePage(
-      direction: DismissiblePageDismissDirection.down,
-      onDismissed: () => Navigator.of(context).pop(),
-      // 监听拖拽开始与结束，更新标志位
-      isFullScreen: true,
-      minScale: 0.4,
-      maxRadius: 32,
-      backgroundColor: Colors.black.withOpacity(0.45),
-      child: OrderDetailContent(
-        orderId: widget.orderId,
-        imageList: widget.imageList,
-        disableScroll: _isDragging,  // 把拖拽标志传给内容页
-      ),
     );
   }
 }
@@ -560,7 +529,7 @@ class _OrderItemGroupSuccess extends StatelessWidget {
                       namedArgs: {
                         'number': FormatHelper.formatWithCommasAndDecimals(
                           // int.tryParse('${item.denomination}') ?? 0,todo
-                          0
+                            0
                         ),
                       },
                     ),
