@@ -2,6 +2,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_app/app/page/order_components/zoom_scroll_view.dart';
 import 'package:flutter_app/app/routes/app_router.dart';
 import 'package:flutter_app/common.dart';
 import 'package:flutter_app/components/share_sheet.dart';
@@ -14,51 +15,49 @@ import 'package:flutter_app/ui/modal/index.dart';
 import 'package:flutter_app/utils/date_helper.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+
 import '../../core/providers/order_provider.dart';
 
-class OrderDetailPage extends ConsumerWidget {
+/// 订单详情页
+class OrderDetailPage extends ConsumerStatefulWidget {
   final String orderId;
   final List<String> imageList;
-  final double scrollOffset;   // 👈 外层 ZoomableEdgeScrollView 传进来的
-  final VoidCallback onClose;  // 👈 让卡片按“从当前 item 缩回去”的动画关闭
+  final VoidCallback onClose; // 从当前卡片缩回的关闭动画
 
   static const double _bannerHeight = 356.0;
-  static const double _bottomBarHeight = 80.0;
 
   const OrderDetailPage({
     super.key,
     required this.orderId,
     required this.imageList,
     required this.onClose,
-    required this.scrollOffset,
   });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final orderDetailAsyncValue = ref.watch(orderDetailProvider(orderId));
+  ConsumerState<OrderDetailPage> createState() => _OrderDetailPageState();
+}
 
-    // 👉 先用一个“很容易触发”的范围测试手感：
-    // 0 开始淡，滚到 140 左右就全显
+class _OrderDetailPageState extends ConsumerState<OrderDetailPage> {
+  double _scrollOffset = 0.0;
+
+  @override
+  Widget build(BuildContext context) {
+    final orderDetailAsyncValue = ref.watch(orderDetailProvider(widget.orderId));
+    final padding = MediaQuery.of(context).padding; // ⭐ 增加
+
+    // 淡入淡出范围
     final double fadeStart = 0;
-    final double fadeEnd = 140.w; // 用 w，跟你的布局单位一致
+    final double fadeEnd = 140.w;
 
     double t;
-    if (scrollOffset <= fadeStart) {
-      t = 0;
-    } else if (scrollOffset >= fadeEnd) {
-      t = 1;
-    } else {
-      t = ((scrollOffset - fadeStart) / (fadeEnd - fadeStart))
-          .clamp(0.0, 1.0);
-    }
+    t =
+        ((_scrollOffset - fadeStart) / (fadeEnd - fadeStart)).clamp(0.0, 1.0);
 
-    // 做一点曲线，让出现更柔和
     final eased = Curves.easeOut.transform(t);
+    final double headerOpacity = eased; // header 0 → 1
+    final double bannerOpacity = 1.0 - eased * .9; // banner 1 → 0.1
 
-    // header 从 0 → 1
-    final double headerOpacity = eased;
-    // banner 从 1 → 0（稍微保留一点点）
-    final double bannerOpacity = 1.0 - eased * 0.9;
+    final double bottomBarHeight = 80.w; // 底部按钮高度
 
     return orderDetailAsyncValue.when(
       loading: () => const Center(child: CircularProgressIndicator()),
@@ -75,9 +74,62 @@ class OrderDetailPage extends ConsumerWidget {
               ),
             ],
           ),
-          child: _OrderDetailBody(
-            orderDetail: orderDetail,
-            bottomBarHeight: _bottomBarHeight,
+          child: Column(
+            children: [
+              Expanded(
+                child: Stack(
+                  children: [
+                    /// 顶部渐入 Header（挡在最上面）
+                    OrderDetailToHeader(
+                      opacity: 1,
+                      title: orderDetail.treasure.treasureName,
+                      onClose: widget.onClose,
+                    ),
+
+                    /// 可滚动内容（整体往上提一个安全区高度，把白条填满） ⭐ 关键改动
+                    Positioned.fill(
+                      bottom: bottomBarHeight,
+                      child: ZoomScrollView(
+                        onDismiss: widget.onClose,
+                        onScrollOffsetChanged: (offset) {
+                          setState(() {
+                            _scrollOffset = offset;
+                          });
+                        },
+                        bodyBuilder:
+                            (context, scrollController, scrollOffset) {
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              OrderDetailBannerSection(
+                                imageList: widget.imageList,
+                                height: OrderDetailPage._bannerHeight,
+                                onClose: widget.onClose,
+                                opacity: bannerOpacity,
+                              ),
+                              _OrderDetailBody(
+                                orderDetail: orderDetail,
+                              ),
+                              // 预留一点额外空间，滚到底部不会顶在按钮上
+                              SizedBox(height: bottomBarHeight + 16.w),
+                            ],
+                          );
+                        },
+                      ),
+                    ),
+
+                    /// 底部固定按钮
+                    Align(
+                      alignment: Alignment.bottomCenter,
+                      child: OrderDetailBottom(
+                        treasureId: orderDetail.treasureId,
+                        height: bottomBarHeight,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
         );
       },
@@ -85,6 +137,7 @@ class OrderDetailPage extends ConsumerWidget {
   }
 }
 
+/// 顶部随滚动慢慢出现的 Header（标题 + 返回 + 分享）
 class OrderDetailToHeader extends StatelessWidget {
   final double opacity;
   final String title;
@@ -153,7 +206,9 @@ class OrderDetailToHeader extends StatelessWidget {
                 size: 20.w,
                 color: context.textSecondary700,
               ),
-              onPressed: () {},
+              onPressed: () {
+                // TODO: 分享逻辑
+              },
             ),
           ],
         ),
@@ -162,16 +217,13 @@ class OrderDetailToHeader extends StatelessWidget {
   }
 }
 
-// ↓↓↓ 下面这几个类我们只把类型 & 关闭回调调一下，其余保持你原来的实现风格 ↓↓↓
-
+/// 订单详情 Body（商品信息 + 金额信息）
 class _OrderDetailBody extends StatelessWidget {
   final OrderDetailItem orderDetail;
-  final double bottomBarHeight;
 
   const _OrderDetailBody({
     super.key,
     required this.orderDetail,
-    required this.bottomBarHeight,
   });
 
   @override
@@ -181,18 +233,19 @@ class _OrderDetailBody extends StatelessWidget {
       children: [
         _ProductSection(orderDetail: orderDetail),
         _OrderInfoSection(orderDetail: orderDetail),
-        // 这里你是为了撑高度测试多写了一次，我先保留
         _ProductSection(orderDetail: orderDetail),
         _OrderInfoSection(orderDetail: orderDetail),
       ],
     );
   }
 }
+
+/// 顶部 Banner Swiper + 分享逻辑
 class OrderDetailBannerSection extends ConsumerStatefulWidget {
   final List<String> imageList;
   final double height;
   final VoidCallback onClose;
-  final double opacity; // 👈 新增
+  final double opacity; // 根据滚动变化
 
   const OrderDetailBannerSection({
     super.key,
@@ -203,7 +256,8 @@ class OrderDetailBannerSection extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<OrderDetailBannerSection> createState() => BannerSectionState();
+  ConsumerState<OrderDetailBannerSection> createState() =>
+      BannerSectionState();
 }
 
 class BannerSectionState extends ConsumerState<OrderDetailBannerSection> {
@@ -222,6 +276,7 @@ class BannerSectionState extends ConsumerState<OrderDetailBannerSection> {
           headerBuilder: (context) => Padding(
             padding: EdgeInsets.only(bottom: 20.w),
             child: SharePost(
+              key: sharePosterKey,
               data: ShareData(
                 title: data.title,
                 url: data.url,
@@ -253,113 +308,35 @@ class BannerSectionState extends ConsumerState<OrderDetailBannerSection> {
 
   @override
   Widget build(BuildContext context) {
-    final webBaseUrl = ref.read(
-      luckyProvider.select((state) => state.sysConfig.webBaseUrl),
-    );
-
-    // 用 opacity 做一点轻微上移，模拟被内容「推上去」的感觉
+    // 用 opacity 做一点上移，模拟被内容「推上去」
     final double translateY = 12.w * (1 - widget.opacity);
 
     return Transform.translate(
       offset: Offset(0, -translateY),
       child: Opacity(
         opacity: widget.opacity.clamp(0.0, 1.0),
-        child: Stack(
-          children: [
-            Positioned.fill(
-              child: SwiperBanner(
-                banners: widget.imageList,
-                height: widget.height,
-                showIndicator: false,
-                borderRadius: 0,
-                onIndexChanged: (index) {
-                  if (mounted && index != currentIndex) {
-                    setState(() {
-                      currentIndex = index;
-                    });
-                  }
-                },
-              ),
-            ),
-            Positioned(
-              top: MediaQuery.of(context).padding.top + 10,
-              left: 16,
-              right: 16,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  CircleAvatar(
-                    backgroundColor: Colors.black38,
-                    child: IconButton(
-                      icon: const Icon(Icons.arrow_back, color: Colors.white),
-                      constraints: const BoxConstraints(),
-                      onPressed: widget.onClose,
-                    ),
-                  ),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      CircleAvatar(
-                        backgroundColor: Colors.black38,
-                        child: IconButton(
-                          icon: const Icon(Icons.share, color: Colors.white),
-                          constraints: const BoxConstraints(),
-                          onPressed: () {
-                            openShareSheet(
-                              context,
-                              ShareData(
-                                title: 'wwwww',
-                                url: '$webBaseUrl/${widget.imageList.first}',
-                                text:
-                                'Amazing product I just ordered. Highly recommend it!',
-                                imageUrl: widget.imageList.first,
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      const CircleAvatar(
-                        backgroundColor: Colors.black38,
-                        child: IconButton(
-                          icon: Icon(Icons.favorite_border, color: Colors.white),
-                          constraints: BoxConstraints(),
-                          onPressed: null,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            Positioned(
-              bottom: 55.w,
-              right: 16.w,
-              child: Container(
-                padding: EdgeInsets.symmetric(horizontal: 9.w, vertical: 4.w),
-                decoration: BoxDecoration(
-                  color: context.fgPrimary900.withValues(alpha: .5),
-                  borderRadius: BorderRadius.circular(8.w),
-                ),
-                child: Text(
-                  '${currentIndex + 1}/${widget.imageList.length}',
-                  style: TextStyle(
-                    color: context.textWhite,
-                    fontSize: context.textSm,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ),
-            ),
-          ],
+        child: SwiperBanner(
+          banners: widget.imageList,
+          height: widget.height,
+          showIndicator: false,
+          borderRadius: 0,
+          onIndexChanged: (index) {
+            if (mounted && index != currentIndex) {
+              setState(() {
+                currentIndex = index;
+              });
+            }
+          },
         ),
       ),
     );
   }
 }
 
+/// 商品信息区域
 class _ProductSection extends StatelessWidget {
   final OrderDetailItem orderDetail;
+
   const _ProductSection({required this.orderDetail});
 
   @override
@@ -367,6 +344,7 @@ class _ProductSection extends StatelessWidget {
     return Padding(
       padding: EdgeInsets.all(16.w),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             orderDetail.treasure.treasureName,
@@ -378,7 +356,7 @@ class _ProductSection extends StatelessWidget {
               color: context.textPrimary900,
             ),
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12.w),
           Text(
             '${orderDetail.buyQuantity}/${orderDetail.treasure.seqShelvesQuantity} ${'common.sold.lowercase'.tr()}',
             style: TextStyle(
@@ -392,8 +370,10 @@ class _ProductSection extends StatelessWidget {
   }
 }
 
+/// 订单明细区域
 class _OrderInfoSection extends StatelessWidget {
   final OrderDetailItem orderDetail;
+
   const _OrderInfoSection({required this.orderDetail});
 
   @override
@@ -406,36 +386,36 @@ class _OrderInfoSection extends StatelessWidget {
             title: 'common.ticket.price'.tr(),
             value: orderDetail.unitPrice,
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12.w),
           _OrderInfoRow(
             title: 'common.tickets.number'.tr(),
             value: ' ${orderDetail.buyQuantity} ',
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12.w),
           _OrderInfoRow(
             title: 'common.total.price'.tr(),
             value: orderDetail.originalAmount,
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12.w),
           Divider(color: context.borderSecondary, thickness: 1),
-          const SizedBox(height: 12),
+          SizedBox(height: 12.w),
           _OrderInfoRow(
             title: 'order.detail.treasure.coupon'.tr(),
             value: '- ${orderDetail.coinAmount} ',
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12.w),
           _OrderInfoRow(
             title: 'common.total.payment'.tr(),
             value: orderDetail.finalAmount,
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12.w),
           Divider(color: context.borderSecondary, thickness: 1),
-          const SizedBox(height: 12),
+          SizedBox(height: 12.w),
           _OrderInfoRow(
             title: 'order-id'.tr(),
             value: orderDetail.orderNo,
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12.w),
           _OrderInfoRow(
             title: 'payment-time'.tr(),
             value: DateFormatHelper.formatFull(
@@ -444,26 +424,27 @@ class _OrderInfoSection extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12.w),
           Divider(color: context.borderSecondary, thickness: 1),
-          const SizedBox(height: 12),
+          SizedBox(height: 12.w),
           Column(
             mainAxisSize: MainAxisSize.min,
             children: orderDetail.transactions.map((item) {
               return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _OrderInfoRow(
                     title: 'transactionNo',
                     value: item.transactionNo,
                   ),
-                  const SizedBox(height: 12),
+                  SizedBox(height: 12.w),
                   _OrderInfoRow(title: 'amount', value: item.amount),
-                  const SizedBox(height: 12),
+                  SizedBox(height: 12.w),
                   _OrderInfoRow(
                     title: 'payment method',
                     value: '${item.balanceType}',
                   ),
-                  const SizedBox(height: 12),
+                  SizedBox(height: 12.w),
                   Divider(color: context.borderSecondary, thickness: 1),
                 ],
               );
@@ -475,6 +456,7 @@ class _OrderInfoSection extends StatelessWidget {
   }
 }
 
+/// 行展示组件（左标题 + 右侧 value / 自定义 trailing）
 class _OrderInfoRow extends StatelessWidget {
   final String title;
   final String value;
@@ -515,21 +497,21 @@ class _OrderInfoRow extends StatelessWidget {
   }
 }
 
+/// 底部固定按钮栏
 class OrderDetailBottom extends StatelessWidget {
-
   final String treasureId;
+  final double height;
 
   const OrderDetailBottom({
     super.key,
     required this.treasureId,
+    required this.height,
   });
-
 
   @override
   Widget build(BuildContext context) {
-
     return Container(
-      height: 80.w,
+      height: height,
       padding: EdgeInsets.symmetric(horizontal: 32.w, vertical: 16.w),
       decoration: BoxDecoration(
         color: context.bgPrimary,
