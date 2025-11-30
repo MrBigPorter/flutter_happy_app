@@ -1,758 +1,543 @@
-import 'dart:ui';
-
-import 'package:animations/animations.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_app/app/page/order_detail_page.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_app/app/page/order_components/zoom_scroll_view.dart';
 import 'package:flutter_app/app/routes/app_router.dart';
 import 'package:flutter_app/common.dart';
-import 'package:flutter_app/components/skeleton.dart';
+import 'package:flutter_app/components/share_sheet.dart';
+import 'package:flutter_app/components/swiper_banner.dart';
 import 'package:flutter_app/core/models/index.dart';
-import 'package:flutter_app/ui/button/index.dart';
-import 'package:flutter_app/utils/format_helper.dart';
-import 'package:flutter_app/utils/helper.dart';
+import 'package:flutter_app/core/store/lucky_store.dart';
+import 'package:flutter_app/features/share/index.dart';
+import 'package:flutter_app/ui/button/button.dart';
+import 'package:flutter_app/ui/modal/index.dart';
+import 'package:flutter_app/utils/date_helper.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:flutter_svg/flutter_svg.dart';
-import 'package:dismissible_page/dismissible_page.dart';
 
-import 'airbnb_expandable_card.dart';
+import '../../../core/providers/order_provider.dart';
 
-class OrderItemContainer extends StatelessWidget {
-  final OrderItem item;
-  final bool isLast;
 
-  const OrderItemContainer({
+/// 订单详情页：
+/// - 顶部 Header 固定 + 渐入
+/// - Banner 跟随滚动渐隐
+/// - 内容可滚
+/// - 顶部下拉：整体（内容 + bottomBar）缩小并关闭
+class OrderDetailPage extends ConsumerStatefulWidget {
+  final String orderId;
+  final List<String> imageList;
+  final VoidCallback onClose; // 从当前卡片缩回的关闭动画
+
+  static const double _bannerHeight = 356.0;
+
+  const OrderDetailPage({
     super.key,
-    required this.item,
-    required this.isLast,
+    required this.orderId,
+    required this.imageList,
+    required this.onClose,
   });
 
   @override
-  Widget build(BuildContext context) {
-    return AirbnbExpandableCard(
-      transitionDuration: const Duration(milliseconds: 400),
-      reverseTransitionDuration: const Duration(milliseconds: 300),
-      maxHeightFactor: 1.0,
-      maxWidthFactor: 1.0,
-      closedBuilder: (context, open) {
-        return Padding(
-          padding: isLast ? EdgeInsets.only(bottom: 32.w) : EdgeInsets.zero,
-          child: Container(
-            width: double.infinity,
-            padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.w),
-            decoration: BoxDecoration(
-              color: context.bgPrimary,
-              borderRadius: BorderRadius.circular(8.w),
-              boxShadow: [
-                BoxShadow(
-                  color: context.fgPrimary900.withValues(alpha: 0.09),
-                  blurRadius: 12.w,
-                  offset: Offset(0, 4.w),
-                ),
-              ],
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                /// Order item header section
-                _OrderItemHeader(item: item),
-                SizedBox(height: 8.w),
-
-                /// Order item information section
-                _OrderItemInfo(item: item),
-
-                /// group success info, winning info
-                _OrderItemGroupSuccess(item: item),
-                if (item.isRefunded) ...[
-                  SizedBox(height: 12.w),
-
-                  /// Order item refund information section
-                  _OrderItemRefundInfo(item: item),
-                ],
-                if (item.isWon) ...[
-                  SizedBox(height: 12.w),
-
-                  /// tip fro other bag
-                  Container(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: 10.w,
-                      vertical: 4.w,
-                    ),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(8.w),
-                      color: context.alphaBlack5,
-                    ),
-                    child: Text(
-                      'the-other-bag'.tr(),
-                      style: TextStyle(
-                        fontSize: context.textXs,
-                        fontWeight: FontWeight.w600,
-                        color: context.textSecondary700,
-                        height: context.leadingXs,
-                      ),
-                    ),
-                  ),
-                ],
-
-                if (!item.isRefunded) ...[
-                  SizedBox(height: 12.w),
-
-                  /// Order item actions section
-                  _OrderItemActions(
-                    item: item,
-                    onViewFriends: () {
-                      appRouter.push(
-                        '/group-member/?groupId=${item.group?.groupId}',
-                      );
-                    },
-                    onViewRewardDetails: () {
-                      open();
-                    },
-                    onTeamUp: () {
-                      appRouter.push('/me/order/${item.orderId}/team-up');
-                    },
-                    onClaimPrize: () {
-                      appRouter.push('/me/order/${item.orderId}/claim-prize');
-                    },
-                  ),
-                ],
-              ],
-            ),
-          ),
-        );
-      },
-      headerBuilder: (context, scrollOffset, close) {
-        final media = MediaQuery.of(context);
-        final safeTop = media.padding.top;
-
-        // 头图最大高度
-        final double maxHeaderHeight = 260.w;
-        final double minHeaderHeight = safeTop + kToolbarHeight;
-
-        // 根据滚动量 0~1 插值
-        final t = (scrollOffset / 160.0).clamp(0.0, 1.0);
-
-        final double headerHeight =
-        lerpDouble(maxHeaderHeight, minHeaderHeight, t)!;
-
-        final double bannerOpacity = 1.0 - t;         // banner 渐隐
-        final double appbarOpacity = t;
-
-        return SizedBox(
-          height: headerHeight,
-          child: ClipRRect(
-            borderRadius: BorderRadius.only(
-              topLeft: Radius.circular(28.w),
-              topRight: Radius.circular(28.w),
-            ),
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                OrderDetailToHeader(
-                  onClose: close,
-                  opacity: 1,
-                  title: item.treasure.treasureName,
-                ),
-                Align(
-                  alignment: Alignment.bottomCenter,
-                  child: Container(
-                    height: 16.w, // 高度可以按视觉调
-                    decoration: BoxDecoration(
-                      color: context.bgPrimary, // 你的内容背景色
-                      borderRadius: BorderRadius.vertical(
-                        top: Radius.circular(28.w),
-                      ),
-                    ),
-                  ),
-                ),
-                OrderDetailBannerSection(
-                    imageList: [item.treasure.treasureCoverImg],
-                    height: headerHeight,
-                    onClose: close,
-                    opacity: bannerOpacity
-                )
-
-              ],
-            ),
-          ),
-        );
-      },
-      bottomBarBuilder: (context, scrollOffset, close) {
-        return OrderDetailBottom(treasureId: item.treasureId);
-      },
-      openBodyBuilder: (context, scrollController, scrollOffset, close) {
-        return OrderDetailPage(
-          orderId: item.orderId,
-          scrollOffset: scrollOffset,
-          onClose: close,
-          imageList: [item.treasure.treasureCoverImg],
-        );
-      },
-    );
-  }
+  ConsumerState<OrderDetailPage> createState() => _OrderDetailPageState();
 }
 
-class _OrderItemHeader extends StatelessWidget {
-  final OrderItem item;
-
-  const _OrderItemHeader({required this.item});
+class _OrderDetailPageState extends ConsumerState<OrderDetailPage> {
+  double _scrollOffset = 0.0;
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      mainAxisAlignment: MainAxisAlignment.start,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        ClipRRect(
-          clipBehavior: Clip.hardEdge,
-          borderRadius: BorderRadius.circular(8.w),
-          child: CachedNetworkImage(
-            imageUrl: proxied(item.treasure.treasureCoverImg),
-            width: 80.w,
-            height: 80.w,
-            fit: BoxFit.cover,
-            //CachedNetworkImage 默认会按原图解码，80×80 的视图没必要解 1000px 原图,按像素密度下采样
-            memCacheWidth: (80.w * MediaQuery.of(context).devicePixelRatio)
-                .round(),
-            memCacheHeight: (80.w * MediaQuery.of(context).devicePixelRatio)
-                .round(),
-            fadeInDuration: const Duration(milliseconds: 120),
-            fadeOutDuration: const Duration(milliseconds: 120),
-            errorWidget: (_, __, ___) => Container(
-              width: 80.w,
-              height: 80.w,
-              decoration: BoxDecoration(
-                color: context.borderSecondary,
-                borderRadius: BorderRadius.circular(8.w),
+    final orderDetailAsyncValue = ref.watch(orderDetailProvider(widget.orderId));
+
+    // Header / Banner 渐变范围
+    final double fadeStart = 0;
+    final double fadeEnd = 140.w;
+
+    double t;
+    if (_scrollOffset <= fadeStart) {
+      t = 0;
+    } else if (_scrollOffset >= fadeEnd) {
+      t = 1;
+    } else {
+      t = ((_scrollOffset - fadeStart) / (fadeEnd - fadeStart))
+          .clamp(0.0, 1.0);
+    }
+
+    final eased = Curves.easeOut.transform(t);
+    final double headerOpacity = eased;             // header 0 → 1
+    final double bannerOpacity = 1.0 - eased * .9;  // banner 1 → 0.1
+
+    return orderDetailAsyncValue.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (error, stack) => Center(child: Text('Error: $error')),
+      data: (orderDetail) {
+        return Container(
+          decoration: BoxDecoration(
+            color: context.bgPrimary,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.22),
+                blurRadius: 22,
+                offset: const Offset(0, 8),
               ),
-              child: Icon(
-                CupertinoIcons.photo,
-                size: 40.w,
-                color: context.textTertiary600,
-              ),
-            ),
-            placeholder: (_, __) => Skeleton.react(
-              width: 80.w,
-              height: 80.w,
-              borderRadius: BorderRadius.circular(8.w),
-            ),
+            ],
           ),
-        ),
-        SizedBox(width: 8.w),
-        Expanded(
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.start,
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                item.treasure.treasureName,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: context.textSm,
-                  fontWeight: FontWeight.w800,
-                  color: context.textPrimary900,
-                  height: context.leadingSm,
-                ),
-              ),
-              SizedBox(height: 9.w),
-              RichText(
-                text: TextSpan(
-                  style: TextStyle(
-                    fontSize: context.textXs,
-                    fontWeight: FontWeight.w400,
-                    color: context.textTertiary600,
-                    height: context.leadingXs,
-                  ),
+              Expanded(
+                child: Stack(
                   children: [
-                    TextSpan(
-                      text:
-                      '${FormatHelper.formatWithCommas(item.buyQuantity)}/${FormatHelper.formatWithCommas(item.treasure.seqShelvesQuantity)}',
+                    /// 1️⃣ 中间「可缩放」区域：内容 + bottomBar
+                    Positioned.fill(
+                      child: ZoomScrollView(
+                        onDismiss: widget.onClose,
+                        onScrollOffsetChanged: (offset) {
+                          setState(() {
+                            _scrollOffset = offset;
+                          });
+                        },
+                        bottomBar: OrderDetailBottom(
+                          treasureId: orderDetail.treasureId,
+                          height: 80.w,
+                        ),
+                        bodyBuilder:
+                            (context, scrollController, scrollOffset) {
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              OrderDetailBannerSection(
+                                imageList: widget.imageList,
+                                height: OrderDetailPage._bannerHeight,
+                                onClose: widget.onClose,
+                                opacity: bannerOpacity,
+                              ),
+                              _OrderDetailBody(
+                                orderDetail: orderDetail,
+                              ),
+                              // 底部再加一点空隙（避免最后一行太贴 bottomBar）
+                              SizedBox(height: 16.w),
+                            ],
+                          );
+                        },
+                      ),
                     ),
-                    TextSpan(text: ' '),
-                    TextSpan(text: 'common.sold.lowercase'.tr()),
+
+                    /// 2️⃣ 顶部 Header，盖在最上层
+                    OrderDetailToHeader(
+                      opacity: headerOpacity,
+                      title: orderDetail.treasure.treasureName,
+                      onClose: widget.onClose,
+                    ),
                   ],
                 ),
               ),
             ],
           ),
-        ),
-      ],
+        );
+      },
     );
   }
 }
 
-/// Order item information section
-/// 显示订单的详细信息，如开奖日期、单价、数量和总价
-/// Displays detailed information about the order, such as draw date, unit price, quantity, and total price.
-/// Used in order list and order details pages.
-class _OrderItemInfo extends StatelessWidget {
-  final OrderItem item;
+/// 顶部随滚动慢慢出现的 Header（标题 + 返回 + 分享）
+class OrderDetailToHeader extends StatelessWidget {
+  final double opacity;
+  final String title;
+  final VoidCallback onClose;
 
-  const _OrderItemInfo({required this.item});
-
-  @override
-  Widget build(BuildContext context) {
-    Widget line(String left, String right) {
-      return Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Text(
-            left,
-            style: TextStyle(
-              fontSize: context.textSm,
-              fontWeight: FontWeight.w600,
-              color: context.textPrimary900,
-              height: context.leadingSm,
-            ),
-          ),
-          Text(
-            right,
-            style: TextStyle(
-              fontSize: context.textSm,
-              fontWeight: FontWeight.w800,
-              color: context.textPrimary900,
-              height: context.leadingSm,
-            ),
-          ),
-        ],
-      );
-    }
-
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        /* if (!item.lotteryTime.isNullOrEmpty)
-          line(
-            'common.draw.date'.tr(),
-            DateFormatHelper.formatFull(item.lotteryTime),
-          ),
-        SizedBox(height: 12.w),*/
-        line(
-          'common.ticket.price'.tr(),
-          FormatHelper.formatWithCommasAndDecimals(item.unitPrice),
-        ),
-        SizedBox(height: 12.w),
-        line('common.tickets.number'.tr(), '${item.buyQuantity}'),
-        SizedBox(height: 12.w),
-        line(
-          item.isRefunded ? 'common.refund'.tr() : 'common.total.price'.tr(),
-          '₱${item.finalAmount}',
-        ),
-      ],
-    );
-  }
-}
-
-class _OrderItemActions extends StatelessWidget {
-  final OrderItem item;
-  final VoidCallback? onViewFriends;
-  final VoidCallback? onViewRewardDetails;
-  final VoidCallback? onTeamUp;
-  final VoidCallback? onClaimPrize;
-
-  const _OrderItemActions({
-    required this.item,
-    this.onViewFriends,
-    this.onViewRewardDetails,
-    this.onTeamUp,
-    this.onClaimPrize,
+  const OrderDetailToHeader({
+    super.key,
+    required this.opacity,
+    required this.title,
+    required this.onClose,
   });
 
   @override
   Widget build(BuildContext context) {
-    final isStatus1Or4 = item.orderStatus == 1 || item.orderStatus == 4;
-    final showRewardDetails = !isStatus1Or4;
+    final padding = MediaQuery.of(context).padding;
+    const double toolbarHeight = kToolbarHeight;
 
-    List<Widget> right = [
-      Button(
-        paddingX: 20.w,
-        height: 44.w,
-        variant: ButtonVariant.outline,
-        onPressed: () {
-          if (onViewFriends != null) {
-            onViewFriends!();
-          }
-        },
-        child: Text('common.view.friends'.tr()),
-      ),
-      if (showRewardDetails)
-        Button(
-          paddingX: 20.w,
-          variant: ButtonVariant.outline,
-          height: 44.w,
-          onPressed: () {
-            if (onViewRewardDetails != null) {
-              onViewRewardDetails!();
-            }
-          },
-          child: Text('common.award.details').tr(),
-        )
-      else
-        Button(
-          height: 44.w,
-          trailing: SvgPicture.asset(
-            'assets/images/team-up.svg',
-            width: 20.w,
-            height: 20.w,
-            colorFilter: ColorFilter.mode(context.textWhite, BlendMode.srcIn),
-          ),
-          onPressed: () {
-            if (onTeamUp != null) {
-              onTeamUp!();
-            }
-          },
-          child: Text('common.team.up').tr(),
+    return AnimatedOpacity(
+      duration: const Duration(milliseconds: 180),
+      opacity: opacity,
+      child: Container(
+        height: padding.top + toolbarHeight,
+        padding: EdgeInsets.only(
+          top: padding.top,
+          left: 16.w,
+          right: 16.w,
         ),
-
-      if (item.isWon) ...[
-        Button(
-          paddingX: 12.w,
-          height: 44.w,
-          variant: ButtonVariant.primary,
-          trailing: SvgPicture.asset(
-            'assets/images/team-up.svg',
-            width: 20.w,
-            height: 20.w,
-            colorFilter: ColorFilter.mode(context.textWhite, BlendMode.srcIn),
-          ),
-          onPressed: () {
-            if (onTeamUp != null) {
-              onTeamUp!();
-            }
-          },
-          child: null,
+        decoration: BoxDecoration(
+          color: context.bgPrimary,
+          boxShadow: opacity > 0.95
+              ? [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.06),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            )
+          ]
+              : null,
         ),
-
-        /*if(item.isRewardPending) ...[
-          Button(
-              width: double.infinity,
-              onPressed: (){
-                if(onClaimPrize != null){
-                  onClaimPrize!();
-                }
-              },
-              child: Text('confirm.win.receive.award'.tr())
-          )
-        ],
-        if((item.isRewardClaim||item.isRewardCashOut)&&item.isPhysical||(item.isRewardCashOut&&item.isVirtual)) ...[
-          Button(
-              width: double.infinity,
-              onPressed: (){
-                appRouter.go('/me/confirm-win/${item.id}');
-              },
-              child: Text('confirm.win.check.award.information'.tr())
-          )
-        ]*/
-      ],
-    ];
-
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.end,
-      children: [
-        Flexible(
-          child: Wrap(
-            spacing: 8.w,
-            runSpacing: 8.w,
-            alignment: WrapAlignment.end,
-            children: right,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-/// Order item group success section
-/// 显示订单的拼团成功信息和中奖信息
-/// Displays group success information and winning information about the order.
-/// Used in order list and order details pages.
-/// Only shown when the order is part of a group purchase or has won a prize.
-class _OrderItemGroupSuccess extends StatelessWidget {
-  final OrderItem item;
-
-  const _OrderItemGroupSuccess({required this.item});
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        if (item.isGroupSuccess) ...[
-          SizedBox(height: 12.w),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'group-friend-0'.tr(),
-                style: TextStyle(
-                  fontSize: context.textSm,
-                  fontWeight: FontWeight.w600,
-                  color: context.textPrimary900,
-                  height: context.leadingSm,
-                ),
-              ),
-              /*Text(
-                '${item.friend != "" ? item.friend : '----'}',
-                style: TextStyle(
-                  fontSize: context.textSm,
-                  fontWeight: FontWeight.w800,
-                  color: context.textPrimary900,
-                  height: context.leadingSm,
-                ),
-              ),*/
-            ],
-          ),
-          SizedBox(height: 12.w),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'get-rewards'.tr(),
-                style: TextStyle(
-                  fontSize: context.textSm,
-                  fontWeight: FontWeight.w600,
-                  color: context.textPrimary900,
-                  height: context.leadingSm,
-                ),
-              ),
-              Column(
-                children: [
-                  Text(
-                    'number.treasure.coin'.tr(
-                      // namedArgs: {'number': item.prizeCoin.toString()}, todo
-                      namedArgs: {'number': '11111'},
-                    ),
-                    style: TextStyle(
-                      fontWeight: FontWeight.w800,
-                      color: context.textBrandSecondary700,
-                      fontSize: context.textSm,
-                      height: context.leadingSm,
-                    ),
-                  ),
-                  Text(
-                    'redeem.worth.number'.tr(
-                      namedArgs: {
-                        'number': FormatHelper.formatWithCommasAndDecimals(
-                          // item.prizeAmount ?? 0,
-                          0, //todo
-                        ),
-                      },
-                    ),
-                    style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      color: context.textQuaternary500,
-                      fontSize: context.textXs,
-                      height: context.leadingXs,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ],
-        if (item.isWon) ...[
-          SizedBox(height: 12.w),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'common.winning.number'.tr(),
-                style: TextStyle(
-                  fontSize: context.textSm,
-                  fontWeight: FontWeight.w600,
-                  color: context.textPrimary900,
-                  height: context.leadingSm,
-                ),
-              ),
-              Column(
-                children: [
-                  Text(
-                    // '${item.shareCoin ?? 0} ${'common.treasureCoins'.tr()}',todo
-                    '${0} ${'common.treasureCoins'.tr()}',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w800,
-                      color: context.textBrandSecondary700,
-                      fontSize: context.textSm,
-                      height: context.leadingSm,
-                    ),
-                  ),
-                  Text(
-                    'redeem.worth.number'.tr(
-                      namedArgs: {
-                        'number': FormatHelper.formatWithCommasAndDecimals(
-                          // int.tryParse('${item.denomination}') ?? 0,todo
-                          0,
-                        ),
-                      },
-                    ),
-                    style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      color: context.textQuaternary500,
-                      fontSize: context.textXs,
-                      height: context.leadingXs,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ],
-      ],
-    );
-  }
-}
-
-/// Order item refund information section
-/// 显示订单的退款信息，如退款原因
-/// Displays refund information about the order, such as refund reason.
-/// Used in order list and order details pages.
-class _OrderItemRefundInfo extends StatefulWidget {
-  final OrderItem item;
-
-  const _OrderItemRefundInfo({required this.item});
-
-  @override
-  State<StatefulWidget> createState() => _OrderItemRefundInfoState();
-}
-
-class _OrderItemRefundInfoState extends State<_OrderItemRefundInfo>
-    with SingleTickerProviderStateMixin {
-  bool isOpen = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: () => setState(() => isOpen = !isOpen),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'common.refund.reason'.tr(),
-                style: TextStyle(
-                  fontSize: context.textSm,
-                  fontWeight: FontWeight.w600,
-                  color: context.textPrimary900,
-                  height: context.leadingSm,
-                ),
-              ),
-              AnimatedRotation(
-                turns: isOpen ? 0.25 : 0.0,
-                duration: const Duration(milliseconds: 300),
-                child: Icon(
-                  CupertinoIcons.chevron_right,
-                  size: 20.w,
-                  color: context.textTertiary600,
-                ),
-              ),
-            ],
-          ),
-        ),
-        AnimatedCrossFade(
-          firstChild: Padding(
-            padding: EdgeInsets.only(top: 8.w),
-            child: Text(
-              widget.item.refundReason ?? '----',
-              style: TextStyle(
-                fontSize: context.textSm,
-                fontWeight: FontWeight.w600,
+        child: Row(
+          children: [
+            GestureDetector(
+              onTap: onClose,
+              child: Icon(
+                Icons.arrow_back,
+                size: 22.w,
                 color: context.textPrimary900,
-                height: context.leadingSm,
+              ),
+            ),
+            SizedBox(width: 12.w),
+            Expanded(
+              child: Text(
+                title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: context.textMd,
+                  fontWeight: FontWeight.w700,
+                  color: context.textPrimary900,
+                ),
+              ),
+            ),
+            IconButton(
+              icon: Icon(
+                Icons.ios_share,
+                size: 20.w,
+                color: context.textSecondary700,
+              ),
+              onPressed: () {
+                // TODO: 分享逻辑后面接
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// 订单详情 Body（商品信息 + 金额信息）
+class _OrderDetailBody extends StatelessWidget {
+  final OrderDetailItem orderDetail;
+
+  const _OrderDetailBody({
+    super.key,
+    required this.orderDetail,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _ProductSection(orderDetail: orderDetail),
+        _OrderInfoSection(orderDetail: orderDetail),
+
+        // 你之前为了测试高度又写了一遍，我先保留
+        _ProductSection(orderDetail: orderDetail),
+        _OrderInfoSection(orderDetail: orderDetail),
+      ],
+    );
+  }
+}
+
+/// 顶部 Banner Swiper + 分享逻辑
+class OrderDetailBannerSection extends ConsumerStatefulWidget {
+  final List<String> imageList;
+  final double height;
+  final VoidCallback onClose;
+  final double opacity; // 根据滚动变化
+
+  const OrderDetailBannerSection({
+    super.key,
+    required this.imageList,
+    required this.height,
+    required this.onClose,
+    required this.opacity,
+  });
+
+  @override
+  ConsumerState<OrderDetailBannerSection> createState() =>
+      BannerSectionState();
+}
+
+class BannerSectionState extends ConsumerState<OrderDetailBannerSection> {
+  final sharePosterKey = GlobalKey<SharePostState>();
+  int currentIndex = 0;
+
+  void openShareSheet(BuildContext context, ShareData data) {
+    final webBaseUrl = ref.read(
+      luckyProvider.select((state) => state.sysConfig.webBaseUrl),
+    );
+
+    ShareService.openSystemOrSheet(
+      data,
+          () async {
+        RadixSheet.show(
+          headerBuilder: (context) => Padding(
+            padding: EdgeInsets.only(bottom: 20.w),
+            child: SharePost(
+              key: sharePosterKey,
+              data: ShareData(
+                title: data.title,
+                url: data.url,
+                text: data.text,
+                imageUrl: data.imageUrl,
               ),
             ),
           ),
-          secondChild: const SizedBox.shrink(),
-          crossFadeState: isOpen
-              ? CrossFadeState.showFirst
-              : CrossFadeState.showSecond,
-          duration: const Duration(milliseconds: 200),
+          builder: (context, close) {
+            return ShareSheet(
+              showDownButton: true,
+              data: ShareData(
+                title: data.title,
+                url: '$webBaseUrl/${widget.imageList.first}',
+                text: data.text,
+                imageUrl: widget.imageList.first,
+              ),
+              onDownloadPoster: () async {
+                sharePosterKey.currentState?.saveToGallery();
+                HapticFeedback.mediumImpact();
+                close();
+              },
+            );
+          },
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // 用 opacity 做一点上移，模拟被内容「推上去」
+    final double translateY = 12.w * (1 - widget.opacity);
+
+    return Transform.translate(
+      offset: Offset(0, -translateY),
+      child: Opacity(
+        opacity: widget.opacity.clamp(0.0, 1.0),
+        child: SwiperBanner(
+          banners: widget.imageList,
+          height: widget.height,
+          showIndicator: false,
+          borderRadius: 0,
+          onIndexChanged: (index) {
+            if (mounted && index != currentIndex) {
+              setState(() {
+                currentIndex = index;
+              });
+            }
+          },
         ),
-      ],
+      ),
     );
   }
 }
 
-class OrderItemContainerSkeleton extends StatelessWidget {
-  final bool isLast;
+/// 商品信息区域
+class _ProductSection extends StatelessWidget {
+  final OrderDetailItem orderDetail;
 
-  const OrderItemContainerSkeleton({super.key, required this.isLast});
+  const _ProductSection({required this.orderDetail});
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: isLast
-          ? EdgeInsets.only(left: 16.w, right: 16.w, top: 16.w, bottom: 32.w)
-          : EdgeInsets.only(left: 16.w, right: 16.w, top: 16.w),
-      child: Container(
-        padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 16.w),
-        decoration: BoxDecoration(
-          color: context.bgPrimary,
-          borderRadius: BorderRadius.circular(8.w),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Skeleton.react(
-                  width: 80.w,
-                  height: 80.w,
-                  borderRadius: BorderRadius.circular(8.w),
-                ),
-                SizedBox(width: 8.w),
-                Expanded(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.start,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Skeleton.react(width: double.infinity, height: 14.h),
-                      SizedBox(height: 9.w),
-                      Skeleton.react(width: 120.w, height: 12.h),
-                    ],
+      padding: EdgeInsets.all(16.w),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            orderDetail.treasure.treasureName,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: context.textLg,
+              fontWeight: FontWeight.w800,
+              color: context.textPrimary900,
+            ),
+          ),
+          SizedBox(height: 12.w),
+          Text(
+            '${orderDetail.buyQuantity}/${orderDetail.treasure.seqShelvesQuantity} ${'common.sold.lowercase'.tr()}',
+            style: TextStyle(
+              fontSize: context.textSm,
+              color: context.textSecondary700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 订单明细区域
+class _OrderInfoSection extends StatelessWidget {
+  final OrderDetailItem orderDetail;
+
+  const _OrderInfoSection({required this.orderDetail});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: 16.w),
+      child: Column(
+        children: [
+          _OrderInfoRow(
+            title: 'common.ticket.price'.tr(),
+            value: orderDetail.unitPrice,
+          ),
+          SizedBox(height: 12.w),
+          _OrderInfoRow(
+            title: 'common.tickets.number'.tr(),
+            value: ' ${orderDetail.buyQuantity} ',
+          ),
+          SizedBox(height: 12.w),
+          _OrderInfoRow(
+            title: 'common.total.price'.tr(),
+            value: orderDetail.originalAmount,
+          ),
+          SizedBox(height: 12.w),
+          Divider(color: context.borderSecondary, thickness: 1),
+          SizedBox(height: 12.w),
+          _OrderInfoRow(
+            title: 'order.detail.treasure.coupon'.tr(),
+            value: '- ${orderDetail.coinAmount} ',
+          ),
+          SizedBox(height: 12.w),
+          _OrderInfoRow(
+            title: 'common.total.payment'.tr(),
+            value: orderDetail.finalAmount,
+          ),
+          SizedBox(height: 12.w),
+          Divider(color: context.borderSecondary, thickness: 1),
+          SizedBox(height: 12.w),
+          _OrderInfoRow(
+            title: 'order-id'.tr(),
+            value: orderDetail.orderNo,
+          ),
+          SizedBox(height: 12.w),
+          _OrderInfoRow(
+            title: 'payment-time'.tr(),
+            value: DateFormatHelper.formatFull(
+              DateTime.fromMillisecondsSinceEpoch(
+                orderDetail.createdAt!.toInt(),
+              ),
+            ),
+          ),
+          SizedBox(height: 12.w),
+          Divider(color: context.borderSecondary, thickness: 1),
+          SizedBox(height: 12.w),
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            children: orderDetail.transactions.map((item) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _OrderInfoRow(
+                    title: 'transactionNo',
+                    value: item.transactionNo,
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Skeleton.react(width: double.infinity, height: 12.w),
-            const SizedBox(height: 12),
-            Skeleton.react(width: double.infinity, height: 12.w),
-            const SizedBox(height: 12),
-            Skeleton.react(width: double.infinity, height: 12.w),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(child: SizedBox()),
-                Skeleton.react(
-                  width: 80.w,
-                  height: 32.w,
-                  borderRadius: BorderRadius.circular(8.w),
-                ),
-                const SizedBox(width: 8),
-                Skeleton.react(
-                  width: 100.w,
-                  height: 32.w,
-                  borderRadius: BorderRadius.circular(8.w),
-                ),
-              ],
-            ),
-          ],
+                  SizedBox(height: 12.w),
+                  _OrderInfoRow(title: 'amount', value: item.amount),
+                  SizedBox(height: 12.w),
+                  _OrderInfoRow(
+                    title: 'payment method',
+                    value: '${item.balanceType}',
+                  ),
+                  SizedBox(height: 12.w),
+                  Divider(color: context.borderSecondary, thickness: 1),
+                ],
+              );
+            }).toList(),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 行展示组件（左标题 + 右侧 value / 自定义 trailing）
+class _OrderInfoRow extends StatelessWidget {
+  final String title;
+  final String value;
+  final Widget? trailing;
+
+  const _OrderInfoRow({
+    required this.title,
+    required this.value,
+    this.trailing,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Text(
+          title,
+          style: TextStyle(
+            fontSize: context.textSm,
+            color: context.textPrimary900,
+            fontWeight: FontWeight.w600,
+          ),
         ),
+        const Spacer(),
+        if (trailing != null)
+          trailing!
+        else
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: context.textSm,
+              color: context.textSecondary700,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+/// 底部固定按钮栏：查看商品 / 拼团
+class OrderDetailBottom extends StatelessWidget {
+  final String treasureId;
+  final double height;
+
+  const OrderDetailBottom({
+    super.key,
+    required this.treasureId,
+    required this.height,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: height,
+      padding: EdgeInsets.symmetric(horizontal: 32.w, vertical: 16.w),
+      decoration: BoxDecoration(
+        color: context.bgPrimary,
+        boxShadow: [
+          BoxShadow(
+            color: context.fgPrimary900.withValues(alpha: .1),
+            blurRadius: 10.w,
+            offset: Offset(0, -2.w),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Button(
+            width: 150.w,
+            onPressed: () {
+              appRouter.push('/product/$treasureId');
+            },
+            child: Text('common.view.friends'.tr()),
+          ),
+        ],
       ),
     );
   }

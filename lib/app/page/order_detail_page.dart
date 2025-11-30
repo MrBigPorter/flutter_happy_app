@@ -18,7 +18,11 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import '../../core/providers/order_provider.dart';
 
-/// 订单详情页
+/// 订单详情页：
+/// - 顶部 Header 固定 + 渐入
+/// - Banner 跟随滚动渐隐
+/// - 内容可滚
+/// - 底部按钮固定（上滑时贴底，下拉整卡片时一起动）
 class OrderDetailPage extends ConsumerStatefulWidget {
   final String orderId;
   final List<String> imageList;
@@ -43,15 +47,19 @@ class _OrderDetailPageState extends ConsumerState<OrderDetailPage> {
   @override
   Widget build(BuildContext context) {
     final orderDetailAsyncValue = ref.watch(orderDetailProvider(widget.orderId));
-    final padding = MediaQuery.of(context).padding; // ⭐ 增加
 
-    // 淡入淡出范围
+    // header 渐入 / banner 渐隐的滚动范围
     final double fadeStart = 0;
     final double fadeEnd = 140.w;
 
     double t;
-    t =
-        ((_scrollOffset - fadeStart) / (fadeEnd - fadeStart)).clamp(0.0, 1.0);
+    if (_scrollOffset <= fadeStart) {
+      t = 0;
+    } else if (_scrollOffset >= fadeEnd) {
+      t = 1;
+    } else {
+      t = ((_scrollOffset - fadeStart) / (fadeEnd - fadeStart)).clamp(0.0, 1.0);
+    }
 
     final eased = Curves.easeOut.transform(t);
     final double headerOpacity = eased; // header 0 → 1
@@ -76,55 +84,45 @@ class _OrderDetailPageState extends ConsumerState<OrderDetailPage> {
           ),
           child: Column(
             children: [
+              // 整个内容区域（含可滚内容 + 固定底部 + 顶部 Header）
               Expanded(
                 child: Stack(
                   children: [
-                    /// 顶部渐入 Header（挡在最上面）
-                    OrderDetailToHeader(
-                      opacity: 1,
-                      title: orderDetail.treasure.treasureName,
-                      onClose: widget.onClose,
-                    ),
-
-                    /// 可滚动内容（整体往上提一个安全区高度，把白条填满） ⭐ 关键改动
-                    Positioned.fill(
-                      bottom: bottomBarHeight,
-                      child: ZoomScrollView(
-                        onDismiss: widget.onClose,
-                        onScrollOffsetChanged: (offset) {
-                          setState(() {
-                            _scrollOffset = offset;
-                          });
-                        },
-                        bodyBuilder:
-                            (context, scrollController, scrollOffset) {
-                          return Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              OrderDetailBannerSection(
-                                imageList: widget.imageList,
-                                height: OrderDetailPage._bannerHeight,
-                                onClose: widget.onClose,
-                                opacity: bannerOpacity,
-                              ),
-                              _OrderDetailBody(
-                                orderDetail: orderDetail,
-                              ),
-                              // 预留一点额外空间，滚到底部不会顶在按钮上
-                              SizedBox(height: bottomBarHeight + 16.w),
-                            ],
-                          );
-                        },
-                      ),
-                    ),
-
-                    /// 底部固定按钮
-                    Align(
-                      alignment: Alignment.bottomCenter,
-                      child: OrderDetailBottom(
+                    /// ① 背后是可滚区域 + 底部按钮（都在 ZoomScrollView 里）
+                    ZoomScrollView(
+                      onDismiss: widget.onClose,
+                      onScrollOffsetChanged: (offset) {
+                        setState(() {
+                          _scrollOffset = offset;
+                        });
+                      },
+                      bottomBar: OrderDetailBottom(
                         treasureId: orderDetail.treasureId,
                         height: bottomBarHeight,
                       ),
+                      bodyBuilder: (context, scrollController, scrollOffset) {
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            OrderDetailBannerSection(
+                              imageList: widget.imageList,
+                              height: OrderDetailPage._bannerHeight,
+                              onClose: widget.onClose,
+                              opacity: bannerOpacity,
+                            ),
+                            _OrderDetailBody(orderDetail: orderDetail),
+                            // 给一点垫底空间，避免内容顶在 bottomBar 上
+                            SizedBox(height: bottomBarHeight + 16.w),
+                          ],
+                        );
+                      },
+                    ),
+
+                    /// ② 顶部固定 Header（不跟内容一起滚，只根据 scrollOffset 渐入）
+                    OrderDetailToHeader(
+                      opacity: headerOpacity,
+                      title: orderDetail.treasure.treasureName,
+                      onClose: widget.onClose,
                     ),
                   ],
                 ),
@@ -207,7 +205,7 @@ class OrderDetailToHeader extends StatelessWidget {
                 color: context.textSecondary700,
               ),
               onPressed: () {
-                // TODO: 分享逻辑
+                // TODO: 接分享
               },
             ),
           ],
@@ -233,6 +231,8 @@ class _OrderDetailBody extends StatelessWidget {
       children: [
         _ProductSection(orderDetail: orderDetail),
         _OrderInfoSection(orderDetail: orderDetail),
+
+        // 为了拉高内容，你之前多写了一遍，我也先保留
         _ProductSection(orderDetail: orderDetail),
         _OrderInfoSection(orderDetail: orderDetail),
       ],
@@ -497,7 +497,7 @@ class _OrderInfoRow extends StatelessWidget {
   }
 }
 
-/// 底部固定按钮栏
+/// 底部固定按钮栏：查看商品 / 拼团
 class OrderDetailBottom extends StatelessWidget {
   final String treasureId;
   final double height;
