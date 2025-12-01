@@ -35,9 +35,7 @@ class OrderItemContainer extends StatelessWidget {
       padding: isLast ? EdgeInsets.only(bottom: 32.w) : EdgeInsets.zero,
       child: Hero(
           tag: heroTag,
-          child: Material(
-            type: MaterialType.transparency,
-            child: Container(
+          child: Container(
             width: double.infinity,
             padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.w),
             decoration: BoxDecoration(
@@ -128,7 +126,6 @@ class OrderItemContainer extends StatelessWidget {
                 ],
               ],
             ),
-          ),
           )
       ),
     );
