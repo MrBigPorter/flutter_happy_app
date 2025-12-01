@@ -195,7 +195,7 @@ class _AirbnbStyleScaffoldState extends State<AirbnbStyleScaffold>
               if (_scale < 1.0) widget.onDismiss();
             },
             child: Container(
-              color: Colors.black.withOpacity(0.5 * bgOpacity),
+              color: Colors.black.withOpacity(0.9 * bgOpacity),
             ),
           ),
 
