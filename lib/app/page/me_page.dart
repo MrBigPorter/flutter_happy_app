@@ -110,7 +110,7 @@ class _MenuArea extends StatelessWidget {
             BlendMode.srcIn,
           ),
         ),
-        path: '/learning-center',
+        path: '/guide',
       ),
       _MenuItem(
         text: 'common.check.in'.tr(),

@@ -16,6 +16,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../components/lucky_tab_bar.dart';
+import '../page/guide_page.dart';
 import '../page/home_page.dart';
 import '../page/product_page.dart';
 import '../page/winners_page.dart';
@@ -161,6 +162,11 @@ class AppRouter {
             final queryParams = state.uri.queryParameters;
             return OrderListPage(args: queryParams,);
           }
+        ),
+        GoRoute(
+            name: 'guide',
+            path: '/guide',
+            builder: (context, state) => GuidePage()
         )
       ],
       redirect: (context,state){
