@@ -1,4 +1,5 @@
 import 'package:easy_localization/easy_localization.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_app/app/page/me_components/voucher.dart';
 import 'package:flutter_app/app/page/me_components/voucher_list.dart';
@@ -64,18 +65,21 @@ class _MePageState extends ConsumerState<MePage>{
               ),
               SliverToBoxAdapter(child: SizedBox(height: 8.w,)),
             ],
-
+            SliverToBoxAdapter(
+              child: RepaintBoundary(
+                child: _OrderArea(),
+              ),
+            ),
+            SliverToBoxAdapter(
+              child: SizedBox(height: 8.w,),
+            ),
             SliverToBoxAdapter(
               child: RepaintBoundary(child: _WalletArea(balance: balance)),
             ),
             SliverToBoxAdapter(child: SizedBox(height: 8.w,)),
             SliverToBoxAdapter(child: RepaintBoundary(child: _MenuArea())),
             SliverToBoxAdapter(child: SizedBox(height: 8.w,)),
-            SliverToBoxAdapter(
-              child: RepaintBoundary(
-                child: _OrderArea(isAuthenticated: isAuthenticated),
-              ),
-            ),
+
           ],
         ),
       ),
@@ -654,9 +658,6 @@ class _UnLoginTip extends StatelessWidget {
 }
 
 class _OrderArea extends StatelessWidget {
-  final bool isAuthenticated;
-
-  const _OrderArea({required this.isAuthenticated});
 
   @override
   Widget build(BuildContext context) {
@@ -704,9 +705,91 @@ class _OrderArea extends StatelessWidget {
               ),
             ],
           ),
-          if (!isAuthenticated) ...[SizedBox(height: 50.w), _UnLoginTip()],
+          SizedBox(height: 12.w,),
+          Row(
+            mainAxisAlignment:MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                children: [
+                  Icon(
+                    CupertinoIcons.creditcard,
+                    size: 24.w,
+                    color: context.fgPrimary900,
+                  ),
+                  SizedBox(height: 8.w),
+                  Text(
+                    'To Pay',
+                    style: TextStyle(
+                      fontSize: context.textXs,
+                      fontWeight: FontWeight.w500,
+                      color: context.textPrimary900,
+                      height: context.leadingXs,
+                    ),
+                  ),
+                ],
+              ),
+              Column(
+                children: [
+                  Icon(
+                    CupertinoIcons.cube_box,
+                    size: 24.w,
+                    color: context.fgPrimary900,
+                  ),
+                  SizedBox(height: 8.w),
+                  Text(
+                    'To Ship',
+                    style: TextStyle(
+                      fontSize: context.textXs,
+                      fontWeight: FontWeight.w500,
+                      color: context.textPrimary900,
+                      height: context.leadingXs,
+                    ),
+                  ),
+                ],
+              ),
+              Column(
+                children: [
+                  Icon(
+                    Icons.local_shipping_outlined,
+                    size: 24.w,
+                    color: context.fgPrimary900,
+                  ),
+                  SizedBox(height: 8.w),
+                  Text(
+                    'To Receive',
+                    style: TextStyle(
+                      fontSize: context.textXs,
+                      fontWeight: FontWeight.w500,
+                      color: context.textPrimary900,
+                      height: context.leadingXs,
+                    ),
+                  ),
+                ],
+              ),
+              Column(
+                children: [
+                  Icon(
+                    CupertinoIcons.star_circle,
+                    size: 24.w,
+                    color: context.fgPrimary900,
+                  ),
+                  SizedBox(height: 8.w),
+                  Text(
+                    'To Rate',
+                    style: TextStyle(
+                      fontSize: context.textXs,
+                      fontWeight: FontWeight.w500,
+                      color: context.textPrimary900,
+                      height: context.leadingXs,
+                    ),
+                  ),
+                ],
+              )
+            ],
+          ),
         ],
       ),
     );
   }
 }
+

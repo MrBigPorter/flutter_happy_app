@@ -1,9 +1,7 @@
-import 'dart:ui';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_app/app/page/order_detail_page.dart';
 import 'package:flutter_app/app/routes/app_router.dart';
 import 'package:flutter_app/common.dart';
