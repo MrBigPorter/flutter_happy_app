@@ -25,6 +25,7 @@ class _GuidePageState extends State<GuidePage> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
+
                     builder: (context) => DraggableScrollableScaffold(
                       heroTag: 'button_hero_tag',
                       floatingHeader: Container(
