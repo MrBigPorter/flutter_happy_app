@@ -1,6 +1,5 @@
 import 'dart:ui';
 
-import 'package:animations/animations.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/cupertino.dart';
@@ -15,9 +14,7 @@ import 'package:flutter_app/utils/format_helper.dart';
 import 'package:flutter_app/utils/helper.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:dismissible_page/dismissible_page.dart';
 
-import 'airbnb_expandable_card.dart';
 import 'airbnb_route.dart';
 
 class OrderItemContainer extends StatelessWidget {

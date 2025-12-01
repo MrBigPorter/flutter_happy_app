@@ -1,7 +1,6 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_app/app/page/order_components/order_list.dart';
 import 'package:flutter_app/common.dart';
 import 'package:flutter_app/components/base_scaffold.dart';
 import 'package:flutter_app/components/lucky_custom_material_indicator.dart';
@@ -13,6 +12,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:nested_scroll_view_plus/nested_scroll_view_plus.dart';
 
 import '../../core/models/order_item.dart';
+import 'order_components/order_list.dart';
 
 class OrderListPage extends ConsumerStatefulWidget{
   final dynamic args;
