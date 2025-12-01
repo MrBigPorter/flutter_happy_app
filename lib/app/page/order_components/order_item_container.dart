@@ -5,8 +5,8 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_app/app/page/order_components/zoom_scroll_view.dart';
 import 'package:flutter_app/app/page/order_detail_page.dart';
+import 'package:flutter_app/app/routes/app_router.dart';
 import 'package:flutter_app/common.dart';
 import 'package:flutter_app/components/skeleton.dart';
 import 'package:flutter_app/core/models/index.dart';
@@ -15,6 +15,10 @@ import 'package:flutter_app/utils/format_helper.dart';
 import 'package:flutter_app/utils/helper.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:dismissible_page/dismissible_page.dart';
+
+import 'airbnb_expandable_card.dart';
+import 'airbnb_route.dart';
 
 class OrderItemContainer extends StatelessWidget {
   final OrderItem item;
@@ -28,27 +32,108 @@ class OrderItemContainer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Button(
-      child: Text('click me'),
-      onPressed: () {
-        Navigator.of(context).push(
-          PageRouteBuilder(
-            barrierColor: Colors.black54.withValues(alpha: 0.5),
-            opaque: false,
-            transitionDuration: const Duration(milliseconds: 300),
-            reverseTransitionDuration: const Duration(milliseconds: 300),
-            pageBuilder: (context, animation, secondaryAnimation) {
-              return OrderDetailPage(
-                orderId: item.orderId,
-                imageList: [item.treasure.treasureCoverImg],
-                onClose: () {
-                  Navigator.of(context).pop();
-                },
-              );
-            },
+    final String heroTag = 'order_card_${item.orderId}';
+
+    return  Padding(
+      padding: isLast ? EdgeInsets.only(bottom: 32.w) : EdgeInsets.zero,
+      child: Hero(
+          tag: heroTag,
+          child: Material(
+            type: MaterialType.transparency,
+            child: Container(
+            width: double.infinity,
+            padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.w),
+            decoration: BoxDecoration(
+              color: context.bgPrimary,
+              borderRadius: BorderRadius.circular(8.w),
+              boxShadow: [
+                BoxShadow(
+                  color: context.fgPrimary900.withValues(alpha: 0.09),
+                  blurRadius: 12.w,
+                  offset: Offset(0, 4.w),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                /// Order item header section
+                _OrderItemHeader(item: item),
+                SizedBox(height: 8.w),
+
+                /// Order item information section
+                _OrderItemInfo(item: item),
+
+                /// group success info, winning info
+                _OrderItemGroupSuccess(item: item),
+                if (item.isRefunded) ...[
+                  SizedBox(height: 12.w),
+
+                  /// Order item refund information section
+                  _OrderItemRefundInfo(item: item),
+                ],
+                if (item.isWon) ...[
+                  SizedBox(height: 12.w),
+
+                  /// tip fro other bag
+                  Container(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: 10.w,
+                      vertical: 4.w,
+                    ),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(8.w),
+                      color: context.alphaBlack5,
+                    ),
+                    child: Text(
+                      'the-other-bag'.tr(),
+                      style: TextStyle(
+                        fontSize: context.textXs,
+                        fontWeight: FontWeight.w600,
+                        color: context.textSecondary700,
+                        height: context.leadingXs,
+                      ),
+                    ),
+                  ),
+                ],
+
+                if (!item.isRefunded) ...[
+                  SizedBox(height: 12.w),
+
+                  /// Order item actions section
+                  _OrderItemActions(
+                    item: item,
+                    onViewFriends: () {
+                      appRouter.push(
+                        '/group-member/?groupId=${item.group?.groupId}',
+                      );
+                    },
+                    onViewRewardDetails: () {
+                      Navigator.of(context).push(
+                          AirbnbRoute(
+                            child: OrderDetailPage(
+                              orderId: item.orderId,
+                              imageList: [item.treasure.treasureCoverImg],
+                              onClose: () => Navigator.of(context).pop(),
+                            ),
+                          )
+                      );
+
+                    },
+                    onTeamUp: () {
+                      appRouter.push('/me/order/${item.orderId}/team-up');
+                    },
+                    onClaimPrize: () {
+                      appRouter.push('/me/order/${item.orderId}/claim-prize');
+                    },
+                  ),
+                ],
+              ],
+            ),
           ),
-        );
-      },
+          )
+      ),
     );
   }
 }

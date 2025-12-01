@@ -1,25 +1,13 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'dart:math' as math;
 
 typedef ScrollBodyBuilder = Widget Function(
     BuildContext context,
     ScrollController scrollController,
-    double scrollOffset,
+    ScrollPhysics physics, // 把 Physics 传出去，由父组件控制
     );
 
-/// ZoomScrollView
-/// ------------------------------------------------------------------
-/// - 内部：
-///   - SingleChildScrollView（正常滚动）
-///   - bottomBar（固定在底部）
-/// - 对外表现为一张「卡片」：内容 + bottomBar 一起做 Transform（位移 + 缩放）
-///
-/// 行为：
-/// - 列表不在顶部：正常滚动，和系统一样
-/// - 列表在顶部 & 手指向下拖：进入「拖动关闭模式」
-///     * 卡片整体跟着手指走（translateY + scale）
-///     * 松手：
-///         - 拖动距离 >= 阈值 → 短动画下沉 + 缩小 → onDismiss()
-///         - 否则 → 短动画回弹到原位
 class ZoomScrollView extends StatefulWidget {
   final ScrollBodyBuilder bodyBuilder;
   final Widget bottomBar;
@@ -38,281 +26,240 @@ class ZoomScrollView extends StatefulWidget {
   State<ZoomScrollView> createState() => _ZoomScrollViewState();
 }
 
-enum _AnimType { none, rebound, dismiss }
-
 class _ZoomScrollViewState extends State<ZoomScrollView>
     with SingleTickerProviderStateMixin {
   final ScrollController _scrollController = ScrollController();
 
-  /// 提供给外部 Header 淡入用的 offset（只取 >= 0 部分）
-  double _scrollOffset = 0.0;
-
-  /// 当前整体位移 & 缩放
-  double _translateY = 0.0;
-  double _scale = 1.0;
-
-  /// 拖动关闭模式下累计的 Y 位移
-  double _dragOffset = 0.0;
-
-  /// 当前是否正在「拖动关闭」
-  bool _isDraggingToDismiss = false;
-
-  /// 当前是否在做关闭 or 回弹动画
-  bool _isAnimating = false;
-
-  /// Pointer 跟踪（只跟一个手指）
-  int? _activePointerId;
-  double _lastPointerY = 0.0;
-
-  /// 关闭阈值：拖动超过这么多就算要关
-  static const double _dismissDragDistance = 120.0;
-
-  /// 最多缩小 8%
-  static const double _maxScaleDelta = 0.08;
-
+  // 动画控制器
   late final AnimationController _animController;
   late Animation<double> _animTranslate;
   late Animation<double> _animScale;
 
-  _AnimType _animType = _AnimType.none;
+  // 状态变量
+  double _translateY = 0.0;
+  double _scale = 1.0;
+  bool _isDragging = false;
+  bool _isAnimating = false; // 是否正在执行回弹或关闭动画
+
+  // 速度追踪
+  VelocityTracker? _velocityTracker;
+
+  // 阈值配置
+  static const double _dismissThreshold = 100.0; // 距离阈值
+  static const double _velocityThreshold = 800.0; // 速度阈值 (像素/秒)
+  static const double _minScale = 0.88; // 最小缩放比例
 
   @override
   void initState() {
     super.initState();
-    _scrollController.addListener(_handleScrollChanged);
-
+    _scrollController.addListener(_handleScroll);
     _animController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 160),
-    )
-      ..addListener(() {
-        setState(() {
-          _translateY = _animTranslate.value;
-          _scale = _animScale.value;
-        });
-      })
-      ..addStatusListener((status) {
-        if (status == AnimationStatus.completed) {
-          if (_animType == _AnimType.rebound) {
-            // 回弹结束：彻底复位
-            _dragOffset = 0.0;
-            _translateY = 0.0;
-            _scale = 1.0;
-          } else if (_animType == _AnimType.dismiss) {
-            // 关闭动画结束：通知外部关闭
-            widget.onDismiss();
-          }
-          _animType = _AnimType.none;
-          _isAnimating = false;
-        }
+      duration: const Duration(milliseconds: 250), // iOS spring 默认大约是 250-300ms
+    )..addListener(() {
+      setState(() {
+        _translateY = _animTranslate.value;
+        _scale = _animScale.value;
       });
+    });
   }
 
   @override
   void dispose() {
-    _animController.dispose();
+    _scrollController.removeListener(_handleScroll);
     _scrollController.dispose();
+    _animController.dispose();
     super.dispose();
   }
 
-  void _handleScrollChanged() {
-    // 正在拖动关闭 / 动画中，不给 header 发 offset，避免抖动
-    if (_isDraggingToDismiss || _isAnimating) return;
-
-    final offset = _scrollController.offset;
-    final effective = offset > 0 ? offset : 0.0;
-    if (effective != _scrollOffset) {
-      _scrollOffset = effective;
-      widget.onScrollOffsetChanged?.call(effective);
-    }
+  void _handleScroll() {
+    if (_isDragging || _isAnimating) return;
+    widget.onScrollOffsetChanged?.call(_scrollController.offset);
   }
 
-  void _startReboundAnimation() {
-    if (_isAnimating) return;
-    _isAnimating = true;
-    _animType = _AnimType.rebound;
-
-    _animController.duration = const Duration(milliseconds: 160);
-
-    _animTranslate = Tween<double>(
-      begin: _translateY,
-      end: 0.0,
-    ).animate(
-      CurvedAnimation(
-        parent: _animController,
-        curve: Curves.easeOutCubic,
-      ),
-    );
-
-    _animScale = Tween<double>(
-      begin: _scale,
-      end: 1.0,
-    ).animate(
-      CurvedAnimation(
-        parent: _animController,
-        curve: Curves.easeOutCubic,
-      ),
-    );
-
-    _animController.forward(from: 0.0);
+  // 计算阻尼：随着距离增加，移动越来越难
+  // 模拟 iOS UIScrollView 的 rubber-banding 公式
+  double _applyFriction(double overscroll) {
+    // 简单的指数衰减模拟阻尼
+    // 0 -> 0
+    // 100 -> 80
+    // 500 -> 200
+    if (overscroll <= 0) return 0;
+    return 50 * math.log(1 + overscroll / 50);
+    // 或者用线性衰减: return overscroll * 0.5; (最简单)
+    // 下面这个公式手感更像 iOS：
+    // return math.pow(overscroll, 0.8).toDouble();
   }
 
-  void _startDismissAnimation() {
-    if (_isAnimating) return;
-    _isAnimating = true;
-    _animType = _AnimType.dismiss;
-
-    // 避免 ScrollView 自己再弹一段
-    if (_scrollController.hasClients) {
-      _scrollController.jumpTo(0.0);
-    }
-
-    _animController.duration = const Duration(milliseconds: 140);
-
-    _animTranslate = Tween<double>(
-      begin: _translateY,
-      end: _translateY + 80.0,
-    ).animate(
-      CurvedAnimation(
-        parent: _animController,
-        curve: Curves.easeInCubic,
-      ),
-    );
-
-    _animScale = Tween<double>(
-      begin: _scale,
-      end: 0.85,
-    ).animate(
-      CurvedAnimation(
-        parent: _animController,
-        curve: Curves.easeInCubic,
-      ),
-    );
-
-    _animController.forward(from: 0.0);
-  }
-
-  /// 手指按下：记录 pointer，用来算后续的 dy
   void _onPointerDown(PointerDownEvent event) {
-    if (_isAnimating) {
-      _animController.stop();
-      _animType = _AnimType.none;
-      _isAnimating = false;
-    }
-
-    _activePointerId = event.pointer;
-    _lastPointerY = event.position.dy;
-    _isDraggingToDismiss = false;
-    _dragOffset = 0.0;
+    if (_isAnimating) return; // 动画中禁止打断，或者你可以选择 stop 动画接管
+    _velocityTracker = VelocityTracker.withKind(event.kind);
+    _isDragging = false;
   }
 
-  /// 手指移动：如果滚到顶部且向下拖，就进入「拖动关闭模式」
   void _onPointerMove(PointerMoveEvent event) {
-    if (_isAnimating || _activePointerId != event.pointer) return;
+    if (_isAnimating) return;
+    _velocityTracker?.addPosition(event.timeStamp, event.position);
 
-    final dy = event.position.dy - _lastPointerY;
-    _lastPointerY = event.position.dy;
+    final delta = event.delta.dy;
+    final isAtTop = !_scrollController.hasClients || _scrollController.offset <= 0;
 
-    // 如果还没进入「拖动关闭模式」，先看看是否满足条件：
-    // 1. 向下拖动  2. 列表在顶部（offset <= 0.5）
-    if (!_isDraggingToDismiss) {
-      if (dy > 0 &&
-          _scrollController.hasClients &&
-          _scrollController.offset <= 0.5) {
-        _isDraggingToDismiss = true;
-        // 保证 ScrollView 不再往下 overscroll
-        _scrollController.jumpTo(0.0);
-      } else {
-        // 不满足条件，交给 ScrollView 正常滚动
-        return;
+    // 状态机：
+    // 1. 如果已经在拖拽中 -> 更新 translateY
+    // 2. 如果不在拖拽中，但在顶部且向下滑动 -> 开启拖拽模式
+
+    if (_isDragging) {
+      // 已经在拖拽模式：完全接管
+      // 这里不使用 event.delta.dy 直接加，因为会导致不跟手
+      // 我们基于总的拖动距离来计算（稍微简化逻辑，直接累加 delta）
+
+      double newTranslate = _translateY + delta;
+
+      // 增加阻力感：如果 delta > 0 (向下拉)，系数变小
+      if (delta > 0 && _translateY > 0) {
+        // 模拟阻力：随着 _translateY 变大，delta 的效用减弱
+        double friction = math.max(0.2, 1.0 - (_translateY / 600.0));
+        newTranslate = _translateY + delta * friction;
+      }
+
+      if (newTranslate < 0) newTranslate = 0; // 不允许向上推过头
+
+      setState(() {
+        _translateY = newTranslate;
+        // 计算缩放：最大位移 400 时达到最小缩放
+        double progress = (_translateY / 400.0).clamp(0.0, 1.0);
+        _scale = 1.0 - (1.0 - _minScale) * progress;
+      });
+
+    } else {
+      // 尚未开始拖拽
+      if (isAtTop && delta > 0) {
+        // 触发拖拽
+        setState(() {
+          _isDragging = true;
+        });
+        // 吃掉这个 delta，或者让它作为初始动量
       }
     }
-
-    // 已经在「拖动关闭模式」：卡片跟着手指走
-    _dragOffset += dy;
-    if (_dragOffset < 0) _dragOffset = 0;
-
-    final dragForScale =
-    _dragOffset.clamp(0.0, _dismissDragDistance); // 缩放不超过阈值
-    final t = (dragForScale / _dismissDragDistance).clamp(0.0, 1.0);
-
-    setState(() {
-      _translateY = _dragOffset;
-      _scale = 1.0 - _maxScaleDelta * t;
-    });
-
-    // 强制 ScrollView 一直保持在顶部，避免视觉上内容也在跟着滚
-    if (_scrollController.hasClients &&
-        _scrollController.offset != 0.0) {
-      _scrollController.jumpTo(0.0);
-    }
   }
 
-  /// 手指抬起：根据拖动距离判断关闭 / 回弹
   void _onPointerUp(PointerUpEvent event) {
-    if (_isAnimating || _activePointerId != event.pointer) {
-      _activePointerId = null;
-      return;
-    }
-    _activePointerId = null;
+    if (_isAnimating) return;
 
-    if (!_isDraggingToDismiss) return;
+    final velocity = _velocityTracker?.getVelocity().pixelsPerSecond.dy ?? 0.0;
+    _velocityTracker = null;
 
-    _isDraggingToDismiss = false;
+    if (_isDragging) {
+      setState(() {
+        _isDragging = false;
+      });
 
-    final bool shouldDismiss = _dragOffset >= _dismissDragDistance;
+      // 判断是否关闭：距离够长 或者 速度够快（且方向向下）
+      bool shouldDismiss = _translateY > _dismissThreshold || velocity > _velocityThreshold;
 
-    if (shouldDismiss) {
-      _startDismissAnimation();
-    } else {
-      _startReboundAnimation();
+      // 如果速度是负的（向上甩），即使距离够了也应该回弹
+      if (velocity < -500) {
+        shouldDismiss = false;
+      }
+
+      if (shouldDismiss) {
+        _runDismissAnimation(velocity);
+      } else {
+        _runReboundAnimation();
+      }
     }
   }
 
   void _onPointerCancel(PointerCancelEvent event) {
-    if (_activePointerId == event.pointer) {
-      _activePointerId = null;
-      if (_isDraggingToDismiss && !_isAnimating) {
-        _isDraggingToDismiss = false;
-        _startReboundAnimation();
-      }
+    _velocityTracker = null;
+    if (_isDragging) {
+      setState(() {
+        _isDragging = false;
+      });
+      _runReboundAnimation();
     }
+  }
+
+  void _runReboundAnimation() {
+    _isAnimating = true;
+    _animTranslate = Tween<double>(begin: _translateY, end: 0.0).animate(
+      CurvedAnimation(parent: _animController, curve: Curves.easeOutQuart), // 使用更平滑的曲线
+    );
+    _animScale = Tween<double>(begin: _scale, end: 1.0).animate(
+      CurvedAnimation(parent: _animController, curve: Curves.easeOutQuart),
+    );
+
+    _animController.reset();
+    _animController.forward().then((_) {
+      _isAnimating = false;
+    });
+  }
+
+  void _runDismissAnimation(double velocity) {
+    _isAnimating = true;
+
+    // 如果有初速度，动画应该更快
+    double endY = MediaQuery.of(context).size.height;
+    // 简单的时长计算，速度越快时间越短
+    int durationMs = 200;
+    if (velocity > 1000) durationMs = 150;
+
+    _animController.duration = Duration(milliseconds: durationMs);
+
+    _animTranslate = Tween<double>(begin: _translateY, end: endY).animate(
+      CurvedAnimation(parent: _animController, curve: Curves.easeIn),
+    );
+    _animScale = Tween<double>(begin: _scale, end: 0.8).animate(
+      CurvedAnimation(parent: _animController, curve: Curves.easeIn),
+    );
+
+    _animController.reset();
+    _animController.forward().then((_) {
+      // 动画结束后回调
+      widget.onDismiss();
+    });
   }
 
   @override
   Widget build(BuildContext context) {
+    // 关键点：当正在拖拽时，禁用列表本身的滚动 Physics
+    // 这比 jumpTo(0) 更平滑，也不会打断渲染管线
+    final ScrollPhysics currentPhysics = _isDragging
+        ? const NeverScrollableScrollPhysics()
+        : const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics());
+
     return Listener(
-      behavior: HitTestBehavior.opaque,
       onPointerDown: _onPointerDown,
       onPointerMove: _onPointerMove,
       onPointerUp: _onPointerUp,
       onPointerCancel: _onPointerCancel,
-      child: Transform.translate(
-        offset: Offset(0, _translateY),
-        child: Transform.scale(
-          scale: _scale,
-          alignment: Alignment.topCenter,
-          child: Column(
-            children: [
-              // 上方：正常可滚内容
-              Expanded(
-                child: SingleChildScrollView(
-                  controller: _scrollController,
-                  physics: const BouncingScrollPhysics(
-                    parent: AlwaysScrollableScrollPhysics(),
-                  ),
-                  child: widget.bodyBuilder(
-                    context,
-                    _scrollController,
-                    _scrollOffset,
-                  ),
+      behavior: HitTestBehavior.translucent, // 允许穿透，防止阻挡内部点击
+      child: AnimatedBuilder(
+        animation: _animController,
+        builder: (context, child) {
+          // 性能优化：RepaintBoundary 隔离重绘区域
+          return RepaintBoundary(
+            child: Transform.translate(
+              offset: Offset(0, _translateY),
+              child: Transform.scale(
+                scale: _scale,
+                alignment: Alignment.bottomCenter, // 视觉上通常以底部或中心缩放会更好，看设计需求，原生多为 center
+                child: Column(
+                  children: [
+                    Expanded(
+                      child: widget.bodyBuilder(
+                        context,
+                        _scrollController,
+                        currentPhysics, // 将 Physics 注入进去
+                      ),
+                    ),
+                    widget.bottomBar,
+                  ],
                 ),
               ),
-              // 下方：bottomBar，跟内容一起被 Transform
-              widget.bottomBar,
-            ],
-          ),
-        ),
+            ),
+          );
+        },
       ),
     );
   }
