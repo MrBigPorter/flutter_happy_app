@@ -30,10 +30,12 @@ class _OrderListPageState extends ConsumerState<OrderListPage> with SingleTicker
 
 
   Future<void> _onRefresh() async {
-    Future.wait([
-     // ref.refresh(orderCountProvider.future)
-
-    ]);
+    final currentTab = ref.read(activeOrderTabProvider);
+    ref.read(orderRefreshProvider.notifier).state = (
+      key: currentTab.key,
+      id: DateTime.now().millisecondsSinceEpoch,
+    );
+    await Future.delayed(const Duration(milliseconds: 500));
   }
 
   @override

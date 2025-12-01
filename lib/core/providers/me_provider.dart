@@ -40,6 +40,14 @@ final activeOrderTabProvider = StateProvider<TabItem>((ref) {
   );
 });
 
+// Refresh trigger for order list,default to active order tab key
+// When this provider's value changes, it indicates that the order list should be refreshed
+// use unique key to trigger refresh
+final orderRefreshProvider = StateProvider<({String key, int id})>((ref){
+  final defaultStatus = ref.read(activeOrderTabProvider);
+  return (key: defaultStatus.key, id: DateTime.now().millisecondsSinceEpoch);
+});
+
 /// Tab order
 /// Contains list of TabItem with their totals
 /// Used to display order tabs with counts

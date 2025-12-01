@@ -32,8 +32,7 @@ class _OrderListState extends ConsumerState<OrderList> with AutomaticKeepAliveCl
       requestKey: widget.status,
       request: ({required int pageSize, required int page}) {
         //  用入参 status，不依赖外部 provider no rely on external provider
-        final tab = ref.read(activeOrderTabProvider.notifier).state;
-        return ref.read(orderListProvider((status: tab.key, treasureId: null)))(
+        return ref.read(orderListProvider((status: widget.status, treasureId: null)))(
           pageSize: pageSize,
           page: page,
         );
@@ -47,9 +46,19 @@ class _OrderListState extends ConsumerState<OrderList> with AutomaticKeepAliveCl
     super.dispose();
   }
 
+  void refreshList(){
+    _ctl.refresh();
+  }
+
   @override
   Widget build(BuildContext context) {
     super.build(context);
+
+    ref.listen(orderRefreshProvider, (previous, next) {
+      if(next.key == widget.status ){
+        refreshList();
+      }
+    });
 
 
     return _ctl.wrapWithNotification(
