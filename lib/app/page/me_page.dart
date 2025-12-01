@@ -6,20 +6,16 @@ import 'package:flutter_app/app/routes/app_router.dart';
 import 'package:flutter_app/common.dart';
 import 'package:flutter_app/components/base_scaffold.dart';
 import 'package:flutter_app/components/lucky_custom_material_indicator.dart';
-import 'package:flutter_app/components/safe_tab_bar_view.dart';
 import 'package:flutter_app/core/models/index.dart';
-import 'package:flutter_app/core/providers/me_provider.dart';
 import 'package:flutter_app/core/store/auth/auth_provider.dart';
 import 'package:flutter_app/core/store/lucky_store.dart';
 import 'package:flutter_app/ui/button/index.dart';
 import 'package:flutter_app/ui/empty.dart';
-import 'package:flutter_app/ui/lucky_tab_bar_delegate.dart';
 import 'package:flutter_app/utils/format_helper.dart';
 import 'package:flutter_app/utils/helper.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:nested_scroll_view_plus/nested_scroll_view_plus.dart';
 
 class MePage extends ConsumerStatefulWidget {
   const MePage({super.key});

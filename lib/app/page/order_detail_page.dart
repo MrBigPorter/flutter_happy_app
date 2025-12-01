@@ -39,7 +39,6 @@ class OrderDetailPage extends ConsumerStatefulWidget {
 }
 
 class _OrderDetailPageState extends ConsumerState<OrderDetailPage> {
-  double _scrollOffset = 0.0;
 
   @override
   Widget build(BuildContext context) {
@@ -76,8 +75,6 @@ class _OrderDetailPageState extends ConsumerState<OrderDetailPage> {
 
           // 页面主体内容
           bodyBuilder: (context, scrollController, physics) {
-            final scrollOffset = scrollController.hasClients ? scrollController.offset : 0.0;
-            final opacity = 1.0 - ( scrollOffset / 356.w).clamp(0.0, 1.0);
             return SingleChildScrollView(
               controller: scrollController,
               physics: physics,
@@ -232,7 +229,6 @@ class _AnimatedHeaderState extends ConsumerState<AnimatedHeader> {
     final paddingTop = MediaQuery.of(context).padding.top;
     const height = kToolbarHeight;
 
-    final scrollOffset = widget.scrollController.offset;
     final webBaseUrl = ref.read(
       luckyProvider.select((state) => state.sysConfig.webBaseUrl),
     );
@@ -249,17 +245,6 @@ class _AnimatedHeaderState extends ConsumerState<AnimatedHeader> {
 
           double opacity = (offset / 120.0).clamp(0.0, 1.0);
           final double iconBgOpacity = 1.0 - opacity;
-
-          // 阴影：只有在白色图标时(顶部)才需要阴影，变黑后阴影消失
-          final List<Shadow>? iconShadow = opacity < 0.5
-              ? [const Shadow(color: Colors.black45, blurRadius: 4, offset: Offset(0, 1))]
-              : null;
-
-          // 颜色插值：从白色变为黑色
-          // 0.0 (顶部) -> 白色
-          // 1.0 (滚动后) -> 黑色
-          final Color iconColor = Color.lerp(context.bgPrimary, context.fgPrimary900, opacity)!;
-
 
           return Container(
             height: paddingTop + height,
@@ -340,7 +325,6 @@ class _OrderDetailBody extends StatelessWidget {
   final OrderDetailItem orderDetail;
 
   const _OrderDetailBody({
-    super.key,
     required this.orderDetail,
   });
 
@@ -476,12 +460,10 @@ class _OrderInfoSection extends StatelessWidget {
 class _OrderInfoRow extends StatelessWidget {
   final String title;
   final String value;
-  final Widget? trailing;
 
   const _OrderInfoRow({
     required this.title,
     required this.value,
-    this.trailing,
   });
 
   @override
@@ -497,17 +479,14 @@ class _OrderInfoRow extends StatelessWidget {
           ),
         ),
         const Spacer(),
-        if (trailing != null)
-          trailing!
-        else
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: context.textSm,
-              color: context.textSecondary700,
-              fontWeight: FontWeight.w800,
-            ),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: context.textSm,
+            color: context.textSecondary700,
+            fontWeight: FontWeight.w800,
           ),
+        ),
       ],
     );
   }

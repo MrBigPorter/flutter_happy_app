@@ -42,7 +42,6 @@ class _ProductGroupPageState extends ConsumerState<ProductGroupPage> {
 
   @override
   Widget build(BuildContext context) {
-    final treasureId = widget.treasureId;
 
     return BaseScaffold(
       title: 'draw-team'.tr(),

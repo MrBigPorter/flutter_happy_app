@@ -431,7 +431,7 @@ class PageListViewPro<T> extends StatelessWidget {
 
     // non-sliver skeleton list
     return ListView.separated(
-      padding: skeletonPadding ?? EdgeInsets.zero,
+      padding: skeletonPadding,
       itemCount: skeletonCount,
       separatorBuilder: (_, __) => SizedBox(height: separatorSpace.w),
       itemBuilder: (_, index) {
