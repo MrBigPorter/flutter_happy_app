@@ -19,6 +19,7 @@ class SwiperBanner<T> extends StatelessWidget {
   final double borderRadius;
   final Function(T item)? onTapItem;
   final Widget Function(T item)? itemBuilder;
+  final ScrollPhysics? physics;
 
   // dots
   final double dotSize;
@@ -53,6 +54,7 @@ class SwiperBanner<T> extends StatelessWidget {
     this.controller,
     this.storageKey,
     this.onIndexChanged,
+    this.physics,
   });
 
 
@@ -78,6 +80,9 @@ class SwiperBanner<T> extends StatelessWidget {
         itemCount: banners.length,
         autoplay: autoPlay && banners.length > 1,
         loop: banners.length > 1,
+        physics: physics ?? (banners.length > 1 ? BouncingScrollPhysics(
+          parent: AlwaysScrollableScrollPhysics(),
+        ) : NeverScrollableScrollPhysics()),
         autoplayDelay: interval.inMilliseconds,
         onIndexChanged: (index) {
            onIndexChanged?.call(index);

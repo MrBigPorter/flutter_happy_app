@@ -109,7 +109,7 @@ class OrderItemContainer extends StatelessWidget {
                           AirbnbRoute(
                             child: OrderDetailPage(
                               orderId: item.orderId,
-                              imageList: [item.treasure.treasureCoverImg],
+                              imageList: [item.treasure.treasureCoverImg,item.treasure.treasureCoverImg],
                               onClose: () => Navigator.of(context).pop(),
                             ),
                           )

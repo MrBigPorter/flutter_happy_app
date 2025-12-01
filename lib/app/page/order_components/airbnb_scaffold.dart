@@ -121,7 +121,6 @@ class _AirbnbStyleScaffoldState extends State<AirbnbStyleScaffold>
     }
   }
 
-  // 回弹动画保持不变
   void _runReboundAnim() {
     _isAnimating = true;
     _animTranslateY = Tween<double>(begin: _translateY, end: 0)
@@ -135,8 +134,6 @@ class _AirbnbStyleScaffoldState extends State<AirbnbStyleScaffold>
     _animController.forward().then((_) => _isAnimating = false);
   }
 
-  // 【移除】 _runDismissAnim 方法被删除
-  // 因为我们不再需要手动的"向下掉落"动画，而是依赖 Hero 的"缩回"动画
 
   @override
   Widget build(BuildContext context) {
