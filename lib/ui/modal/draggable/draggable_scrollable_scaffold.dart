@@ -1,35 +1,86 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_app/common.dart';
 
 // 定义构建滚动内容的函数类型，必须接收 controller 和 physics 以便组件内部控制
-typedef ScrollBodyBuilder = Widget Function(
-    BuildContext context, ScrollController controller, ScrollPhysics physics);
+typedef ScrollBodyBuilder =
+    Widget Function(
+      BuildContext context,
+      ScrollController controller,
+      ScrollPhysics physics,
+    );
+
+typedef DraggableHeaderBuilder =
+    Widget Function(
+      BuildContext context,
+      double dragProgress,
+      ScrollController controller,
+    );
+
+/// 提供给子组件访问的拖拽状态 InheritedWidget
+/// 包含当前拖拽进度和偏移量
+/// 进度范围 0.0 - 1.0
+/// 偏移量为垂直拖拽的像素值
+/// 子组件可通过 DraggableSheetStatus.of(context) 获取实例
+/// 或通过 DraggableSheetStatus.progressOf(context) 获取进度值
+class DraggableSheetStatus extends InheritedWidget {
+  final double progress; // 0.0 - 1.0
+  final double dragOffset; // 垂直拖拽偏移量
+
+  const DraggableSheetStatus({
+    super.key,
+    required super.child,
+    required this.progress,
+    required this.dragOffset,
+  });
+
+  static double progressOf(BuildContext context) {
+    final status = context
+        .dependOnInheritedWidgetOfExactType<DraggableSheetStatus>();
+    return status?.progress ?? 0.0;
+  }
+
+  static DraggableSheetStatus? of(BuildContext context) {
+    return context.dependOnInheritedWidgetOfExactType<DraggableSheetStatus>();
+  }
+
+  @override
+  bool updateShouldNotify(covariant DraggableSheetStatus oldWidget) {
+    return progress != oldWidget.progress || dragOffset != oldWidget.dragOffset;
+  }
+}
 
 class DraggableScrollableScaffold extends StatefulWidget {
   /// 构建内部滚动视图的 Builder
   final ScrollBodyBuilder bodyBuilder;
+
   /// 悬浮在内容之上的组件（如关闭按钮或标题栏），不随内容滚动，但随卡片缩放
-  final Widget? floatingHeader;
+  final DraggableHeaderBuilder? headerBuilder;
+
   /// 固定在底部的组件（如操作按钮）
   final Widget? bottomBar;
+
   /// 关闭时的回调（通常执行 Navigator.pop）
   final VoidCallback onDismiss;
+
   /// Hero 动画标签，用于连接列表页和详情页
   final String? heroTag;
+
   /// 卡片内容的背景色
   final Color? backgroundColor;
 
   // --- 配置参数 ---
   final double dismissThreshold; // 触发关闭的拖拽距离阈值
-  final double scaleTarget;      // 最大缩放比例（例如 0.92）
-  final double radiusTarget;     // 最大圆角大小
+  final double scaleTarget; // 最大缩放比例（例如 0.92）
+  final double radiusTarget; // 最大圆角大小
   final Duration animationDuration; // 回弹动画时长
 
   const DraggableScrollableScaffold({
     super.key,
     required this.bodyBuilder,
     required this.onDismiss,
-    this.floatingHeader,
+    this.headerBuilder,
     this.bottomBar,
     this.heroTag,
     this.backgroundColor,
@@ -47,7 +98,6 @@ class DraggableScrollableScaffold extends StatefulWidget {
 class _DraggableScrollableScaffoldState
     extends State<DraggableScrollableScaffold>
     with SingleTickerProviderStateMixin {
-
   // 核心控制器
   late final ScrollController _scrollController;
   late final AnimationController _animController;
@@ -58,13 +108,13 @@ class _DraggableScrollableScaffoldState
   late Animation<double> _animRadius;
 
   // [状态标志]
-  bool _isDragging = false;  // 是否正在手势拖拽中
+  bool _isDragging = false; // 是否正在手势拖拽中
   bool _isAnimating = false; // 是否正在执行回弹动画中
 
   // [UI 变换参数]
-  double _translateY = 0.0;  // 垂直位移距离
-  double _scale = 1.0;       // 当前缩放比例
-  double _borderRadius = 0.0;// 当前圆角大小
+  double _translateY = 0.0; // 垂直位移距离
+  double _scale = 1.0; // 当前缩放比例
+  double _borderRadius = 0.0; // 当前圆角大小
 
   @override
   void initState() {
@@ -72,17 +122,16 @@ class _DraggableScrollableScaffoldState
     _scrollController = ScrollController();
 
     // 初始化回弹动画控制器
-    _animController = AnimationController(
-      vsync: this,
-      duration: widget.animationDuration,
-    )..addListener(() {
-      // 监听动画每一帧，更新状态，驱动 UI 重绘
-      setState(() {
-        _translateY = _animTranslateY.value;
-        _scale = _animScale.value;
-        _borderRadius = _animRadius.value;
-      });
-    });
+    _animController =
+        AnimationController(vsync: this, duration: widget.animationDuration)
+          ..addListener(() {
+            // 监听动画每一帧，更新状态，驱动 UI 重绘
+            setState(() {
+              _translateY = _animTranslateY.value;
+              _scale = _animScale.value;
+              _borderRadius = _animRadius.value;
+            });
+          });
   }
 
   @override
@@ -153,12 +202,18 @@ class _DraggableScrollableScaffoldState
     // 使用 easeOutQuart 曲线，模拟强力磁铁吸附效果（快进慢出）
     final curve = Curves.easeOutQuart;
 
-    _animTranslateY = Tween<double>(begin: _translateY, end: 0.0)
-        .animate(CurvedAnimation(parent: _animController, curve: curve));
-    _animScale = Tween<double>(begin: _scale, end: 1.0)
-        .animate(CurvedAnimation(parent: _animController, curve: curve));
-    _animRadius = Tween<double>(begin: _borderRadius, end: 0.0)
-        .animate(CurvedAnimation(parent: _animController, curve: curve));
+    _animTranslateY = Tween<double>(
+      begin: _translateY,
+      end: 0.0,
+    ).animate(CurvedAnimation(parent: _animController, curve: curve));
+    _animScale = Tween<double>(
+      begin: _scale,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _animController, curve: curve));
+    _animRadius = Tween<double>(
+      begin: _borderRadius,
+      end: 0.0,
+    ).animate(CurvedAnimation(parent: _animController, curve: curve));
 
     _animController.reset();
     _animController.forward().then((_) {
@@ -195,7 +250,14 @@ class _DraggableScrollableScaffoldState
         : const BouncingScrollPhysics();
 
     // 计算背景透明度：拉得越远越透明
-    final bgOpacity = 1.0 - (_translateY / 600.0).clamp(0.0, 1.0);
+    final normalizedProgress =
+        (_translateY / (MediaQuery.of(context).size.height / 2)).clamp(
+          0.0,
+          1.0,
+        );
+    final bgOpacity = 1.0 - normalizedProgress;
+
+    final double blurSigma = 10.0 * bgOpacity;
 
     // 构建页面主体内容
     Widget cardContent = ClipRRect(
@@ -215,25 +277,34 @@ class _DraggableScrollableScaffoldState
                 return const SizedBox.shrink();
               }
               // [布局结构] 使用 Stack 实现悬浮头部的正确层级
-              return Stack(
-                children: [
-                  Column(
-                    children: [
-                      // 滚动区域
-                      Expanded(
-                        child: widget.bodyBuilder(
-                          context,
-                          _scrollController,
-                          physics,
+              return DraggableSheetStatus(
+                progress: normalizedProgress,
+                dragOffset: _translateY,
+                child: Stack(
+                  children: [
+                    Column(
+                      children: [
+                        // 滚动区域
+                        Expanded(
+                          child: widget.bodyBuilder(
+                            context,
+                            _scrollController,
+                            physics,
+                          ),
                         ),
+                        // 底部固定栏
+                        if (widget.bottomBar != null) widget.bottomBar!,
+                      ],
+                    ),
+                    // 悬浮头部 (如关闭按钮)，浮在内容之上
+                    if (widget.headerBuilder != null)
+                      widget.headerBuilder!(
+                        context,
+                        normalizedProgress,
+                        _scrollController,
                       ),
-                      // 底部固定栏
-                      if (widget.bottomBar != null) widget.bottomBar!,
-                    ],
-                  ),
-                  // 悬浮头部 (如关闭按钮)，浮在内容之上
-                  if (widget.floatingHeader != null) widget.floatingHeader!,
-                ],
+                  ],
+                ),
               );
             },
           ),
@@ -245,10 +316,7 @@ class _DraggableScrollableScaffoldState
     if (widget.heroTag != null) {
       cardContent = Hero(
         tag: widget.heroTag!,
-        child: Material(
-          type: MaterialType.transparency,
-          child: cardContent,
-        ),
+        child: Material(type: MaterialType.transparency, child: cardContent),
       );
     }
 
@@ -259,10 +327,11 @@ class _DraggableScrollableScaffoldState
         children: [
           // 1. 背景遮罩层
           Positioned.fill(
-            child: Container(
-              // [深色模式修复] 强制使用黑色。
-              // 若使用 Theme 颜色，深色模式下透明度变化会导致背景发白。
-              color: Colors.black.withValues(alpha: 0.5 * bgOpacity),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: blurSigma, sigmaY: blurSigma),
+              child: Container(
+                color: Colors.black.withValues(alpha: 0.3 * bgOpacity),
+              ),
             ),
           ),
 

@@ -1,6 +1,7 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_app/ui/modal/draggable/draggable_scrollable_scaffold.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
@@ -20,7 +21,6 @@ import 'package:flutter_app/utils/date_helper.dart';
 
 import 'package:flutter_app/components/swiper_banner.dart';
 
-import 'order_components/airbnb_scaffold.dart';
 
 class OrderDetailPage extends ConsumerStatefulWidget {
   final String orderId;
@@ -56,7 +56,7 @@ class _OrderDetailPageState extends ConsumerState<OrderDetailPage> {
         body: Center(child: OrderDetailSkeleton()),
       ),
       data: (orderDetail) {
-        return AirbnbStyleScaffold(
+        return DraggableScrollableScaffold(
           heroTag: 'order_card_${widget.orderId}',
           onDismiss: widget.onClose,
 
@@ -65,70 +65,67 @@ class _OrderDetailPageState extends ConsumerState<OrderDetailPage> {
 
           // 悬浮 Header (重点！)
           // 传入当前的 scrollOffset 以便内部计算透明度和颜色
-          floatingHeader: AirbnbDynamicHeader(
-            scrollOffset: _scrollOffset,
-            title: orderDetail.treasure.treasureName,
-            onClose: widget.onClose,
-            imageList: widget.imageList,
-          ),
+          headerBuilder: (context, dragProgress, scrollController) {
+            return AnimatedHeader(
+              scrollController: scrollController,
+              title: orderDetail.treasure.treasureName,
+              imageList: widget.imageList,
+              onClose: widget.onClose,
+            );
+          },
 
           // 页面主体内容
           bodyBuilder: (context, scrollController, physics) {
-            // 监听滚动，更新 Header 状态
-            // 注意：这里使用 NotificationListener 可以更高效地监听，避免频繁 rebuild 整个 Scaffold
-            return NotificationListener<ScrollUpdateNotification>(
-              onNotification: (notification) {
-                // 只有当 scrollOffset 变化显著时才 setState，优化性能
-                if (notification.metrics.axis == Axis.vertical) {
-                  final newOffset = notification.metrics.pixels;
-                  // 简单的节流或者阈值判断，避免每一帧都 setState
-                  // 这里为了流畅度直接 set，Flutter 这一层通常能扛得住
-                  if ((newOffset - _scrollOffset).abs() > 1) {
-                    // 使用微任务，防止 build 周期冲突
-                    if (mounted) {
-                      setState(() => _scrollOffset = newOffset);
-                    }
-                  }
-                }
-                return false;
-              },
-              child: SingleChildScrollView(
-                controller: scrollController,
-                physics: physics,
-                padding: EdgeInsets.zero, // 顶部不要留白，Banner 要顶头
-                child: Material(
-                  color: context.bgPrimary,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      // Banner 区域
-                      SizedBox(
-                        height: 356.w,
-                        child: SwiperBanner(
-                          banners: widget.imageList,
-                          height: 356.w,
-                          showIndicator: false,
-                          borderRadius: 0,
-                          physics: physics,
-                        ),
-                      ),
-
-                      // 详情内容
-                      Transform.translate(
-                          offset: Offset(0, -32.w),
-                        child:  Container(
-                          decoration: BoxDecoration(
-                            color: context.bgPrimary,
-                            borderRadius: BorderRadius.only(
-                              topLeft: Radius.circular(32.w),
-                              topRight: Radius.circular(32.w),
-                            ),
+            final scrollOffset = scrollController.hasClients ? scrollController.offset : 0.0;
+            final opacity = 1.0 - ( scrollOffset / 356.w).clamp(0.0, 1.0);
+            return SingleChildScrollView(
+              controller: scrollController,
+              physics: physics,
+              padding: EdgeInsets.zero, // 顶部不要留白，Banner 要顶头
+              child: Material(
+                color: context.bgPrimary,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // Banner 区域
+                   AnimatedBuilder(
+                       animation: scrollController,
+                       builder: (context, child) {
+                         double offset = 0;
+                         if(scrollController.hasClients){
+                           offset = scrollController.offset;
+                         }
+                         final double opacity = 1.0 - ( offset / 356.w).clamp(0.0, 1.0);
+                         return  SizedBox(
+                           height: 356.w,
+                           child: Opacity(
+                             opacity: opacity,
+                             child: SwiperBanner(
+                               banners: widget.imageList,
+                               height: 356.w,
+                               showIndicator: false,
+                               borderRadius: 0,
+                               physics: physics,
+                             ),
+                           ),
+                         );
+                       },
+                   ),
+                    // 详情内容
+                    Transform.translate(
+                      offset: Offset(0, -32.w),
+                      child:  Container(
+                        decoration: BoxDecoration(
+                          color: context.bgPrimary,
+                          borderRadius: BorderRadius.only(
+                            topLeft: Radius.circular(32.w),
+                            topRight: Radius.circular(32.w),
                           ),
-                          child:  _OrderDetailBody(orderDetail: orderDetail),
                         ),
+                        child:  _OrderDetailBody(orderDetail: orderDetail),
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
             );
@@ -167,26 +164,26 @@ class _OrderDetailPageState extends ConsumerState<OrderDetailPage> {
 /// ---------------------------------------------------------
 ///
 
-class AirbnbDynamicHeader extends ConsumerStatefulWidget {
-  final double scrollOffset;
+class AnimatedHeader extends ConsumerStatefulWidget {
+  final  ScrollController scrollController;
   final String title;
   final List<String> imageList;
 
   final VoidCallback onClose;
 
-  const AirbnbDynamicHeader({
+  const AnimatedHeader({
     super.key,
-    required this.scrollOffset,
     required this.title,
     required this.onClose,
     required this.imageList,
+    required this.scrollController,
   });
 
   @override
-  ConsumerState<AirbnbDynamicHeader> createState() => _AirbnbDynamicHeaderState();
+  ConsumerState<AnimatedHeader> createState() => _AnimatedHeaderState();
 }
 
-class _AirbnbDynamicHeaderState extends ConsumerState<AirbnbDynamicHeader> {
+class _AnimatedHeaderState extends ConsumerState<AnimatedHeader> {
   final sharePosterKey = GlobalKey<SharePostState>();
 
   void openShareSheet(BuildContext context, ShareData data) {
@@ -235,93 +232,103 @@ class _AirbnbDynamicHeaderState extends ConsumerState<AirbnbDynamicHeader> {
     final paddingTop = MediaQuery.of(context).padding.top;
     const height = kToolbarHeight;
 
-    final scrollOffset = widget.scrollOffset;
+    final scrollOffset = widget.scrollController.offset;
     final webBaseUrl = ref.read(
       luckyProvider.select((state) => state.sysConfig.webBaseUrl),
     );
 
-    // 计算渐变进度
-    // 0 ~ 100px 之间发生渐变
-    final double opacity = (scrollOffset / 120.0).clamp(0.0, 1.0);
-    final double iconBgOpacity = 1.0 - opacity;
-    
 
-    // 颜色插值：从白色变为黑色
-    // 0.0 (顶部) -> 白色
-    // 1.0 (滚动后) -> 黑色
-    final Color iconColor = Color.lerp(context.bgPrimary, context.fgPrimary900, opacity)!;
+    return AnimatedBuilder(
+        animation: widget.scrollController,
+        builder: (context, child){
 
-    // 阴影：只有在白色图标时(顶部)才需要阴影，变黑后阴影消失
-    final List<Shadow>? iconShadow = opacity < 0.5
-        ? [const Shadow(color: Colors.black45, blurRadius: 4, offset: Offset(0, 1))]
-        : null;
+          double offset = 0;
+          if(widget.scrollController.hasClients){
+            offset = widget.scrollController.offset;
+          }
 
-    return Container(
-      height: paddingTop + height,
-      padding: EdgeInsets.only(top: paddingTop, right: 16.w),
-      decoration: BoxDecoration(
-        color: context.bgPrimary.withValues(alpha: opacity), // 背景逐渐变白
-        border: Border(
-          bottom: BorderSide(
-            color: context.fgSecondary700.withValues(alpha: 0.1 * opacity), // 分割线也渐显
-            width: 1,
-          ),
-        ),
-      ),
-      child: NavigationToolbar(
-        leading: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: widget.onClose,
-          child: Container(
-            padding: EdgeInsets.symmetric(horizontal: 16.w),
-            alignment: Alignment.centerLeft,
-            child: CircleAvatar(
-              backgroundColor: context.bgPrimary.withValues(alpha: 0.8 * iconBgOpacity),
-              child: IconButton(
-                icon:  Icon(Icons.arrow_back, color: context.fgSecondary700),
-                constraints: const BoxConstraints(),
-                onPressed: () => Navigator.of(context).pop(),
-              ),
-            ),
-          ),
-        ),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            CircleAvatar(
-              backgroundColor: context.bgPrimary.withValues(alpha: 0.8 * iconBgOpacity),
-              child: IconButton(
-                icon:  Icon(Icons.share_outlined, color: context.fgSecondary700),
-                constraints: const BoxConstraints(),
-                onPressed: () {
-                  openShareSheet(
-                    context,
-                    ShareData(
-                      title: widget.title,
-                      url: '$webBaseUrl/${widget.imageList.first}',
-                      text:
-                      'Amazing product I just ordered. Highly recommend it!',
-                      imageUrl: widget.imageList.first,
-                    ),
-                  );
-                },
-              ),
-            ),
-            const SizedBox(width: 10),
-             CircleAvatar(
-              backgroundColor:context.bgPrimary.withValues(alpha: 0.8 * iconBgOpacity),
-              child: IconButton(
-                icon: Icon(
-                    Icons.favorite_border,
-                    color: context.fgSecondary700
+          double opacity = (offset / 120.0).clamp(0.0, 1.0);
+          final double iconBgOpacity = 1.0 - opacity;
+
+          // 阴影：只有在白色图标时(顶部)才需要阴影，变黑后阴影消失
+          final List<Shadow>? iconShadow = opacity < 0.5
+              ? [const Shadow(color: Colors.black45, blurRadius: 4, offset: Offset(0, 1))]
+              : null;
+
+          // 颜色插值：从白色变为黑色
+          // 0.0 (顶部) -> 白色
+          // 1.0 (滚动后) -> 黑色
+          final Color iconColor = Color.lerp(context.bgPrimary, context.fgPrimary900, opacity)!;
+
+
+          return Container(
+            height: paddingTop + height,
+            padding: EdgeInsets.only(top: paddingTop, right: 16.w),
+            decoration: BoxDecoration(
+              color: context.bgPrimary.withValues(alpha: opacity), // 背景逐渐变白
+              border: Border(
+                bottom: BorderSide(
+                  color: context.fgSecondary700.withValues(alpha: 0.1 * opacity), // 分割线也渐显
+                  width: 1,
                 ),
-                constraints: BoxConstraints(),
-                onPressed: null,
               ),
             ),
-          ],
-        ),
-      ),
+            child: NavigationToolbar(
+              leading: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: widget.onClose,
+                child: Container(
+                  padding: EdgeInsets.symmetric(horizontal: 16.w),
+                  alignment: Alignment.centerLeft,
+                  child: CircleAvatar(
+                    backgroundColor: context.bgPrimary.withValues(alpha: 0.8 * iconBgOpacity),
+                    child: IconButton(
+                      icon:  Icon(Icons.arrow_back, color: context.fgSecondary700),
+                      constraints: const BoxConstraints(),
+                      onPressed: () => Navigator.of(context).pop(),
+                    ),
+                  ),
+                ),
+              ),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircleAvatar(
+                    backgroundColor: context.bgPrimary.withValues(alpha: 0.8 * iconBgOpacity),
+                    child: IconButton(
+                      icon:  Icon(Icons.share_outlined, color: context.fgSecondary700),
+                      constraints: const BoxConstraints(),
+                      onPressed: () {
+                        openShareSheet(
+                          context,
+                          ShareData(
+                            title: widget.title,
+                            url: '$webBaseUrl/${widget.imageList.first}',
+                            text:
+                            'Amazing product I just ordered. Highly recommend it!',
+                            imageUrl: widget.imageList.first,
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  CircleAvatar(
+                    backgroundColor:context.bgPrimary.withValues(alpha: 0.8 * iconBgOpacity),
+                    child: IconButton(
+                      icon: Icon(
+                          Icons.favorite_border,
+                          color: context.fgSecondary700
+                      ),
+                      constraints: BoxConstraints(),
+                      onPressed: null,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
     );
   }
 }

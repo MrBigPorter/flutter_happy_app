@@ -9,6 +9,7 @@ import 'package:flutter_app/app/routes/app_router.dart';
 import 'package:flutter_app/common.dart';
 import 'package:flutter_app/components/skeleton.dart';
 import 'package:flutter_app/core/models/index.dart';
+import 'package:flutter_app/ui/animations/transparent_fade_route.dart';
 import 'package:flutter_app/ui/button/index.dart';
 import 'package:flutter_app/utils/format_helper.dart';
 import 'package:flutter_app/utils/helper.dart';
@@ -106,7 +107,7 @@ class OrderItemContainer extends StatelessWidget {
                     },
                     onViewRewardDetails: () {
                       Navigator.of(context).push(
-                          AirbnbRoute(
+                          TransparentFadeRoute(
                             child: OrderDetailPage(
                               orderId: item.orderId,
                               imageList: [item.treasure.treasureCoverImg,item.treasure.treasureCoverImg],
