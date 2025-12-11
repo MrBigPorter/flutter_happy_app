@@ -128,7 +128,7 @@ class _HomeBannerState extends State<HomeBanner> {
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(8.r),
                       child: CachedNetworkImage(
-                        imageUrl: proxied(item.bannerImgUrl),
+                        imageUrl: item.bannerImgUrl,
                         fit: BoxFit.cover,
                         width: double.infinity,
                         height: widget.height,

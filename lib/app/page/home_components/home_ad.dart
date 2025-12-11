@@ -153,7 +153,7 @@ class AdImage extends StatelessWidget {
       child: ClipRRect(
         borderRadius: BorderRadius.circular(8.r),
         child: CachedNetworkImage(
-          imageUrl: proxied(src),
+          imageUrl: src,
           fit: fit,
           width: width.w,
           height: height.h,

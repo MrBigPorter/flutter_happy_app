@@ -26,7 +26,7 @@ ProductListItem _$ProductListItemFromJson(
       'minBuyQuantity',
       (v) => (v as num?)?.toInt(),
     ),
-    productName: $checkedConvert('productName', (v) => v as String),
+    productName: $checkedConvert('productName', (v) => v as String?),
     seqBuyQuantity: $checkedConvert(
       'seqBuyQuantity',
       (v) => (v as num?)?.toInt(),

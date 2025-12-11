@@ -222,7 +222,7 @@ class ImageWidget<T> extends StatelessWidget {
     }
 
     return CachedNetworkImage(
-        imageUrl: proxied(url),
+        imageUrl: url,
         width: width,
         height: height,
         fit: BoxFit.cover,

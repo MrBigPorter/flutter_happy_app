@@ -167,7 +167,7 @@ class _ProductDetailPageState extends ConsumerState<ProductDetailPage>
                         Opacity(
                           opacity: t,
                           child: _BannerSection(
-                            banners: detail.mainImageList,
+                            banners: [?detail.treasureCoverImg],
                             storageKey: _bannerStorageKey,
                             height: expandedHeight,
                           ),

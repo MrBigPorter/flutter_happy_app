@@ -108,9 +108,8 @@ int findIndex<T>(List<T> list, T target){
 /// - Web：走 http://127.0.0.1:5173/proxy?url=...
 /// - iOS/Android：直接用原图（移动端没有浏览器 CORS 限制）
 /// Decide whether to use a proxy based on the platform:
-String proxied(String imageUrl, {String base = 'http://127.0.0.1:5173'}) {
-  if (!kIsWeb) return imageUrl;
-  return '$base/proxy?url=${Uri.encodeComponent(imageUrl)}';
+String proxied(String imageUrl) {
+  return imageUrl;
 }
 
 /// View related utilities

@@ -146,7 +146,7 @@ class _OrderItemHeader extends StatelessWidget {
           clipBehavior: Clip.hardEdge,
           borderRadius: BorderRadius.circular(8.w),
           child: CachedNetworkImage(
-            imageUrl: proxied(item.treasure.treasureCoverImg),
+            imageUrl: item.treasure.treasureCoverImg,
             width: 80.w,
             height: 80.w,
             fit: BoxFit.cover,

@@ -74,7 +74,7 @@ class SpecialArea extends StatelessWidget {
                           ClipRRect(
                             borderRadius: BorderRadius.circular(8.r),
                             child: CachedNetworkImage(
-                              imageUrl: proxied(item.treasureCoverImg!),
+                              imageUrl: item.treasureCoverImg!,
                               width: 80.w,
                               height: 80.w,
                               fit: BoxFit.cover,

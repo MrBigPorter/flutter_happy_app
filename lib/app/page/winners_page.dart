@@ -369,7 +369,7 @@ class _LatestWinnerSwiperItem extends StatelessWidget {
                 borderRadius: BorderRadius.circular(8.w),
                 /// images
                 child: CachedNetworkImage(
-                  imageUrl: proxied(item.mainImageList!.first),
+                  imageUrl: item.mainImageList!.first,
                   width: 180.w,
                   height: 120.w,
                   fit: BoxFit.cover,
@@ -614,7 +614,7 @@ class _WinnerListItem extends StatelessWidget {
                 clipBehavior: Clip.antiAlias,
                 borderRadius: BorderRadius.circular(8.w),
                 child: CachedNetworkImage(
-                  imageUrl: proxied(item.mainImageList!.first),
+                  imageUrl: item.mainImageList!.first,
                   width: 72.w,
                   height: 72.w,
                   fit: BoxFit.cover,

@@ -60,7 +60,7 @@ class ProductItem extends StatelessWidget {
                       top: Radius.circular(8.w),
                     ),
                     child: CachedNetworkImage(
-                      imageUrl: proxied(data.treasureCoverImg!),
+                      imageUrl: data.treasureCoverImg!,
                       memCacheHeight: (imgHeight!.w * MediaQuery.of(context).devicePixelRatio).round(),
                       memCacheWidth: (imgWidth!.w * MediaQuery.of(context).devicePixelRatio).round(),
                       fadeInDuration:  Duration.zero,

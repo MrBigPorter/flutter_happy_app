@@ -14,7 +14,7 @@ class ProductListItem {
   final int? lotteryTime;
   final List<String>? mainImageList;
   final int? minBuyQuantity;
-  final String productName;
+  final String? productName;
   final int? seqBuyQuantity;
   final int? seqShelvesQuantity;
   final String treasureId;
