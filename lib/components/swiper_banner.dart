@@ -3,6 +3,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter_app/common.dart';
 import 'package:flutter_app/components/skeleton.dart';
 import 'package:card_swiper/card_swiper.dart';
+import 'package:flutter_app/ui/img/app_image.dart';
 import 'package:flutter_app/utils/helper.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
@@ -221,22 +222,11 @@ class ImageWidget<T> extends StatelessWidget {
       url = item?.bannerImgUrl;
     }
 
-    return CachedNetworkImage(
-        imageUrl: url,
-        width: width,
-        height: height,
-        fit: BoxFit.cover,
-        placeholder: (_,__)=>Skeleton.react(width: width, height: height),
-        errorWidget: (_,__,___)=>Container(
-          width: width,
-          height: height,
-          color: const Color(0x11000000),
-          alignment: Alignment.center,
-          child: Icon(
-            CupertinoIcons.photo,
-            size: 32.w,
-          ),
-        )
+    return AppCachedImage(
+      url,
+      width: width,
+      height: height,
+      fit: BoxFit.cover,
     );
   }
 }

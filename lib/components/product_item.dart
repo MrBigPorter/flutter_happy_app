@@ -8,6 +8,7 @@ import 'package:flutter_app/components/render_countdown.dart';
 import 'package:flutter_app/components/skeleton.dart';
 import 'package:flutter_app/ui/bubble_progress.dart';
 import 'package:flutter_app/ui/button/index.dart';
+import 'package:flutter_app/ui/img/app_image.dart';
 import 'package:flutter_app/utils/format_helper.dart';
 import 'package:flutter_app/utils/helper.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -59,22 +60,11 @@ class ProductItem extends StatelessWidget {
                     borderRadius: BorderRadius.vertical(
                       top: Radius.circular(8.w),
                     ),
-                    child: CachedNetworkImage(
-                      imageUrl: data.treasureCoverImg!,
-                      memCacheHeight: (imgHeight!.w * MediaQuery.of(context).devicePixelRatio).round(),
-                      memCacheWidth: (imgWidth!.w * MediaQuery.of(context).devicePixelRatio).round(),
-                      fadeInDuration:  Duration.zero,
-                      fadeOutDuration: Duration.zero,
-                      placeholderFadeInDuration: Duration.zero,
-                      fit: BoxFit.cover,
-                      placeholder: (_, __) => Skeleton.react(
-                        width: double.infinity,
-                        height: imgWidth!.w,
-                      ),
-                      errorWidget: (_, __, ___) => Skeleton.react(
-                        width: double.infinity,
+                    child:AppCachedImage(
+                        data.treasureCoverImg!,
+                        width: imgWidth!.w,
                         height: imgHeight!.w,
-                      ),
+                        fit: BoxFit.cover,
                     ),
                   ),
                 ),

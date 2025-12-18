@@ -363,6 +363,7 @@ class _BannerSection extends StatelessWidget {
       );
     }
     return SwiperBanner(
+      width: 375.w,
       height: height ?? 250.w,
       borderRadius: 0,
       banners: banners!,

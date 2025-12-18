@@ -5,6 +5,7 @@ import 'package:flutter/cupertino.dart';
 
 import 'package:flutter_app/common.dart';
 import 'package:flutter_app/components/skeleton.dart';
+import 'package:flutter_app/ui/img/app_image.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import '../utils/helper.dart';
@@ -127,28 +128,12 @@ class _HomeBannerState extends State<HomeBanner> {
                     tag: 'banner_$i',
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(8.r),
-                      child: CachedNetworkImage(
-                        imageUrl: item.bannerImgUrl,
+                      child:AppCachedImage(item.bannerImgUrl,
                         fit: BoxFit.cover,
-                        width: double.infinity,
-                        height: widget.height,
-                        placeholder: (_, __) => Skeleton.react(
-                          width: double.infinity,
-                          height: widget.height,
-                          borderRadius: BorderRadius.circular(8.r),
-                        ),
-                        errorWidget: (_, __, ___) => Container(
-                          color: const Color(0x11000000),
-                          alignment: Alignment.center,
-                          child: Icon(
-                            CupertinoIcons.photo,
-                            size: 32.w,
-                            color: Colors.grey,
-                          ),
-                        ),
-                      ),
+                        width: 375.w,
+                        height: widget.height.w,
+                      ))
                     ),
-                  ),
                 );
               },
             ),

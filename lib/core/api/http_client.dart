@@ -51,7 +51,7 @@ class Http {
           final now = DateTime.now().millisecondsSinceEpoch.toString();
           options.headers['signature_nonce'] = now;
           options.headers['currentTime'] = now;
-          options.headers['device'] = 'flutter';
+          //options.headers['device'] = 'flutter';
           options.headers['lang'] = 'en';
 
           // 注入 token（除非显式标记 noAuth）

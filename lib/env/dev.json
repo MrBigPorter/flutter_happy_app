@@ -1,1 +1,1 @@
-{ "FLAVOR": "dev", "API_BASE": "http://localhost:3000", "LOG_HTTP": "true" }
+{ "FLAVOR": "dev", "API_BASE": "http://dev.joyminis.com", "LOG_HTTP": "true" }
