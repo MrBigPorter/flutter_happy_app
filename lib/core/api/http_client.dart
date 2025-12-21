@@ -3,6 +3,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_app/core/store/auth/auth_initial.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:flutter_app/app/routes/app_router.dart';
+import '../../utils/device_utils.dart';
 import 'env.dart';
 
 typedef FromJson<T> = T Function(dynamic json);
@@ -45,14 +46,20 @@ class Http {
     }*/
 
     _dio.interceptors.add(
-      InterceptorsWrapper(
+      //  关键修改：队列拦截器
+      QueuedInterceptorsWrapper(
         onRequest: (options, handler) async {
           // 通用头
+          final fingerprint = await DeviceUtils.getFingerprint();
           final now = DateTime.now().millisecondsSinceEpoch.toString();
           options.headers['signature_nonce'] = now;
           options.headers['currentTime'] = now;
-          //options.headers['device'] = 'flutter';
           options.headers['lang'] = 'en';
+          // 注入 Header
+          options.headers['x-device-id'] = fingerprint.deviceId;
+          options.headers['x-device-model'] = fingerprint.deviceModel;
+          // 也可以传平台，方便后端统计
+          options.headers['x-platform'] = fingerprint.platform;
 
           // 注入 token（除非显式标记 noAuth）
           final noAuth = options.extra['noAuth'] == true;

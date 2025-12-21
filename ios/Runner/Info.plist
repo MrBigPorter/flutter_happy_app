@@ -58,5 +58,7 @@
     <!-- 保存图片到相册（如果要“下载海报”） -->
     <key>NSPhotoLibraryAddUsageDescription</key>
     <string>We save poster to your Photos for sharing.</string>
+    <key>NSCameraUsageDescription</key>
+    <string>我们需要访问相机以进行安全身份验证。</string>
 </dict>
 </plist>
