@@ -104,6 +104,26 @@ class Http {
 
           if (_tokenErrorCodes.contains(code) && !skipTokenGuard) {
 
+            final currentRequestToken = response.requestOptions.headers['Authorization'];
+            final latestToken = _tokenCache;
+            // 构造 Bearer 字符串对比
+            final isTokenOutdated = latestToken != null &&
+                currentRequestToken != null &&
+                currentRequestToken != 'Bearer $latestToken';
+
+            if(isTokenOutdated){
+              //  既然 Token 已经被别人刷行了，我就直接用新 Token 重试，不调刷新接口了
+              final options = response.requestOptions;
+              options.headers['Authorization'] = 'Bearer $latestToken';
+              try{
+                final newResponse = await _dio.fetch(options);
+                return handler.resolve(newResponse);
+              }catch(_){
+
+              }
+
+            }
+
            final alreadyRetries = reqExtra['__retryAfterRefresh__'] == true;
 
            if(!alreadyRetries){
@@ -126,7 +146,10 @@ class Http {
                  final newResponse = await _dio.fetch(options);
                  return handler.resolve(newResponse);
                }catch(_){
-                 // failed to retry, will continue to logout
+                 await _clearToken();
+                 return;
+               }finally {
+                 _isRefreshingToken = false;
                }
 
              }
