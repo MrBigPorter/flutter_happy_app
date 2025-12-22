@@ -50,11 +50,19 @@ class LivenessActivity : AppCompatActivity() {
                         finish()
                     },
                     onError = { error ->
-                        // 🔥 修复点：直接打印 error.toString()，避开类型检查问题
-                        Log.e("Liveness_Debug", "检测失败: ${error.toString()}")
+                        // ❌ 修改前: error.toString() 只打印了个代号
+                        // Log.e("Liveness_Debug", "检测失败: ${error.toString()}")
+
+                        // ✅ 修改后: error.message 才是真正的人话！
+                        Log.e("Liveness_Debug", "检测失败原因: ${error.message}")
+
+                        // 如果 message 是空的，我们再试一下 access message
+                        if (error.message == null) {
+                             Log.e("Liveness_Debug", "检测失败(无message), 原始异常: $error")
+                        }
 
                         val errorData = Intent()
-                        errorData.putExtra("error_msg", error.toString())
+                        errorData.putExtra("error_msg", error.message ?: "未知错误")
                         setResult(Activity.RESULT_CANCELED, errorData)
                         finish()
                     }

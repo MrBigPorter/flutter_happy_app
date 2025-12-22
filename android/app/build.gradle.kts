@@ -52,8 +52,18 @@ configurations.all {
 }
 
 dependencies {
+    // (Amplify 部分)
+    // 使用 BOM 锁定核心版本为 2.19.1 (配合 Liveness 1.3.0 )
+    implementation(platform("com.amplifyframework:core:2.19.1"))
+    implementation(platform("com.amplifyframework:aws-auth-cognito:2.19.1"))
+
+    // 实际引入库 (不需要写版本号了，BOM 会自动管)
+    implementation("com.amplifyframework:aws-auth-cognito")
+    implementation("com.amplifyframework:core") // 显式加上 core 比较保险
+
+    // Liveness 独立引入
     implementation("com.amplifyframework.ui:liveness:1.3.0")
-    implementation("com.amplifyframework:aws-auth-cognito:2.14.0")
+
     implementation(platform("androidx.compose:compose-bom:2024.02.00"))
     implementation("androidx.compose.material3:material3")
     implementation("androidx.activity:activity-compose:1.8.2")
