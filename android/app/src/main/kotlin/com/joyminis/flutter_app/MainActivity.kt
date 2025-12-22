@@ -1,4 +1,4 @@
-package com.example.flutter_app // 保持你原有的包名
+package com.joyminis.flutter_app // 保持你原有的包名
 
 // 📦 必须导入这几个包 (IDE 通常会提示自动导入，如果没有就手动加)
 import io.flutter.embedding.android.FlutterActivity
@@ -8,7 +8,7 @@ import android.widget.Toast // 为了测试弹个窗
 
 class MainActivity: FlutterActivity() {
     // 🔑 语法点 1：跟 Flutter 端一模一样的"电话号码"
-    private val CHANNEL = "com.lucky.kyc/liveness"
+    private val CHANNEL = "com.joyminis.flutter_app/liveness"
 
     // 这是 Flutter 引擎启动时会自动调用的方法
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {

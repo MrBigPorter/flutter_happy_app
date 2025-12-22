@@ -4,7 +4,7 @@ class LivenessPlugin {
   // 🔑 语法点 1：定义频道 (Channel)
   // 口诀：这个字符串就是"电话号码"，Android/iOS 必须一字不差！
   // 建议格式：包名/功能名
-  static const MethodChannel _channel = MethodChannel('com.lucky.kyc/liveness');
+  static const MethodChannel _channel = MethodChannel('com.joyminis.flutter_app/liveness');
 
   /// 对外暴露的方法：开始活体检测
   static Future<bool> start(String sessionId) async {
