@@ -49,6 +49,7 @@ class Http {
       //  关键修改：队列拦截器
       QueuedInterceptorsWrapper(
         onRequest: (options, handler) async {
+          
           // 通用头
           final fingerprint = await DeviceUtils.getFingerprint();
           final now = DateTime.now().millisecondsSinceEpoch.toString();
@@ -60,6 +61,8 @@ class Http {
           options.headers['x-device-model'] = fingerprint.deviceModel;
           // 也可以传平台，方便后端统计
           options.headers['x-platform'] = fingerprint.platform;
+          
+
 
           // 注入 token（除非显式标记 noAuth）
           final noAuth = options.extra['noAuth'] == true;
@@ -73,6 +76,7 @@ class Http {
           handler.next(options);
         },
         onResponse: (response, handler) async {
+
           // HTTP 非 2xx 也允许走到这里，由我们按后端 code 统一处理
           final data = response.data;
 
@@ -195,6 +199,7 @@ class Http {
           );
         },
         onError: (e, handler) {
+          print("Request error: ${e.message}");
           // 统一网络错误提示（可由 noErrorToast 关闭）
           final noToast = e.requestOptions.extra['noErrorToast'] == true;
           if (!noToast) {

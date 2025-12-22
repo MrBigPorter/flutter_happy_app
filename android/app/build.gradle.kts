@@ -21,7 +21,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.lucky.kyc"
+        applicationId = "com.joyminis.flutter_app"
         minSdk = 24
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode

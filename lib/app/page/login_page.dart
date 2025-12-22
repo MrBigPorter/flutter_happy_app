@@ -114,6 +114,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   }
 
   Future<void> sendCode() async {
+    print('send code clicked');
     final form = _usePasswordLogin ? passwordForm.form : otpForm.form;
     final phone = form.control('phone');
     phone.markAsTouched();

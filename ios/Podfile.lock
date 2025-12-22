@@ -1,14 +1,7 @@
 PODS:
-  - amplify_auth_cognito (0.0.1):
-    - Flutter
-    - FlutterMacOS
-  - amplify_secure_storage (0.0.1):
-    - Flutter
   - audio_session (0.0.1):
     - Flutter
   - device_info_plus (0.0.1):
-    - Flutter
-  - face_liveness_detector (0.2.3):
     - Flutter
   - Flutter (1.0.0)
   - flutter_secure_storage (6.0.0):
@@ -18,8 +11,9 @@ PODS:
     - KeychainAccess
   - fluttertoast (0.0.2):
     - Flutter
-  - image_gallery_saver (2.0.2):
+  - gal (1.0.0):
     - Flutter
+    - FlutterMacOS
   - just_audio (0.0.1):
     - Flutter
     - FlutterMacOS
@@ -49,16 +43,13 @@ PODS:
     - FlutterMacOS
 
 DEPENDENCIES:
-  - amplify_auth_cognito (from `.symlinks/plugins/amplify_auth_cognito/darwin`)
-  - amplify_secure_storage (from `.symlinks/plugins/amplify_secure_storage/ios`)
   - audio_session (from `.symlinks/plugins/audio_session/ios`)
   - device_info_plus (from `.symlinks/plugins/device_info_plus/ios`)
-  - face_liveness_detector (from `.symlinks/plugins/face_liveness_detector/ios`)
   - Flutter (from `Flutter`)
   - flutter_secure_storage (from `.symlinks/plugins/flutter_secure_storage/ios`)
   - flutter_udid (from `.symlinks/plugins/flutter_udid/ios`)
   - fluttertoast (from `.symlinks/plugins/fluttertoast/ios`)
-  - image_gallery_saver (from `.symlinks/plugins/image_gallery_saver/ios`)
+  - gal (from `.symlinks/plugins/gal/darwin`)
   - just_audio (from `.symlinks/plugins/just_audio/darwin`)
   - package_info_plus (from `.symlinks/plugins/package_info_plus/ios`)
   - path_provider_foundation (from `.symlinks/plugins/path_provider_foundation/darwin`)
@@ -75,16 +66,10 @@ SPEC REPOS:
     - KeychainAccess
 
 EXTERNAL SOURCES:
-  amplify_auth_cognito:
-    :path: ".symlinks/plugins/amplify_auth_cognito/darwin"
-  amplify_secure_storage:
-    :path: ".symlinks/plugins/amplify_secure_storage/ios"
   audio_session:
     :path: ".symlinks/plugins/audio_session/ios"
   device_info_plus:
     :path: ".symlinks/plugins/device_info_plus/ios"
-  face_liveness_detector:
-    :path: ".symlinks/plugins/face_liveness_detector/ios"
   Flutter:
     :path: Flutter
   flutter_secure_storage:
@@ -93,8 +78,8 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/flutter_udid/ios"
   fluttertoast:
     :path: ".symlinks/plugins/fluttertoast/ios"
-  image_gallery_saver:
-    :path: ".symlinks/plugins/image_gallery_saver/ios"
+  gal:
+    :path: ".symlinks/plugins/gal/darwin"
   just_audio:
     :path: ".symlinks/plugins/just_audio/darwin"
   package_info_plus:
@@ -117,16 +102,13 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/webview_flutter_wkwebview/darwin"
 
 SPEC CHECKSUMS:
-  amplify_auth_cognito: a5d9cb77abfbe05e3501ad0c45dddc81503e7074
-  amplify_secure_storage: 3edc30177ffefbcee786c408a21c02f8ab9f168e
   audio_session: 9bb7f6c970f21241b19f5a3658097ae459681ba0
   device_info_plus: 21fcca2080fbcd348be798aa36c3e5ed849eefbe
-  face_liveness_detector: 2ee391a79e552d08da25eb57ce1b4c84bb2dec16
   Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
   flutter_secure_storage: 1ed9476fba7e7a782b22888f956cce43e2c62f13
   flutter_udid: 92a5d31fe0526b7b6002a2318df702e12e7eb300
   fluttertoast: 2c67e14dce98bbdb200df9e1acf610d7a6264ea1
-  image_gallery_saver: 14711d79da40581063e8842a11acf1969d781ed7
+  gal: baecd024ebfd13c441269ca7404792a7152fde89
   just_audio: 4e391f57b79cad2b0674030a00453ca5ce817eed
   KeychainAccess: c0c4f7f38f6fc7bbe58f5702e25f7bd2f65abf51
   package_info_plus: af8e2ca6888548050f16fa2f1938db7b5a5df499
