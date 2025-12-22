@@ -1,44 +1,47 @@
-package com.joyminis.flutter_app // 保持你原有的包名
+package com.joyminis.flutter_app
 
-// 📦 必须导入这几个包 (IDE 通常会提示自动导入，如果没有就手动加)
-import io.flutter.embedding.android.FlutterActivity
+import android.app.Activity
+import android.content.Intent
+import androidx.activity.result.contract.ActivityResultContracts
+import io.flutter.embedding.android.FlutterFragmentActivity  // 👈 修改1：换成这个引用
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
-import android.widget.Toast // 为了测试弹个窗
 
-class MainActivity: FlutterActivity() {
-    // 🔑 语法点 1：跟 Flutter 端一模一样的"电话号码"
+// 👇 修改2：这里改成继承 FlutterFragmentActivity
+class MainActivity: FlutterFragmentActivity() {
     private val CHANNEL = "com.joyminis.flutter_app/liveness"
 
-    // 这是 Flutter 引擎启动时会自动调用的方法
+    private var pendingResult: MethodChannel.Result? = null
+
+    // 现在这里绝对不会报错了，因为 FlutterFragmentActivity 支持它！
+    private val livenessLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            pendingResult?.success(true)
+        } else {
+            pendingResult?.success(false)
+        }
+        pendingResult = null
+    }
+
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
 
-        // 🔑 语法点 2：建立监听 (setMethodCallHandler)
-        // binaryMessenger 是底层的通信员，不用管，传进去就行
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL).setMethodCallHandler { call, result ->
-
-            // call: 包含了 Flutter 传过来的 method (暗号) 和 arguments (数据)
-            // result: 用来给 Flutter 回话 (success/error)
-
-            // 🔑 语法点 3：判断暗号
             if (call.method == "start") {
-
-                // 🔑 语法点 4：获取参数 (类型安全获取)
                 val sessionId = call.argument<String>("sessionId")
                 val region = call.argument<String>("region")
 
-                println("Android: 收到 Flutter 指令! Session: $sessionId")
+                if (sessionId != null) {
+                    pendingResult = result
 
-                // --- 🧪 测试阶段：先弹个窗证明通了 ---
-                Toast.makeText(this, "Android 收到: $sessionId", Toast.LENGTH_SHORT).show()
-
-                // --- 模拟业务完成 ---
-                // 告诉 Flutter: 任务搞定 (对应 Flutter 的 await 返回值)
-                result.success(true)
-
+                    val intent = Intent(this, LivenessActivity::class.java)
+                    intent.putExtra("sessionId", sessionId)
+                    intent.putExtra("region", region)
+                    livenessLauncher.launch(intent)
+                } else {
+                    result.error("ARGS_ERROR", "SessionId is null", null)
+                }
             } else {
-                // 如果暗号不对，告诉 Flutter 没这个方法
                 result.notImplemented()
             }
         }
