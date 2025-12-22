@@ -3,12 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_app/common.dart';
 import 'package:flutter_app/features/share/models/share_data.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:image_gallery_saver/image_gallery_saver.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:screenshot/screenshot.dart';
 import 'package:share_plus/share_plus.dart';
-
+import 'package:gal/gal.dart';
 import 'package:flutter_app/ui/index.dart';
 
 import 'save_poster_stub.dart'
@@ -44,26 +43,36 @@ class SharePostState extends State<SharePost> {
   }
 
   // Save the captured image to the device gallery
-  Future<void> saveToGallery() async {
-    final bytes = await _shot.capture(pixelRatio: 2.0);
-    if (bytes == null) return;
-    if(!kIsWeb){
-      // ImageGallerySaver requires Uint8List
-      final result = await ImageGallerySaver.saveImage(
-        Uint8List.fromList(bytes),
-        quality: 95,
-        name: 'share_poster_${DateTime.now().millisecondsSinceEpoch}',
-      );
-      if (result['isSuccess'] == true) {
-        RadixToast.success( 'Image saved to gallery');
-      } else {
-        RadixToast.error('Failed to save image');
-      }
-    }else{
-      // Handle web download,because web cannot save to gallery directly
-        downloadImageOnWeb(bytes);
-    }
-  }
+   Future<void> saveToGallery() async {
+     final bytes = await _shot.capture(pixelRatio: 2.0);
+     if (bytes == null) return;
+
+     if (!kIsWeb) {
+       try {
+         // 1) 申请权限（Android/iOS）
+         final has = await Gal.hasAccess();
+         if (!has) {
+           final ok = await Gal.requestAccess();
+           if (!ok) {
+             RadixToast.error('Permission denied');
+             return;
+           }
+         }
+
+         // 2) 保存到相册（bytes 版最适合你这种截图）
+         await Gal.putImageBytes(bytes);
+
+         RadixToast.success('Image saved to gallery');
+       } on GalException catch (e) {
+         RadixToast.error(e.type.message); // 更具体的错误原因
+       } catch (e) {
+         RadixToast.error('Failed to save image');
+       }
+     } else {
+       // Web：下载（你原来的逻辑保持）
+       downloadImageOnWeb(bytes);
+     }
+   }
 
   Future<void> sharePost() async {
     final file = await captureToFile();
