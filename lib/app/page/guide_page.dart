@@ -1,39 +1,46 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_app/ui/modal/draggable/draggable_scrollable_scaffold.dart';
+import 'package:flutter_app/components/base_scaffold.dart';
+import 'package:flutter_app/core/providers/liveness_provider.dart';
 import 'package:flutter_app/ui/button/button.dart';
-import 'package:flutter_app/utils/plugin/liveness_plugin.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../ui/animations/transparent_fade_route.dart';
+import '../../utils/services/liveness_service.dart';
 
 
-class GuidePage extends StatefulWidget {
+class GuidePage extends ConsumerStatefulWidget {
   const GuidePage({super.key});
 
   @override
-  State<GuidePage> createState() => _GuidePageState();
+  ConsumerState<GuidePage> createState() => _GuidePageState();
 }
 
-class _GuidePageState extends State<GuidePage> {
-
-  Future<void> start() async{
-    await LivenessPlugin.start("test_session_id");
-  }
+class _GuidePageState extends ConsumerState<GuidePage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+
+     final livenessState = ref.watch(livenessNotifierProvider);
+
+
+    return BaseScaffold(
       body: Center(
-        child: Column(
-          children: [
-            SizedBox(height: 100,),
-            Button(
-              onPressed:start,
-              child: Text('test', style: TextStyle(
-                fontSize: 20,
-                color: Colors.black,
-              ),),
-            )
-          ],
+        child: livenessState.when(
+            data: (_)=> Button(
+                onPressed: ref.read(livenessNotifierProvider.notifier).startDetection,
+                child: Text("开始活体检测")
+            ),
+            error: (error, stackTrace) => Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text("活体检测失败: $error"),
+                SizedBox(height: 16),
+                Button(
+                    onPressed: ref.read(livenessNotifierProvider.notifier).startDetection,
+                    child: Text("重试")
+                ),
+              ],
+            ),
+            loading: ()=> CircularProgressIndicator()
         )
       ),
     );

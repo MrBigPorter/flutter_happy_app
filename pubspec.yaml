@@ -19,7 +19,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 version: 1.0.0+1
 
 environment:
-  sdk: ^3.9.2
+  sdk: ">=3.10.0 <4.0.0"
 
 # Dependencies specify other packages that your package needs in order to work.
 # To automatically upgrade your package dependencies to the latest versions
@@ -63,15 +63,15 @@ dependencies:
   cached_network_image: ^3.4.0
 
   # router
-  go_router: ^14.0.2
+  go_router: ^17.0.1
   url_launcher: ^6.3.0
 
   animations: ^2.1.0
   flutter_animate: ^4.5.0
   visibility_detector: ^0.4.0
   shimmer: ^3.0.0
-  syncfusion_flutter_sliders: ^31.1.21
-  syncfusion_flutter_core: ^31.1.21
+  syncfusion_flutter_sliders: ^32.1.19
+  syncfusion_flutter_core: ^32.1.19
   intl: ^0.20.2
   google_fonts: ^6.2.1
   collection: ^1.19.1
@@ -88,7 +88,7 @@ dependencies:
   pull_to_refresh: ^2.0.0
   nested_scroll_view_plus: ^3.0.0
   custom_refresh_indicator: ^4.0.1
-  flutter_secure_storage: ^9.2.4
+  flutter_secure_storage: ^10.0.0
   font_awesome_flutter: ^10.7.0
   flutter_widget_from_html: ^0.17.0
   reactive_forms: ^18.1.1
@@ -99,12 +99,13 @@ dependencies:
   path_provider: ^2.1.4
   equatable: ^2.0.7
   dismissible_page: ^1.0.2
-  flutter_blurhash: ^0.7.0
+  flutter_blurhash: ^0.9.1
 
   device_info_plus: ^12.3.0
   flutter_udid: ^4.1.1
   uuid: ^4.5.2
   gal: ^2.3.2
+  permission_handler: ^12.0.1
 
 
 dev_dependencies:
@@ -116,7 +117,7 @@ dev_dependencies:
   # activated in the `analysis_options.yaml` file located at the root of your
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
-  flutter_lints: ^5.0.0
+  flutter_lints: ^6.0.0
   path: ^1.8.3
 
   # json serialization and deserialization solution

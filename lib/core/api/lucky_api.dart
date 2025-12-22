@@ -8,6 +8,8 @@ import 'package:flutter_app/core/models/payment.dart';
 import 'package:flutter_app/utils/helper.dart';
 import 'package:flutter_app/core/models/index.dart';
 
+import '../models/kyc.dart';
+
 class Api {
   /// 首页轮播图 type 1: banner 2: 广告 home banner
   static Future<List<Banners>> bannersApi({
@@ -267,6 +269,29 @@ class Api {
      return parsePageResponse(res, (e) => GroupMemberItem.fromJson(e));
   }
 
+  //kyc session
+  static Future<KycSession> kycSessionApi() async {
+    final res = await Http.post('/api/v1/kyc/session');
+    return KycSession.fromJson(res);
+  }
+
+  // kyc me
+  static Future<KycMe> kycMeApi() async {
+    final res = await Http.get('/api/v1/kyc/me');
+    return KycMe.fromJson(res);
+  }
+
+  // kyc id types
+  static Future<List<KycIdTypes>> kycIdTypesApi() async {
+    final res = await Http.get('/api/v1/kyc/idTypes');
+    return parseList<KycIdTypes>(res, (e) => KycIdTypes.fromJson(e));
+  }
+  
+  // kyc submit
+  static Future<KycResponse> kycSubmitApi(Map<String,dynamic> data) async {
+   final res = await Http.post('/api/v1/kyc/submit', data: data);
+    return KycResponse.fromJson(res);
+  }
 
 }
 

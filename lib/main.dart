@@ -19,12 +19,6 @@ import 'app/app.dart';
 
 Future<void> main() async {
 
-  try {
-    final ips = await InternetAddress.lookup('dev-api.joyminis.com');
-    debugPrint('DNS => $ips');
-  } catch (e) {
-    debugPrint('DNS lookup failed: $e');
-  }
 
   // Web 去掉 #，其它平台无影响
   if (kIsWeb) usePathUrlStrategy();
@@ -72,7 +66,6 @@ Future<void> main() async {
   final tokenStorage = authInitialTokenStorage();
   final storedTokens = await tokenStorage.read();
 
-  print('init storedTokens===>${storedTokens}');
 
 
   runApp(
