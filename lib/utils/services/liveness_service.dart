@@ -28,6 +28,8 @@ class LivenessService {
         'sessionId': sessionId,
         'region': 'ap-southeast-1'
       });
+      
+      print("Flutter: 原生端返回结果: $isSuccess");
 
      if(isSuccess == true){
        print("活体检测采集完成！");
