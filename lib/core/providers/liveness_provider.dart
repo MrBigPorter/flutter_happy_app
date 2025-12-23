@@ -21,9 +21,15 @@ class LivenessNotifier extends _$LivenessNotifier {
         final result = await Api.kycSessionApi();
         // 3. 调用原生插件拉起 AWS 圆圈
         final bool? isSuccess = await LivenessService.start(result.sessionId);
-        if (!isSuccess!) {
-          throw Exception("Liveness detection failed");
+        if (isSuccess != true) {
+          throw Exception("Liveness detection failed or was cancelled");
         }
+
+        print("Liveness detection succeeded:${result.sessionId}");
+
+        //调用验证接口
+        // 后端会拿着 sessionId 去问 AWS："刚才这个人多少分？"
+       // await Api.kycSubmitApi();
       });
     }
 }

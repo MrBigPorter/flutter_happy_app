@@ -36,7 +36,7 @@
             </intent-filter>
         </activity>
 
-        <!-- 你如果真的写了 LivenessActivity 才保留；没写就先删掉 -->
+        <!-- 你如果真的写了 LivenessActivity 才保留； -->
         <activity
             android:name="com.joyminis.flutter_app.LivenessActivity"
             android:exported="false"

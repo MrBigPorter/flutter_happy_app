@@ -1,8 +1,9 @@
 import 'package:flutter/services.dart';
+import 'package:flutter_app/core/api/index.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 class LivenessService {
-  // 🔑 语法点 1：定义频道 (Channel)
+  //  语法点 1：定义频道 (Channel)
   // 口诀：这个字符串就是"电话号码"，Android/iOS 必须一字不差！
   // 建议格式：包名/功能名
   static const MethodChannel _channel = MethodChannel('com.joyminis.flutter_app/liveness');
@@ -18,23 +19,26 @@ class LivenessService {
     }
 
     try {
-      print("Flutter: 准备呼叫原生端，SessionId: $sessionId");
-
-      // 🔑 语法点 2：调用方法 (invokeMethod)
+      //  语法点 2：调用方法 (invokeMethod)
       // 参数 1："start" 是暗号 (Method Name)
       // 参数 2：Map 是要传的数据 (Arguments)
       // await 是必须的，因为跨端通信是异步的
-      final bool? isSuccess = await _channel.invokeMethod('start', {
+      final result = await _channel.invokeMethod('start', {
         'sessionId': sessionId,
-        'region': 'ap-southeast-1'
+        'region': 'us-east-1'
       });
-      
-      print("Flutter: 原生端返回结果: $isSuccess");
 
-     if(isSuccess == true){
-       print("活体检测采集完成！");
+      // 2. 解析原生返回的 Map
+      // 注意：result 是个 Map<Object?, Object?>，可能需要转一下类型
+      final Map<dynamic, dynamic> data =  result as Map<dynamic, dynamic>;
+
+      final bool isSuccess = data['success'] as bool;
+
+     if(isSuccess ){
+       print("🎉 原生采集完成，准备提交后端验证");
      }else{
-       print("用户取消了检测");
+       String? error = data['error'];
+       print("用户取消了检测：${error}");
      }
 
      return isSuccess;

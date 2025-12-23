@@ -288,7 +288,7 @@ class Api {
   }
   
   // kyc submit
-  static Future<KycResponse> kycSubmitApi(Map<String,dynamic> data) async {
+  static Future<KycResponse> kycSubmitApi(SubmitKycDto data) async {
    final res = await Http.post('/api/v1/kyc/submit', data: data);
     return KycResponse.fromJson(res);
   }
