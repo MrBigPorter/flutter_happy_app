@@ -60,5 +60,7 @@
     <string>We save poster to your Photos for sharing.</string>
     <key>NSCameraUsageDescription</key>
     <string>我们需要访问相机以进行安全身份验证。</string>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>我们需要访问麦克风以完成活体检测。</string>
 </dict>
 </plist>

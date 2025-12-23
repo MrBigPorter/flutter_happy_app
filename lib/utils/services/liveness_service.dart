@@ -1,51 +1,76 @@
 import 'package:flutter/services.dart';
-import 'package:flutter_app/core/api/index.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 class LivenessService {
-  //  语法点 1：定义频道 (Channel)
-  // 口诀：这个字符串就是"电话号码"，Android/iOS 必须一字不差！
-  // 建议格式：包名/功能名
+  // 1. 定义通信频道
   static const MethodChannel _channel = MethodChannel('com.joyminis.flutter_app/liveness');
+
+  static Future<bool> _requestCameraPermission() async {
+    // 1. 获取当前状态
+    var status = await Permission.camera.status;
+
+    // 2. 如果还没请求过，或者受限，发起请求
+    if (status.isDenied || status.isLimited) {
+      // 这里的 request() 才是真正弹窗的时刻！
+      // 注意：iOS 必须在 Podfile 配置 PERMISSION_CAMERA=1 才会弹窗
+      status = await Permission.camera.request();
+    }
+
+    // 3. 永久拒绝 (用户之前点过“不允许”)
+    if (status.isPermanentlyDenied) {
+      print("❌ 用户永久拒绝了相机权限，正在跳转设置页...");
+      // 帮用户跳到设置页
+      await openAppSettings();
+      return false;
+    }
+
+    if (!status.isGranted) {
+      print("❌ 相机权限未获得");
+      return false;
+    }
+
+    return true;
+  }
 
   /// 对外暴露的方法：开始活体检测
   static Future<bool?> start(String sessionId) async {
+    final bool hasPermission = await _requestCameraPermission();
 
-    // 1. 先要相机权限，没权限原生端会直接崩
-    var status = await Permission.camera.request();
-    if(!status.isGranted){
-      print('no permission');
+    if (!hasPermission) {
       return false;
     }
 
     try {
-      //  语法点 2：调用方法 (invokeMethod)
-      // 参数 1："start" 是暗号 (Method Name)
-      // 参数 2：Map 是要传的数据 (Arguments)
-      // await 是必须的，因为跨端通信是异步的
+      print("🚀 权限已获取，正在调起原生 AWS 界面...");
+
       final result = await _channel.invokeMethod('start', {
         'sessionId': sessionId,
         'region': 'us-east-1'
       });
 
-      // 2. 解析原生返回的 Map
-      // 注意：result 是个 Map<Object?, Object?>，可能需要转一下类型
-      final Map<dynamic, dynamic> data =  result as Map<dynamic, dynamic>;
+      // 5. 解析结果
+      // 安全转换：先转为 Map<dynamic, dynamic> 再取值
+      if (result != null && result is Map) {
+        final Map<dynamic, dynamic> data = result;
+        final bool isSuccess = data['success'] == true; // 防止 null 导致 crash
 
-      final bool isSuccess = data['success'] as bool;
+        if (isSuccess) {
+          print("🎉 原生采集完成，sessionId: ${data['sessionId']}");
+        } else {
+          String? error = data['error'];
+          print("⚠️ 检测失败或取消：$error");
+        }
+        return isSuccess;
+      }
 
-     if(isSuccess ){
-       print("🎉 原生采集完成，准备提交后端验证");
-     }else{
-       String? error = data['error'];
-       print("用户取消了检测：${error}");
-     }
-
-     return isSuccess;
+      return false;
 
     } on PlatformException catch (e) {
-      print("调用原生失败: ${e.message}");
+      print("❌ 调用原生失败 (PlatformException): ${e.message}");
+      return false;
+    } catch (e) {
+      print("❌ 发生未知错误: $e");
+      return false;
     }
-    return null;
   }
 }
