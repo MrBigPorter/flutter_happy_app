@@ -8,11 +8,8 @@ import 'package:flutter_app/core/models/kyc.dart';
 import 'package:flutter_app/core/store/lucky_store.dart';
 import 'package:flutter_app/ui/button/button.dart';
 import 'package:flutter_app/ui/index.dart';
-import 'package:flutter_app/ui/modal/base/modal_theme.dart';
-import 'package:flutter_app/ui/modal/sheet/modal_sheet_config.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:reactive_forms/reactive_forms.dart';
 
 import '../../theme/theme_provider.dart';
 
@@ -27,16 +24,12 @@ enum SettingRowType {
 class RowItem {
   final IconData icon;
   final String title;
-  final String? subTitle;
   final SettingRowType type;
-  final VoidCallback onTap;
 
   RowItem({
     required this.icon,
     required this.title,
-    this.subTitle,
     required this.type,
-    required this.onTap,
   });
 }
 
@@ -48,108 +41,53 @@ class SettingPage extends ConsumerStatefulWidget {
 }
 
 class _SettingPageState extends ConsumerState {
+
+  static final  items = <RowItem>[
+    RowItem(
+      icon: Icons.person,
+      title: 'common.edit.profile',
+      type: SettingRowType.normal,
+    ),
+     RowItem(
+      icon: Icons.document_scanner,
+      title: 'common.kyc',
+      type: SettingRowType.kyc,
+    ),
+     RowItem(
+      icon: Icons.location_city,
+      title: 'common.setting.address',
+      type: SettingRowType.normal,
+    ),
+     RowItem(
+      icon: Icons.lock,
+      title: 'common.setting.password',
+      type: SettingRowType.normal,
+    ),
+     RowItem(
+      icon: Icons.work,
+      title: 'common.work.order',
+      type: SettingRowType.normal,
+    ),
+     RowItem(
+      icon: Icons.language,
+      title: 'common.setting.language',
+      type: SettingRowType.language,
+    ),
+     RowItem(
+      icon: Icons.dark_mode,
+      title: 'common.setting.mode',
+      type: SettingRowType.darkModeSwitch,
+    ),
+     RowItem(
+      icon: Icons.notifications,
+      title: 'common.notifications',
+      type: SettingRowType.notificationSwitch,
+    ),
+  ];
+
+
   @override
   Widget build(BuildContext context) {
-    final items = <RowItem>[
-      RowItem(
-        icon: Icons.person,
-        title: 'common.edit.profile',
-        type: SettingRowType.normal,
-        subTitle: '',
-        onTap: () {
-          // Navigate to profile page
-        },
-      ),
-      RowItem(
-        icon: Icons.document_scanner,
-        title: 'common.kyc',
-        type: SettingRowType.kyc,
-        subTitle: '',
-        onTap: () {
-          appRouter.push('/me/kyc/verify');
-        },
-      ),
-      RowItem(
-        icon: Icons.location_city,
-        title: 'common.setting.address',
-        type: SettingRowType.normal,
-        subTitle: '',
-        onTap: () {
-          // Navigate to phone settings page
-        },
-      ),
-      RowItem(
-        icon: Icons.lock,
-        title: 'common.setting.password',
-        type: SettingRowType.normal,
-        subTitle: '',
-        onTap: () {
-          // Navigate to change password page
-        },
-      ),
-      RowItem(
-        icon: Icons.work,
-        title: 'common.work.order',
-        type: SettingRowType.normal,
-        subTitle: '',
-        onTap: () {
-          // Navigate to change phone page
-        },
-      ),
-      RowItem(
-        icon: Icons.language,
-        title: 'common.setting.language',
-        type: SettingRowType.language,
-        subTitle: '',
-        onTap: () {
-          showCupertinoModalPopup(
-              context: context,
-              builder: (context)=> CupertinoActionSheet(
-                actions: [
-                  CupertinoActionSheetAction(
-                    onPressed: () {
-                      context.setLocale(Locale('en'));
-                      Navigator.of(context).pop();
-                    },
-                    child: Text('English'),
-                  ),
-                  CupertinoActionSheetAction(
-                    onPressed: () {
-                      context.setLocale(Locale('tl'));
-                      Navigator.of(context).pop();
-                    },
-                    child: Text('Tagalog'),
-                  ),
-                ],
-                cancelButton: CupertinoActionSheetAction(
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                  },
-                  child: Text('common.cancel'.tr()),
-                ),
-              )
-          );
-        },
-      ),
-      RowItem(
-        icon: Icons.dark_mode,
-        title: 'common.setting.mode',
-        type: SettingRowType.darkModeSwitch,
-        subTitle: '',
-        onTap: () {
-          // Navigate to theme settings page
-        },
-      ),
-      RowItem(
-        icon: Icons.notifications,
-        title: 'common.notifications',
-        type: SettingRowType.notificationSwitch,
-        subTitle: '',
-        onTap: () {
-          // Navigate to notifications settings page
-        },
-      ),
-    ];
 
     return BaseScaffold(
       title: "common.setting".tr(),
@@ -179,11 +117,62 @@ class _SettingRowWidget extends ConsumerWidget {
 
   const _SettingRowWidget({required this.item});
 
+  void _handleTap(BuildContext context, WidgetRef ref, SettingRowType type) {
+    switch (type) {
+      case SettingRowType.normal:
+        // Handle normal row tap
+        break;
+      case SettingRowType.kyc:
+        appRouter.push('/me/kyc/verify');
+        break;
+      case SettingRowType.darkModeSwitch:
+        break;
+      case SettingRowType.notificationSwitch:
+        // Handle notification switch tap
+        break;
+      case SettingRowType.language:
+        _showLangSheet(context);
+        break;
+    }
+  }
+
+  Future<void> _showLangSheet(BuildContext context) async {
+    final cur = context.locale.languageCode;
+
+    final picked = await showCupertinoModalPopup<String>(
+      context: context,
+      builder: (sheetCtx) => CupertinoActionSheet(
+        actions: [
+          CupertinoActionSheetAction(
+            onPressed: () => Navigator.pop(sheetCtx, 'en'),
+            child: Text(cur == 'en' ? 'English  ✓' : 'English'),
+          ),
+          CupertinoActionSheetAction(
+            onPressed: () => Navigator.pop(sheetCtx, 'tl'),
+            child: Text(cur == 'tl' ? 'Tagalog  ✓' : 'Tagalog'),
+          ),
+        ],
+        cancelButton: CupertinoActionSheetAction(
+          onPressed: () => Navigator.pop(sheetCtx),
+          child: Text('common.cancel'.tr()),
+        ),
+      ),
+    );
+
+    if (picked != null && picked != cur) {
+      await context.setLocale(Locale(picked));
+    }
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+
+    final clickable = item.type != SettingRowType.darkModeSwitch &&
+        item.type != SettingRowType.notificationSwitch;
+
     return Material(
       child: InkWell(
-        onTap: item.onTap,
+        onTap: clickable ? ()=> _handleTap(context, ref, item.type) : null,
         child: _RowItemWidget(item: item),
       ),
     );
@@ -198,33 +187,33 @@ class _RowItemWidget extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final right = _buildRight(context, ref, item.type);
+    final showChevron = item.type != SettingRowType.darkModeSwitch &&
+        item.type != SettingRowType.notificationSwitch;
 
-    return Material(
-      child: InkWell(
-        child: Row(
-          children: [
-            Icon(item.icon, color: context.fgPrimary900, size: 24.w),
-            SizedBox(width: 12.w),
-            Expanded(
-              child: Text(
-                item.title.tr(),
-                style: TextStyle(
-                  color: context.textPrimary900,
-                  fontSize: 16.sp,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
+    return Row(
+      children: [
+        Icon(item.icon, color: context.fgPrimary900, size: 24.w),
+        SizedBox(width: 12.w),
+        Expanded(
+          child: Text(
+            item.title.tr(),
+            style: TextStyle(
+              color: context.textPrimary900,
+              fontSize: 16.sp,
+              fontWeight: FontWeight.w600,
             ),
-            if (right != null) right,
-            SizedBox(width: 10.w),
-            Icon(
-              Icons.chevron_right,
-              color: context.fgSecondary700,
-              size: 24.w,
-            ),
-          ],
+          ),
         ),
-      ),
+        if (right != null) right,
+        if (showChevron) ...[
+          SizedBox(width: 10.w),
+          Icon(
+            Icons.chevron_right,
+            color: context.fgSecondary700,
+            size: 24.w,
+          ),
+        ]
+      ],
     );
   }
 
@@ -242,7 +231,6 @@ class _RowItemWidget extends ConsumerWidget {
       case SettingRowType.darkModeSwitch:
         final themeMode = ref.watch(themeModeProvider);
         final isDarkMode = themeMode == ThemeMode.dark;
-        print('themeMode: $isDarkMode');
         return CupertinoSwitch(
           value: isDarkMode,
           onChanged: (bool value) {
@@ -258,7 +246,7 @@ class _RowItemWidget extends ConsumerWidget {
         );
       case SettingRowType.language:
         return Text(
-          context.locale.languageCode == 'en' ? 'English' : '中文',
+          context.locale.languageCode == 'en' ? 'English' : 'Tagalog',
           style: TextStyle(
             color: context.textSecondary700,
             fontSize: 14.sp,
