@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -44,7 +46,7 @@ class _BottomNavigationBar extends ConsumerWidget {
       },
     );
     if (option != null) {
-      appRouter.push('/me/kyc/scan', extra: options);
+      appRouter.push('/me/kyc/scan', extra: jsonEncode(option.toJson()));
     }
   }
 

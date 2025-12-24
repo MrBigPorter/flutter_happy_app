@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_app/app/page/group_member_page.dart';
 import 'package:flutter_app/app/page/kyc_scan_page.dart';
@@ -187,8 +189,8 @@ class AppRouter {
             name: 'kycScan',
             path: '/me/kyc/scan',
             builder: (context, state) {
-              final options = state.extra;
-              return KycScanPage(kycIdType: options as KycIdTypes,);
+              final options = state.extra as String;
+              return KycScanPage(kycIdType: KycIdTypes.fromJson(jsonDecode(options)));
             }
         ),
 
