@@ -6,11 +6,10 @@ part 'kyc.g.dart';
 class KycSession {
   final String sessionId;
 
-  KycSession({
-     required this.sessionId,
-  });
+  KycSession({required this.sessionId});
 
-  factory KycSession.fromJson(Map<String, dynamic> json) => _$KycSessionFromJson(json);
+  factory KycSession.fromJson(Map<String, dynamic> json) =>
+      _$KycSessionFromJson(json);
 
   Map<String, dynamic> toJson() => _$KycSessionToJson(this);
 
@@ -18,20 +17,17 @@ class KycSession {
   String toString() {
     return toJson().toString();
   }
-
 }
 
 @JsonSerializable(checked: true)
 class KycMe {
   final int kycStatus;
 
-  KycMe({
-     required this.kycStatus,
-  });
+  KycMe({required this.kycStatus});
 
   factory KycMe.fromJson(Map<String, dynamic> json) => _$KycMeFromJson(json);
 
-  Map<String,dynamic> toJson() => _$KycMeToJson(this);
+  Map<String, dynamic> toJson() => _$KycMeToJson(this);
 
   @override
   String toString() {
@@ -39,6 +35,37 @@ class KycMe {
   }
 }
 
+enum KycStatusLabel{
+  draft,
+  reviewing,
+  rejected,
+  needMore,
+  approved
+}
+
+enum KycStatusEnum {
+  //1. 在定义时直接传入后端对应的 code
+  draft(0, KycStatusLabel.draft), // 未提交
+  reviewing(1, KycStatusLabel.reviewing), // 审核中
+  rejected(2, KycStatusLabel.rejected), // 审核失败
+  needMore(3, KycStatusLabel.needMore), // 待补充
+  approved(4, KycStatusLabel.approved); // 已通过
+
+  // 2. 定义成员变量
+  final int status;
+  final KycStatusLabel label;
+
+  // 3. 定义构造函数 (必须是 const)
+  const KycStatusEnum(this.status, this.label);
+
+  // 4. 定义一个静态方法来查找
+  static KycStatusEnum fromStatus(int status) {
+    return KycStatusEnum.values.firstWhere(
+      (e) => e.status == status,
+      orElse: () => KycStatusEnum.draft,
+    );
+  }
+}
 
 @JsonSerializable(checked: true)
 class KycIdTypes {
@@ -56,9 +83,10 @@ class KycIdTypes {
     required this.requiresOcr,
   });
 
-  factory KycIdTypes.fromJson(Map<String, dynamic> json) => _$KycIdTypesFromJson(json);
+  factory KycIdTypes.fromJson(Map<String, dynamic> json) =>
+      _$KycIdTypesFromJson(json);
 
-  Map<String,dynamic> toJson() => _$KycIdTypesToJson(this);
+  Map<String, dynamic> toJson() => _$KycIdTypesToJson(this);
 
   @override
   String toString() {
@@ -70,19 +98,17 @@ class KycIdTypes {
 class KycResponse {
   final int kycStatus;
 
-  KycResponse({
-    required this.kycStatus,
-  });
+  KycResponse({required this.kycStatus});
 
-  factory KycResponse.fromJson(Map<String, dynamic> json) => _$KycResponseFromJson(json);
+  factory KycResponse.fromJson(Map<String, dynamic> json) =>
+      _$KycResponseFromJson(json);
 
-  Map<String,dynamic> toJson() => _$KycResponseToJson(this);
+  Map<String, dynamic> toJson() => _$KycResponseToJson(this);
 
   @override
   String toString() {
     return toJson().toString();
   }
-
 }
 
 @JsonSerializable(checked: true)
@@ -113,7 +139,8 @@ class SubmitKycDto {
     this.verifyResult,
   });
 
-  factory SubmitKycDto.fromJson(Map<String, dynamic> json) => _$SubmitKycDtoFromJson(json);
+  factory SubmitKycDto.fromJson(Map<String, dynamic> json) =>
+      _$SubmitKycDtoFromJson(json);
 
   Map<String, dynamic> toJson() => _$SubmitKycDtoToJson(this);
 

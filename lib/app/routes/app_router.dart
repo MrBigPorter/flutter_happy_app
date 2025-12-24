@@ -1,9 +1,11 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_app/app/page/group_member_page.dart';
+import 'package:flutter_app/app/page/kyc_verify_page.dart';
 import 'package:flutter_app/app/page/order_list_page.dart';
 import 'package:flutter_app/app/page/page_404.dart';
 import 'package:flutter_app/app/page/payment_page.dart';
 import 'package:flutter_app/app/page/product_group_page.dart';
+import 'package:flutter_app/app/page/setting_page.dart';
 import 'package:flutter_app/app/page/wallet_detail_page.dart';
 import 'package:flutter_app/app/routes/route_auth_config.dart';
 import 'package:flutter_app/app/routes/transitions.dart';
@@ -18,6 +20,7 @@ import 'package:go_router/go_router.dart';
 import '../../components/lucky_tab_bar.dart';
 import '../page/guide_page.dart';
 import '../page/home_page.dart';
+import '../page/id_scan_page.dart';
 import '../page/product_page.dart';
 import '../page/winners_page.dart';
 import '../page/me_page.dart';
@@ -167,7 +170,18 @@ class AppRouter {
             name: 'guide',
             path: '/guide',
             builder: (context, state) => GuidePage()
-        )
+        ),
+        GoRoute(
+            name: 'setting',
+            path: '/me/setting',
+            builder: (context, state) => SettingPage()
+        ),
+        GoRoute(
+            name: 'kycVerify',
+            path: '/me/kyc/verify',
+            builder: (context, state) => KycVerifyPage()
+        ),
+
       ],
       redirect: (context,state){
 

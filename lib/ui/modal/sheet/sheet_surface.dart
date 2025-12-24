@@ -29,10 +29,10 @@ class SheetSurface<T> extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final double top = isFullScreen ? ViewUtils.statusBarHeight : 8.w;
+    final double top = isFullScreen ? ViewUtils.statusBarHeight : 8.h;
 
     return Padding(
-      padding:EdgeInsets.symmetric(horizontal: 16.w,vertical: 16.w),
+      padding:EdgeInsets.symmetric(horizontal: 16.w,vertical: 16.h),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [

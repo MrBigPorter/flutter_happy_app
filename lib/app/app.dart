@@ -12,19 +12,13 @@ import 'package:easy_localization/easy_localization.dart';
 
 import '../../theme/theme_provider.dart';
 
-
-
-
-class MyApp extends ConsumerWidget{
-
-
+class MyApp extends ConsumerWidget {
   const MyApp({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-
     // 全局处理 Token 失效：登出并跳转到登录页 - Global handling of token invalidation: logout and redirect to login page
-    Http.onTokenInvalid  ??= () async {
+    Http.onTokenInvalid ??= () async {
       final authNotifier = ref.read(authProvider.notifier);
       await authNotifier.logout();
     };
@@ -41,15 +35,16 @@ class MyApp extends ConsumerWidget{
     return MaterialApp.router(
       title: 'Lucky App',
 
-       routerConfig:router,
+      routerConfig: router,
       themeMode: themeMode,
       theme: _buildTheme(false),
       darkTheme: _buildTheme(true),
+      themeAnimationDuration: Duration.zero,
       localizationsDelegates: context.localizationDelegates,
       supportedLocales: context.supportedLocales,
       locale: context.locale,
       scrollBehavior: const _NoScrollbarBehavior(),
-      builder: (context,child){
+      builder: (context, child) {
         final content = DefaultTextStyle.merge(
           style: GoogleFonts.inter(
             fontSize: 14,
@@ -58,12 +53,10 @@ class MyApp extends ConsumerWidget{
           ),
           child: child!,
         );
-        if(kIsWeb){
+        if (kIsWeb) {
           return content;
         }
-        return OverlayShrink(
-          child: content,
-        );
+        return OverlayShrink(child: content);
       },
     );
   }
@@ -74,10 +67,15 @@ class _NoScrollbarBehavior extends MaterialScrollBehavior {
   const _NoScrollbarBehavior();
 
   @override
-  BouncingScrollPhysics getScrollPhysics(BuildContext context) =>  const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics());
+  BouncingScrollPhysics getScrollPhysics(BuildContext context) =>
+      const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics());
 
   @override
-  Widget buildScrollbar(BuildContext context, Widget child, ScrollableDetails details) {
+  Widget buildScrollbar(
+    BuildContext context,
+    Widget child,
+    ScrollableDetails details,
+  ) {
     return child;
   }
 
