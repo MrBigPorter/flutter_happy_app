@@ -5,6 +5,7 @@ import 'package:flutter_app/app/routes/app_router.dart';
 import 'package:flutter_app/common.dart';
 import 'package:flutter_app/components/base_scaffold.dart';
 import 'package:flutter_app/core/models/kyc.dart';
+import 'package:flutter_app/core/store/auth/auth_provider.dart';
 import 'package:flutter_app/core/store/lucky_store.dart';
 import 'package:flutter_app/ui/button/button.dart';
 import 'package:flutter_app/ui/index.dart';
@@ -224,6 +225,12 @@ class _RowItemWidget extends ConsumerWidget {
   ) {
     switch (type) {
       case SettingRowType.kyc:
+        final isAuthenticated = ref.watch(
+          authProvider.select((value) => value.isAuthenticated),
+        );
+        if (!isAuthenticated) {
+          return null;
+        }
         final status = ref.watch(
           luckyProvider.select((value) => value.userInfo?.kycStatus),
         );
@@ -291,9 +298,10 @@ class _KycRight extends StatelessWidget {
   }
 }
 
-class _BottomNavigationBar extends StatelessWidget {
+class _BottomNavigationBar extends ConsumerWidget {
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+
     return SizedBox(
       height: 120.h,
       child: Padding(
@@ -307,7 +315,7 @@ class _BottomNavigationBar extends StatelessWidget {
               height: 43.h,
               radius: 8.r,
               onPressed: () {
-                // Handle logout action
+                ref.read(authProvider.notifier).logout();
               },
               child: Text(
                 'common.logout'.tr(),

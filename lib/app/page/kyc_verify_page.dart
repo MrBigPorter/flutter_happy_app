@@ -1,14 +1,15 @@
 
 import 'package:flutter/cupertino.dart';
+import 'package:flutter_app/components/base_scaffold.dart';
 
 class KycVerifyPage extends StatelessWidget{
   const KycVerifyPage({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      child: const Center(
-        child: Text('KYC Verification Page'),
+    return BaseScaffold(
+      body: Center(
+        child: Text('KYC Verify Page'),
       ),
     );
   }

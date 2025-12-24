@@ -1,4 +1,5 @@
 import 'package:flutter/cupertino.dart';
+import 'package:flutter_app/app/routes/app_router.dart';
 import 'package:flutter_app/common.dart';
 import 'package:flutter_app/core/store/auth/auth_state.dart';
 import 'package:flutter_app/core/store/lucky_store.dart';
@@ -68,5 +69,6 @@ class AuthNotifier extends StateNotifier<AuthState> {
     await storage.clear();
     await Http.clearToken();
     state = AuthState.initial();
+    appRouter.replace('/home');
   }
 }

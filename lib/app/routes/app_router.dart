@@ -173,7 +173,7 @@ class AppRouter {
         ),
         GoRoute(
             name: 'setting',
-            path: '/me/setting',
+            path: '/setting',
             builder: (context, state) => SettingPage()
         ),
         GoRoute(

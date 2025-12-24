@@ -162,7 +162,7 @@ class _MenuArea extends StatelessWidget {
             BlendMode.srcIn,
           ),
         ),
-        path: '/me/setting',
+        path: '/setting',
       ),
       _MenuItem(
         text: 'common.faq'.tr(),
