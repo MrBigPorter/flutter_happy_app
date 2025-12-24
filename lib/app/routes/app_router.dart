@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_app/app/page/group_member_page.dart';
+import 'package:flutter_app/app/page/kyc_scan_page.dart';
 import 'package:flutter_app/app/page/kyc_verify_page.dart';
 import 'package:flutter_app/app/page/order_list_page.dart';
 import 'package:flutter_app/app/page/page_404.dart';
@@ -9,6 +10,7 @@ import 'package:flutter_app/app/page/setting_page.dart';
 import 'package:flutter_app/app/page/wallet_detail_page.dart';
 import 'package:flutter_app/app/routes/route_auth_config.dart';
 import 'package:flutter_app/app/routes/transitions.dart';
+import 'package:flutter_app/core/models/kyc.dart';
 import 'package:flutter_app/core/models/payment.dart';
 import 'package:flutter_app/core/store/auth/auth_provider.dart';
 import 'package:flutter_app/ui/modal/base/modal_auto_close_observer.dart';
@@ -181,6 +183,14 @@ class AppRouter {
             path: '/me/kyc/verify',
             builder: (context, state) => KycVerifyPage()
         ),
+        GoRoute(
+            name: 'kycScan',
+            path: '/me/kyc/scan',
+            builder: (context, state) {
+              final options = state.extra;
+              return KycScanPage(kycIdType: options as KycIdTypes,);
+            }
+        ),
 
       ],
       redirect: (context,state){
@@ -210,7 +220,9 @@ class AppRouter {
         return null;
       },
       errorPageBuilder: (context, state) {
-        ref.read(overlayProgressProvider.notifier).state = 1.0;
+        Future.microtask(() {
+          ref.read(overlayProgressProvider.notifier).state = 0.0;
+        });
         return fxPage(
           key: state.pageKey,
           child: Page404(),

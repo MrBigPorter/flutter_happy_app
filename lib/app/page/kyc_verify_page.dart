@@ -1,6 +1,7 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_app/app/routes/app_router.dart';
 import 'package:flutter_app/common.dart';
 import 'package:flutter_app/components/base_scaffold.dart';
 import 'package:flutter_app/core/models/kyc.dart';
@@ -33,26 +34,23 @@ class KycVerifyPage extends ConsumerWidget {
 
 /// bottom navigation bar
 class _BottomNavigationBar extends ConsumerWidget {
-  Future<void> showKycTypeSheet(List<KycIdTypes> options) async {
-   final option =  await RadixSheet.show<KycIdTypes>(
+  Future<void> showKycTypeSheet(
+    BuildContext context,
+    List<KycIdTypes> options,
+  ) async {
+    final option = await RadixSheet.show<KycIdTypes>(
       builder: (context, close) {
-        return  SelectIdType(options: options);
+        return SelectIdType(options: options);
       },
     );
-
-   if(option != null){
-     // Navigate to the ID scan page with the selected KYC type
-     print('Selected KYC Type: ${option.typeName}');
-   }
-
-
+    if (option != null) {
+      appRouter.push('/me/kyc/scan', extra: options);
+    }
   }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final kycType = ref.watch(kycIdTypeProvider);
-
-    print('kycType state: ${kycType.value.toString()}');
 
     return SafeArea(
       top: false,
@@ -63,8 +61,8 @@ class _BottomNavigationBar extends ConsumerWidget {
           width: double.infinity,
           child: Button(
             onPressed: () {
-              kycType.whenData((options) {
-                showKycTypeSheet(options);
+              kycType.whenData((options) async {
+                showKycTypeSheet(context, options);
               });
             },
             width: double.infinity,

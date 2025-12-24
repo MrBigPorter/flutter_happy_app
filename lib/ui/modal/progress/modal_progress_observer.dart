@@ -1,4 +1,5 @@
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter_app/ui/modal/progress/overlay_progress_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -22,7 +23,19 @@ class _ModalProgressObserverState extends ConsumerState<ModalProgressObserver> {
     final value = _animation?.value;
 
     if(value != null){
-      ref.read(overlayProgressProvider.notifier).state = value;
+      // 如果当前处于 idle (空闲) 状态，直接改。
+      // 如果当前处于 transientCallbacks (动画回调中) 或 midFrame (构建中)，则推迟。
+      if(SchedulerBinding.instance.schedulerPhase == SchedulerPhase.idle){
+        // 推迟到这一帧绘制结束
+        SchedulerBinding.instance.addPostFrameCallback((_) {
+          // 再次检查 mounted 防止组件已销毁
+          if(!mounted) return;
+          ref.read(overlayProgressProvider.notifier).state = value;
+        });
+      }else{
+        // 直接设置状态
+        ref.read(overlayProgressProvider.notifier).state = value;
+      }
     }
   }
 
