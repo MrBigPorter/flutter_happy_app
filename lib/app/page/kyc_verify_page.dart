@@ -3,10 +3,18 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_app/common.dart';
 import 'package:flutter_app/components/base_scaffold.dart';
-import 'package:flutter_app/ui/button/button.dart';
+import 'package:flutter_app/core/models/kyc.dart';
+import 'package:flutter_app/core/providers/kyc_provider.dart';
+import 'package:flutter_app/ui/index.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
+import '../../components/select_id_type.dart';
+
+/// kyc verify page
+/// Displays the KYC verification steps and allows users to start the verification process.
+/// Uses a BaseScaffold for consistent layout and styling.
+/// Includes a scrollable list of verification steps and a bottom navigation bar with a start button.
 class KycVerifyPage extends ConsumerWidget {
   const KycVerifyPage({super.key});
 
@@ -23,50 +31,63 @@ class KycVerifyPage extends ConsumerWidget {
   }
 }
 
-class _BottomNavigationBar extends StatelessWidget {
+/// bottom navigation bar
+class _BottomNavigationBar extends ConsumerWidget {
+  Future<void> showKycTypeSheet(List<KycIdTypes> options) async {
+   final option =  await RadixSheet.show<KycIdTypes>(
+      builder: (context, close) {
+        return  SelectIdType(options: options);
+      },
+    );
+
+   if(option != null){
+     // Navigate to the ID scan page with the selected KYC type
+     print('Selected KYC Type: ${option.typeName}');
+   }
+
+
+  }
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final kycType = ref.watch(kycIdTypeProvider);
+
+    print('kycType state: ${kycType.value.toString()}');
+
     return SafeArea(
       top: false,
       child: Container(
         color: context.bgPrimary,
-        padding: EdgeInsets.only(left: 16.w, right: 16.w, top: 12.h, ),
+        padding: EdgeInsets.only(left: 16.w, right: 16.w, top: 12.h),
         child: SizedBox(
+          width: double.infinity,
+          child: Button(
+            onPressed: () {
+              kycType.whenData((options) {
+                showKycTypeSheet(options);
+              });
+            },
             width: double.infinity,
-            child: Button(
-              width: double.infinity,
-              height: 40.h,
-              child: Text(
-                'start-now'.tr(),
-                style: TextStyle(
-                  fontSize: 16.sp,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            )
+            height: 40.h,
+            child: Text(
+              'start-now'.tr(),
+              style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w600),
+            ),
+          ),
         ),
       ),
     );
   }
 }
 
-
+/// kyc verify step list
 class _StepList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        SizedBox(height: 20.h),
-        Text(
-          'verify-process'.tr(),
-          style: TextStyle(
-            fontSize: 14.sp,
-            color: context.textPrimary900,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        Divider(height: 40.h, color: context.fgSecondary700),
+        SizedBox(height: 30.h),
         _StepItem(
           title: '${'common.step'.tr()} 1',
           subTitle: 'upload-id-photo'.tr(),
@@ -74,7 +95,7 @@ class _StepList extends StatelessWidget {
           detail: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              SizedBox(height: 20.h,),
+              SizedBox(height: 20.h),
               Text(
                 'make-id'.tr(),
                 style: TextStyle(
@@ -166,6 +187,7 @@ class _StepList extends StatelessWidget {
   }
 }
 
+/// kyc verify step item
 class _StepItem extends StatelessWidget {
   final String title;
   final String description;
@@ -233,7 +255,14 @@ class _StepItem extends StatelessWidget {
                   ),
                 ),
               ),
-            Image.asset(img, width: 112.w, height: 70.h, fit: BoxFit.contain,cacheWidth: (112.w * MediaQuery.of(context).devicePixelRatio).round() ,),
+            Image.asset(
+              img,
+              width: 112.w,
+              height: 70.h,
+              fit: BoxFit.contain,
+              cacheWidth: (112.w * MediaQuery.of(context).devicePixelRatio)
+                  .round(),
+            ),
           ],
         ),
       ],

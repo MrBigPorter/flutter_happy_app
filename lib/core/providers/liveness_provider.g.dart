@@ -6,7 +6,7 @@ part of 'liveness_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$livenessNotifierHash() => r'82c1e1c09c9d0baa6e24b3c5992eeef5de8a57a6';
+String _$livenessNotifierHash() => r'97ea88fccb69a6864e5484a955bee178e8691ac0';
 
 /// See also [LivenessNotifier].
 @ProviderFor(LivenessNotifier)

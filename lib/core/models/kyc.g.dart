@@ -29,17 +29,18 @@ Map<String, dynamic> _$KycMeToJson(KycMe instance) => <String, dynamic>{
   'kycStatus': instance.kycStatus,
 };
 
-KycIdTypes _$KycIdTypesFromJson(Map<String, dynamic> json) =>
-    $checkedCreate('KycIdTypes', json, ($checkedConvert) {
-      final val = KycIdTypes(
-        typeId: $checkedConvert('typeId', (v) => (v as num).toInt()),
-        typeName: $checkedConvert('typeName', (v) => v as String),
-        requiresFront: $checkedConvert('requiresFront', (v) => v as bool),
-        requiresBack: $checkedConvert('requiresBack', (v) => v as bool),
-        requiresOcr: $checkedConvert('requiresOcr', (v) => v as bool),
-      );
-      return val;
-    });
+KycIdTypes _$KycIdTypesFromJson(
+  Map<String, dynamic> json,
+) => $checkedCreate('KycIdTypes', json, ($checkedConvert) {
+  final val = KycIdTypes(
+    typeId: $checkedConvert('typeId', (v) => (v as num).toInt()),
+    typeName: $checkedConvert('typeName', (v) => v as String),
+    requiresFront: $checkedConvert('requiresFront', (v) => (v as num).toInt()),
+    requiresBack: $checkedConvert('requiresBack', (v) => (v as num).toInt()),
+    requiresOcr: $checkedConvert('requiresOcr', (v) => (v as num).toInt()),
+  );
+  return val;
+});
 
 Map<String, dynamic> _$KycIdTypesToJson(KycIdTypes instance) =>
     <String, dynamic>{

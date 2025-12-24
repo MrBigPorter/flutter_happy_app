@@ -278,12 +278,13 @@ class Api {
   // kyc me
   static Future<KycMe> kycMeApi() async {
     final res = await Http.get('/api/v1/kyc/me');
+    print(res);
     return KycMe.fromJson(res);
   }
 
   // kyc id types
   static Future<List<KycIdTypes>> kycIdTypesApi() async {
-    final res = await Http.get('/api/v1/kyc/idTypes');
+    final res = await Http.get('/api/v1/kyc/id-types');
     return parseList<KycIdTypes>(res, (e) => KycIdTypes.fromJson(e));
   }
   

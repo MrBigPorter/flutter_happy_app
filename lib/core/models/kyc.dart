@@ -71,9 +71,9 @@ enum KycStatusEnum {
 class KycIdTypes {
   final int typeId;
   final String typeName;
-  final bool requiresFront;
-  final bool requiresBack;
-  final bool requiresOcr;
+  final int requiresFront;
+  final int requiresBack;
+  final int requiresOcr;
 
   KycIdTypes({
     required this.typeId,
