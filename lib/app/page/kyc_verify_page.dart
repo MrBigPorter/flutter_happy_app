@@ -1,4 +1,3 @@
-
 import 'package:dio/dio.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/cupertino.dart';
@@ -23,19 +22,27 @@ import '../../components/select_id_type.dart';
 /// Uses a BaseScaffold for consistent layout and styling.
 /// Includes a scrollable list of verification steps and a bottom navigation bar with a start button.
 
-
-
 class KycVerifyPage extends ConsumerWidget {
   const KycVerifyPage({super.key});
-
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return BaseScaffold(
       title: 'kyc-verify'.tr(),
       body: SingleChildScrollView(
-        padding: EdgeInsets.symmetric(horizontal: 16.w),
-        child: _StepList(),
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 0),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight:
+                MediaQuery.of(context).size.height -
+                kToolbarHeight -
+                MediaQuery.of(context).padding.top -
+                MediaQuery.of(context).padding.bottom -
+                80.h,
+          ),
+          child: _StepList(),
+        ),
       ),
       bottomNavigationBar: _BottomNavigationBar(),
     );
@@ -47,7 +54,7 @@ class _BottomNavigationBar extends ConsumerWidget {
   Future<void> showKycTypeSheet(
     BuildContext context,
     List<KycIdTypes> options,
-      WidgetRef ref
+    WidgetRef ref,
   ) async {
     final option = await RadixSheet.show<KycIdTypes>(
       builder: (context, close) {
@@ -55,16 +62,21 @@ class _BottomNavigationBar extends ConsumerWidget {
       },
     );
     if (option != null) {
-      _scanAndUploadID(context,ref);
-      // appRouter.push('/me/kyc/scan', extra: jsonEncode(option.toJson()));
+      // first step scan and upload id
+      final url = await _scanAndUploadID(context, ref);
+      if (url == null) {
+        return;
+      }
+      // second step liveness detection
+      _livenessDetection(context, ref);
     }
   }
 
   // first step scan and upload id
-  void _scanAndUploadID(BuildContext context, WidgetRef ref) async {
+  Future<String?> _scanAndUploadID(BuildContext context, WidgetRef ref) async {
     final camera = await CameraHelper.pickBackCamera(context);
     if (camera == null) {
-      return;
+      return null;
     }
     final String? imagePath = await Navigator.push(
       context,
@@ -73,46 +85,54 @@ class _BottomNavigationBar extends ConsumerWidget {
       ),
     );
     print('Scanned image path: $imagePath');
-     // 用户没拍，返回了
+    // 用户没拍，返回了
     if (imagePath == null) return null;
 
     final cancelToken = CancelToken();
 
-   final uploadResult =  await UploadProgressDialog.show(context, title: 'uploading...', uploadTask: (onProgress){
-      return GlobalUploadService().uploadFile(
+    final uploadResult = await UploadProgressDialog.show(
+      context,
+      title: 'uploading...',
+      uploadTask: (onProgress) {
+        return GlobalUploadService().uploadFile(
           filePath: imagePath,
           module: UploadModule.kyc,
           onProgress: onProgress,
-          cancelToken: cancelToken// 传递取消令牌
-      );
-    });
-    
-    print('Upload result: $uploadResult');
+          cancelToken: cancelToken, // 传递取消令牌
+        );
+      },
+    );
 
+    return uploadResult;
   }
+
+  void _livenessDetection(BuildContext context, WidgetRef ref) {}
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final kycType = ref.watch(kycIdTypeProvider);
 
-    return SafeArea(
-      top: false,
-      child: Container(
-        color: context.bgPrimary,
-        padding: EdgeInsets.only(left: 16.w, right: 16.w, top: 12.h),
-        child: SizedBox(
-          width: double.infinity,
-          child: Button(
-            onPressed: () {
-              kycType.whenData((options) async {
-                showKycTypeSheet(context, options, ref);
-              });
-            },
+    return Container(
+      color: context.bgPrimary,
+      child: SafeArea(
+        top: false,
+        child: Container(
+          padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+          child: SizedBox(
             width: double.infinity,
-            height: 40.h,
-            child: Text(
-              'start-now'.tr(),
-              style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w600),
+            height: 48.h,
+            child: Button(
+              onPressed: () {
+                kycType.whenData((options) async {
+                  showKycTypeSheet(context, options, ref);
+                });
+              },
+              width: double.infinity,
+              height: 40.h,
+              child: Text(
+                'start-now'.tr(),
+                style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w600),
+              ),
             ),
           ),
         ),
