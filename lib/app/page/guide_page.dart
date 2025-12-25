@@ -4,8 +4,6 @@ import 'package:flutter_app/core/providers/liveness_provider.dart';
 import 'package:flutter_app/ui/button/button.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../utils/services/liveness_service.dart';
-
 
 class GuidePage extends ConsumerStatefulWidget {
   const GuidePage({super.key});
@@ -26,7 +24,7 @@ class _GuidePageState extends ConsumerState<GuidePage> {
       body: Center(
         child: livenessState.when(
             data: (_)=> Button(
-                onPressed: ref.read(livenessNotifierProvider.notifier).startDetection,
+                onPressed: ()=>ref.read(livenessNotifierProvider.notifier).startDetection(context),
                 child: Text("开始活体检测")
             ),
             error: (error, stackTrace) => Column(
@@ -35,7 +33,7 @@ class _GuidePageState extends ConsumerState<GuidePage> {
                 Text("活体检测失败: $error"),
                 SizedBox(height: 16),
                 Button(
-                    onPressed: ref.read(livenessNotifierProvider.notifier).startDetection,
+                    onPressed: ()=>ref.read(livenessNotifierProvider.notifier).startDetection(context),
                     child: Text("重试")
                 ),
               ],

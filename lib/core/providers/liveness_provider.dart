@@ -1,8 +1,9 @@
 import 'dart:async';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter_app/common.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
-import '../../utils/services/liveness_service.dart';
+import '../../utils/camera/services/liveness_service.dart';
 
 part 'liveness_provider.g.dart';
 
@@ -11,7 +12,7 @@ class LivenessNotifier extends _$LivenessNotifier {
    @override
    FutureOr<void> build() {} // 初始状态为空
 
-    Future<void> startDetection() async {
+    Future<void> startDetection(BuildContext context) async {
       // 设置状态为loading
       state = const AsyncLoading();
 
@@ -20,7 +21,7 @@ class LivenessNotifier extends _$LivenessNotifier {
         // 2. 调用 Service 获取 ID
         final result = await Api.kycSessionApi();
         // 3. 调用原生插件拉起 AWS 圆圈
-        final bool? isSuccess = await LivenessService.start(result.sessionId);
+        final bool? isSuccess = await LivenessService.start(context,result.sessionId);
         if (isSuccess != true) {
           throw Exception("Liveness detection failed or was cancelled");
         }

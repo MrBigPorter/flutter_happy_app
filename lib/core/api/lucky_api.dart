@@ -294,6 +294,14 @@ class Api {
     return KycResponse.fromJson(res);
   }
 
+  // upload kyc
+  static Future<KycUploadResult> kycUploadApi(KycUploadUrlDto data) async {
+   final res = await Http.post('/api/v1/kyc/upload-url', data: data.toJson());
+    return KycUploadResult.fromJson(res);
+  }
+
+
+
 }
 
 

@@ -1,14 +1,18 @@
-import 'dart:convert';
 
+import 'package:dio/dio.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_app/app/routes/app_router.dart';
+import 'package:flutter_app/app/page/id_scan_page.dart';
 import 'package:flutter_app/common.dart';
 import 'package:flutter_app/components/base_scaffold.dart';
+import 'package:flutter_app/components/upload_progress_dialog.dart';
 import 'package:flutter_app/core/models/kyc.dart';
 import 'package:flutter_app/core/providers/kyc_provider.dart';
 import 'package:flutter_app/ui/index.dart';
+import 'package:flutter_app/utils/camera/camera_helper.dart';
+import 'package:flutter_app/utils/upload/global_upload_service.dart';
+import 'package:flutter_app/utils/upload/upload_types.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
@@ -18,8 +22,12 @@ import '../../components/select_id_type.dart';
 /// Displays the KYC verification steps and allows users to start the verification process.
 /// Uses a BaseScaffold for consistent layout and styling.
 /// Includes a scrollable list of verification steps and a bottom navigation bar with a start button.
+
+
+
 class KycVerifyPage extends ConsumerWidget {
   const KycVerifyPage({super.key});
+
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -39,6 +47,7 @@ class _BottomNavigationBar extends ConsumerWidget {
   Future<void> showKycTypeSheet(
     BuildContext context,
     List<KycIdTypes> options,
+      WidgetRef ref
   ) async {
     final option = await RadixSheet.show<KycIdTypes>(
       builder: (context, close) {
@@ -46,8 +55,40 @@ class _BottomNavigationBar extends ConsumerWidget {
       },
     );
     if (option != null) {
-      appRouter.push('/me/kyc/scan', extra: jsonEncode(option.toJson()));
+      _scanAndUploadID(context,ref);
+      // appRouter.push('/me/kyc/scan', extra: jsonEncode(option.toJson()));
     }
+  }
+
+  // first step scan and upload id
+  void _scanAndUploadID(BuildContext context, WidgetRef ref) async {
+    final camera = await CameraHelper.pickBackCamera(context);
+    if (camera == null) {
+      return;
+    }
+    final String? imagePath = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => IDScanPage(cameraDescription: camera),
+      ),
+    );
+    print('Scanned image path: $imagePath');
+     // 用户没拍，返回了
+    if (imagePath == null) return null;
+
+    final cancelToken = CancelToken();
+
+   final uploadResult =  await UploadProgressDialog.show(context, title: 'uploading...', uploadTask: (onProgress){
+      return GlobalUploadService().uploadFile(
+          filePath: imagePath,
+          module: UploadModule.kyc,
+          onProgress: onProgress,
+          cancelToken: cancelToken// 传递取消令牌
+      );
+    });
+    
+    print('Upload result: $uploadResult');
+
   }
 
   @override
@@ -64,7 +105,7 @@ class _BottomNavigationBar extends ConsumerWidget {
           child: Button(
             onPressed: () {
               kycType.whenData((options) async {
-                showKycTypeSheet(context, options);
+                showKycTypeSheet(context, options, ref);
               });
             },
             width: double.infinity,

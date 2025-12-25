@@ -149,3 +149,49 @@ class SubmitKycDto {
     return toJson().toString();
   }
 }
+
+
+@JsonSerializable(checked: true)
+class KycUploadUrlDto {
+  final String fileName;
+  final String fileType;
+
+  KycUploadUrlDto({
+    required this.fileName,
+    required this.fileType,
+  });
+
+
+  factory KycUploadUrlDto.fromJson(Map<String, dynamic> json) =>
+      _$KycUploadUrlDtoFromJson(json);
+
+  Map<String, dynamic> toJson() => _$KycUploadUrlDtoToJson(this);
+
+  @override
+  String toString() {
+    return toJson().toString();
+  }
+
+}
+
+@JsonSerializable(checked: true)
+class KycUploadResult {
+  final String url;
+  final String cdnUrl;
+
+  KycUploadResult({
+    required this.url,
+    required this.cdnUrl,
+  });
+
+  factory KycUploadResult.fromJson(Map<String, dynamic> json) =>
+      _$KycUploadResultFromJson(json);
+
+  Map<String, dynamic> toJson() => _$KycUploadResultToJson(this);
+
+  @override
+  String toString() {
+    return toJson().toString();
+  }
+}
+

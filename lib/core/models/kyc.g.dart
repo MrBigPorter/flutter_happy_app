@@ -103,3 +103,30 @@ Map<String, dynamic> _$SubmitKycDtoToJson(SubmitKycDto instance) =>
       'ocrRawData': instance.ocrRawData,
       'verifyResult': instance.verifyResult,
     };
+
+KycUploadUrlDto _$KycUploadUrlDtoFromJson(Map<String, dynamic> json) =>
+    $checkedCreate('KycUploadUrlDto', json, ($checkedConvert) {
+      final val = KycUploadUrlDto(
+        fileName: $checkedConvert('fileName', (v) => v as String),
+        fileType: $checkedConvert('fileType', (v) => v as String),
+      );
+      return val;
+    });
+
+Map<String, dynamic> _$KycUploadUrlDtoToJson(KycUploadUrlDto instance) =>
+    <String, dynamic>{
+      'fileName': instance.fileName,
+      'fileType': instance.fileType,
+    };
+
+KycUploadResult _$KycUploadResultFromJson(Map<String, dynamic> json) =>
+    $checkedCreate('KycUploadResult', json, ($checkedConvert) {
+      final val = KycUploadResult(
+        url: $checkedConvert('url', (v) => v as String),
+        cdnUrl: $checkedConvert('cdnUrl', (v) => v as String),
+      );
+      return val;
+    });
+
+Map<String, dynamic> _$KycUploadResultToJson(KycUploadResult instance) =>
+    <String, dynamic>{'url': instance.url, 'cdnUrl': instance.cdnUrl};
