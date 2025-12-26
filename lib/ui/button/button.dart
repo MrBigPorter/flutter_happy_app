@@ -104,11 +104,11 @@ class _ButtonState extends State<Button> {
     final sizeValue = resolveButtonSize(widget.size);
 
 
-    final H = widget.height ?? sizeValue.height.w;
+    final H = widget.height ?? sizeValue.height.h;
     final W = widget.width?.w;
     final R = widget.radius ?? sizeValue.radius.w;
     final pX = widget.paddingX ?? sizeValue.padding.horizontal.w;
-    final pY = widget.paddingY ?? sizeValue.padding.vertical.w;
+    final pY = widget.paddingY ?? sizeValue.padding.vertical.h;
     final G = widget.gap ?? 8.w;
 
     final theme = ButtonThemeResolver.resolve(context, widget.variant, widget.customButtonStyle);

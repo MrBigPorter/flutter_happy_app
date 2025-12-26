@@ -16,6 +16,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import '../../components/select_id_type.dart';
+import '../../utils/camera/services/unified_kyc_cuard.dart';
 
 /// kyc verify page
 /// Displays the KYC verification steps and allows users to start the verification process.
@@ -87,6 +88,30 @@ class _BottomNavigationBar extends ConsumerWidget {
     print('Scanned image path: $imagePath');
     // 用户没拍，返回了
     if (imagePath == null) return null;
+
+
+    // 开始检测：传入 imagePath 和 证件类型(idCard)
+    final bool isPass = await UnifiedKycGuard().check(
+      imagePath,
+      KycDocType.idCard,
+    );
+    
+    print('KYC check result: $isPass');
+
+    if (!isPass) {
+       RadixModal.show(
+        title: 'check failed',
+        cancelText:'',
+        builder: (context, close) => Text(
+            '未检测到有效的证件信息。\n请确保证件正面对准镜头，且光线充足。',
+            style: TextStyle(fontSize: 16.sp, color: context.textPrimary900)
+        ),
+      );
+       return null;
+    }
+
+    // 关闭 Loading
+    if (context.mounted) Navigator.pop(context);
 
     final cancelToken = CancelToken();
 
