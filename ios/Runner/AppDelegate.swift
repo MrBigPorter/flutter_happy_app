@@ -3,12 +3,18 @@ import Flutter
 import SwiftUI
 import Amplify
 import AWSCognitoAuthPlugin
+import VisionKit
 
 @main
 @objc class AppDelegate: FlutterAppDelegate {
-    
-    // 必须和 Flutter 端的 MethodChannel 名字完全一致
+
+    // 📞 酒店的总机号码（必须和 Flutter 一模一样）
     private let CHANNEL = "com.joyminis.flutter_app/liveness"
+
+    // 期雇佣一位厨师 (实例化 Handler)
+    // 这一行代码让他一直待命，不会干完一次活就消失。
+    private let scannerHandler = DocumentScannerHandler()
+
 
     override func application(
         _ application: UIApplication,
@@ -32,12 +38,17 @@ import AWSCognitoAuthPlugin
         // ------------------------------------------------
         // 2. 设置 Flutter 通信管道
         // ------------------------------------------------
+        // 拿到当前的 Flutter 界面控制器 (为了能在它上面弹窗)
         let controller: FlutterViewController = window?.rootViewController as! FlutterViewController
+        // ☎️ 安装电话机，贴上号码 CHANNEL
         let livenessChannel = FlutterMethodChannel(name: CHANNEL, binaryMessenger: controller.binaryMessenger)
 
+        // 👂 开始守着电话 (监听回调)
         livenessChannel.setMethodCallHandler({ [weak self] (call: FlutterMethodCall, result: @escaping FlutterResult) -> Void in
+            // 为了安全，确认一下自己还在不在 (防止内存泄露)
             guard let self = self else { return }
 
+            // 👉 顾客说：我要做活体检测 (AWS)
             if call.method == "start" {
                 // 解析参数
                 guard let args = call.arguments as? [String: Any],
@@ -71,6 +82,25 @@ import AWSCognitoAuthPlugin
                 hostingController.modalPresentationStyle = .fullScreen
                 controller.present(hostingController, animated: true)
                 
+            }
+            // 👉 顾客说：我要扫描证件 (Scan)
+            else if(call.method == "scanDocument") {
+                if VNDocumentCameraViewController.isSupported {
+                    // 2. 把“扫描仪”这个大家伙搬出来
+                    let scannerVc = VNDocumentCameraViewController()
+                    // 🤝 【交接棒动作 1】
+                    // 经理把手里的“听筒 (result)”递给厨师
+                    // 这样厨师做完菜，就能直接告诉顾客，不用经过经理
+                    self.scannerHandler.flutterResult = result
+                    // 👮 【交接棒动作 2】
+                    // 经理告诉扫描仪：
+                    // "你拍好的照片，不要给我，直接交给那位厨师 (scannerHandler) 处理！"
+                    scannerVc.delegate = self.scannerHandler
+                    // 3. 把扫描仪界面弹出来显示在屏幕上
+                    controller.present(scannerVc, animated: true)
+                }else{
+                    result(FlutterError(code: "UNSUPPORTED", message: "Document scanning is not supported on this device", details: nil))
+                }
             } else {
                 result(FlutterMethodNotImplemented)
             }
