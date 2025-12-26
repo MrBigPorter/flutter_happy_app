@@ -1,7 +1,8 @@
+import 'dart:io';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_app/utils/camera/camera_helper.dart';
-import 'package:permission_handler/permission_handler.dart';
 
 class LivenessService {
   // 1. 定义通信频道
@@ -46,6 +47,29 @@ class LivenessService {
     } catch (e) {
       print("❌ 发生未知错误: $e");
       return false;
+    }
+  }
+
+  /// 📸 调用 iOS 原生文档扫描
+  static Future<String?> scanDocument() async {
+    try {
+      // 1. 发送暗号 "scanDocument" 给 iOS
+      // 2. 拿到 iOS 返回的路径字符串
+      final String? imagePath = await _channel.invokeMethod('scanDocument');
+
+      if (imagePath != null && imagePath.isNotEmpty) {
+        print("✅ 扫描成功，图片路径: $imagePath");
+        return imagePath; // 🟢 直接返回字符串路径
+      }
+
+      print("ℹ️ 用户取消了扫描");
+      return null;
+    } on PlatformException catch (e) {
+      print("❌ 原生端报错: ${e.message}");
+      return null;
+    } catch (e) {
+      print("❌ 发生未知错误: $e");
+      return null;
     }
   }
 }

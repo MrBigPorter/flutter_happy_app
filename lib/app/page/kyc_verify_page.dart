@@ -10,6 +10,7 @@ import 'package:flutter_app/core/models/kyc.dart';
 import 'package:flutter_app/core/providers/kyc_provider.dart';
 import 'package:flutter_app/ui/index.dart';
 import 'package:flutter_app/utils/camera/camera_helper.dart';
+import 'package:flutter_app/utils/camera/services/liveness_service.dart';
 import 'package:flutter_app/utils/upload/global_upload_service.dart';
 import 'package:flutter_app/utils/upload/upload_types.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -75,17 +76,25 @@ class _BottomNavigationBar extends ConsumerWidget {
 
   // first step scan and upload id
   Future<String?> _scanAndUploadID(BuildContext context, WidgetRef ref) async {
-    final camera = await CameraHelper.pickBackCamera(context);
+    /*final camera = await CameraHelper.pickBackCamera(context);
     if (camera == null) {
       return null;
+    }*/
+
+    final hasPermission = await CameraHelper.ensureCameraPermission(context);
+    if(!hasPermission){
+      return null;
     }
-    final String? imagePath = await Navigator.push(
+
+    final imagePath = await LivenessService.scanDocument();
+
+    /*final String? imagePath = await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => IDScanPage(cameraDescription: camera),
       ),
     );
-    print('Scanned image path: $imagePath');
+    print('Scanned image path: $imagePath');*/
     // 用户没拍，返回了
     if (imagePath == null) return null;
 
