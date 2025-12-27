@@ -13,10 +13,14 @@ class LfWheelSelect<T> extends StatelessWidget {
   final String name;
   final String? label;
   final String? helper;
-  final String? placeholder; // 占位提示语 (例如 "Please Select")
+  final String? placeholder;
   final LfLabelMode labelMode;
   final bool readOnly;
   final bool? required;
+
+  //  1. 新增 isLoading 参数
+  final bool isLoading;
+
   final List<LfSelectOption<T>> options;
   final Map<String, String Function(Object)>? validationMessages;
   final double pickerHeight;
@@ -31,6 +35,10 @@ class LfWheelSelect<T> extends StatelessWidget {
     this.labelMode = LfLabelMode.external,
     this.readOnly = false,
     this.required,
+
+    //  默认为 false
+    this.isLoading = false,
+
     this.validationMessages,
     this.pickerHeight = 250,
   });
@@ -52,11 +60,10 @@ class LfWheelSelect<T> extends StatelessWidget {
           validationMessages: validationMessages,
           builder: (ReactiveFormFieldState<T, T> field) {
 
-            // 1. 获取当前值和对应的显示文本
+            // 获取当前值和对应的显示文本
             final value = field.value;
             String displayText = '';
 
-            // 安全查找对应的 Text
             for (final opt in options) {
               if (opt.value == value) {
                 displayText = opt.text;
@@ -66,11 +73,19 @@ class LfWheelSelect<T> extends StatelessWidget {
 
             final hasValue = value != null && displayText.isNotEmpty;
 
-            // 2. 合并装饰器状态
-            final effectiveDecoration = baseDecoration.copyWith(
-              errorText: field.errorText,
-              hintText: null,
-              suffixIcon: baseDecoration.suffixIcon ??
+            //  2. 处理右侧图标：加载中显示转圈，否则显示箭头
+            Widget suffixWidget;
+            if (isLoading) {
+              suffixWidget = Padding(
+                padding: EdgeInsets.only(right: 12.w),
+                child: SizedBox(
+                  width: 20.r,
+                  height: 20.r,
+                  child: const CupertinoActivityIndicator(), // 菊花转圈
+                ),
+              );
+            } else {
+              suffixWidget = baseDecoration.suffixIcon ??
                   Padding(
                     padding: EdgeInsets.only(right: 12.w),
                     child: Icon(
@@ -80,27 +95,47 @@ class LfWheelSelect<T> extends StatelessWidget {
                           ? Theme.of(context).disabledColor
                           : Theme.of(context).iconTheme.color,
                     ),
-                  ),
+                  );
+            }
+
+            // 合并装饰器
+            final effectiveDecoration = baseDecoration.copyWith(
+              errorText: field.errorText,
+              hintText: null,
+              suffixIcon: suffixWidget, // 使用新的 suffix
             );
 
-            // 3. 交互区域
+            //  3. 处理显示文本：加载中显示 Loading...
+            String textToShow;
+            if (isLoading) {
+              textToShow = 'Loading...';
+            } else if (hasValue) {
+              textToShow = displayText;
+            } else {
+              textToShow = placeholder ?? '';
+            }
+
+            // 文本样式：加载中或无值时，使用灰色 Hint 样式
+            final effectiveTextStyle = (hasValue && !isLoading)
+                ? textStyle
+                : (baseDecoration.hintStyle ?? Theme.of(context).textTheme.bodyLarge?.copyWith(
+              color: Theme.of(context).hintColor,
+            ));
+
+            // 交互区域
             return InkWell(
-              onTap: readOnly || field.control.disabled
+              //  4. 加载中禁止点击 (返回 null)
+              onTap: readOnly || field.control.disabled || isLoading
                   ? null
                   : () => _showWheelPicker(context, field),
               borderRadius: BorderRadius.circular(4),
               child: InputDecorator(
                 decoration: effectiveDecoration,
-                // 当没有值时，isEmpty 为 true，这有助于 label 的浮动动画处理
-                isEmpty: !hasValue,
+                // 当加载中时，视为不为空(为了把label顶上去)，或者根据你的设计调整
+                isEmpty: !hasValue && !isLoading,
                 child: Text(
-                  hasValue ? displayText : (placeholder ?? ''),
-                  style: hasValue
-                      ? textStyle // 有值：用正常文本样式
-                      : (baseDecoration.hintStyle ?? // 没值：用提示文本样式(灰色)
-                      Theme.of(context).textTheme.bodyLarge?.copyWith(
-                        color: Theme.of(context).hintColor,
-                      )),
+                  textToShow,
+                  style: effectiveTextStyle,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -113,13 +148,12 @@ class LfWheelSelect<T> extends StatelessWidget {
   }
 
   void _showWheelPicker(BuildContext context, ReactiveFormFieldState<T, T> field) {
+    //  强制收起键盘，防止页面跳动
+    FocusScope.of(context).unfocus();
 
-    // 获取当前 Control 的值
     final controlValue = field.value;
-
     int initialIndex = options.indexWhere((e) => e.value == controlValue);
     if (initialIndex < 0) initialIndex = 0;
-
     int tempIndex = initialIndex;
 
     RadixSheet.show(
@@ -147,8 +181,9 @@ class LfWheelSelect<T> extends StatelessWidget {
                       foregroundColor: context.textBrandPrimary900,
                       onPressed: () {
                         if (options.isNotEmpty) {
-                          // 确认选择：更新值并触发校验
+                          // 确认选择
                           field.control.value = options[tempIndex].value;
+                          field.control.markAsTouched();
                         }
                         Navigator.pop(ctx);
                       },
