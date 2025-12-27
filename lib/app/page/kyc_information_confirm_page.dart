@@ -5,12 +5,16 @@ import 'package:flutter_app/common.dart';
 import 'package:flutter_app/components/base_scaffold.dart';
 import 'package:flutter_app/core/models/kyc.dart';
 import 'package:flutter_app/ui/button/button.dart';
+import 'package:flutter_app/ui/form/fields/lf_date.dart';
 import 'package:flutter_app/ui/form/fields/lf_input.dart';
+import 'package:flutter_app/ui/form/fields/lf_select.dart';
+import 'package:flutter_app/ui/form/fields/lf_wheel_select.dart';
 import 'package:flutter_app/utils/form/kyc_forms/kyc_information_confirm_forms.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:reactive_forms/reactive_forms.dart';
 
+import '../../ui/form/fields/Lf_date_picker.dart';
 import '../../utils/form/validation/kKycValidationMessages.dart';
 
 class KycInformationConfirmPage extends ConsumerStatefulWidget {
@@ -99,6 +103,24 @@ class _KycInformationConfirmPageState
                   ),
                   SizedBox(height: 16.h),
                   LfInput(name: 'gender', label: 'Gender', readOnly: true),
+                  SizedBox(height: 16.h,),
+                  LfWheelSelect(
+                      name: 'province',
+                      options:[
+                        (text: 'Metro Manila', value: 'MM', disabled: false),
+                        (text: 'Cebu', value: 'CEB', disabled: false),
+                        (text: 'Davao', value: 'DAV', disabled: false),
+                      ]
+                  ),
+                  LfDatePicker(
+                    name: 'birthday',
+                    label: 'Birthday',
+                    placeholder: 'YYYY-MM-DD',
+                    // 限制：必须满 18 岁
+                    maxDate: DateTime.now().subtract(const Duration(days: 365 * 18)),
+                    // 限制：不超过 100 岁
+                    minDate: DateTime.now().subtract(const Duration(days: 365 * 100)),
+                  ),
                   SizedBox(height: 16.h),
                   LfInput(name: 'province', label: 'Province', required: true),
                   SizedBox(height: 16.h),
