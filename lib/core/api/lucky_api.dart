@@ -4,6 +4,7 @@ import 'package:flutter_app/common.dart';
 import 'package:flutter_app/core/models/coupon_threshold_data.dart';
 import 'package:flutter_app/core/models/groups.dart';
 import 'package:flutter_app/core/models/payment.dart';
+import 'package:flutter_app/core/models/region.dart';
 
 import 'package:flutter_app/utils/helper.dart';
 import 'package:flutter_app/core/models/index.dart';
@@ -305,6 +306,20 @@ class Api {
     return KycOcrResult.fromJson(result);
   }
 
+  static Future<List<Province>> provincesApi() async {
+    final res = await Http.get('/api/v1/client/region/provinces');
+    return parseList<Province>(res, (e) => Province.fromJson(e));
+  }
+
+  static Future<List<City>> cityApi(int provinceId) async {
+    final res = await Http.get('/api/v1/client/region/cities/${provinceId}');
+    return parseList<City>(res, (e) => City.fromJson(e));
+  }
+
+  static Future<List<Barangay>> barangayApi(int cityId) async {
+    final res = await Http.get('/api/v1/client/region/barangays/${cityId}');
+    return parseList<Barangay>(res, (e) => Barangay.fromJson(e));
+  }
 
 
 }

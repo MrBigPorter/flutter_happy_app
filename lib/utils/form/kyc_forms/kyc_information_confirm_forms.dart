@@ -29,12 +29,12 @@ class KycInformationConfirmModel {
     @RfControl() this.countryCode = 63,
 
     // === 2. 地址信息 (PH Address) ===
-    @RfControl(validators: [NonEmpty()]) this.province = '',
-    @RfControl(validators: [NonEmpty()]) this.city = '',
-    @RfControl(validators: [NonEmpty()]) this.barangay = '',
+    @RfControl(validators: [Required()]) this.province,
+    @RfControl(validators: [Required()]) this.city,
+    @RfControl(validators: [Required()]) this.barangay,
 
-    @RfControl(validators: [NonEmpty()])
-    this.postalCode = '',
+    @RfControl(validators: [Required(), PostalCode()])
+     this.postalCode,
 
     @RfControl(validators: [NonEmpty()]) this.address = '',
 
@@ -63,10 +63,10 @@ class KycInformationConfirmModel {
   final String? expiryDate;
   final int? countryCode;
 
-  final String province;
-  final String city;
-  final String barangay;
-  final String postalCode;
+  final int? province;
+  final int? city;
+  final int? barangay;
+  final int? postalCode;
   final String address;
 
   final String idCardFront;

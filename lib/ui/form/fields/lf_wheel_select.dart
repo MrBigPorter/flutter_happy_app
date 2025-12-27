@@ -113,6 +113,7 @@ class LfWheelSelect<T> extends StatelessWidget {
   }
 
   void _showWheelPicker(BuildContext context, ReactiveFormFieldState<T, T> field) {
+
     // 获取当前 Control 的值
     final controlValue = field.value;
 
@@ -147,7 +148,7 @@ class LfWheelSelect<T> extends StatelessWidget {
                       onPressed: () {
                         if (options.isNotEmpty) {
                           // 确认选择：更新值并触发校验
-                          field.didChange(options[tempIndex].value);
+                          field.control.value = options[tempIndex].value;
                         }
                         Navigator.pop(ctx);
                       },

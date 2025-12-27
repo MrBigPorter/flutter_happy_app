@@ -109,6 +109,7 @@ class LfDatePicker extends StatelessWidget {
 
   // 参数改为 ReactiveFormFieldState
   void _showDatePicker(BuildContext context, ReactiveFormFieldState<String, String> field) {
+
     // 1. 解析初始值：String -> DateTime
     DateTime initialDate = DateTime.now();
     final currentValue = field.value;
@@ -157,7 +158,8 @@ class LfDatePicker extends StatelessWidget {
                         // 4. 确认选择：DateTime -> String -> Update Field
                         final formatted = DateFormat('yyyy-MM-dd').format(tempDate);
 
-                        field.didChange(formatted);
+                        field.control.value = formatted;
+                        field.control.markAsTouched();
 
                         Navigator.pop(ctx);
                       },

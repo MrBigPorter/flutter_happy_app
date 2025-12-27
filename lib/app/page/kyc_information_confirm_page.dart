@@ -5,16 +5,14 @@ import 'package:flutter_app/common.dart';
 import 'package:flutter_app/components/base_scaffold.dart';
 import 'package:flutter_app/core/models/kyc.dart';
 import 'package:flutter_app/ui/button/button.dart';
-import 'package:flutter_app/ui/form/fields/lf_date.dart';
 import 'package:flutter_app/ui/form/fields/lf_input.dart';
-import 'package:flutter_app/ui/form/fields/lf_select.dart';
 import 'package:flutter_app/ui/form/fields/lf_wheel_select.dart';
 import 'package:flutter_app/utils/form/kyc_forms/kyc_information_confirm_forms.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:reactive_forms/reactive_forms.dart';
 
-import '../../ui/form/fields/Lf_date_picker.dart';
+import '../../core/models/region_providers.dart';
 import '../../utils/form/validation/kKycValidationMessages.dart';
 
 class KycInformationConfirmPage extends ConsumerStatefulWidget {
@@ -41,6 +39,10 @@ class _KycInformationConfirmPageState
   @override
   void initState() {
     super.initState();
+
+    // Setup listeners to reset dependent fields
+    _setupResetListeners();
+
     // Pre-fill the form with data from kycOcrResult
     final ocr = widget.kycOcrResult;
     print("OCR Result: $ocr");
@@ -53,6 +55,18 @@ class _KycInformationConfirmPageState
        'country': ocr.country,
     });
 
+  }
+
+  void _setupResetListeners(){
+    // When province changes, reset city and barangay
+    kycForm.provinceControl.valueChanges.listen((_){
+      kycForm.cityControl.reset();
+      kycForm.barangayControl.reset();
+    });
+    // When city changes, reset barangay
+    kycForm.cityControl.valueChanges.listen((_){
+      kycForm.barangayControl.reset();
+    });
   }
 
 
@@ -68,9 +82,13 @@ class _KycInformationConfirmPageState
 
   @override
   Widget build(BuildContext context) {
+    final provincesAsync = ref.watch(provinceProvider);
+    
+
     return BaseScaffold(
       title: 'information-confirm'.tr(),
       body: SingleChildScrollView(
+        physics: const ClampingScrollPhysics(),
         child: Padding(
           padding: EdgeInsets.symmetric(horizontal: 16.w),
           child: ReactiveFormConfig(
@@ -109,14 +127,50 @@ class _KycInformationConfirmPageState
                       label: 'Province',
                       placeholder: 'Select your province',
                       required: true,
-                      options:[
-                        (text: 'Metro Manila', value: 'MM', disabled: false),
-                        (text: 'Cebu', value: 'CEB', disabled: false),
-                        (text: 'Davao', value: 'DAV', disabled: false),
-                      ]
+                      options: provincesAsync.when(
+                          data: (list) => list,
+                          error: (_,__) => [],
+                          loading: () => [(text: 'Loading...', value: -1, disabled: true)]
+                      ),
                   ),
                   SizedBox(height: 16.h),
-                  LfInput(name: 'city', label: 'City', required: true),
+                  ReactiveValueListenableBuilder<int>(
+                       formControlName: 'province',
+                      builder: (context, provinceControl, child) {
+                        final provinceId = provinceControl.value;
+                        final citiesAsync = ref.watch(cityProvider(provinceId ?? -1));
+                        return LfWheelSelect(
+                          name: 'city',
+                          label: 'City',
+                          placeholder: 'Select your city',
+                          required: true,
+                          options: citiesAsync.when(
+                              data: (list) => list,
+                              error: (_,__) => [],
+                              loading: () => [(text: 'Loading...', value: -1, disabled: true)]
+                          ),
+                        );
+                      }
+                  ),
+                  SizedBox(height: 16.h,),
+                  ReactiveValueListenableBuilder<int>(
+                      formControlName: 'city',
+                      builder: (context, cityControl, child) {
+                        final cityId = cityControl.value;
+                        final barangaysAsync = ref.watch(barangaysProvider(cityId ?? -1));
+                        return LfWheelSelect(
+                          name: 'barangay',
+                          label: 'Barangay',
+                          placeholder: 'Select your barangay',
+                          required: true,
+                          options: barangaysAsync.when(
+                              data: (list) => list,
+                              error: (_,__) => [],
+                              loading: () => [(text: 'Loading...', value: -1, disabled: true)]
+                          ),
+                        );
+                      }
+                  ),
                   SizedBox(height: 16.h),
                   LfInput(name: 'address', label: 'Address', required: true),
                   SizedBox(height: 16.h),
@@ -147,6 +201,7 @@ class _KycInformationConfirmPageState
           ),
         ),
       ),
+      resizeToAvoidBottomInset: false,
     );
   }
 }

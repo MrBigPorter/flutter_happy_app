@@ -115,3 +115,30 @@ class IsAdult extends Validator<dynamic> {
     }
   }
 }
+
+class Required extends Validator<dynamic> {
+  const Required();
+
+  @override
+  Map<String, dynamic>? validate(AbstractControl<dynamic> control) {
+    final v = control.value;
+    if (v == null) return const {'required': true};
+    if (v is String && v.trim().isEmpty) return const {'required': true};
+    if (v is Iterable || v is Map) {
+      if ((v as dynamic).isEmpty) return const {'required': true};
+    }
+    return null;
+  }
+}
+
+class PostalCode extends Validator<dynamic> {
+  const PostalCode();
+  static final _re = RegExp(r'^\d{4}$');
+
+  @override
+  Map<String, dynamic>? validate(AbstractControl<dynamic> control) {
+    final v = (control.value ?? '').toString();
+    if(v.isEmpty) return const {'required': true}; // 必填 must not be empty
+    return _re.hasMatch(v) ? null : const {'postalCode': true}; // 非法
+  }
+}

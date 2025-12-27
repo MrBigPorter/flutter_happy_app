@@ -337,13 +337,13 @@ class KycInformationConfirmModelForm
 
   int? get _countryCodeValue => countryCodeControl.value;
 
-  String get _provinceValue => provinceControl.value ?? '';
+  int? get _provinceValue => provinceControl.value;
 
-  String get _cityValue => cityControl.value ?? '';
+  int? get _cityValue => cityControl.value;
 
-  String get _barangayValue => barangayControl.value ?? '';
+  int? get _barangayValue => barangayControl.value;
 
-  String get _postalCodeValue => postalCodeControl.value ?? '';
+  int? get _postalCodeValue => postalCodeControl.value;
 
   String get _addressValue => addressControl.value ?? '';
 
@@ -375,13 +375,13 @@ class KycInformationConfirmModelForm
 
   int? get _countryCodeRawValue => countryCodeControl.value;
 
-  String get _provinceRawValue => provinceControl.value ?? '';
+  int? get _provinceRawValue => provinceControl.value;
 
-  String get _cityRawValue => cityControl.value ?? '';
+  int? get _cityRawValue => cityControl.value;
 
-  String get _barangayRawValue => barangayControl.value ?? '';
+  int? get _barangayRawValue => barangayControl.value;
 
-  String get _postalCodeRawValue => postalCodeControl.value ?? '';
+  int? get _postalCodeRawValue => postalCodeControl.value;
 
   String get _addressRawValue => addressControl.value ?? '';
 
@@ -622,13 +622,13 @@ class KycInformationConfirmModelForm
 
   Map<String, Object>? get countryCodeErrors => countryCodeControl.errors;
 
-  Map<String, Object> get provinceErrors => provinceControl.errors;
+  Map<String, Object>? get provinceErrors => provinceControl.errors;
 
-  Map<String, Object> get cityErrors => cityControl.errors;
+  Map<String, Object>? get cityErrors => cityControl.errors;
 
-  Map<String, Object> get barangayErrors => barangayControl.errors;
+  Map<String, Object>? get barangayErrors => barangayControl.errors;
 
-  Map<String, Object> get postalCodeErrors => postalCodeControl.errors;
+  Map<String, Object>? get postalCodeErrors => postalCodeControl.errors;
 
   Map<String, Object> get addressErrors => addressControl.errors;
 
@@ -782,6 +782,118 @@ class KycInformationConfirmModelForm
         if (formGroup is FormGroup) {
           formGroup.removeControl(
             countryCodeControlName,
+            updateParent: updateParent,
+            emitEvent: emitEvent,
+          );
+        }
+      }
+    }
+  }
+
+  @Deprecated(
+      'Generator completely wraps the form so manual fields removal could lead to unexpected crashes')
+  void provinceRemove({
+    bool updateParent = true,
+    bool emitEvent = true,
+  }) {
+    if (containsProvince) {
+      final controlPath = path;
+      if (controlPath == null) {
+        form.removeControl(
+          provinceControlName,
+          updateParent: updateParent,
+          emitEvent: emitEvent,
+        );
+      } else {
+        final formGroup = form.control(controlPath);
+
+        if (formGroup is FormGroup) {
+          formGroup.removeControl(
+            provinceControlName,
+            updateParent: updateParent,
+            emitEvent: emitEvent,
+          );
+        }
+      }
+    }
+  }
+
+  @Deprecated(
+      'Generator completely wraps the form so manual fields removal could lead to unexpected crashes')
+  void cityRemove({
+    bool updateParent = true,
+    bool emitEvent = true,
+  }) {
+    if (containsCity) {
+      final controlPath = path;
+      if (controlPath == null) {
+        form.removeControl(
+          cityControlName,
+          updateParent: updateParent,
+          emitEvent: emitEvent,
+        );
+      } else {
+        final formGroup = form.control(controlPath);
+
+        if (formGroup is FormGroup) {
+          formGroup.removeControl(
+            cityControlName,
+            updateParent: updateParent,
+            emitEvent: emitEvent,
+          );
+        }
+      }
+    }
+  }
+
+  @Deprecated(
+      'Generator completely wraps the form so manual fields removal could lead to unexpected crashes')
+  void barangayRemove({
+    bool updateParent = true,
+    bool emitEvent = true,
+  }) {
+    if (containsBarangay) {
+      final controlPath = path;
+      if (controlPath == null) {
+        form.removeControl(
+          barangayControlName,
+          updateParent: updateParent,
+          emitEvent: emitEvent,
+        );
+      } else {
+        final formGroup = form.control(controlPath);
+
+        if (formGroup is FormGroup) {
+          formGroup.removeControl(
+            barangayControlName,
+            updateParent: updateParent,
+            emitEvent: emitEvent,
+          );
+        }
+      }
+    }
+  }
+
+  @Deprecated(
+      'Generator completely wraps the form so manual fields removal could lead to unexpected crashes')
+  void postalCodeRemove({
+    bool updateParent = true,
+    bool emitEvent = true,
+  }) {
+    if (containsPostalCode) {
+      final controlPath = path;
+      if (controlPath == null) {
+        form.removeControl(
+          postalCodeControlName,
+          updateParent: updateParent,
+          emitEvent: emitEvent,
+        );
+      } else {
+        final formGroup = form.control(controlPath);
+
+        if (formGroup is FormGroup) {
+          formGroup.removeControl(
+            postalCodeControlName,
             updateParent: updateParent,
             emitEvent: emitEvent,
           );
@@ -965,7 +1077,7 @@ class KycInformationConfirmModelForm
   }
 
   void provinceValueUpdate(
-    String value, {
+    int? value, {
     bool updateParent = true,
     bool emitEvent = true,
   }) {
@@ -974,7 +1086,7 @@ class KycInformationConfirmModelForm
   }
 
   void cityValueUpdate(
-    String value, {
+    int? value, {
     bool updateParent = true,
     bool emitEvent = true,
   }) {
@@ -983,7 +1095,7 @@ class KycInformationConfirmModelForm
   }
 
   void barangayValueUpdate(
-    String value, {
+    int? value, {
     bool updateParent = true,
     bool emitEvent = true,
   }) {
@@ -992,7 +1104,7 @@ class KycInformationConfirmModelForm
   }
 
   void postalCodeValueUpdate(
-    String value, {
+    int? value, {
     bool updateParent = true,
     bool emitEvent = true,
   }) {
@@ -1136,7 +1248,7 @@ class KycInformationConfirmModelForm
   }
 
   void provinceValuePatch(
-    String value, {
+    int? value, {
     bool updateParent = true,
     bool emitEvent = true,
   }) {
@@ -1145,7 +1257,7 @@ class KycInformationConfirmModelForm
   }
 
   void cityValuePatch(
-    String value, {
+    int? value, {
     bool updateParent = true,
     bool emitEvent = true,
   }) {
@@ -1154,7 +1266,7 @@ class KycInformationConfirmModelForm
   }
 
   void barangayValuePatch(
-    String value, {
+    int? value, {
     bool updateParent = true,
     bool emitEvent = true,
   }) {
@@ -1163,7 +1275,7 @@ class KycInformationConfirmModelForm
   }
 
   void postalCodeValuePatch(
-    String value, {
+    int? value, {
     bool updateParent = true,
     bool emitEvent = true,
   }) {
@@ -1367,7 +1479,7 @@ class KycInformationConfirmModelForm
       );
 
   void provinceValueReset(
-    String value, {
+    int? value, {
     bool updateParent = true,
     bool emitEvent = true,
     bool removeFocus = false,
@@ -1382,7 +1494,7 @@ class KycInformationConfirmModelForm
       );
 
   void cityValueReset(
-    String value, {
+    int? value, {
     bool updateParent = true,
     bool emitEvent = true,
     bool removeFocus = false,
@@ -1397,7 +1509,7 @@ class KycInformationConfirmModelForm
       );
 
   void barangayValueReset(
-    String value, {
+    int? value, {
     bool updateParent = true,
     bool emitEvent = true,
     bool removeFocus = false,
@@ -1412,7 +1524,7 @@ class KycInformationConfirmModelForm
       );
 
   void postalCodeValueReset(
-    String value, {
+    int? value, {
     bool updateParent = true,
     bool emitEvent = true,
     bool removeFocus = false,
@@ -1531,17 +1643,17 @@ class KycInformationConfirmModelForm
   FormControl<int> get countryCodeControl =>
       form.control(countryCodeControlPath()) as FormControl<int>;
 
-  FormControl<String> get provinceControl =>
-      form.control(provinceControlPath()) as FormControl<String>;
+  FormControl<int> get provinceControl =>
+      form.control(provinceControlPath()) as FormControl<int>;
 
-  FormControl<String> get cityControl =>
-      form.control(cityControlPath()) as FormControl<String>;
+  FormControl<int> get cityControl =>
+      form.control(cityControlPath()) as FormControl<int>;
 
-  FormControl<String> get barangayControl =>
-      form.control(barangayControlPath()) as FormControl<String>;
+  FormControl<int> get barangayControl =>
+      form.control(barangayControlPath()) as FormControl<int>;
 
-  FormControl<String> get postalCodeControl =>
-      form.control(postalCodeControlPath()) as FormControl<String>;
+  FormControl<int> get postalCodeControl =>
+      form.control(postalCodeControlPath()) as FormControl<int>;
 
   FormControl<String> get addressControl =>
       form.control(addressControlPath()) as FormControl<String>;
@@ -2118,30 +2230,30 @@ class KycInformationConfirmModelForm
             asyncValidatorsDebounceTime: 250,
             disabled: false,
             touched: false),
-        provinceControlName: FormControl<String>(
+        provinceControlName: FormControl<int>(
             value: kycInformationConfirmModel?.province,
-            validators: [NonEmpty()],
+            validators: [Required()],
             asyncValidators: [],
             asyncValidatorsDebounceTime: 250,
             disabled: false,
             touched: false),
-        cityControlName: FormControl<String>(
+        cityControlName: FormControl<int>(
             value: kycInformationConfirmModel?.city,
-            validators: [NonEmpty()],
+            validators: [Required()],
             asyncValidators: [],
             asyncValidatorsDebounceTime: 250,
             disabled: false,
             touched: false),
-        barangayControlName: FormControl<String>(
+        barangayControlName: FormControl<int>(
             value: kycInformationConfirmModel?.barangay,
-            validators: [NonEmpty()],
+            validators: [Required()],
             asyncValidators: [],
             asyncValidatorsDebounceTime: 250,
             disabled: false,
             touched: false),
-        postalCodeControlName: FormControl<String>(
+        postalCodeControlName: FormControl<int>(
             value: kycInformationConfirmModel?.postalCode,
-            validators: [NonEmpty()],
+            validators: [Required(), PostalCode()],
             asyncValidators: [],
             asyncValidatorsDebounceTime: 250,
             disabled: false,
