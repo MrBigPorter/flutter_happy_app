@@ -9,8 +9,8 @@ import 'modal_sheet_config.dart';
 /// - Automatically supports closing on background click, drag to close, rounded corners, theme syncing
 /// - No built-in scroll logic (determined by content)
 ///
-/// ✅ Short content auto-adapts height
-/// ✅ Long content needs external SingleChildScrollView wrapper
+///  Short content auto-adapts height
+/// Long content needs external SingleChildScrollView wrapper
 /// ------------------------------------------------------------------
 class RadixSheet {
   static Future<T?> show<T>({

@@ -68,3 +68,50 @@ class InviteCode extends Validator<dynamic> {
     return _re.hasMatch(v) ? null : const {'inviteCode': true}; // 非法
   }
 }
+
+// 1. 实名验证：支持中文、英文及菲律宾常见名字字符
+class RealName extends Validator<dynamic> {
+  const RealName();
+  static final _re = RegExp(r'^[\u4e00-\u9fa5a-zA-Z·\s]{2,50}$');
+
+  @override
+  Map<String, dynamic>? validate(AbstractControl<dynamic> control) {
+    final v = control.value?.toString() ?? '';
+    if (v.isEmpty) return null; // 让 NonEmpty 处理必填
+    return _re.hasMatch(v) ? null : const {'realName': true};
+  }
+}
+
+// 2. 证件号验证：兼容性更强
+class IdNumberValidator extends Validator<dynamic> {
+  const IdNumberValidator();
+  static final _re = RegExp(r'^[A-Z0-9-]{5,30}$'); // 增加对连字符的支持
+
+  @override
+  Map<String, dynamic>? validate(AbstractControl<dynamic> control) {
+    final v = control.value?.toString() ?? '';
+    if (v.isEmpty) return null;
+    return _re.hasMatch(v) ? null : const {'idNumber': true};
+  }
+}
+
+// 3. 生日验证：确保用户已成年
+class IsAdult extends Validator<dynamic> {
+  const IsAdult();
+
+  @override
+  Map<String, dynamic>? validate(AbstractControl<dynamic> control) {
+    if (control.value == null) return null;
+    try {
+      final birthDate = DateTime.parse(control.value.toString());
+      final today = DateTime.now();
+      int age = today.year - birthDate.year;
+      if (today.month < birthDate.month || (today.month == birthDate.month && today.day < birthDate.day)) {
+        age--;
+      }
+      return age >= 18 ? null : const {'underage': true};
+    } catch (_) {
+      return const {'invalidDate': true};
+    }
+  }
+}

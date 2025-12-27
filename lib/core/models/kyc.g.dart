@@ -134,10 +134,15 @@ Map<String, dynamic> _$KycUploadResultToJson(KycUploadResult instance) =>
 KycOcrResult _$KycOcrResultFromJson(Map<String, dynamic> json) =>
     $checkedCreate('KycOcrResult', json, ($checkedConvert) {
       final val = KycOcrResult(
-        type: $checkedConvert('type', (v) => v as String),
+        idType: $checkedConvert('idType', (v) => (v as num).toInt()),
         country: $checkedConvert('country', (v) => v as String),
+        birthday: $checkedConvert('birthday', (v) => v as String),
+        gender: $checkedConvert('gender', (v) => v as String),
+        expiryDate: $checkedConvert('expiryDate', (v) => v as String?),
         idNumber: $checkedConvert('idNumber', (v) => v as String?),
-        name: $checkedConvert('name', (v) => v as String?),
+        firstName: $checkedConvert('firstName', (v) => v as String),
+        middleName: $checkedConvert('middleName', (v) => v as String?),
+        lastName: $checkedConvert('lastName', (v) => v as String),
         rawText: $checkedConvert('rawText', (v) => v as String),
       );
       return val;
@@ -145,9 +150,14 @@ KycOcrResult _$KycOcrResultFromJson(Map<String, dynamic> json) =>
 
 Map<String, dynamic> _$KycOcrResultToJson(KycOcrResult instance) =>
     <String, dynamic>{
-      'type': instance.type,
+      'idType': instance.idType,
+      'firstName': instance.firstName,
+      'middleName': instance.middleName,
+      'lastName': instance.lastName,
       'country': instance.country,
+      'birthday': instance.birthday,
+      'gender': instance.gender,
+      'expiryDate': instance.expiryDate,
       'idNumber': instance.idNumber,
-      'name': instance.name,
       'rawText': instance.rawText,
     };

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../ui/modal/progress/overlay_shrink.dart';
 import 'lucky_app_bar.dart';
 
 /// one base scaffold with optional app bar
@@ -32,7 +33,7 @@ class BaseScaffold extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    final scaffold =  Scaffold(
       appBar: showAppBar ? LuckyAppBar(
               title: title,
               actions: actions,
@@ -45,5 +46,6 @@ class BaseScaffold extends StatelessWidget {
       bottomNavigationBar: bottomNavigationBar,
       resizeToAvoidBottomInset: resizeToAvoidBottomInset,
     );
+    return OverlayShrink(child: scaffold);
   }
 }

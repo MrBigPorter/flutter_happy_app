@@ -1,29 +1,30 @@
 import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:flutter_app/common.dart'; // 包含 context.bgBrandSolid 的定义
+import 'package:flutter_app/common.dart';
 
 class UploadProgressDialog extends StatefulWidget {
-  final String title;
-  // 这里的 uploadTask 是一个高阶函数，把 onProgress 回调传出去
+  final ValueNotifier<String> messageNotifier;
   final Future<dynamic> Function(Function(double) onProgress) uploadTask;
 
   const UploadProgressDialog({
     super.key,
-    required this.title,
+    required this.messageNotifier,
     required this.uploadTask,
   });
 
-  /// 静态便捷调用方法
   static Future<T?> show<T>(
       BuildContext context, {
-        required String title,
+        required ValueNotifier<String> messageNotifier,
         required Future<dynamic> Function(Function(double) onProgress) uploadTask,
       }) {
     return showDialog<T>(
       context: context,
-      barrierDismissible: false, // 禁止点击背景关闭
-      builder: (context) => UploadProgressDialog(title: title, uploadTask: uploadTask),
+      barrierDismissible: false,
+      builder: (context) => UploadProgressDialog(
+        messageNotifier: messageNotifier,
+        uploadTask: uploadTask,
+      ),
     );
   }
 
@@ -31,27 +32,28 @@ class UploadProgressDialog extends StatefulWidget {
   State<UploadProgressDialog> createState() => _UploadProgressDialogState();
 }
 
-class _UploadProgressDialogState extends State<UploadProgressDialog> {
-  //  使用 ValueNotifier 代替 setState，性能更好
+class _UploadProgressDialogState extends State<UploadProgressDialog> with SingleTickerProviderStateMixin {
   final ValueNotifier<double> _progressNotifier = ValueNotifier<double>(0.0);
   Timer? _fakeTimer;
+  late AnimationController _spinController;
 
   @override
   void initState() {
     super.initState();
+    _spinController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    )..repeat();
+
     _startFakeProgress();
     _startTask();
   }
 
-  //  启动"假进度"：在前 25% 阶段模拟匀速前进
-  // 掩盖压缩图片和请求 URL 的耗时
   void _startFakeProgress() {
     _fakeTimer = Timer.periodic(const Duration(milliseconds: 100), (timer) {
       if (!mounted) return;
-
-      // 直接修改 notifier，不触发整个页面 build
-      if (_progressNotifier.value < 0.25) {
-        _progressNotifier.value += 0.005; // 每次加 0.5%，非常丝滑
+      if (_progressNotifier.value < 0.20) {
+        _progressNotifier.value += 0.005;
       } else {
         _fakeTimer?.cancel();
       }
@@ -61,8 +63,8 @@ class _UploadProgressDialogState extends State<UploadProgressDialog> {
   void _startTask() async {
     try {
       final result = await widget.uploadTask((realProgress) {
+        // ✅ 修复 1: 确保组件还在才更新 UI
         if (mounted) {
-          // 只有当真实进度反超假进度时，才接管
           if (realProgress > _progressNotifier.value) {
             _progressNotifier.value = realProgress;
           }
@@ -70,19 +72,24 @@ class _UploadProgressDialogState extends State<UploadProgressDialog> {
       });
 
       _fakeTimer?.cancel();
-      if (mounted) Navigator.of(context).pop(result);
+
+      // ✅ 修复 2: 确保组件还在才 pop
+      if (mounted) {
+        Navigator.of(context).pop(result);
+      }
     } catch (e) {
       _fakeTimer?.cancel();
+
+      // ✅ 修复 3: 安全的错误处理
       if (mounted) {
-        Navigator.of(context).pop(); // 关闭弹窗
-        // 显示错误提示
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text("Upload failed: $e"),
-            behavior: SnackBarBehavior.floating,
-            backgroundColor: Colors.red,
-          ),
-        );
+        // 如果弹窗还在，关闭它
+        Navigator.of(context).pop();
+
+        // 注意：在 async void 方法中 throw 会导致 App 崩溃
+        // 所以这里我们只打印日志，错误传递依靠 _scanAndUploadID 内部的 errorReason 捕获
+        debugPrint("ProgressDialog task error: $e");
+      } else {
+        debugPrint("ProgressDialog task failed but widget was already disposed: $e");
       }
     }
   }
@@ -90,13 +97,13 @@ class _UploadProgressDialogState extends State<UploadProgressDialog> {
   @override
   void dispose() {
     _fakeTimer?.cancel();
-    _progressNotifier.dispose(); // 记得销毁
+    _progressNotifier.dispose();
+    _spinController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    // 拦截返回键，防止误触导致上传中断
     return PopScope(
       canPop: false,
       child: Dialog(
@@ -111,60 +118,40 @@ class _UploadProgressDialogState extends State<UploadProgressDialog> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(
-                widget.title,
-                style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+              ValueListenableBuilder<String>(
+                valueListenable: widget.messageNotifier,
+                builder: (context, msg, _) {
+                  return Text(
+                    msg,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+                  );
+                },
               ),
               const SizedBox(height: 32),
 
-              //  局部刷新构建器，只重绘进度部分
+              RotationTransition(
+                turns: _spinController,
+                child: Icon(
+                  Icons.hourglass_bottom_rounded,
+                  size: 48,
+                  color: context.bgBrandSolid,
+                ),
+              ),
+
+              const SizedBox(height: 16),
+
               ValueListenableBuilder<double>(
                 valueListenable: _progressNotifier,
                 builder: (context, progress, child) {
-                  return Column(
-                    children: [
-                      // 动画补帧：让跳跃的进度值变得平滑
-                      TweenAnimationBuilder<double>(
-                        tween: Tween<double>(begin: 0, end: progress),
-                        duration: const Duration(milliseconds: 400),
-                        curve: Curves.easeOutCubic,
-                        builder: (context, value, child) {
-                          return Stack(
-                            alignment: Alignment.center,
-                            children: [
-                              SizedBox(
-                                width: 90,
-                                height: 90,
-                                child: CircularProgressIndicator(
-                                  value: value,
-                                  strokeWidth: 8,
-                                  backgroundColor: Colors.grey[100],
-                                  valueColor: AlwaysStoppedAnimation<Color>(context.bgBrandSolid),
-                                  strokeCap: StrokeCap.round,
-                                ),
-                              ),
-                              Text(
-                                "${(value * 100).toInt()}%",
-                                style: TextStyle(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.w900,
-                                  color: context.bgBrandSolid,
-                                  fontFeatures: const [FontFeature.tabularFigures()],
-                                ),
-                              ),
-                            ],
-                          );
-                        },
-                      ),
-
-                      const SizedBox(height: 32),
-
-                      // 动态文案
-                      Text(
-                        progress < 0.25 ? "Preparing file..." : "Uploading...",
-                        style: TextStyle(color: Colors.grey[600], fontSize: 13),
-                      ),
-                    ],
+                  return Text(
+                    "${(progress * 100).toInt()}%",
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w900,
+                      color: context.bgBrandSolid,
+                      fontFeatures: const [FontFeature.tabularFigures()],
+                    ),
                   );
                 },
               ),

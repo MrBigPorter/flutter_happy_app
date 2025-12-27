@@ -46,6 +46,7 @@ class KycNotifier extends _$KycNotifier {
     final newState = await AsyncValue.guard(() async {
       return await Api.kycOcrApi(key);
     });
+    
 
     // 3. 更新状态
     state = newState;

@@ -24,7 +24,6 @@ import 'package:go_router/go_router.dart';
 import '../../components/lucky_tab_bar.dart';
 import '../page/guide_page.dart';
 import '../page/home_page.dart';
-import '../page/id_scan_page.dart';
 import '../page/product_page.dart';
 import '../page/winners_page.dart';
 import '../page/me_page.dart';

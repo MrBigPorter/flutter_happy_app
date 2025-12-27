@@ -2,31 +2,34 @@ import 'package:dio/dio.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_app/app/page/kyc_information_confirm_page.dart';
 import 'package:flutter_app/common.dart';
 import 'package:flutter_app/components/base_scaffold.dart';
 import 'package:flutter_app/components/upload_progress_dialog.dart';
 import 'package:flutter_app/core/models/kyc.dart';
 import 'package:flutter_app/core/providers/kyc_provider.dart';
+import 'package:flutter_app/core/providers/liveness_provider.dart';
 import 'package:flutter_app/ui/index.dart';
+import 'package:flutter_app/ui/modal/base/nav_hub.dart';
 import 'package:flutter_app/utils/camera/services/liveness_service.dart';
 import 'package:flutter_app/utils/upload/global_upload_service.dart';
 import 'package:flutter_app/utils/upload/upload_types.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
-import '../../components/select_id_type.dart';
 import '../../utils/camera/services/unified_kyc_cuard.dart';
 
-/// kyc verify page
-/// Displays the KYC verification steps and allows users to start the verification process.
-/// Uses a BaseScaffold for consistent layout and styling.
-/// Includes a scrollable list of verification steps and a bottom navigation bar with a start button.
-
-class KycVerifyPage extends ConsumerWidget {
+/// KYC Verify Page
+class KycVerifyPage extends ConsumerStatefulWidget {
   const KycVerifyPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<KycVerifyPage> createState() => _KycVerifyPageState();
+}
+
+class _KycVerifyPageState extends ConsumerState<KycVerifyPage> {
+  @override
+  Widget build(BuildContext context) {
     return BaseScaffold(
       title: 'kyc-verify'.tr(),
       body: SingleChildScrollView(
@@ -44,103 +47,12 @@ class KycVerifyPage extends ConsumerWidget {
           child: _StepList(),
         ),
       ),
-      bottomNavigationBar: _BottomNavigationBar(),
+      bottomNavigationBar: _buildBottomNavigationBar(),
     );
   }
-}
 
-/// bottom navigation bar
-class _BottomNavigationBar extends ConsumerWidget {
-  Future<void> showKycTypeSheet(
-    BuildContext context,
-    List<KycIdTypes> options,
-    WidgetRef ref,
-  ) async {
-    final option = await RadixSheet.show<KycIdTypes>(
-      builder: (context, close) {
-        return SelectIdType(options: options);
-      },
-    );
-    if (option != null) {
-      // first step scan and upload id
-      final url = await _scanAndUploadID(context, ref);
-      if (url == null) {
-        return;
-      }
-      // second step liveness detection
-      _livenessDetection(context, ref);
-    }
-  }
-
-  // first step scan and upload id
-  Future<KycOcrResult?> _scanAndUploadID(BuildContext context, WidgetRef ref) async {
-
-    final notifier =  await ref.read(kycNotifierProvider.notifier);
-
-    final imagePath = await LivenessService.scanDocument(context);
-
-    // 用户没拍，返回了
-    if (imagePath == null) return null;
-
-
-    // 开始检测：传入 imagePath 和 证件类型(idCard)
-    final bool isPass = await UnifiedKycGuard().check(
-      imagePath,
-      KycDocType.idCard,
-    );
-    
-
-    if (!isPass) {
-       RadixModal.show(
-        title: 'check failed',
-        cancelText:'',
-        builder: (context, close) => Text(
-            '未检测到有效的证件信息。\n请确保证件正面对准镜头，且光线充足。',
-            style: TextStyle(fontSize: 16.sp, color: context.textPrimary900)
-        ),
-      );
-       return null;
-    }
-
-    // 关闭 Loading
-    if (context.mounted) Navigator.pop(context);
-
-    final cancelToken = CancelToken();
-
-    final uploadResult = await UploadProgressDialog.show(
-      context,
-      title: 'uploading...',
-      uploadTask: (onProgress) {
-        return GlobalUploadService().uploadFile(
-          filePath: imagePath,
-          module: UploadModule.kyc,
-          onProgress: onProgress,
-          cancelToken: cancelToken, // 传递取消令牌
-        );
-      },
-    );
-
-    if( uploadResult == null ) {
-      return null;
-    }
-
-    try{
-      final orcData =  notifier.scanIdCard(uploadResult);
-      return orcData;
-
-    }catch(e){
-      debugPrint("❌ OCR 处理失败: $e");
-      return null;
-    }
-
-
-  }
-
-  void _livenessDetection(BuildContext context, WidgetRef ref) {}
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final kycType = ref.watch(kycIdTypeProvider);
+  Widget _buildBottomNavigationBar() {
+    final kycTypeAsyncValue = ref.watch(kycIdTypeProvider);
 
     return Container(
       color: context.bgPrimary,
@@ -152,10 +64,36 @@ class _BottomNavigationBar extends ConsumerWidget {
             width: double.infinity,
             height: 48.h,
             child: Button(
-              onPressed: () {
-                kycType.whenData((options) async {
-                  showKycTypeSheet(context, options, ref);
-                });
+              loading: kycTypeAsyncValue.isLoading,
+              onPressed: () async {
+                final options = await ref.read(kycIdTypeProvider.future);
+                if (!mounted) return;
+
+                _additionalInformation(context, KycOcrResult(
+                    idType: 1,
+                    country: "PH",
+                    birthday: "1990-01-01",
+                    gender: 'MALE',
+                    rawText: 'Raw OCR Text',
+                    firstName: 'Juan',
+                    lastName: 'Dela Cruz',
+                    idNumber: '123456789',
+                  )
+                );
+
+
+                /*final option = await RadixSheet.show<KycIdTypes>(
+                  builder: (_, close) => SelectIdType(options: options),
+                );
+
+                if (option != null && mounted) {
+                  final result = await _scanAndUploadID();
+                  if (result != null && mounted) {
+                    // information confirm
+                    print("Scanned ID Result: $result");
+                    await _additionalInformation(context, result);
+                  }
+                }*/
               },
               width: double.infinity,
               height: 40.h,
@@ -169,9 +107,124 @@ class _BottomNavigationBar extends ConsumerWidget {
       ),
     );
   }
+
+  Future<KycOcrResult?> _scanAndUploadID() async {
+    final kycNotifier = ref.read(kycNotifierProvider.notifier);
+
+    // 0. 开启相机
+    final imagePath = await LivenessService.scanDocument(context);
+
+    //  2. 核心防御：相机返回后检查组件是否已被销毁
+    if (imagePath == null || !mounted) return null;
+
+    // 3. 锁定全局 UI 环境
+    final globalContext = NavHub.key.currentContext;
+    if (globalContext == null || !globalContext.mounted) return null;
+
+    final messageNotifier = ValueNotifier<String>('1/3 ${'analyzing'.tr()}...');
+    Object? errorReason;
+    KycOcrResult? successResult;
+
+    try {
+      await UploadProgressDialog.show(
+        globalContext,
+        messageNotifier: messageNotifier,
+        uploadTask: (updateProgress) async {
+          // --- 步骤 1: 智能检测 ---
+          await Future.delayed(const Duration(milliseconds: 300));
+          final bool isPass = await UnifiedKycGuard().check(
+            imagePath,
+            KycDocType.idCard,
+          );
+          if (!isPass) throw 'GUARD_CHECK_FAILED';
+
+          // --- 步骤 2: 上传 ---
+          // 在异步闭包内依然检查 globalContext
+          if (globalContext.mounted) {
+            messageNotifier.value = '2/3 ${'uploading'.tr()}...';
+          }
+
+          final uploadResult = await GlobalUploadService().uploadFile(
+            filePath: imagePath,
+            module: UploadModule.kyc,
+            cancelToken: CancelToken(),
+            onProgress: updateProgress,
+          );
+          if (uploadResult == null) throw 'UPLOAD_FAILED';
+
+          // --- 步骤 3: 提取信息 ---
+          if (globalContext.mounted) {
+            messageNotifier.value = '3/3 ${'processing'.tr()}...';
+          }
+
+          //  这里的 kycNotifier 是闭包捕获的，不触发 ref 检查
+          final ocrResult = await kycNotifier.scanIdCard(uploadResult);
+
+          await Future.delayed(const Duration(milliseconds: 500));
+          return ocrResult;
+        },
+      ).then((result) {
+        successResult = result;
+      });
+    } catch (e) {
+      errorReason = e;
+      debugPrint("Kyc Upload Error: $e");
+    }
+
+    // --- 失败处理 (使用全局环境) ---
+    if (successResult != null) return successResult;
+
+    if (globalContext.mounted) {
+      _handleUploadError(globalContext, errorReason);
+    }
+
+    return null;
+  }
+
+  void _handleUploadError(BuildContext targetContext, Object? error) {
+    if (error == 'GUARD_CHECK_FAILED') {
+      RadixModal.show(
+        title: 'check failed'.tr(),
+        cancelText: '',
+        builder: (_, __) => Text(
+          'No valid ID detected.\nPlease align the front of your ID with the camera.',
+          style: TextStyle(fontSize: 16.sp, color: const Color(0xFF1F2937)),
+        ),
+      );
+    } else if (error != null) {
+      final msg = error == 'UPLOAD_FAILED'
+          ? 'Upload failed'.tr()
+          : 'Error: $error';
+      ScaffoldMessenger.of(targetContext).showSnackBar(
+        SnackBar(content: Text(msg), backgroundColor: Colors.redAccent),
+      );
+    }
+  }
+
+  Future<void> _additionalInformation(context, data) async {
+    // 后续补充信息逻辑
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => KycInformationConfirmPage(kycOcrResult: data),
+      ),
+    );
+
+    print("Information Confirm Result: $result");
+
+    if (result == true && mounted) {
+      _livenessDetection(context);
+    }
+  }
+
+  void _livenessDetection(context) {
+    // 后续活体检测逻辑
+    ref.read(livenessNotifierProvider.notifier).startDetection(context);
+  }
 }
 
-/// kyc verify step list
+// --- 辅助 UI 组件 (Stateless 即可) ---
+
 class _StepList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -183,77 +236,7 @@ class _StepList extends StatelessWidget {
           title: '${'common.step'.tr()} 1',
           subTitle: 'upload-id-photo'.tr(),
           description: '',
-          detail: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              SizedBox(height: 20.h),
-              Text(
-                'make-id'.tr(),
-                style: TextStyle(
-                  fontSize: 14.sp,
-                  color: context.textPrimary900,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              SizedBox(height: 12.h),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.circle,
-                    color: context.textBrandPrimary900,
-                    size: 8.w,
-                  ),
-                  SizedBox(width: 8.w),
-                  Text(
-                    'full-name'.tr(),
-                    style: TextStyle(
-                      fontSize: 14.sp,
-                      color: context.textSecondary700,
-                    ),
-                  ),
-                ],
-              ),
-              SizedBox(height: 4.h),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.circle,
-                    color: context.textBrandPrimary900,
-                    size: 8.w,
-                  ),
-                  SizedBox(width: 8.w),
-                  Text(
-                    'id-photo'.tr(),
-                    style: TextStyle(
-                      fontSize: 14.sp,
-                      color: context.textSecondary700,
-                    ),
-                  ),
-                ],
-              ),
-              SizedBox(height: 4.h),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.circle,
-                    color: context.textBrandPrimary900,
-                    size: 8.w,
-                  ),
-                  SizedBox(width: 8.w),
-                  Text(
-                    'date-o'.tr(),
-                    style: TextStyle(
-                      fontSize: 14.sp,
-                      color: context.textSecondary700,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
+          detail: _buildStep1Detail(context),
           completed: false,
           img: 'assets/images/verify/step1.png',
         ),
@@ -268,6 +251,7 @@ class _StepList extends StatelessWidget {
         SizedBox(height: 20.h),
         _StepItem(
           title: '${'common.step'.tr()} 2',
+          // 建议检查此处是否应为 Step 3
           subTitle: 'upload-selfie'.tr(),
           description: 'upload-verification'.tr(),
           completed: false,
@@ -276,9 +260,49 @@ class _StepList extends StatelessWidget {
       ],
     );
   }
+
+  Widget _buildStep1Detail(BuildContext context) {
+    final items = ['full-name', 'id-photo', 'date-o'];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(height: 20.h),
+        Text(
+          'make-id'.tr(),
+          style: TextStyle(
+            fontSize: 14.sp,
+            color: context.textPrimary900,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        SizedBox(height: 12.h),
+        ...items.map(
+          (key) => Padding(
+            padding: EdgeInsets.only(bottom: 4.h),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.circle,
+                  color: context.textBrandPrimary900,
+                  size: 8.w,
+                ),
+                SizedBox(width: 8.w),
+                Text(
+                  key.tr(),
+                  style: TextStyle(
+                    fontSize: 14.sp,
+                    color: context.textSecondary700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
 }
 
-/// kyc verify step item
 class _StepItem extends StatelessWidget {
   final String title;
   final String description;
@@ -299,12 +323,9 @@ class _StepItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Column(
-      mainAxisAlignment: MainAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
-          mainAxisAlignment: MainAxisAlignment.start,
           children: [
             Icon(
               completed ? CupertinoIcons.check_mark_circled_solid : Icons.error,
@@ -324,7 +345,7 @@ class _StepItem extends StatelessWidget {
         ),
         SizedBox(height: 8.h),
         Text(
-          subTitle!,
+          subTitle ?? '',
           style: TextStyle(
             fontSize: 16.sp,
             fontWeight: FontWeight.w600,
@@ -334,26 +355,18 @@ class _StepItem extends StatelessWidget {
         SizedBox(height: 8.h),
         Row(
           children: [
-            if (detail != null)
-              Expanded(child: detail!)
-            else
-              Expanded(
-                child: Text(
-                  description,
-                  style: TextStyle(
-                    fontSize: 14.sp,
-                    color: context.textSecondary700,
+            Expanded(
+              child:
+                  detail ??
+                  Text(
+                    description,
+                    style: TextStyle(
+                      fontSize: 14.sp,
+                      color: context.textSecondary700,
+                    ),
                   ),
-                ),
-              ),
-            Image.asset(
-              img,
-              width: 112.w,
-              height: 70.h,
-              fit: BoxFit.contain,
-              cacheWidth: (112.w * MediaQuery.of(context).devicePixelRatio)
-                  .round(),
             ),
+            Image.asset(img, width: 112.w, height: 70.h, fit: BoxFit.contain),
           ],
         ),
       ],

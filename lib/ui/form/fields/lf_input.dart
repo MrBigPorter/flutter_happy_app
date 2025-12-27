@@ -9,6 +9,7 @@ class LfInput<T> extends StatelessWidget {
   final String? label, hint, helper;
   final LfLabelMode labelMode;
   final bool? required;
+  final bool readOnly;
   final Map<String, String Function(Object?)>? validationMessages;
 
   final TextInputType? keyboardType;
@@ -43,6 +44,8 @@ class LfInput<T> extends StatelessWidget {
     this.inputFormatters,
     this.showErrors,
     this.required,
+    this.readOnly = false,
+
 
     this.prefix,
     this.suffix,
@@ -71,6 +74,7 @@ class LfInput<T> extends StatelessWidget {
       required: required,
       hint: hint,
       helper: helper,
+      readOnly: readOnly,
       labelMode: labelMode,
       validationMessages: validationMessages,
 
@@ -100,6 +104,7 @@ class LfInput<T> extends StatelessWidget {
         showErrors: showErrors,
         maxLines: maxLines,
         minLines: minLines,
+        readOnly: readOnly,
         inputFormatters: inputFormatters,
         style: textStyle,
         validationMessages: validationMessages,

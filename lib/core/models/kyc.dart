@@ -197,17 +197,27 @@ class KycUploadResult {
 
 @JsonSerializable(checked: true)
 class KycOcrResult {
-  final String type;
+  final int idType;
+  final String firstName;
+  final String? middleName;
+  final String lastName;
   final String country;
+  final String birthday;
+  final String gender;
+  final String? expiryDate;
   final String? idNumber; // 可能为空
-  final String? name;     // 可能为空
   final String rawText;
 
   KycOcrResult({
-    required this.type,
+    required this.idType,
     required this.country,
+    required this.birthday,
+    required this.gender,
+    this.expiryDate,
     this.idNumber,
-    this.name,
+    required this.firstName,
+    this.middleName,
+    required this.lastName,
     required this.rawText,
   });
 

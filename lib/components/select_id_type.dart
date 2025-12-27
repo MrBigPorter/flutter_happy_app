@@ -21,6 +21,7 @@ class SelectIdType extends StatelessWidget{
         itemBuilder: (context, index) {
           final option = options[index];
           return ListTile(
+            contentPadding: EdgeInsets.all(0),
             title: Text(
               option.typeName,
               style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w600, color: context.textPrimary900),

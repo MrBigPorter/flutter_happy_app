@@ -17,7 +17,7 @@ class LfField<T> extends StatelessWidget {
   final Widget? prefix, suffix, prefixIcon, suffixIcon;
   final TextStyle? textStyle, hintStyle, labelStyle,errorStyle;
   final EdgeInsetsGeometry? contentPadding;
-  final bool? filled,required;
+  final bool? filled,required, readOnly,disabled;
   final Color? fillColor;
   final InputBorder? border, focusedBorder, errorBorder, disabledBorder;
   final int? errorMaxLines;
@@ -47,6 +47,8 @@ class LfField<T> extends StatelessWidget {
     this.labelWidget,
     this.errorMaxLines,
     this.required,
+    this.readOnly,
+    this.disabled,
 
 
     this.prefix,

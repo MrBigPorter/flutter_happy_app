@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_app/common.dart';
 import 'package:flutter_app/core/providers/app_router_provider.dart';
 import 'package:flutter_app/core/store/auth/auth_provider.dart';
-import 'package:flutter_app/ui/modal/progress/overlay_shrink.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:easy_localization/easy_localization.dart';
@@ -53,16 +52,14 @@ class MyApp extends ConsumerWidget {
           ),
           child: child!,
         );
-        if (kIsWeb) {
-          return content;
-        }
-        return OverlayShrink(child: content);
+
+        return content;
       },
     );
   }
 }
 
-/// ✅ 自定义 ScrollBehavior：关闭滚动条，但保留平台惯性与滚轮优化
+///  自定义 ScrollBehavior：关闭滚动条，但保留平台惯性与滚轮优化
 class _NoScrollbarBehavior extends MaterialScrollBehavior {
   const _NoScrollbarBehavior();
 
