@@ -1,12 +1,10 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_app/common.dart';
-import 'package:flutter_app/ui/button/button.dart';
 import 'package:flutter_app/ui/index.dart';
 import 'package:flutter_app/ui/modal/sheet/modal_sheet_config.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:reactive_forms/reactive_forms.dart';
-import '../../button/variant.dart';
 import '../core/lf_field.dart';
 import '../core/types.dart';
 import 'lf_select.dart';
@@ -15,11 +13,12 @@ class LfWheelSelect<T> extends StatelessWidget {
   final String name;
   final String? label;
   final String? helper;
-  final String? placeholder;
+  final String? placeholder; // 占位提示语 (例如 "Please Select")
   final LfLabelMode labelMode;
   final bool readOnly;
+  final bool? required;
   final List<LfSelectOption<T>> options;
-  final Map<String, String Function(Object?)>? validationMessages;
+  final Map<String, String Function(Object)>? validationMessages;
   final double pickerHeight;
 
   const LfWheelSelect({
@@ -31,6 +30,7 @@ class LfWheelSelect<T> extends StatelessWidget {
     this.placeholder,
     this.labelMode = LfLabelMode.external,
     this.readOnly = false,
+    this.required,
     this.validationMessages,
     this.pickerHeight = 250,
   });
@@ -42,70 +42,65 @@ class LfWheelSelect<T> extends StatelessWidget {
       label: label,
       helper: helper,
       labelMode: labelMode,
-      validationMessages: validationMessages,
+      required: required,
+      validationMessages: null,
       readOnly: readOnly,
-      builder: (ctx, decoration, textStyle) {
-        // 1. 安全获取 Control
-        final rootForm = ReactiveForm.of(context);
-        AbstractControl<T>? control;
+      builder: (ctx, baseDecoration, textStyle) {
 
-        if (rootForm is FormGroup) {
-          control = rootForm.control(name) as AbstractControl<T>?;
-        } else if (rootForm is FormArray) {
-          try {
-            control = (rootForm as dynamic).control(name) as AbstractControl<T>?;
-          } catch (_) {}
-        }
+        return ReactiveFormField<T, T>(
+          formControlName: name,
+          validationMessages: validationMessages,
+          builder: (ReactiveFormFieldState<T, T> field) {
 
-        if (control == null) {
-          return Text('Error: Control "$name" not found', style: TextStyle(color: Theme.of(context).colorScheme.error));
-        }
-
-        // 2. 监听值变化
-        return ReactiveValueListenableBuilder<T>(
-          formControl: control,
-          builder: (context, control, child) {
-
-            //  修复点：使用循环查找，避免 "null as T" 的强制转换错误
+            // 1. 获取当前值和对应的显示文本
+            final value = field.value;
             String displayText = '';
 
-            // 遍历 options 找到匹配 value 的项
+            // 安全查找对应的 Text
             for (final opt in options) {
-              if (opt.value == control.value) {
+              if (opt.value == value) {
                 displayText = opt.text;
                 break;
               }
             }
 
-            // 判断是否有有效值（非空且在选项中找到了对应的文本）
-            final hasValue = control.value != null && displayText.isNotEmpty;
+            final hasValue = value != null && displayText.isNotEmpty;
 
+            // 2. 合并装饰器状态
+            final effectiveDecoration = baseDecoration.copyWith(
+              errorText: field.errorText,
+              hintText: null,
+              suffixIcon: baseDecoration.suffixIcon ??
+                  Padding(
+                    padding: EdgeInsets.only(right: 12.w),
+                    child: Icon(
+                      Icons.arrow_drop_down,
+                      size: 24.r,
+                      color: field.control.disabled
+                          ? Theme.of(context).disabledColor
+                          : Theme.of(context).iconTheme.color,
+                    ),
+                  ),
+            );
+
+            // 3. 交互区域
             return InkWell(
-              onTap: readOnly || control.disabled
+              onTap: readOnly || field.control.disabled
                   ? null
-                  : () => _showWheelPicker(context, control),
+                  : () => _showWheelPicker(context, field),
               borderRadius: BorderRadius.circular(4),
               child: InputDecorator(
-                decoration: decoration.copyWith(
-                  suffixIcon: decoration.suffixIcon ??
-                       Padding(
-                        padding: EdgeInsets.only(right: 12.w),
-                        child: Icon(
-                          Icons.arrow_drop_down,
-                          size: 24.r,
-                          color: control.disabled
-                              ? Theme.of(context).disabledColor
-                              : Theme.of(context).iconTheme.color,
-                        ),
-                       ),
-                  hintText: placeholder,
-                ),
+                decoration: effectiveDecoration,
+                // 当没有值时，isEmpty 为 true，这有助于 label 的浮动动画处理
                 isEmpty: !hasValue,
                 child: Text(
                   hasValue ? displayText : (placeholder ?? ''),
                   style: hasValue
-                      ? textStyle
-                      : (decoration.hintStyle ?? Theme.of(context).textTheme.bodyLarge?.copyWith(color: Colors.grey)),
+                      ? textStyle // 有值：用正常文本样式
+                      : (baseDecoration.hintStyle ?? // 没值：用提示文本样式(灰色)
+                      Theme.of(context).textTheme.bodyLarge?.copyWith(
+                        color: Theme.of(context).hintColor,
+                      )),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -117,25 +112,26 @@ class LfWheelSelect<T> extends StatelessWidget {
     );
   }
 
-  void _showWheelPicker(BuildContext context, AbstractControl<T> control) {
-    int initialIndex = options.indexWhere((e) => e.value == control.value);
+  void _showWheelPicker(BuildContext context, ReactiveFormFieldState<T, T> field) {
+    // 获取当前 Control 的值
+    final controlValue = field.value;
+
+    int initialIndex = options.indexWhere((e) => e.value == controlValue);
     if (initialIndex < 0) initialIndex = 0;
 
     int tempIndex = initialIndex;
 
     RadixSheet.show(
-      config: ModalSheetConfig(
-        enableHeader: false
-      ),
-      builder: (ctx,close){
+      config: ModalSheetConfig(enableHeader: false),
+      builder: (ctx, close) {
         return SafeArea(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                padding:  EdgeInsets.symmetric(horizontal: 16.r, vertical: 8.h),
-                decoration:  BoxDecoration(
-                  border: Border(bottom: BorderSide(color:context.borderSecondary )),
+                padding: EdgeInsets.symmetric(horizontal: 16.r, vertical: 8.h),
+                decoration: BoxDecoration(
+                  border: Border(bottom: BorderSide(color: context.borderSecondary)),
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -143,15 +139,15 @@ class LfWheelSelect<T> extends StatelessWidget {
                     Button(
                       variant: ButtonVariant.text,
                       onPressed: () => Navigator.pop(ctx),
-                      child: const Text('Cancel',),
+                      child: const Text('Cancel'),
                     ),
                     Button(
                       variant: ButtonVariant.text,
                       foregroundColor: context.textBrandPrimary900,
                       onPressed: () {
                         if (options.isNotEmpty) {
-                          control.value = options[tempIndex].value;
-                          control.markAsTouched();
+                          // 确认选择：更新值并触发校验
+                          field.didChange(options[tempIndex].value);
                         }
                         Navigator.pop(ctx);
                       },
@@ -185,7 +181,7 @@ class LfWheelSelect<T> extends StatelessWidget {
             ],
           ),
         );
-      }
+      },
     );
   }
 }

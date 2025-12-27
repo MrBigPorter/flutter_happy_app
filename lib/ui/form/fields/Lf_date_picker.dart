@@ -2,8 +2,6 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_app/common.dart';
-import 'package:flutter_app/ui/button/button.dart';
-import 'package:flutter_app/ui/button/variant.dart';
 import 'package:flutter_app/ui/index.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:reactive_forms/reactive_forms.dart';
@@ -18,7 +16,8 @@ class LfDatePicker extends StatelessWidget {
   final String? placeholder;
   final LfLabelMode labelMode;
   final bool readOnly;
-  final Map<String, String Function(Object?)>? validationMessages;
+  final bool? required;
+  final Map<String, String Function(Object)>? validationMessages;
   final double pickerHeight;
 
   // 日期限制
@@ -33,6 +32,7 @@ class LfDatePicker extends StatelessWidget {
     this.placeholder,
     this.labelMode = LfLabelMode.external,
     this.readOnly = false,
+    this.required,
     this.validationMessages,
     this.pickerHeight = 250,
     this.minDate,
@@ -41,65 +41,61 @@ class LfDatePicker extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // 注意：这里的泛型是 String，因为你的 Model 存的是 "1999-01-01"
+    // 泛型 String：因为 Model 里存的是 "yyyy-MM-dd" 字符串
     return LfField<String>(
       name: name,
       label: label,
       helper: helper,
       labelMode: labelMode,
-      validationMessages: validationMessages,
+      required: required,
+      validationMessages: null,
       readOnly: readOnly,
-      builder: (ctx, decoration, textStyle) {
+      builder: (ctx, baseDecoration, textStyle) {
 
-        // 1. 安全获取 Control (String 类型)
-        final rootForm = ReactiveForm.of(context);
-        AbstractControl<String>? control;
+        return ReactiveFormField<String, String>(
+          formControlName: name,
+          validationMessages: validationMessages,
+          builder: (ReactiveFormFieldState<String, String> field) {
 
-        if (rootForm is FormGroup) {
-          control = rootForm.control(name) as AbstractControl<String>?;
-        } else if (rootForm is FormArray) {
-          try {
-            control = (rootForm as dynamic).control(name) as AbstractControl<String>?;
-          } catch (_) {}
-        }
-
-        if (control == null) {
-          return Text('Error: Control "$name" not found', style: TextStyle(color: Theme.of(context).colorScheme.error));
-        }
-
-        // 2. 监听值变化
-        return ReactiveValueListenableBuilder<String>(
-          formControl: control,
-          builder: (context, control, child) {
-            final value = control.value;
+            // 1. 获取当前值 (String)
+            final value = field.value;
             final hasValue = value != null && value.isNotEmpty;
 
+            // 2. 合并装饰器 (注入 errorText)
+            final effectiveDecoration = baseDecoration.copyWith(
+              errorText: field.errorText,
+              // 强制为 null，由下方 Text 渲染，避免重叠
+              hintText: null,
+              suffixIcon: baseDecoration.suffixIcon ??
+                  Padding(
+                    padding: EdgeInsets.only(right: 12.w),
+                    child: Icon(
+                      Icons.calendar_today,
+                      size: 20.r,
+                      color: field.control.disabled
+                          ? Theme.of(context).disabledColor
+                          : Theme.of(context).iconTheme.color,
+                    ),
+                  ),
+            );
+
+            // 3. 交互区域
             return InkWell(
-              onTap: readOnly || control.disabled
+              onTap: readOnly || field.control.disabled
                   ? null
-                  : () => _showDatePicker(context, control),
+                  : () => _showDatePicker(context, field), // 传 field
               borderRadius: BorderRadius.circular(4),
               child: InputDecorator(
-                decoration: decoration.copyWith(
-                  suffixIcon: decoration.suffixIcon ??
-                      Padding(
-                        padding: EdgeInsets.only(right: 12.w),
-                        child: Icon(
-                          Icons.calendar_today, // 日历图标
-                          size: 20.r,
-                          color: control.disabled
-                              ? Theme.of(context).disabledColor
-                              : Theme.of(context).iconTheme.color,
-                        ),
-                      ),
-                  hintText: placeholder,
-                ),
+                decoration: effectiveDecoration,
                 isEmpty: !hasValue,
                 child: Text(
                   hasValue ? value : (placeholder ?? ''),
                   style: hasValue
                       ? textStyle
-                      : (decoration.hintStyle ?? Theme.of(context).textTheme.bodyLarge?.copyWith(color: Colors.grey)),
+                      : (baseDecoration.hintStyle ??
+                      Theme.of(context).textTheme.bodyLarge?.copyWith(
+                          color: Theme.of(context).hintColor
+                      )),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -111,21 +107,23 @@ class LfDatePicker extends StatelessWidget {
     );
   }
 
-  void _showDatePicker(BuildContext context, AbstractControl<String> control) {
+  // 参数改为 ReactiveFormFieldState
+  void _showDatePicker(BuildContext context, ReactiveFormFieldState<String, String> field) {
     // 1. 解析初始值：String -> DateTime
     DateTime initialDate = DateTime.now();
-    if (control.value != null && control.value!.isNotEmpty) {
+    final currentValue = field.value;
+
+    if (currentValue != null && currentValue.isNotEmpty) {
       try {
-        initialDate = DateFormat('yyyy-MM-dd').parse(control.value!);
+        initialDate = DateFormat('yyyy-MM-dd').parse(currentValue);
       } catch (e) {
         print('Date parse error: $e');
       }
     } else if (maxDate != null) {
-      // 如果没有值且是选生日，默认停在 maxDate (例如18年前)
       initialDate = maxDate!;
     }
 
-    // 2. 边界保护
+    // 2. 边界保护 (防止崩溃)
     if (minDate != null && initialDate.isBefore(minDate!)) initialDate = minDate!;
     if (maxDate != null && initialDate.isAfter(maxDate!)) initialDate = maxDate!;
 
@@ -133,18 +131,16 @@ class LfDatePicker extends StatelessWidget {
 
     // 3. 弹出底部滚轮
     RadixSheet.show(
-      config: ModalSheetConfig(
-        enableHeader: false
-      ),
-      builder: (ctx,close){
-        return  SafeArea(
+      config: ModalSheetConfig(enableHeader: false),
+      builder: (ctx, close) {
+        return SafeArea(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // 工具栏
               Container(
-                decoration: const BoxDecoration(
-                  border: Border(bottom: BorderSide(color: Colors.black12)),
+                padding: EdgeInsets.symmetric(horizontal: 16.r, vertical: 8.h),
+                decoration: BoxDecoration(
+                  border: Border(bottom: BorderSide(color: context.borderSecondary)),
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -158,10 +154,11 @@ class LfDatePicker extends StatelessWidget {
                       variant: ButtonVariant.text,
                       foregroundColor: context.textBrandPrimary900,
                       onPressed: () {
-                        // 4. 确认选择：DateTime -> String (yyyy-MM-dd)
+                        // 4. 确认选择：DateTime -> String -> Update Field
                         final formatted = DateFormat('yyyy-MM-dd').format(tempDate);
-                        control.value = formatted;
-                        control.markAsTouched();
+
+                        field.didChange(formatted);
+
                         Navigator.pop(ctx);
                       },
                       child: const Text('Done', style: TextStyle(fontWeight: FontWeight.bold)),
@@ -170,11 +167,11 @@ class LfDatePicker extends StatelessWidget {
                 ),
               ),
 
-              // 滚动选择器本体
+              // 滚动选择器
               SizedBox(
                 height: pickerHeight,
                 child: CupertinoDatePicker(
-                  mode: CupertinoDatePickerMode.date, // 只显示 年-月-日
+                  mode: CupertinoDatePickerMode.date,
                   initialDateTime: initialDate,
                   minimumDate: minDate,
                   maximumDate: maxDate,
@@ -186,7 +183,7 @@ class LfDatePicker extends StatelessWidget {
             ],
           ),
         );
-      }
+      },
     );
   }
 }

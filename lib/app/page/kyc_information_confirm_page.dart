@@ -106,23 +106,15 @@ class _KycInformationConfirmPageState
                   SizedBox(height: 16.h,),
                   LfWheelSelect(
                       name: 'province',
+                      label: 'Province',
+                      placeholder: 'Select your province',
+                      required: true,
                       options:[
                         (text: 'Metro Manila', value: 'MM', disabled: false),
                         (text: 'Cebu', value: 'CEB', disabled: false),
                         (text: 'Davao', value: 'DAV', disabled: false),
                       ]
                   ),
-                  LfDatePicker(
-                    name: 'birthday',
-                    label: 'Birthday',
-                    placeholder: 'YYYY-MM-DD',
-                    // 限制：必须满 18 岁
-                    maxDate: DateTime.now().subtract(const Duration(days: 365 * 18)),
-                    // 限制：不超过 100 岁
-                    minDate: DateTime.now().subtract(const Duration(days: 365 * 100)),
-                  ),
-                  SizedBox(height: 16.h),
-                  LfInput(name: 'province', label: 'Province', required: true),
                   SizedBox(height: 16.h),
                   LfInput(name: 'city', label: 'City', required: true),
                   SizedBox(height: 16.h),
