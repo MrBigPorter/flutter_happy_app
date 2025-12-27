@@ -265,14 +265,6 @@ class KycInformationConfirmModelForm
 
   static const String addressControlName = "address";
 
-  static const String idCardFrontControlName = "idCardFront";
-
-  static const String idCardBackControlName = "idCardBack";
-
-  static const String faceImageControlName = "faceImage";
-
-  static const String livenessScoreControlName = "livenessScore";
-
   final FormGroup form;
 
   final String? path;
@@ -309,14 +301,6 @@ class KycInformationConfirmModelForm
 
   String addressControlPath() => pathBuilder(addressControlName);
 
-  String idCardFrontControlPath() => pathBuilder(idCardFrontControlName);
-
-  String idCardBackControlPath() => pathBuilder(idCardBackControlName);
-
-  String faceImageControlPath() => pathBuilder(faceImageControlName);
-
-  String livenessScoreControlPath() => pathBuilder(livenessScoreControlName);
-
   int get _idTypeValue => idTypeControl.value ?? 1;
 
   String get _idNumberValue => idNumberControl.value ?? '';
@@ -347,14 +331,6 @@ class KycInformationConfirmModelForm
 
   String get _addressValue => addressControl.value ?? '';
 
-  String get _idCardFrontValue => idCardFrontControl.value ?? '';
-
-  String? get _idCardBackValue => idCardBackControl.value;
-
-  String? get _faceImageValue => faceImageControl.value;
-
-  double? get _livenessScoreValue => livenessScoreControl.value;
-
   int get _idTypeRawValue => idTypeControl.value ?? 1;
 
   String get _idNumberRawValue => idNumberControl.value ?? '';
@@ -384,14 +360,6 @@ class KycInformationConfirmModelForm
   int? get _postalCodeRawValue => postalCodeControl.value;
 
   String get _addressRawValue => addressControl.value ?? '';
-
-  String get _idCardFrontRawValue => idCardFrontControl.value ?? '';
-
-  String? get _idCardBackRawValue => idCardBackControl.value;
-
-  String? get _faceImageRawValue => faceImageControl.value;
-
-  double? get _livenessScoreRawValue => livenessScoreControl.value;
 
   @Deprecated(
       'Generator completely wraps the form and ensures at startup that all controls are present inside the form so we do not need this additional step')
@@ -558,50 +526,6 @@ class KycInformationConfirmModelForm
     }
   }
 
-  @Deprecated(
-      'Generator completely wraps the form and ensures at startup that all controls are present inside the form so we do not need this additional step')
-  bool get containsIdCardFront {
-    try {
-      form.control(idCardFrontControlPath());
-      return true;
-    } catch (e) {
-      return false;
-    }
-  }
-
-  @Deprecated(
-      'Generator completely wraps the form and ensures at startup that all controls are present inside the form so we do not need this additional step')
-  bool get containsIdCardBack {
-    try {
-      form.control(idCardBackControlPath());
-      return true;
-    } catch (e) {
-      return false;
-    }
-  }
-
-  @Deprecated(
-      'Generator completely wraps the form and ensures at startup that all controls are present inside the form so we do not need this additional step')
-  bool get containsFaceImage {
-    try {
-      form.control(faceImageControlPath());
-      return true;
-    } catch (e) {
-      return false;
-    }
-  }
-
-  @Deprecated(
-      'Generator completely wraps the form and ensures at startup that all controls are present inside the form so we do not need this additional step')
-  bool get containsLivenessScore {
-    try {
-      form.control(livenessScoreControlPath());
-      return true;
-    } catch (e) {
-      return false;
-    }
-  }
-
   Map<String, Object> get idTypeErrors => idTypeControl.errors;
 
   Map<String, Object> get idNumberErrors => idNumberControl.errors;
@@ -632,14 +556,6 @@ class KycInformationConfirmModelForm
 
   Map<String, Object> get addressErrors => addressControl.errors;
 
-  Map<String, Object> get idCardFrontErrors => idCardFrontControl.errors;
-
-  Map<String, Object>? get idCardBackErrors => idCardBackControl.errors;
-
-  Map<String, Object>? get faceImageErrors => faceImageControl.errors;
-
-  Map<String, Object>? get livenessScoreErrors => livenessScoreControl.errors;
-
   void get idTypeFocus => form.focus(idTypeControlPath());
 
   void get idNumberFocus => form.focus(idNumberControlPath());
@@ -669,14 +585,6 @@ class KycInformationConfirmModelForm
   void get postalCodeFocus => form.focus(postalCodeControlPath());
 
   void get addressFocus => form.focus(addressControlPath());
-
-  void get idCardFrontFocus => form.focus(idCardFrontControlPath());
-
-  void get idCardBackFocus => form.focus(idCardBackControlPath());
-
-  void get faceImageFocus => form.focus(faceImageControlPath());
-
-  void get livenessScoreFocus => form.focus(livenessScoreControlPath());
 
   @Deprecated(
       'Generator completely wraps the form so manual fields removal could lead to unexpected crashes')
@@ -902,90 +810,6 @@ class KycInformationConfirmModelForm
     }
   }
 
-  @Deprecated(
-      'Generator completely wraps the form so manual fields removal could lead to unexpected crashes')
-  void idCardBackRemove({
-    bool updateParent = true,
-    bool emitEvent = true,
-  }) {
-    if (containsIdCardBack) {
-      final controlPath = path;
-      if (controlPath == null) {
-        form.removeControl(
-          idCardBackControlName,
-          updateParent: updateParent,
-          emitEvent: emitEvent,
-        );
-      } else {
-        final formGroup = form.control(controlPath);
-
-        if (formGroup is FormGroup) {
-          formGroup.removeControl(
-            idCardBackControlName,
-            updateParent: updateParent,
-            emitEvent: emitEvent,
-          );
-        }
-      }
-    }
-  }
-
-  @Deprecated(
-      'Generator completely wraps the form so manual fields removal could lead to unexpected crashes')
-  void faceImageRemove({
-    bool updateParent = true,
-    bool emitEvent = true,
-  }) {
-    if (containsFaceImage) {
-      final controlPath = path;
-      if (controlPath == null) {
-        form.removeControl(
-          faceImageControlName,
-          updateParent: updateParent,
-          emitEvent: emitEvent,
-        );
-      } else {
-        final formGroup = form.control(controlPath);
-
-        if (formGroup is FormGroup) {
-          formGroup.removeControl(
-            faceImageControlName,
-            updateParent: updateParent,
-            emitEvent: emitEvent,
-          );
-        }
-      }
-    }
-  }
-
-  @Deprecated(
-      'Generator completely wraps the form so manual fields removal could lead to unexpected crashes')
-  void livenessScoreRemove({
-    bool updateParent = true,
-    bool emitEvent = true,
-  }) {
-    if (containsLivenessScore) {
-      final controlPath = path;
-      if (controlPath == null) {
-        form.removeControl(
-          livenessScoreControlName,
-          updateParent: updateParent,
-          emitEvent: emitEvent,
-        );
-      } else {
-        final formGroup = form.control(controlPath);
-
-        if (formGroup is FormGroup) {
-          formGroup.removeControl(
-            livenessScoreControlName,
-            updateParent: updateParent,
-            emitEvent: emitEvent,
-          );
-        }
-      }
-    }
-  }
-
   void idTypeValueUpdate(
     int value, {
     bool updateParent = true,
@@ -1121,42 +945,6 @@ class KycInformationConfirmModelForm
         updateParent: updateParent, emitEvent: emitEvent);
   }
 
-  void idCardFrontValueUpdate(
-    String value, {
-    bool updateParent = true,
-    bool emitEvent = true,
-  }) {
-    idCardFrontControl.updateValue(value,
-        updateParent: updateParent, emitEvent: emitEvent);
-  }
-
-  void idCardBackValueUpdate(
-    String? value, {
-    bool updateParent = true,
-    bool emitEvent = true,
-  }) {
-    idCardBackControl.updateValue(value,
-        updateParent: updateParent, emitEvent: emitEvent);
-  }
-
-  void faceImageValueUpdate(
-    String? value, {
-    bool updateParent = true,
-    bool emitEvent = true,
-  }) {
-    faceImageControl.updateValue(value,
-        updateParent: updateParent, emitEvent: emitEvent);
-  }
-
-  void livenessScoreValueUpdate(
-    double? value, {
-    bool updateParent = true,
-    bool emitEvent = true,
-  }) {
-    livenessScoreControl.updateValue(value,
-        updateParent: updateParent, emitEvent: emitEvent);
-  }
-
   void idTypeValuePatch(
     int value, {
     bool updateParent = true,
@@ -1289,42 +1077,6 @@ class KycInformationConfirmModelForm
     bool emitEvent = true,
   }) {
     addressControl.patchValue(value,
-        updateParent: updateParent, emitEvent: emitEvent);
-  }
-
-  void idCardFrontValuePatch(
-    String value, {
-    bool updateParent = true,
-    bool emitEvent = true,
-  }) {
-    idCardFrontControl.patchValue(value,
-        updateParent: updateParent, emitEvent: emitEvent);
-  }
-
-  void idCardBackValuePatch(
-    String? value, {
-    bool updateParent = true,
-    bool emitEvent = true,
-  }) {
-    idCardBackControl.patchValue(value,
-        updateParent: updateParent, emitEvent: emitEvent);
-  }
-
-  void faceImageValuePatch(
-    String? value, {
-    bool updateParent = true,
-    bool emitEvent = true,
-  }) {
-    faceImageControl.patchValue(value,
-        updateParent: updateParent, emitEvent: emitEvent);
-  }
-
-  void livenessScoreValuePatch(
-    double? value, {
-    bool updateParent = true,
-    bool emitEvent = true,
-  }) {
-    livenessScoreControl.patchValue(value,
         updateParent: updateParent, emitEvent: emitEvent);
   }
 
@@ -1553,66 +1305,6 @@ class KycInformationConfirmModelForm
         disabled: disabled,
       );
 
-  void idCardFrontValueReset(
-    String value, {
-    bool updateParent = true,
-    bool emitEvent = true,
-    bool removeFocus = false,
-    bool? disabled,
-  }) =>
-      idCardFrontControl.reset(
-        value: value,
-        updateParent: updateParent,
-        emitEvent: emitEvent,
-        removeFocus: removeFocus,
-        disabled: disabled,
-      );
-
-  void idCardBackValueReset(
-    String? value, {
-    bool updateParent = true,
-    bool emitEvent = true,
-    bool removeFocus = false,
-    bool? disabled,
-  }) =>
-      idCardBackControl.reset(
-        value: value,
-        updateParent: updateParent,
-        emitEvent: emitEvent,
-        removeFocus: removeFocus,
-        disabled: disabled,
-      );
-
-  void faceImageValueReset(
-    String? value, {
-    bool updateParent = true,
-    bool emitEvent = true,
-    bool removeFocus = false,
-    bool? disabled,
-  }) =>
-      faceImageControl.reset(
-        value: value,
-        updateParent: updateParent,
-        emitEvent: emitEvent,
-        removeFocus: removeFocus,
-        disabled: disabled,
-      );
-
-  void livenessScoreValueReset(
-    double? value, {
-    bool updateParent = true,
-    bool emitEvent = true,
-    bool removeFocus = false,
-    bool? disabled,
-  }) =>
-      livenessScoreControl.reset(
-        value: value,
-        updateParent: updateParent,
-        emitEvent: emitEvent,
-        removeFocus: removeFocus,
-        disabled: disabled,
-      );
-
   FormControl<int> get idTypeControl =>
       form.control(idTypeControlPath()) as FormControl<int>;
 
@@ -1657,18 +1349,6 @@ class KycInformationConfirmModelForm
 
   FormControl<String> get addressControl =>
       form.control(addressControlPath()) as FormControl<String>;
-
-  FormControl<String> get idCardFrontControl =>
-      form.control(idCardFrontControlPath()) as FormControl<String>;
-
-  FormControl<String> get idCardBackControl =>
-      form.control(idCardBackControlPath()) as FormControl<String>;
-
-  FormControl<String> get faceImageControl =>
-      form.control(faceImageControlPath()) as FormControl<String>;
-
-  FormControl<double> get livenessScoreControl =>
-      form.control(livenessScoreControlPath()) as FormControl<double>;
 
   void idTypeSetDisabled(
     bool disabled, {
@@ -1940,78 +1620,6 @@ class KycInformationConfirmModelForm
     }
   }
 
-  void idCardFrontSetDisabled(
-    bool disabled, {
-    bool updateParent = true,
-    bool emitEvent = true,
-  }) {
-    if (disabled) {
-      idCardFrontControl.markAsDisabled(
-        updateParent: updateParent,
-        emitEvent: emitEvent,
-      );
-    } else {
-      idCardFrontControl.markAsEnabled(
-        updateParent: updateParent,
-        emitEvent: emitEvent,
-      );
-    }
-  }
-
-  void idCardBackSetDisabled(
-    bool disabled, {
-    bool updateParent = true,
-    bool emitEvent = true,
-  }) {
-    if (disabled) {
-      idCardBackControl.markAsDisabled(
-        updateParent: updateParent,
-        emitEvent: emitEvent,
-      );
-    } else {
-      idCardBackControl.markAsEnabled(
-        updateParent: updateParent,
-        emitEvent: emitEvent,
-      );
-    }
-  }
-
-  void faceImageSetDisabled(
-    bool disabled, {
-    bool updateParent = true,
-    bool emitEvent = true,
-  }) {
-    if (disabled) {
-      faceImageControl.markAsDisabled(
-        updateParent: updateParent,
-        emitEvent: emitEvent,
-      );
-    } else {
-      faceImageControl.markAsEnabled(
-        updateParent: updateParent,
-        emitEvent: emitEvent,
-      );
-    }
-  }
-
-  void livenessScoreSetDisabled(
-    bool disabled, {
-    bool updateParent = true,
-    bool emitEvent = true,
-  }) {
-    if (disabled) {
-      livenessScoreControl.markAsDisabled(
-        updateParent: updateParent,
-        emitEvent: emitEvent,
-      );
-    } else {
-      livenessScoreControl.markAsEnabled(
-        updateParent: updateParent,
-        emitEvent: emitEvent,
-      );
-    }
-  }
-
   @override
   KycInformationConfirmModel get model {
     final isValid = !currentForm.hasErrors && currentForm.errors.isEmpty;
@@ -2038,11 +1646,7 @@ class KycInformationConfirmModelForm
         city: _cityValue,
         barangay: _barangayValue,
         postalCode: _postalCodeValue,
-        address: _addressValue,
-        idCardFront: _idCardFrontValue,
-        idCardBack: _idCardBackValue,
-        faceImage: _faceImageValue,
-        livenessScore: _livenessScoreValue);
+        address: _addressValue);
   }
 
   @override
@@ -2062,11 +1666,7 @@ class KycInformationConfirmModelForm
         city: _cityRawValue,
         barangay: _barangayRawValue,
         postalCode: _postalCodeRawValue,
-        address: _addressRawValue,
-        idCardFront: _idCardFrontRawValue,
-        idCardBack: _idCardBackRawValue,
-        faceImage: _faceImageRawValue,
-        livenessScore: _livenessScoreRawValue);
+        address: _addressRawValue);
   }
 
   @override
@@ -2261,34 +1861,6 @@ class KycInformationConfirmModelForm
         addressControlName: FormControl<String>(
             value: kycInformationConfirmModel?.address,
             validators: [NonEmpty()],
-            asyncValidators: [],
-            asyncValidatorsDebounceTime: 250,
-            disabled: false,
-            touched: false),
-        idCardFrontControlName: FormControl<String>(
-            value: kycInformationConfirmModel?.idCardFront,
-            validators: [NonEmpty()],
-            asyncValidators: [],
-            asyncValidatorsDebounceTime: 250,
-            disabled: false,
-            touched: false),
-        idCardBackControlName: FormControl<String>(
-            value: kycInformationConfirmModel?.idCardBack,
-            validators: [],
-            asyncValidators: [],
-            asyncValidatorsDebounceTime: 250,
-            disabled: false,
-            touched: false),
-        faceImageControlName: FormControl<String>(
-            value: kycInformationConfirmModel?.faceImage,
-            validators: [],
-            asyncValidators: [],
-            asyncValidatorsDebounceTime: 250,
-            disabled: false,
-            touched: false),
-        livenessScoreControlName: FormControl<double>(
-            value: kycInformationConfirmModel?.livenessScore,
-            validators: [],
             asyncValidators: [],
             asyncValidatorsDebounceTime: 250,
             disabled: false,

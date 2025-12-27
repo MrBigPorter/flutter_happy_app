@@ -38,17 +38,6 @@ class KycInformationConfirmModel {
 
     @RfControl(validators: [NonEmpty()]) this.address = '',
 
-    // === 3. 图片凭证 ===
-    @RfControl(validators: [NonEmpty()])
-    this.idCardFront = '',
-
-    @RfControl()
-    this.idCardBack,
-
-    @RfControl()
-    this.faceImage,
-
-    @RfControl() this.livenessScore,
   });
 
   // 变量定义（驼峰）
@@ -68,10 +57,5 @@ class KycInformationConfirmModel {
   final int? barangay;
   final int? postalCode;
   final String address;
-
-  final String idCardFront;
-  final String? idCardBack;
-  final String? faceImage;
-  final double? livenessScore;
 
 }

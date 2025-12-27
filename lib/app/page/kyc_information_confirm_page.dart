@@ -52,6 +52,8 @@ class _KycInformationConfirmPageState
       'lastName': ocr.lastName,
       'birthday': ocr.birthday,
       'country': ocr.country,
+       'idNumber': ocr.idNumber,
+        'gender':ocr.gender
     });
   }
 
@@ -69,12 +71,11 @@ class _KycInformationConfirmPageState
 
   void submit() {
     kycForm.form.markAllAsTouched();
-    print('Form Value: ${kycForm.form.errors}');
     if (kycForm.form.valid) {
       // Process the confirmed information
       final confirmedData = kycForm.model;
       // You can now use confirmedData as needed
-      print('Confirmed Data: $confirmedData');
+
     }
   }
 
