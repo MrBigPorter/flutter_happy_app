@@ -2,14 +2,12 @@ import 'package:dio/dio.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_app/app/page/id_scan_page.dart';
 import 'package:flutter_app/common.dart';
 import 'package:flutter_app/components/base_scaffold.dart';
 import 'package:flutter_app/components/upload_progress_dialog.dart';
 import 'package:flutter_app/core/models/kyc.dart';
 import 'package:flutter_app/core/providers/kyc_provider.dart';
 import 'package:flutter_app/ui/index.dart';
-import 'package:flutter_app/utils/camera/camera_helper.dart';
 import 'package:flutter_app/utils/camera/services/liveness_service.dart';
 import 'package:flutter_app/utils/upload/global_upload_service.dart';
 import 'package:flutter_app/utils/upload/upload_types.dart';
@@ -75,26 +73,12 @@ class _BottomNavigationBar extends ConsumerWidget {
   }
 
   // first step scan and upload id
-  Future<String?> _scanAndUploadID(BuildContext context, WidgetRef ref) async {
-    /*final camera = await CameraHelper.pickBackCamera(context);
-    if (camera == null) {
-      return null;
-    }*/
+  Future<KycOcrResult?> _scanAndUploadID(BuildContext context, WidgetRef ref) async {
 
-    final hasPermission = await CameraHelper.ensureCameraPermission(context);
-    if(!hasPermission){
-      return null;
-    }
+    final notifier =  await ref.read(kycNotifierProvider.notifier);
 
-    final imagePath = await LivenessService.scanDocument();
+    final imagePath = await LivenessService.scanDocument(context);
 
-    /*final String? imagePath = await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => IDScanPage(cameraDescription: camera),
-      ),
-    );
-    print('Scanned image path: $imagePath');*/
     // 用户没拍，返回了
     if (imagePath == null) return null;
 
@@ -105,7 +89,6 @@ class _BottomNavigationBar extends ConsumerWidget {
       KycDocType.idCard,
     );
     
-    print('KYC check result: $isPass');
 
     if (!isPass) {
        RadixModal.show(
@@ -137,7 +120,20 @@ class _BottomNavigationBar extends ConsumerWidget {
       },
     );
 
-    return uploadResult;
+    if( uploadResult == null ) {
+      return null;
+    }
+
+    try{
+      final orcData =  notifier.scanIdCard(uploadResult);
+      return orcData;
+
+    }catch(e){
+      debugPrint("❌ OCR 处理失败: $e");
+      return null;
+    }
+
+
   }
 
   void _livenessDetection(BuildContext context, WidgetRef ref) {}

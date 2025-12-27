@@ -195,3 +195,31 @@ class KycUploadResult {
   }
 }
 
+@JsonSerializable(checked: true)
+class KycOcrResult {
+  final String type;
+  final String country;
+  final String? idNumber; // 可能为空
+  final String? name;     // 可能为空
+  final String rawText;
+
+  KycOcrResult({
+    required this.type,
+    required this.country,
+    this.idNumber,
+    this.name,
+    required this.rawText,
+  });
+
+  factory KycOcrResult.fromJson(Map<String, dynamic> json) =>
+      _$KycOcrResultFromJson(json);
+
+  Map<String, dynamic> toJson() => _$KycOcrResultToJson(this);
+
+  @override
+  String toString() {
+    return toJson().toString();
+  }
+
+
+}

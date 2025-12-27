@@ -2,22 +2,22 @@ package com.joyminis.flutter_app
 
 import android.app.Activity
 import android.content.Intent
-import androidx.activity.result.contract.ActivityResultContracts
-import io.flutter.embedding.android.FlutterFragmentActivity  // 👈 修改1：换成这个引用
+import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
+import androidx.activity.result.contract.ActivityResultContracts
 
-// 这里改成继承 FlutterFragmentActivity
 class MainActivity: FlutterFragmentActivity() {
     private val CHANNEL = "com.joyminis.flutter_app/liveness"
-
-    // 用来暂存 Flutter 的回调结果，等 Activity 结束时用
     private var pendingResult: MethodChannel.Result? = null
 
+    // 1️⃣ 声明你的扫描 Handler
+    private lateinit var scannerHandler: DocumentScannerHandler
+
+    // 🔒 活体检测回调
     private val livenessLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
             val returnedSessionId = result?.data?.getStringExtra("sessionId")
-
             val resultMap = mapOf(
                 "sessionId" to returnedSessionId,
                 "success" to true
@@ -30,35 +30,48 @@ class MainActivity: FlutterFragmentActivity() {
                 "error" to errorMsg
             ))
         }
-        // 清空，防止内存泄漏
         pendingResult = null
     }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
 
+        // 2️⃣ 初始化扫描 Handler
+        scannerHandler = DocumentScannerHandler(this)
+
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL).setMethodCallHandler { call, result ->
-            // 对应 Flutter 端的 invokeMethod('start')
-            if (call.method == "start") {
-                val sessionId = call.argument<String>("sessionId")
-                val region = call.argument<String>("region")
-
-                if (sessionId != null) {
-                    // 1. 先把 result 存起来
-                    pendingResult = result
-
-                    val intent = Intent(this, LivenessActivity::class.java)
-                    intent.putExtra("sessionId", sessionId)
-                    intent.putExtra("region", region)
-
-                    // 2. 启动原生页面
-                    livenessLauncher.launch(intent)
-                } else {
-                    result.error("ARGS_ERROR", "SessionId is null", null)
+            when (call.method) {
+                // 🔒 活体启动逻辑
+                "start" -> {
+                    val sessionId = call.argument<String>("sessionId")
+                    val region = call.argument<String>("region")
+                    if (sessionId != null) {
+                        pendingResult = result
+                        val intent = Intent(this, LivenessActivity::class.java)
+                        intent.putExtra("sessionId", sessionId)
+                        intent.putExtra("region", region)
+                        livenessLauncher.launch(intent)
+                    } else {
+                        result.error("ARGS_ERROR", "SessionId is null", null)
+                    }
                 }
-            } else {
-                result.notImplemented()
+
+                // 3️⃣ 扫描指令
+                "scanDocument" -> {
+                    scannerHandler.startScan(result)
+                }
+
+                else -> result.notImplemented()
             }
         }
+    }
+
+    // 4️⃣ 统一回调接入口
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+
+        // 如果是扫描请求码（1001），交给 Handler 处理
+        // 如果不是，它会自动跳过，不会干扰到 livenessLauncher 的回调
+        scannerHandler.handleActivityResult(requestCode, resultCode, data)
     }
 }

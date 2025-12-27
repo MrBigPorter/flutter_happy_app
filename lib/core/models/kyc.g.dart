@@ -130,3 +130,24 @@ KycUploadResult _$KycUploadResultFromJson(Map<String, dynamic> json) =>
 
 Map<String, dynamic> _$KycUploadResultToJson(KycUploadResult instance) =>
     <String, dynamic>{'url': instance.url, 'cdnUrl': instance.cdnUrl};
+
+KycOcrResult _$KycOcrResultFromJson(Map<String, dynamic> json) =>
+    $checkedCreate('KycOcrResult', json, ($checkedConvert) {
+      final val = KycOcrResult(
+        type: $checkedConvert('type', (v) => v as String),
+        country: $checkedConvert('country', (v) => v as String),
+        idNumber: $checkedConvert('idNumber', (v) => v as String?),
+        name: $checkedConvert('name', (v) => v as String?),
+        rawText: $checkedConvert('rawText', (v) => v as String),
+      );
+      return val;
+    });
+
+Map<String, dynamic> _$KycOcrResultToJson(KycOcrResult instance) =>
+    <String, dynamic>{
+      'type': instance.type,
+      'country': instance.country,
+      'idNumber': instance.idNumber,
+      'name': instance.name,
+      'rawText': instance.rawText,
+    };

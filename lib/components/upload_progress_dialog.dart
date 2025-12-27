@@ -32,7 +32,7 @@ class UploadProgressDialog extends StatefulWidget {
 }
 
 class _UploadProgressDialogState extends State<UploadProgressDialog> {
-  // 🌟 使用 ValueNotifier 代替 setState，性能更好
+  //  使用 ValueNotifier 代替 setState，性能更好
   final ValueNotifier<double> _progressNotifier = ValueNotifier<double>(0.0);
   Timer? _fakeTimer;
 

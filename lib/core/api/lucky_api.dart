@@ -300,6 +300,11 @@ class Api {
     return KycUploadResult.fromJson(res);
   }
 
+  static Future<KycOcrResult> kycOcrApi(String key) async {
+    final result = await Http.post('/api/v1/kyc/ocr', data: {'key': key});
+    return KycOcrResult.fromJson(result);
+  }
+
 
 
 }

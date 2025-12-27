@@ -1,75 +1,93 @@
 import 'dart:io';
-
-import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_app/utils/camera/camera_helper.dart';
+import 'package:device_info_plus/device_info_plus.dart';
+import 'package:google_api_availability/google_api_availability.dart';
+import '../../../app/page/id_scan_page.dart';
+import '../camera_helper.dart';
 
 class LivenessService {
-  // 1. 定义通信频道
   static const MethodChannel _channel = MethodChannel('com.joyminis.flutter_app/liveness');
 
-  /// 对外暴露的方法：开始活体检测
-  static Future<bool?> start(BuildContext context,String sessionId) async {
-    final bool hasPermission = await CameraHelper.ensureCameraPermission(context);
-
-    if (!hasPermission) {
-      return false;
-    }
+  /// 👤 活体检测
+  static Future<bool?> start(BuildContext context, String sessionId) async {
+    if (kDebugMode && !await _isPhysicalDevice()) return true;
+    if (!await CameraHelper.ensureCameraPermission(context)) return false;
 
     try {
-      print("🚀 权限已获取，正在调起原生 AWS 界面...");
-
       final result = await _channel.invokeMethod('start', {
         'sessionId': sessionId,
-        'region': 'us-east-1'
+        'region': 'us-east-1',
       });
-
-      // 5. 解析结果
-      // 安全转换：先转为 Map<dynamic, dynamic> 再取值
-      if (result != null && result is Map) {
-        final Map<dynamic, dynamic> data = result;
-        final bool isSuccess = data['success'] == true; // 防止 null 导致 crash
-
-        if (isSuccess) {
-          print("🎉 原生采集完成，sessionId: ${data['sessionId']}");
-        } else {
-          String? error = data['error'];
-          print("⚠️ 检测失败或取消：$error");
-        }
-        return isSuccess;
-      }
-
-      return false;
-
-    } on PlatformException catch (e) {
-      print("❌ 调用原生失败 (PlatformException): ${e.message}");
+      if (result is Map) return result['success'] == true;
       return false;
     } catch (e) {
-      print("❌ 发生未知错误: $e");
+      debugPrint("❌ 活体检测失败: $e");
       return false;
     }
   }
 
-  /// 📸 调用 iOS 原生文档扫描
-  static Future<String?> scanDocument() async {
-    try {
-      // 1. 发送暗号 "scanDocument" 给 iOS
-      // 2. 拿到 iOS 返回的路径字符串
-      final String? imagePath = await _channel.invokeMethod('scanDocument');
+  /// 📸 文档扫描
+  static Future<String?> scanDocument(BuildContext context) async {
+    if (kDebugMode && !await _isPhysicalDevice()) return "mock_image_path.jpg";
+    if (!await CameraHelper.ensureCameraPermission(context)) return null;
 
-      if (imagePath != null && imagePath.isNotEmpty) {
-        print("✅ 扫描成功，图片路径: $imagePath");
-        return imagePath; // 🟢 直接返回字符串路径
+    try {
+      // 1. Android GMS 环境初步预检
+      if (Platform.isAndroid) {
+        final availability = await GoogleApiAvailability.instance.checkGooglePlayServicesAvailability();
+        debugPrint("Google Play Services: $availability");
+
+        // 如果明确不支持，直接跳转自定义拍照页
+        if (availability != GooglePlayServicesAvailability.success) {
+          return await _switchToFlutterScanner(context);
+        }
       }
 
-      print("ℹ️ 用户取消了扫描");
+      // 2. 尝试调用原生扫描 (在华为海外版上，这里极大概率会抛出 PlatformException)
+      debugPrint("🚀 正在调起原生高级扫描...");
+      final String? rawPath = await _channel.invokeMethod('scanDocument');
+
+      // 3. 处理返回路径（兼容 file:// 前缀）
+      if (rawPath != null && rawPath.isNotEmpty) {
+        final cleanPath = rawPath.replaceFirst('file://', '').replaceFirst('content://', '');
+        debugPrint("✅ 扫描成功: $cleanPath");
+        return cleanPath;
+      }
       return null;
+
     } on PlatformException catch (e) {
-      print("❌ 原生端报错: ${e.message}");
-      return null;
+      // 🛡️ 关键处理：针对华为海外版“假支持”的降级逻辑
+      // 捕获到原生代码中的 SCAN_INIT_FAILED 或任何初始化失败
+      debugPrint("⚠️ 原生扫描不可用 (华为海外版兼容性): ${e.code}");
+      debugPrint("🔄 自动切换至 Flutter 自定义拍照...");
+      return await _switchToFlutterScanner(context);
+
     } catch (e) {
-      print("❌ 发生未知错误: $e");
-      return null;
+      debugPrint("❌ 扫描过程发生未知异常: $e");
+      return await _switchToFlutterScanner(context); // 保底方案
     }
+  }
+
+  /// 🔄 统一跳转：Flutter 自定义拍照页面
+  static Future<String?> _switchToFlutterScanner(BuildContext context) async {
+    final camera = await CameraHelper.getBackCamera();
+    return await Navigator.push<String>(
+      context,
+      MaterialPageRoute(
+        builder: (c) => IDScanPage(cameraDescription: camera),
+      ),
+    );
+  }
+
+  /// 🔍 真机检测逻辑
+  static Future<bool> _isPhysicalDevice() async {
+    final deviceInfo = DeviceInfoPlugin();
+    try {
+      if (Platform.isAndroid) return (await deviceInfo.androidInfo).isPhysicalDevice;
+      if (Platform.isIOS) return (await deviceInfo.iosInfo).isPhysicalDevice;
+    } catch (_) {}
+    return true;
   }
 }
