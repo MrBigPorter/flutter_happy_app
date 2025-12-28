@@ -6,12 +6,12 @@ part of 'liveness_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$livenessNotifierHash() => r'47a9d618c67a6da8a25a03aa4a4aa98381a315e3';
+String _$livenessNotifierHash() => r'beb5c61849409fc83bc3c1f5bb1c243937f6aaf5';
 
 /// See also [LivenessNotifier].
 @ProviderFor(LivenessNotifier)
 final livenessNotifierProvider =
-    AutoDisposeAsyncNotifierProvider<LivenessNotifier, void>.internal(
+    AutoDisposeAsyncNotifierProvider<LivenessNotifier, String?>.internal(
       LivenessNotifier.new,
       name: r'livenessNotifierProvider',
       debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
@@ -21,6 +21,6 @@ final livenessNotifierProvider =
       allTransitiveDependencies: null,
     );
 
-typedef _$LivenessNotifier = AutoDisposeAsyncNotifier<void>;
+typedef _$LivenessNotifier = AutoDisposeAsyncNotifier<String?>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package

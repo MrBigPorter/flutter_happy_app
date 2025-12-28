@@ -6,8 +6,8 @@ part 'kyc_information_confirm_forms.gform.dart';
 @Rf()
 class KycInformationConfirmModel {
   const KycInformationConfirmModel({
-    // === 1. 身份信息 ===
-    @RfControl() this.idType = 1,
+    @RfControl() this.type = 0,
+    @RfControl() this.typeText = 'UNKNOWN',
 
     @RfControl(validators: [NonEmpty(), IdNumberValidator()])
     this.idNumber = '',
@@ -22,40 +22,36 @@ class KycInformationConfirmModel {
     this.lastName = '',
 
     @RfControl() this.realName = '',
-    @RfControl(validators: [NonEmpty()]) this.gender = 'MALE',
 
+    @RfControl(validators: [NonEmpty()]) this.gender = 'MALE',
     @RfControl(validators: [NonEmpty()]) this.birthday = '',
     @RfControl() this.expiryDate,
     @RfControl() this.countryCode = 63,
 
-    // === 2. 地址信息 (PH Address) ===
     @RfControl(validators: [Required()]) this.province,
     @RfControl(validators: [Required()]) this.city,
     @RfControl(validators: [Required()]) this.barangay,
-
-    @RfControl(validators: [Required(), PostalCode()])
-     this.postalCode,
-
+    @RfControl(validators: [Required(), PostalCode()]) this.postalCode,
     @RfControl(validators: [NonEmpty()]) this.address = '',
-
   });
 
-  // 变量定义（驼峰）
-  final int idType;
+  final int type;
+  final String typeText;
+
   final String idNumber;
   final String firstName;
   final String? middleName;
   final String lastName;
-  final String? realName;
+  final String realName;
+
   final String gender;
   final String birthday;
   final String? expiryDate;
-  final int? countryCode;
+  final int countryCode;
 
   final int? province;
   final int? city;
   final int? barangay;
   final int? postalCode;
   final String address;
-
 }

@@ -6,7 +6,7 @@ part of 'kyc_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$kycNotifierHash() => r'caa31afd0e61fac80485b68eea17375cbc489bd8';
+String _$kycNotifierHash() => r'da85f859e1783c9a4703e15faed9388741370e0e';
 
 /// KYC 操作控制器
 /// 负责：OCR 识别、提交 KYC 等动作

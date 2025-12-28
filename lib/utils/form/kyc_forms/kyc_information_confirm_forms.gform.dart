@@ -235,7 +235,9 @@ class KycInformationConfirmModelForm
     this.path,
   );
 
-  static const String idTypeControlName = "idType";
+  static const String typeControlName = "type";
+
+  static const String typeTextControlName = "typeText";
 
   static const String idNumberControlName = "idNumber";
 
@@ -271,7 +273,9 @@ class KycInformationConfirmModelForm
 
   final Map<String, bool> _disabled = {};
 
-  String idTypeControlPath() => pathBuilder(idTypeControlName);
+  String typeControlPath() => pathBuilder(typeControlName);
+
+  String typeTextControlPath() => pathBuilder(typeTextControlName);
 
   String idNumberControlPath() => pathBuilder(idNumberControlName);
 
@@ -301,7 +305,9 @@ class KycInformationConfirmModelForm
 
   String addressControlPath() => pathBuilder(addressControlName);
 
-  int get _idTypeValue => idTypeControl.value ?? 1;
+  int get _typeValue => typeControl.value ?? 0;
+
+  String get _typeTextValue => typeTextControl.value ?? 'UNKNOWN';
 
   String get _idNumberValue => idNumberControl.value ?? '';
 
@@ -311,7 +317,7 @@ class KycInformationConfirmModelForm
 
   String get _lastNameValue => lastNameControl.value ?? '';
 
-  String? get _realNameValue => realNameControl.value;
+  String get _realNameValue => realNameControl.value ?? '';
 
   String get _genderValue => genderControl.value ?? 'MALE';
 
@@ -319,7 +325,7 @@ class KycInformationConfirmModelForm
 
   String? get _expiryDateValue => expiryDateControl.value;
 
-  int? get _countryCodeValue => countryCodeControl.value;
+  int get _countryCodeValue => countryCodeControl.value ?? 63;
 
   int? get _provinceValue => provinceControl.value;
 
@@ -331,7 +337,9 @@ class KycInformationConfirmModelForm
 
   String get _addressValue => addressControl.value ?? '';
 
-  int get _idTypeRawValue => idTypeControl.value ?? 1;
+  int get _typeRawValue => typeControl.value ?? 0;
+
+  String get _typeTextRawValue => typeTextControl.value ?? 'UNKNOWN';
 
   String get _idNumberRawValue => idNumberControl.value ?? '';
 
@@ -341,7 +349,7 @@ class KycInformationConfirmModelForm
 
   String get _lastNameRawValue => lastNameControl.value ?? '';
 
-  String? get _realNameRawValue => realNameControl.value;
+  String get _realNameRawValue => realNameControl.value ?? '';
 
   String get _genderRawValue => genderControl.value ?? 'MALE';
 
@@ -349,7 +357,7 @@ class KycInformationConfirmModelForm
 
   String? get _expiryDateRawValue => expiryDateControl.value;
 
-  int? get _countryCodeRawValue => countryCodeControl.value;
+  int get _countryCodeRawValue => countryCodeControl.value ?? 63;
 
   int? get _provinceRawValue => provinceControl.value;
 
@@ -363,9 +371,20 @@ class KycInformationConfirmModelForm
 
   @Deprecated(
       'Generator completely wraps the form and ensures at startup that all controls are present inside the form so we do not need this additional step')
-  bool get containsIdType {
+  bool get containsType {
     try {
-      form.control(idTypeControlPath());
+      form.control(typeControlPath());
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  @Deprecated(
+      'Generator completely wraps the form and ensures at startup that all controls are present inside the form so we do not need this additional step')
+  bool get containsTypeText {
+    try {
+      form.control(typeTextControlPath());
       return true;
     } catch (e) {
       return false;
@@ -526,7 +545,9 @@ class KycInformationConfirmModelForm
     }
   }
 
-  Map<String, Object> get idTypeErrors => idTypeControl.errors;
+  Map<String, Object> get typeErrors => typeControl.errors;
+
+  Map<String, Object> get typeTextErrors => typeTextControl.errors;
 
   Map<String, Object> get idNumberErrors => idNumberControl.errors;
 
@@ -536,7 +557,7 @@ class KycInformationConfirmModelForm
 
   Map<String, Object> get lastNameErrors => lastNameControl.errors;
 
-  Map<String, Object>? get realNameErrors => realNameControl.errors;
+  Map<String, Object> get realNameErrors => realNameControl.errors;
 
   Map<String, Object> get genderErrors => genderControl.errors;
 
@@ -544,7 +565,7 @@ class KycInformationConfirmModelForm
 
   Map<String, Object>? get expiryDateErrors => expiryDateControl.errors;
 
-  Map<String, Object>? get countryCodeErrors => countryCodeControl.errors;
+  Map<String, Object> get countryCodeErrors => countryCodeControl.errors;
 
   Map<String, Object>? get provinceErrors => provinceControl.errors;
 
@@ -556,7 +577,9 @@ class KycInformationConfirmModelForm
 
   Map<String, Object> get addressErrors => addressControl.errors;
 
-  void get idTypeFocus => form.focus(idTypeControlPath());
+  void get typeFocus => form.focus(typeControlPath());
+
+  void get typeTextFocus => form.focus(typeTextControlPath());
 
   void get idNumberFocus => form.focus(idNumberControlPath());
 
@@ -616,34 +639,6 @@ class KycInformationConfirmModelForm
 
   @Deprecated(
       'Generator completely wraps the form so manual fields removal could lead to unexpected crashes')
-  void realNameRemove({
-    bool updateParent = true,
-    bool emitEvent = true,
-  }) {
-    if (containsRealName) {
-      final controlPath = path;
-      if (controlPath == null) {
-        form.removeControl(
-          realNameControlName,
-          updateParent: updateParent,
-          emitEvent: emitEvent,
-        );
-      } else {
-        final formGroup = form.control(controlPath);
-
-        if (formGroup is FormGroup) {
-          formGroup.removeControl(
-            realNameControlName,
-            updateParent: updateParent,
-            emitEvent: emitEvent,
-          );
-        }
-      }
-    }
-  }
-
-  @Deprecated(
-      'Generator completely wraps the form so manual fields removal could lead to unexpected crashes')
   void expiryDateRemove({
     bool updateParent = true,
     bool emitEvent = true,
@@ -662,34 +657,6 @@ class KycInformationConfirmModelForm
         if (formGroup is FormGroup) {
           formGroup.removeControl(
             expiryDateControlName,
-            updateParent: updateParent,
-            emitEvent: emitEvent,
-          );
-        }
-      }
-    }
-  }
-
-  @Deprecated(
-      'Generator completely wraps the form so manual fields removal could lead to unexpected crashes')
-  void countryCodeRemove({
-    bool updateParent = true,
-    bool emitEvent = true,
-  }) {
-    if (containsCountryCode) {
-      final controlPath = path;
-      if (controlPath == null) {
-        form.removeControl(
-          countryCodeControlName,
-          updateParent: updateParent,
-          emitEvent: emitEvent,
-        );
-      } else {
-        final formGroup = form.control(controlPath);
-
-        if (formGroup is FormGroup) {
-          formGroup.removeControl(
-            countryCodeControlName,
             updateParent: updateParent,
             emitEvent: emitEvent,
           );
@@ -810,12 +777,21 @@ class KycInformationConfirmModelForm
     }
   }
 
-  void idTypeValueUpdate(
+  void typeValueUpdate(
     int value, {
     bool updateParent = true,
     bool emitEvent = true,
   }) {
-    idTypeControl.updateValue(value,
+    typeControl.updateValue(value,
+        updateParent: updateParent, emitEvent: emitEvent);
+  }
+
+  void typeTextValueUpdate(
+    String value, {
+    bool updateParent = true,
+    bool emitEvent = true,
+  }) {
+    typeTextControl.updateValue(value,
         updateParent: updateParent, emitEvent: emitEvent);
   }
 
@@ -856,7 +832,7 @@ class KycInformationConfirmModelForm
   }
 
   void realNameValueUpdate(
-    String? value, {
+    String value, {
     bool updateParent = true,
     bool emitEvent = true,
   }) {
@@ -892,7 +868,7 @@ class KycInformationConfirmModelForm
   }
 
   void countryCodeValueUpdate(
-    int? value, {
+    int value, {
     bool updateParent = true,
     bool emitEvent = true,
   }) {
@@ -945,12 +921,21 @@ class KycInformationConfirmModelForm
         updateParent: updateParent, emitEvent: emitEvent);
   }
 
-  void idTypeValuePatch(
+  void typeValuePatch(
     int value, {
     bool updateParent = true,
     bool emitEvent = true,
   }) {
-    idTypeControl.patchValue(value,
+    typeControl.patchValue(value,
+        updateParent: updateParent, emitEvent: emitEvent);
+  }
+
+  void typeTextValuePatch(
+    String value, {
+    bool updateParent = true,
+    bool emitEvent = true,
+  }) {
+    typeTextControl.patchValue(value,
         updateParent: updateParent, emitEvent: emitEvent);
   }
 
@@ -991,7 +976,7 @@ class KycInformationConfirmModelForm
   }
 
   void realNameValuePatch(
-    String? value, {
+    String value, {
     bool updateParent = true,
     bool emitEvent = true,
   }) {
@@ -1027,7 +1012,7 @@ class KycInformationConfirmModelForm
   }
 
   void countryCodeValuePatch(
-    int? value, {
+    int value, {
     bool updateParent = true,
     bool emitEvent = true,
   }) {
@@ -1080,14 +1065,29 @@ class KycInformationConfirmModelForm
         updateParent: updateParent, emitEvent: emitEvent);
   }
 
-  void idTypeValueReset(
+  void typeValueReset(
     int value, {
     bool updateParent = true,
     bool emitEvent = true,
     bool removeFocus = false,
     bool? disabled,
   }) =>
-      idTypeControl.reset(
+      typeControl.reset(
+        value: value,
+        updateParent: updateParent,
+        emitEvent: emitEvent,
+        removeFocus: removeFocus,
+        disabled: disabled,
+      );
+
+  void typeTextValueReset(
+    String value, {
+    bool updateParent = true,
+    bool emitEvent = true,
+    bool removeFocus = false,
+    bool? disabled,
+  }) =>
+      typeTextControl.reset(
         value: value,
         updateParent: updateParent,
         emitEvent: emitEvent,
@@ -1156,7 +1156,7 @@ class KycInformationConfirmModelForm
       );
 
   void realNameValueReset(
-    String? value, {
+    String value, {
     bool updateParent = true,
     bool emitEvent = true,
     bool removeFocus = false,
@@ -1216,7 +1216,7 @@ class KycInformationConfirmModelForm
       );
 
   void countryCodeValueReset(
-    int? value, {
+    int value, {
     bool updateParent = true,
     bool emitEvent = true,
     bool removeFocus = false,
@@ -1305,8 +1305,11 @@ class KycInformationConfirmModelForm
         disabled: disabled,
       );
 
-  FormControl<int> get idTypeControl =>
-      form.control(idTypeControlPath()) as FormControl<int>;
+  FormControl<int> get typeControl =>
+      form.control(typeControlPath()) as FormControl<int>;
+
+  FormControl<String> get typeTextControl =>
+      form.control(typeTextControlPath()) as FormControl<String>;
 
   FormControl<String> get idNumberControl =>
       form.control(idNumberControlPath()) as FormControl<String>;
@@ -1350,18 +1353,36 @@ class KycInformationConfirmModelForm
   FormControl<String> get addressControl =>
       form.control(addressControlPath()) as FormControl<String>;
 
-  void idTypeSetDisabled(
+  void typeSetDisabled(
     bool disabled, {
     bool updateParent = true,
     bool emitEvent = true,
   }) {
     if (disabled) {
-      idTypeControl.markAsDisabled(
+      typeControl.markAsDisabled(
         updateParent: updateParent,
         emitEvent: emitEvent,
       );
     } else {
-      idTypeControl.markAsEnabled(
+      typeControl.markAsEnabled(
+        updateParent: updateParent,
+        emitEvent: emitEvent,
+      );
+    }
+  }
+
+  void typeTextSetDisabled(
+    bool disabled, {
+    bool updateParent = true,
+    bool emitEvent = true,
+  }) {
+    if (disabled) {
+      typeTextControl.markAsDisabled(
+        updateParent: updateParent,
+        emitEvent: emitEvent,
+      );
+    } else {
+      typeTextControl.markAsEnabled(
         updateParent: updateParent,
         emitEvent: emitEvent,
       );
@@ -1632,7 +1653,8 @@ class KycInformationConfirmModelForm
       );
     }
     return KycInformationConfirmModel(
-        idType: _idTypeValue,
+        type: _typeValue,
+        typeText: _typeTextValue,
         idNumber: _idNumberValue,
         firstName: _firstNameValue,
         middleName: _middleNameValue,
@@ -1652,7 +1674,8 @@ class KycInformationConfirmModelForm
   @override
   KycInformationConfirmModel get rawModel {
     return KycInformationConfirmModel(
-        idType: _idTypeRawValue,
+        type: _typeRawValue,
+        typeText: _typeTextRawValue,
         idNumber: _idNumberRawValue,
         firstName: _firstNameRawValue,
         middleName: _middleNameRawValue,
@@ -1760,8 +1783,15 @@ class KycInformationConfirmModelForm
   static FormGroup formElements(
           KycInformationConfirmModel? kycInformationConfirmModel) =>
       FormGroup({
-        idTypeControlName: FormControl<int>(
-            value: kycInformationConfirmModel?.idType,
+        typeControlName: FormControl<int>(
+            value: kycInformationConfirmModel?.type,
+            validators: [],
+            asyncValidators: [],
+            asyncValidatorsDebounceTime: 250,
+            disabled: false,
+            touched: false),
+        typeTextControlName: FormControl<String>(
+            value: kycInformationConfirmModel?.typeText,
             validators: [],
             asyncValidators: [],
             asyncValidatorsDebounceTime: 250,

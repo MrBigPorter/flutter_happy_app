@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_app/core/models/kyc.dart';
 import 'package:mime/mime.dart';
 import 'package:path/path.dart' as p;
 
@@ -109,4 +110,184 @@ class GlobalUploadService {
       }
     }
   }
+
+  /// 后端 multipart 上传（用于你这个 ocr-scan 接口，不走 S3）
+  /// 对应后端：
+  /// @UseInterceptors(FileInterceptor('file'))
+  /// => 字段名必须是 "file"
+  ///
+  /// 支持：
+  /// - Native/桌面：filePath
+  /// - Web：bytes + fileName
+  Future<KycOcrResult> uploadOcrScan({
+    String? filePath,
+    Uint8List? bytes,
+    String? fileName, // bytes 模式必填
+    required UploadModule module,
+    required Function(double) onProgress,
+    CancelToken? cancelToken,
+    bool enableImageCompress = true,
+  }) async {
+    String? compressedPath;
+
+    // 显式初始化进度
+    onProgress(0.01);
+
+    final hasPath = filePath != null && filePath.isNotEmpty;
+    final hasBytes = bytes != null && bytes.isNotEmpty;
+
+    if (!hasPath && !hasBytes) {
+      throw Exception("uploadOcrScan: must provide either filePath or bytes");
+    }
+    if (hasBytes && (fileName == null || fileName.isEmpty)) {
+      throw Exception("uploadOcrScan: bytes mode requires fileName");
+    }
+
+    try {
+      late final MultipartFile mf;
+
+      if (hasPath) {
+        // 可选压缩：OCR 场景通常是身份证照片，压一下省流量更稳
+        final lowerPath = filePath!.toLowerCase();
+        final isImage = lowerPath.endsWith(".jpg") ||
+            lowerPath.endsWith(".jpeg") ||
+            lowerPath.endsWith(".png") ||
+            lowerPath.endsWith(".heic");
+
+        if (isImage && enableImageCompress) {
+          compressedPath = await ImageUtils.compressImage(filePath!);
+        }
+
+        final finalPath = compressedPath ?? filePath!;
+        final file = File(finalPath);
+        if (!await file.exists()) throw Exception("File not found: $finalPath");
+
+        final finalName = p.basename(finalPath);
+        final finalMime =
+            lookupMimeType(finalPath) ?? "application/octet-stream";
+
+        mf = await MultipartFile.fromFile(
+          finalPath,
+          filename: finalName,
+          contentType: DioMediaType.parse(finalMime),
+        );
+      } else {
+        final finalName = fileName!;
+        final finalMime = lookupMimeType(finalName, headerBytes: bytes) ??
+            "application/octet-stream";
+
+        mf = MultipartFile.fromBytes(
+          bytes!,
+          filename: finalName,
+          contentType: DioMediaType.parse(finalMime),
+        );
+      }
+
+      final form = FormData.fromMap({"file": mf});
+
+      final resp = await Http.post(
+        module.apiPath,
+        data: form,
+        cancelToken: cancelToken,
+        onSendProgress: (sent, total) {
+          if (total <= 0) return;
+          onProgress((sent / total).clamp(0.0, 1.0));
+        },
+        options: Options(sendTimeout: const Duration(minutes: 2)),
+      );
+
+
+      //  兼容：Http.post 可能返回 Map，也可能返回 Dio Response
+      final dynamic raw = (resp is Response) ? resp.data : resp;
+
+      if (raw is! Map) {
+        throw Exception("Invalid OCR response type: ${raw.runtimeType}");
+      }
+
+      final map = raw.cast<String, dynamic>();
+
+      //  兼容两种后端返回：
+      // 1) 包装结构：{code,message,tid,data:{...}}
+      // 2) 直接 data：{type,typeText,country,...}
+      final dynamic dataAny = map['data'] ?? map;
+
+      if (dataAny is! Map) {
+        throw Exception("Invalid OCR data type: ${dataAny.runtimeType}");
+      }
+
+      final data = dataAny.cast<String, dynamic>();
+
+
+      //  如果后端有 code，顺便校验一下
+      final code = map['code'];
+      if (code != null && code != 10000) {
+        throw Exception("OCR failed: code=$code, message=${map['message']}");
+      }
+
+      return KycOcrResult.fromJson(data);
+    } on DioException catch (e) {
+      if (CancelToken.isCancel(e)) throw Exception("Upload cancelled");
+
+      final msg = e.response?.data?.toString() ?? e.message;
+
+      // 429：Throttle
+      // 423/409：你分布式锁/幂等冲突可能会用到（看你实现）
+      throw Exception("OCR Scan Failed: $msg");
+    } catch (e) {
+      throw Exception("ocr-scan upload failed: $e");
+    } finally {
+      // 清理压缩临时文件
+      if (compressedPath != null && compressedPath != filePath) {
+        try {
+          final tempFile = File(compressedPath);
+          if (await tempFile.exists()) {
+            await tempFile.delete();
+            debugPrint(" Cleaned up temp file: $compressedPath");
+          }
+        } catch (cleanupError) {
+          debugPrint("Failed to clean up temp file: $cleanupError");
+        }
+      }
+    }
+  }
+
+  /// 提交 KYC 实名认证资料
+  /// @param frontPath 身份证正面照片路径
+  /// @param backPath 身份证反面照片路径（可选）
+  /// @param bodyData 其他表单字段数据
+  /// @return 后端响应结果
+  Future<dynamic> submitKyc({
+    required String frontPath,
+    required String? backPath,
+    required Map<String, dynamic> bodyData,
+}) async{
+    final Map<String,dynamic> map = Map.from(bodyData);
+
+    map['idCardFront'] = await MultipartFile.fromFile(
+      frontPath,
+      filename: p.basename(frontPath),
+      contentType: DioMediaType.parse(
+        lookupMimeType(frontPath) ?? "image/jpeg",
+      ),
+    );
+
+    if(backPath != null){
+      map['idCardBack'] = await MultipartFile.fromFile(
+        backPath,
+        filename: p.basename(backPath),
+        contentType: DioMediaType.parse(
+          lookupMimeType(backPath) ?? "image/jpeg",
+        ),
+      );
+    }
+
+    final form = FormData.fromMap(map);
+    return Http.post(
+      '/api/v1/kyc/submit',
+      data: form,
+    );
+  }
+
+
+
 }

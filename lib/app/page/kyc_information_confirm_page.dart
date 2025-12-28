@@ -1,5 +1,4 @@
 import 'package:easy_localization/easy_localization.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_app/common.dart';
 import 'package:flutter_app/components/base_scaffold.dart';
@@ -7,12 +6,15 @@ import 'package:flutter_app/core/models/kyc.dart';
 import 'package:flutter_app/ui/button/button.dart';
 import 'package:flutter_app/ui/form/fields/lf_input.dart';
 import 'package:flutter_app/ui/form/fields/lf_wheel_select.dart';
+import 'package:flutter_app/utils/date_helper.dart';
 import 'package:flutter_app/utils/form/kyc_forms/kyc_information_confirm_forms.dart';
+import 'package:flutter_app/utils/upload/global_upload_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:reactive_forms/reactive_forms.dart';
 
 import '../../core/models/region_providers.dart';
+import '../../core/providers/liveness_provider.dart';
 import '../../utils/form/validation/kKycValidationMessages.dart';
 
 class KycInformationConfirmPage extends ConsumerStatefulWidget {
@@ -28,65 +30,155 @@ class KycInformationConfirmPage extends ConsumerStatefulWidget {
 class _KycInformationConfirmPageState
     extends ConsumerState<KycInformationConfirmPage> {
   late final KycInformationConfirmModelForm kycForm =
-      KycInformationConfirmModelForm(
-        KycInformationConfirmModelForm.formElements(
-          const KycInformationConfirmModel(),
-        ),
-        null,
-      );
+  KycInformationConfirmModelForm(
+    KycInformationConfirmModelForm.formElements(
+      const KycInformationConfirmModel(),
+    ),
+    null,
+  );
 
   @override
   void initState() {
     super.initState();
 
-    // Setup listeners to reset dependent fields
     _setupResetListeners();
+    _prefillFromOcr(widget.kycOcrResult);
+    _setupRealNameAutoFill();
+  }
 
-    // Pre-fill the form with data from kycOcrResult
-    final ocr = widget.kycOcrResult;
-    print("OCR Result: $ocr");
+  void _prefillFromOcr(KycOcrResult ocr) {
+    // country -> countryCode（你现在模型只有 countryCode）
+    // PH: 63 / CN: 86 / VN: 84 / default: 63
+    final cc = _mapCountryToCode(ocr.country);
+
+
     kycForm.form.patchValue({
-      'idType': ocr.idType,
+      'typeText': ocr.typeText,
+
       'firstName': ocr.firstName,
       'middleName': ocr.middleName,
       'lastName': ocr.lastName,
-      'birthday': ocr.birthday,
-      'country': ocr.country,
-       'idNumber': ocr.idNumber,
-        'gender':ocr.gender
+      'fullName': ocr.realName,
+
+      'idNumber': ocr.idNumber ?? '',
+      'birthday': DateFormatHelper.format(ocr.birthday, 'yyyy-MM-dd'),
+      'gender': (ocr.gender ?? 'UNKNOWN'),
+
+      'countryCode': cc,
+
+      // expiryDate 可能为空
+      'expiryDate': DateFormatHelper.format(ocr.expiryDate, 'yyyy-MM-dd'),
     });
+
+  }
+
+  int _mapCountryToCode(String country) {
+    final c = country.trim().toUpperCase();
+    if (c == 'PH') return 63;
+    if (c == 'CN') return 86;
+    if (c == 'VN') return 84;
+    return 63;
+  }
+
+  String _joinName(String first, String? middle, String last) {
+    final parts = <String>[
+      first.trim(),
+      (middle ?? '').trim(),
+      last.trim(),
+    ].where((e) => e.isNotEmpty).toList();
+    return parts.join(' ');
+  }
+
+  void _setupRealNameAutoFill() {
+    // 只要名字变动就自动更新 realName
+    void sync() {
+      final first = kycForm.firstNameControl.value ?? '';
+      final middle = kycForm.middleNameControl.value;
+      final last = kycForm.lastNameControl.value ?? '';
+      final rn = _joinName(first, middle, last);
+      // 避免频繁 set 同样值
+      if ((kycForm.realNameControl.value ?? '') != rn) {
+        kycForm.realNameControl.updateValue(rn);
+      }
+    }
+
+    kycForm.firstNameControl.valueChanges.listen((_) => sync());
+    kycForm.middleNameControl.valueChanges.listen((_) => sync());
+    kycForm.lastNameControl.valueChanges.listen((_) => sync());
   }
 
   void _setupResetListeners() {
-    // When province changes, reset city and barangay
     kycForm.provinceControl.valueChanges.listen((_) {
       kycForm.cityControl.reset();
       kycForm.barangayControl.reset();
     });
-    // When city changes, reset barangay
     kycForm.cityControl.valueChanges.listen((_) {
       kycForm.barangayControl.reset();
     });
   }
 
-  void submit() {
+  void submit() async {
     kycForm.form.markAllAsTouched();
-    if (kycForm.form.valid) {
-      // Process the confirmed information
-      final confirmedData = kycForm.model;
-      // You can now use confirmedData as needed
+    if (!kycForm.form.valid) return;
 
+    final confirmed = kycForm.model;
+
+    // TODO: 这里你可以把 confirmed 转成 SubmitKycDto 再 call API
+    // 注意：idNumber / realName 都是你最终 submit 的关键字段
+    debugPrint('Confirmed: ${confirmed.idNumber}, ${confirmed.realName}');
+
+   final sessionId =  await _livenessDetection(context);
+   
+
+   final data = SubmitKycDto(
+     sessionId: sessionId!,
+     idType: widget.kycOcrResult.type,
+     idNumber: confirmed.idNumber,
+     realName: confirmed.realName,
+     firstName: confirmed.firstName,
+     middleName: confirmed.middleName,
+     lastName: confirmed.lastName,
+     birthday: confirmed.birthday,
+     gender: confirmed.gender,
+     countryCode: confirmed.countryCode,
+     expiryDate: confirmed.expiryDate,
+     provinceId: confirmed.province!,
+     cityId: confirmed.city!,
+     barangayId: confirmed.barangay!,
+     address: confirmed.address,
+     postalCode: confirmed.postalCode!,
+     idCardFront: widget.kycOcrResult.idCardFront,
+     idCardBack: widget.kycOcrResult.idCardBack,
+     ocrRawData: widget.kycOcrResult.toJson(),
+   );
+
+   final kycResponseData = await GlobalUploadService().submitKyc(
+      frontPath: widget.kycOcrResult.idCardFront!,
+      backPath: widget.kycOcrResult.idCardBack,
+      bodyData: data.toJson(),
+   );
+
+   if(!mounted) return;
+    if(KycStatusEnum.fromStatus(kycResponseData.kycStatus) == KycStatusEnum.reviewing){
+     // Navigate to KYC Status Page
+      Navigator.of(context).pushReplacementNamed('/home');
     }
+
+  }
+
+  Future<String?> _livenessDetection(context) async{
+   return ref.read(livenessNotifierProvider.notifier).startDetection(context);
   }
 
   @override
   Widget build(BuildContext context) {
     final provincesAsync = ref.watch(provinceProvider);
+    final liveness = ref.watch(livenessNotifierProvider);
 
     return BaseScaffold(
       title: 'information-confirm'.tr(),
       body: SingleChildScrollView(
-        physics: AlwaysScrollableScrollPhysics(),
+        physics: const AlwaysScrollableScrollPhysics(),
         child: Padding(
           padding: EdgeInsets.symmetric(horizontal: 16.w),
           child: ReactiveFormConfig(
@@ -96,21 +188,22 @@ class _KycInformationConfirmPageState
               child: Column(
                 children: [
                   SizedBox(height: 20.h),
-                  LfInput(name: 'idType', label: 'ID Type', readOnly: true),
+
+                  LfInput(name: 'typeText', label: 'ID Type', readOnly: true),
+
                   SizedBox(height: 16.h),
-                  LfInput(
-                    name: 'firstName',
-                    label: 'First Name',
-                    readOnly: true,
-                  ),
+                  LfInput(name: 'idNumber', label: 'ID Number', required: true),
+
                   SizedBox(height: 16.h),
-                  LfInput(
-                    name: 'middleName',
-                    label: 'Middle Name',
-                    readOnly: true,
-                  ),
+                  LfInput(name: 'firstName', label: 'First Name'),
                   SizedBox(height: 16.h),
-                  LfInput(name: 'lastName', label: 'Last Name', readOnly: true),
+                  LfInput(name: 'middleName', label: 'Middle Name'),
+                  SizedBox(height: 16.h),
+                  LfInput(name: 'lastName', label: 'Last Name'),
+
+                  SizedBox(height: 16.h),
+                  LfInput(name: 'realName', label: 'Full Name', readOnly: true),
+
                   SizedBox(height: 16.h),
                   LfInput(
                     name: 'birthday',
@@ -119,6 +212,7 @@ class _KycInformationConfirmPageState
                   ),
                   SizedBox(height: 16.h),
                   LfInput(name: 'gender', label: 'Gender', readOnly: true),
+
                   SizedBox(height: 16.h),
                   LfWheelSelect(
                     name: 'province',
@@ -126,7 +220,7 @@ class _KycInformationConfirmPageState
                     placeholder: 'Select your province',
                     required: true,
                     isLoading:
-                        provincesAsync.isLoading || !provincesAsync.hasValue,
+                    provincesAsync.isLoading || !provincesAsync.hasValue,
                     options: provincesAsync.when(
                       data: (list) => list,
                       error: (_, __) => [],
@@ -135,21 +229,20 @@ class _KycInformationConfirmPageState
                       ],
                     ),
                   ),
+
                   SizedBox(height: 16.h),
                   ReactiveValueListenableBuilder<int>(
                     formControlName: 'province',
                     builder: (context, provinceControl, child) {
                       final provinceId = provinceControl.value;
-                      final citiesAsync = ref.watch(
-                        cityProvider(provinceId ?? -1),
-                      );
+                      final citiesAsync = ref.watch(cityProvider(provinceId ?? -1));
                       return LfWheelSelect(
                         name: 'city',
                         label: 'City',
                         placeholder: 'Select your city',
                         required: true,
                         isLoading:
-                            citiesAsync.isLoading || !citiesAsync.hasValue,
+                        citiesAsync.isLoading || !citiesAsync.hasValue,
                         options: citiesAsync.when(
                           data: (list) => list,
                           error: (_, __) => [],
@@ -160,22 +253,21 @@ class _KycInformationConfirmPageState
                       );
                     },
                   ),
+
                   SizedBox(height: 16.h),
                   ReactiveValueListenableBuilder<int>(
                     formControlName: 'city',
                     builder: (context, cityControl, child) {
                       final cityId = cityControl.value;
-                      final barangaysAsync = ref.watch(
-                        barangaysProvider(cityId ?? -1),
-                      );
+                      final barangaysAsync =
+                      ref.watch(barangaysProvider(cityId ?? -1));
                       return LfWheelSelect(
                         name: 'barangay',
                         label: 'Barangay',
                         placeholder: 'Select your barangay',
                         required: true,
                         isLoading:
-                            barangaysAsync.isLoading ||
-                            !barangaysAsync.hasValue,
+                        barangaysAsync.isLoading || !barangaysAsync.hasValue,
                         options: barangaysAsync.when(
                           data: (list) => list,
                           error: (_, __) => [],
@@ -186,14 +278,13 @@ class _KycInformationConfirmPageState
                       );
                     },
                   ),
+
                   SizedBox(height: 16.h),
                   LfInput(name: 'address', label: 'Address', required: true),
+
                   SizedBox(height: 16.h),
-                  LfInput(
-                    name: 'postalCode',
-                    label: 'Postal Code',
-                    required: true,
-                  ),
+                  LfInput(name: 'postalCode', label: 'Postal Code', required: true),
+
                   SizedBox(height: 16.h),
                 ],
               ),
@@ -208,6 +299,7 @@ class _KycInformationConfirmPageState
           top: false,
           child: Button(
             height: 48.h,
+            loading: liveness.isLoading,
             onPressed: submit,
             child: Text(
               'common.confirm'.tr(),

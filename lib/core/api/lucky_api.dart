@@ -295,16 +295,6 @@ class Api {
     return KycResponse.fromJson(res);
   }
 
-  // upload kyc
-  static Future<KycUploadResult> kycUploadApi(KycUploadUrlDto data) async {
-   final res = await Http.post('/api/v1/kyc/upload-url', data: data.toJson());
-    return KycUploadResult.fromJson(res);
-  }
-
-  static Future<KycOcrResult> kycOcrApi(String key) async {
-    final result = await Http.post('/api/v1/kyc/ocr', data: {'key': key});
-    return KycOcrResult.fromJson(result);
-  }
 
   static Future<List<Province>> provincesApi() async {
     final res = await Http.get('/api/v1/client/region/provinces');
