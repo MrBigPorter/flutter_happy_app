@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_app/common.dart';
 import 'package:flutter_app/components/base_scaffold.dart';
 import 'package:flutter_app/core/models/kyc.dart';
-import 'package:flutter_app/ui/button/button.dart';
-import 'package:flutter_app/ui/form/fields/lf_input.dart';
 import 'package:flutter_app/ui/form/fields/lf_wheel_select.dart';
+import 'package:flutter_app/ui/index.dart';
 import 'package:flutter_app/utils/date_helper.dart';
 import 'package:flutter_app/utils/form/kyc_forms/kyc_information_confirm_forms.dart';
+
 // 记得引入 API
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -14,7 +14,6 @@ import 'package:reactive_forms/reactive_forms.dart';
 
 import '../../core/models/region_providers.dart';
 import '../../core/providers/liveness_provider.dart';
-import '../../ui/modal/dialog/radix_modal.dart';
 import '../../utils/form/validation/kKycValidationMessages.dart';
 import 'kyc_status_page.dart';
 
@@ -34,12 +33,12 @@ class _KycInformationConfirmPageState
   bool _isSubmitting = false;
 
   late final KycInformationConfirmModelForm kycForm =
-  KycInformationConfirmModelForm(
-    KycInformationConfirmModelForm.formElements(
-      const KycInformationConfirmModel(),
-    ),
-    null,
-  );
+      KycInformationConfirmModelForm(
+        KycInformationConfirmModelForm.formElements(
+          const KycInformationConfirmModel(),
+        ),
+        null,
+      );
 
   @override
   void initState() {
@@ -121,6 +120,7 @@ class _KycInformationConfirmPageState
         kycForm.realNameControl.updateValue(rn);
       }
     }
+
     kycForm.firstNameControl.valueChanges.listen((_) => sync());
     kycForm.middleNameControl.valueChanges.listen((_) => sync());
     kycForm.lastNameControl.valueChanges.listen((_) => sync());
@@ -160,7 +160,9 @@ class _KycInformationConfirmPageState
 
     try {
       // 1. 活体检测
-      final sessionId = await ref.read(livenessNotifierProvider.notifier).startDetection(context);
+      final sessionId = await ref
+          .read(livenessNotifierProvider.notifier)
+          .startDetection(context);
 
       if (sessionId == null || sessionId.isEmpty) return;
 
@@ -201,9 +203,8 @@ class _KycInformationConfirmPageState
       // 4. 跳转
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (context) => const KycStatusPage()),
-            (route) => false,
+        (route) => false,
       );
-
     } catch (e) {
       debugPrint("KYC Submit Error: $e");
       if (mounted) {
@@ -219,40 +220,39 @@ class _KycInformationConfirmPageState
   // ----------------------------------------------------------
   Future<void> _onWillPop(bool didPop) async {
     if (didPop || _isSubmitting) return;
-    final shouldPop = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Discard Changes?'),
-        content: const Text('If you go back now, you will lose all information.'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-          TextButton(onPressed: () => Navigator.pop(ctx, true), style: TextButton.styleFrom(foregroundColor: Colors.red), child: const Text('Discard')),
-        ],
-      ),
+    RadixModal.show(
+      title: 'Discard Changes?',
+      builder: (_, __) =>
+          const Text('If you go back now, you will lose all information.'),
+      cancelText: 'Cancel',
+      confirmText: 'Discard',
+      onConfirm: (close) {
+        Navigator.pop(context);
+      },
     );
-    if (shouldPop == true && mounted) Navigator.pop(context);
   }
 
   Future<bool> _showFinalConfirmDialog() async {
-    return await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Confirm Submission'),
-        content: const Text('Ensure all details match your ID exactly.'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Review')),
-          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Submit')),
-        ],
-      ),
-    ) ?? false;
+    return await RadixModal.show(
+          title: 'Confirm Submission',
+          builder: (_, __) =>
+              const Text('Ensure all details match your ID exactly.'),
+          cancelText: 'Review',
+          confirmText: 'Submit',
+        ) ??
+        false;
   }
 
   void _showErrorDialog(String title, String msg) {
-    RadixModal.show(title: title, builder: (_, __) => Text(msg), cancelText: 'Close');
+    RadixModal.show(
+      title: title,
+      builder: (_, __) => Text(msg),
+      cancelText: 'Close',
+    );
   }
 
   void _showToast(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+    RadixToast.error(msg);
   }
 
   // ----------------------------------------------------------
@@ -285,23 +285,41 @@ class _KycInformationConfirmPageState
                     SizedBox(height: 16.h),
 
                     // 2. 证件号码
-                    LfInput(name: 'idNumber', label: 'ID Number', required: true),
+                    LfInput(
+                      name: 'idNumber',
+                      label: 'ID Number',
+                      required: true,
+                    ),
                     SizedBox(height: 16.h),
 
                     // 3. 姓名部分
                     Row(
                       children: [
-                        Expanded(child: LfInput(name: 'firstName', label: 'First Name')),
+                        Expanded(
+                          child: LfInput(
+                            name: 'firstName',
+                            label: 'First Name',
+                          ),
+                        ),
                         SizedBox(width: 12.w),
-                        Expanded(child: LfInput(name: 'lastName', label: 'Last Name')),
+                        Expanded(
+                          child: LfInput(name: 'lastName', label: 'Last Name'),
+                        ),
                       ],
                     ),
                     SizedBox(height: 12.h),
-                    LfInput(name: 'middleName', label: 'Middle Name (Optional)'),
+                    LfInput(
+                      name: 'middleName',
+                      label: 'Middle Name (Optional)',
+                    ),
                     SizedBox(height: 16.h),
 
                     // 全名预览 (只读)
-                    LfInput(name: 'realName', label: 'Full Name Preview', readOnly: true),
+                    LfInput(
+                      name: 'realName',
+                      label: 'Full Name Preview',
+                      readOnly: true,
+                    ),
                     SizedBox(height: 16.h),
 
                     // 4. 生日与性别
@@ -333,7 +351,9 @@ class _KycInformationConfirmPageState
                       builder: (context, control, child) {
                         final provinceId = control.value;
                         // 如果没选省，就传 -1 或不加载
-                        final citiesAsync = ref.watch(cityProvider(provinceId ?? -1));
+                        final citiesAsync = ref.watch(
+                          cityProvider(provinceId ?? -1),
+                        );
                         return LfWheelSelect(
                           name: 'city',
                           label: 'City',
@@ -355,7 +375,9 @@ class _KycInformationConfirmPageState
                       formControlName: 'city',
                       builder: (context, control, child) {
                         final cityId = control.value;
-                        final barangaysAsync = ref.watch(barangaysProvider(cityId ?? -1));
+                        final barangaysAsync = ref.watch(
+                          barangaysProvider(cityId ?? -1),
+                        );
                         return LfWheelSelect(
                           name: 'barangay',
                           label: 'Barangay',
@@ -373,9 +395,17 @@ class _KycInformationConfirmPageState
                     SizedBox(height: 16.h),
 
                     // 6. 详细地址与邮编
-                    LfInput(name: 'address', label: 'Detailed Address', required: true),
+                    LfInput(
+                      name: 'address',
+                      label: 'Detailed Address',
+                      required: true,
+                    ),
                     SizedBox(height: 16.h),
-                    LfInput(name: 'postalCode', label: 'Postal Code', required: true),
+                    LfInput(
+                      name: 'postalCode',
+                      label: 'Postal Code',
+                      required: true,
+                    ),
 
                     // 底部留白，防止被按钮遮挡
                     SizedBox(height: 100.h),

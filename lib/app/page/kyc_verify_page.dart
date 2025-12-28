@@ -203,10 +203,6 @@ class _KycVerifyPageState extends ConsumerState<KycVerifyPage> {
       ),
     );
 
-    if (result == true && mounted) {
-      // 如果确认页返回 true，说明提交成功，可以做活体或者结束
-      // _startLiveness();
-    }
   }
 
   // =========================================================
@@ -237,7 +233,7 @@ class _KycVerifyPageState extends ConsumerState<KycVerifyPage> {
 
   void _toast(String msg) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+    RadixToast.error(msg);
   }
 
   // =========================================================
