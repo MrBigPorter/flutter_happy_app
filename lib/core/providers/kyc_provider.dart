@@ -3,9 +3,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../api/lucky_api.dart';
-import '../models/kyc.dart';
 
-part 'kyc_provider.g.dart';
 
 // ==========================================
 // 1. 数据类 Provider (GET 请求 - 自动加载)

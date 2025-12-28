@@ -5,6 +5,7 @@ import 'package:flutter_app/app/routes/app_router.dart';
 import 'package:flutter_app/common.dart';
 import 'package:flutter_app/components/base_scaffold.dart';
 import 'package:flutter_app/core/models/kyc.dart';
+import 'package:flutter_app/core/providers/kyc_provider.dart';
 import 'package:flutter_app/core/store/auth/auth_provider.dart';
 import 'package:flutter_app/core/store/lucky_store.dart';
 import 'package:flutter_app/ui/button/button.dart';
@@ -246,12 +247,13 @@ class _RowItemWidget extends ConsumerWidget {
       case SettingRowType.kyc:
         final isAuthenticated =
         ref.watch(authProvider.select((v) => v.isAuthenticated));
+        final kycMeProviderData = ref.watch(kycMeProvider);
         if (!isAuthenticated) return null;
 
-        final rawStatus = ref.watch(
-          luckyProvider.select((v) => v.userInfo?.kycStatus),
+        final rawStatus = kycMeProviderData.maybeWhen(
+          data: (data) => data.kycStatus,
+          orElse: () => null,
         );
-
         final statusCode = _toInt(rawStatus, fallback: 0);
         final statusEnum = KycStatusEnum.fromStatus(statusCode);
 
@@ -290,7 +292,7 @@ class _RowItemWidget extends ConsumerWidget {
   }
 }
 
-/// ✅ 这里我直接收 KycStatusEnum，避免你 label 枚举改来改去导致编译炸
+///  这里我直接收 KycStatusEnum，避免你 label 枚举改来改去导致编译炸
 class _KycRight extends StatelessWidget {
   final KycStatusEnum status;
 
@@ -319,20 +321,17 @@ class _KycRight extends StatelessWidget {
   Color _labelColor(BuildContext context, KycStatusEnum s) {
     switch (s) {
       case KycStatusEnum.draft:
-        return context.textSecondary700;
+        return context.utilityGray200;
       case KycStatusEnum.reviewing:
-        return context.textPrimary900;
+        return context.utilityBrand200;
       case KycStatusEnum.rejected:
-        return context.textErrorPrimary600;
+        return context.utilityError200;
       case KycStatusEnum.needMore:
-        return context.textWarningPrimary600;
+        return context.utilityBlue200;
       case KycStatusEnum.approved:
-      // 你之前用 utilityGreen50 可能太浅，我换成更像“成功文本色”
-      // 如果你项目没有这个 token，就把它改回 textPrimary900 或 utilityGreen50
-        return (context as dynamic).textSuccessPrimary600 ?? context.textPrimary900;
-    // ignore: dead_code
+        return context.utilityGreen200;
       default:
-        return context.textSecondary700;
+        return context.utilityGray200;
     }
   }
 
@@ -340,6 +339,8 @@ class _KycRight extends StatelessWidget {
   Widget build(BuildContext context) {
     final text = _labelText(context, status);
     final color = _labelColor(context, status);
+    
+    print('KYC Status: $text, Color: $color');
 
     return Text(
       text,

@@ -8,7 +8,6 @@ import 'package:flutter_app/components/base_scaffold.dart';
 import 'package:flutter_app/components/upload_progress_dialog.dart';
 import 'package:flutter_app/core/models/kyc.dart';
 import 'package:flutter_app/core/providers/kyc_provider.dart';
-import 'package:flutter_app/core/providers/liveness_provider.dart';
 import 'package:flutter_app/ui/index.dart';
 import 'package:flutter_app/ui/modal/base/nav_hub.dart';
 import 'package:flutter_app/utils/camera/services/liveness_service.dart';
@@ -28,7 +27,7 @@ class KycVerifyPage extends ConsumerStatefulWidget {
 }
 
 class _KycVerifyPageState extends ConsumerState<KycVerifyPage> {
-  /// 风险阈值：>=60 直接拦截；30~59 警告；<30 放行
+  // 风险阈值配置
   static const double kFraudBlockScore = 60.0;
   static const double kFraudWarnScore = 30.0;
 
@@ -38,14 +37,10 @@ class _KycVerifyPageState extends ConsumerState<KycVerifyPage> {
       title: 'kyc-verify'.tr(),
       body: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 0),
+        padding: EdgeInsets.symmetric(horizontal: 16.w),
         child: ConstrainedBox(
           constraints: BoxConstraints(
-            maxHeight: MediaQuery.of(context).size.height -
-                kToolbarHeight -
-                MediaQuery.of(context).padding.top -
-                MediaQuery.of(context).padding.bottom -
-                80.h,
+            maxHeight: MediaQuery.of(context).size.height - 140.h,
           ),
           child: const _StepList(),
         ),
@@ -59,42 +54,18 @@ class _KycVerifyPageState extends ConsumerState<KycVerifyPage> {
 
     return Container(
       color: context.bgPrimary,
+      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
       child: SafeArea(
         top: false,
-        child: Padding(
-          padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
-          child: SizedBox(
-            width: double.infinity,
-            height: 48.h,
-            child: Button(
-              loading: kycTypeAsyncValue.isLoading,
-              onPressed: () async {
-                // 1) 选择证件类型
-                final options = await ref.read(kycIdTypeProvider.future);
-                if (!mounted) return;
-
-                final selected = await RadixSheet.show<KycIdTypes>(
-                  builder: (_, close) => SelectIdType(options: options),
-                );
-
-                if (!mounted) return;
-
-                if (selected == null) {
-                  _toast(context, 'Cancelled. No changes were made.');
-                  return;
-                }
-
-                // 2) 扫描 + Guard + 上传 + OCR
-                final ocr = await _scanAndUploadID(selected);
-                if (!mounted || ocr == null) return;
-
-                // 3) 信息确认
-                await _additionalInformation(context, ocr);
-              },
-              child: Text(
-                'start-now'.tr(),
-                style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w600),
-              ),
+        child: SizedBox(
+          width: double.infinity,
+          height: 48.h,
+          child: Button(
+            loading: kycTypeAsyncValue.isLoading,
+            onPressed: _onStartKycPressed,
+            child: Text(
+              'start-now'.tr(),
+              style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w600),
             ),
           ),
         ),
@@ -102,151 +73,129 @@ class _KycVerifyPageState extends ConsumerState<KycVerifyPage> {
     );
   }
 
-  void _toast(BuildContext ctx, String msg) {
-    if (!ctx.mounted) return;
-    ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text(msg)));
+  // =========================================================
+  // 核心流程控制 (Main Flow)
+  // =========================================================
+
+  Future<void> _onStartKycPressed() async {
+    // 1. 获取证件类型配置
+    final options = await ref.read(kycIdTypeProvider.future);
+    if (!mounted) return;
+
+    // 2. 弹出选择框
+    final selectedType = await RadixSheet.show<KycIdTypes>(
+      builder: (_, close) => SelectIdType(options: options),
+    );
+
+    if (!mounted) return;
+    if (selectedType == null) {
+      // 用户主动取消，不需要报错
+      return;
+    }
+
+    // 3. 执行核心任务：拍照 -> 上传 -> OCR
+    // 捕获所有可能的异常，防止按钮卡死
+    try {
+      final ocrResult = await _performScanAndUploadFlow(selectedType);
+
+      if (ocrResult == null) return; // 过程中失败或取消
+
+      // 4. 风控检查
+      final isSafe = await _validateRiskScore(ocrResult);
+      if (!isSafe || !mounted) return;
+
+      // 5. 跳转确认页
+      await _navigateToConfirm(ocrResult);
+
+    } catch (e) {
+      debugPrint("KYC Flow Error: $e");
+      if (mounted) _handleGeneralError(e);
+    }
   }
 
-  /// 扫描 + Guard 检测 + 上传 OCR +
-  Future<KycOcrResult?> _scanAndUploadID(KycIdTypes selectedType) async {
-    // 0) 打开相机扫描
+  // =========================================================
+  // 子任务模块 (Sub-tasks)
+  // =========================================================
+
+  /// 任务：拍照 + 上传 (返回 OCR 结果，如果失败返回 null)
+  Future<KycOcrResult?> _performScanAndUploadFlow(KycIdTypes type) async {
+    // A. 打开相机
     final imagePath = await LivenessService.scanDocument(context);
+    if (imagePath == null) {
+      // 用户取消拍照
+      return null;
+    }
 
     if (!mounted) return null;
-    if (imagePath == null) {
-      _toast(context, 'Scan cancelled. Please try again.');
-      return null;
-    }
 
-    // 1) 锁定全局 UI 环境（弹窗/进度）
+    // 获取全局 Context 用于弹窗 (防止当前页面 pop 后 dialog 消失)
     final globalContext = NavHub.key.currentContext;
-    if (globalContext == null || !globalContext.mounted) {
-      _toast(context, 'UI not ready. Please try again.');
-      return null;
-    }
+    if (globalContext == null) throw 'UI_CONTEXT_LOST';
 
     final messageNotifier = ValueNotifier<String>('Preparing...');
-    Object? errorReason;
-    KycOcrResult? successResult;
 
+    // B. 显示进度条并执行上传
     try {
-      await UploadProgressDialog.show(
+      return await UploadProgressDialog.show<KycOcrResult>(
         globalContext,
         messageNotifier: messageNotifier,
         uploadTask: (updateProgress) async {
-          // Step 1/4: Guard 检测
-          messageNotifier.value = '1/4 Checking photo quality...';
-          await Future.delayed(const Duration(milliseconds: 150));
+          // --- 子步骤 1: 本地 Guard 检测 ---
+          messageNotifier.value = '1/3 Checking photo quality...';
+          await Future.delayed(const Duration(milliseconds: 200));
 
-          final bool isPass = await UnifiedKycGuard().check(
-            imagePath,
-            KycDocType.idCard,
-          );
+          final bool isPass = await UnifiedKycGuard().check(imagePath, KycDocType.idCard);
           if (!isPass) throw 'GUARD_CHECK_FAILED';
 
-          // Step 2/4: 上传
-          messageNotifier.value = '2/4 Uploading securely...';
+          // --- 子步骤 2: 上传 OCR ---
+          messageNotifier.value = '2/3 Uploading securely...';
 
-          final ocrResult = await GlobalUploadService().uploadOcrScan(
+          // 调用 Service 上传
+          var result = await GlobalUploadService().uploadOcrScan(
             filePath: imagePath,
             module: UploadModule.kyc,
+            // 传入 CancelToken 允许用户取消上传
             cancelToken: CancelToken(),
             onProgress: updateProgress,
           );
 
-          // Step 3/4: AI 解析
-          messageNotifier.value = '3/3 Extracting info (AI)...';
-          await Future.delayed(const Duration(milliseconds: 200));
+          // --- 子步骤 3: 结果处理 ---
+          messageNotifier.value = '3/3 Finalizing...';
 
-          ocrResult.copyWith(
-            idCardFront: imagePath
-          );
-
-          return ocrResult;
+          // 补全本地图片路径 (因为后端 OCR 不会返回本地路径)
+          return result.copyWith(idCardFront: imagePath);
         },
-      ).then((result) {
-        successResult = result;
-      });
+      );
     } catch (e) {
-      errorReason = e;
-      debugPrint("Kyc Upload Error: $e");
+      // 在这里捕获上传过程中的特定错误
+      if (mounted) _handleUploadSpecificError(e);
+      return null; // 返回空表示流程中断
     }
-
-    // ---- 如果 OCR 成功，先做风控拦截 ----
-    if (successResult != null) {
-      var r = successResult!;
-      try {
-        // ignore: invalid_use_of_visible_for_testing_member, invalid_use_of_protected_member
-       // r = r.copyWith(selectedTypeId: selectedType.typeId);
-      } catch (_) {
-        // TODO: 如果你暂时没有 copyWith/selectedTypeId，
-        // 你可以在确认页里另外传 selectedType.typeId
-      }
-
-      final score = r.fraudScore;
-      final suspicious = r.isSuspicious == true;
-
-      // 1) 高风险：直接拦截，不进入确认页
-      if (suspicious || score >= kFraudBlockScore) {
-        if (mounted) {
-          //_showFraudBlockedDialog(context, r);
-        }
-        return null;
-      }
-
-      // 2) 中风险：警告 + 用户选择继续/重拍
-      if (score >= kFraudWarnScore) {
-        final goOn = await _showFraudWarningDialog(context, r);
-        if (!goOn) return null;
-      }
-
-      return r;
-    }
-
-    // ---- 失败处理 ----
-    if (globalContext.mounted) {
-      _handleUploadError(globalContext, errorReason);
-    }
-    return null;
   }
 
-  void _handleUploadError(BuildContext targetContext, Object? error) {
-    if (error == 'GUARD_CHECK_FAILED') {
-      RadixModal.show(
-        title: 'No valid ID detected',
-        cancelText: 'Close',
-        builder: (_, __) => Text(
-          'Please make sure:\n'
-              '• The ID is inside the frame\n'
-              '• Text is clear and not blurry\n'
-              '• No strong glare / reflection\n'
-              '• Use the original physical ID (no screenshots)',
-          style: TextStyle(fontSize: 14.sp, color: const Color(0xFF1F2937)),
-        ),
-      );
-      return;
+  /// 任务：风控检查 (返回 true=通过, false=拦截)
+  Future<bool> _validateRiskScore(KycOcrResult r) async {
+    final score = r.fraudScore;
+    final suspicious = r.isSuspicious == true;
+
+    // 情况 A: 高风险 -> 直接拦截
+    if (suspicious || score >= kFraudBlockScore) {
+      _showFraudBlockedDialog(r);
+      return false;
     }
 
-    if (error is DioException && CancelToken.isCancel(error)) {
-      _toast(targetContext, 'Upload cancelled.');
-      return;
+    // 情况 B: 中风险 -> 警告但允许继续
+    if (score >= kFraudWarnScore) {
+      final userWantsToContinue = await _showFraudWarningDialog(r);
+      return userWantsToContinue;
     }
 
-    if (error != null) {
-      final msg = (error == 'UPLOAD_FAILED')
-          ? 'Upload failed. Please check your network and try again.'
-          : 'Something went wrong: $error';
-      ScaffoldMessenger.of(targetContext).showSnackBar(
-        SnackBar(content: Text(msg), backgroundColor: Colors.redAccent),
-      );
-      return;
-    }
-
-    _toast(targetContext, 'Failed to process. Please try again.');
+    // 情况 C: 低风险 -> 自动通过
+    return true;
   }
 
-  Future<void>
-  _additionalInformation(BuildContext context, KycOcrResult data) async {
+  /// 任务：跳转
+  Future<void> _navigateToConfirm(KycOcrResult data) async {
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
@@ -254,110 +203,90 @@ class _KycVerifyPageState extends ConsumerState<KycVerifyPage> {
       ),
     );
 
-    if (!mounted) return;
-
-    if (result == true) {
-      _livenessDetection(context);
-    } else if (result == false) {
-      _toast(context, 'Cancelled confirmation.');
+    if (result == true && mounted) {
+      // 如果确认页返回 true，说明提交成功，可以做活体或者结束
+      // _startLiveness();
     }
   }
 
-  void _livenessDetection(BuildContext context) {
-    ref.read(livenessNotifierProvider.notifier).startDetection(context);
+  // =========================================================
+  // 错误处理模块 (Error Handling)
+  // =========================================================
+
+  void _handleUploadSpecificError(Object error) {
+    if (!mounted) return;
+
+    if (error == 'GUARD_CHECK_FAILED') {
+      RadixModal.show(
+        title: 'Please retake photo',
+        cancelText: 'OK',
+        builder: (_, __) => const Text('Make sure the ID is inside the frame and clearly visible.'),
+      );
+    } else if (error is DioException && CancelToken.isCancel(error)) {
+      // 用户取消，忽略
+    } else {
+      // 其他网络错误
+      _toast('Upload failed. Please check connection.');
+    }
   }
 
-  // -----------------------
-  //  Fake interception UI
-  // -----------------------
+  void _handleGeneralError(Object error) {
+    // 处理未预料到的异常
+    _toast('Something went wrong. Please try again.');
+  }
 
-  void _showFraudBlockedDialog(BuildContext context, KycOcrResult r) {
-    final reason = (r.fraudReason != null && r.fraudReason!.trim().isNotEmpty)
-        ? r.fraudReason!.trim()
-        : 'We detected signs of screenshot / glare / edited image.';
+  void _toast(String msg) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+  }
+
+  // =========================================================
+  // 弹窗 UI 模块 (Dialogs)
+  // =========================================================
+
+  void _showFraudBlockedDialog(KycOcrResult r) {
+    if (!mounted) return;
+    final reason = r.fraudReason ?? 'Potential screen capture or editing detected.';
 
     RadixModal.show(
-      title: 'ID photo not accepted',
+      title: 'ID Verification Failed',
       cancelText: 'Close',
       builder: (_, __) => Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'For security reasons, we can’t accept this ID photo.\n\n'
-                'Risk score: ${r.fraudScore.toStringAsFixed(0)}\n\n'
-                'Reason:\n$reason\n\n'
-                'Please retake the photo and make sure:',
-            style: TextStyle(fontSize: 14.sp, color: const Color(0xFF1F2937)),
-          ),
-          SizedBox(height: 12.h),
-          _bullet('Use the original physical ID (no screenshots)'),
-          _bullet('Avoid glare / reflections'),
-          _bullet('Keep the whole ID inside the frame'),
-          _bullet('Ensure text is readable and not blurry'),
+          Text('We cannot accept this ID photo due to security reasons.', style: TextStyle(fontWeight: FontWeight.bold)),
+          SizedBox(height: 8.h),
+          Text('Reason: $reason'),
+          SizedBox(height: 8.h),
+          Text('Please use the original physical ID card.', style: TextStyle(color: Colors.red)),
         ],
       ),
     );
   }
 
-  Future<bool> _showFraudWarningDialog(BuildContext context, KycOcrResult r) async {
-    final reason = (r.fraudReason != null && r.fraudReason!.trim().isNotEmpty)
-        ? r.fraudReason!.trim()
-        : 'We detected something unusual in the photo.';
-
-    final ok = await showCupertinoModalPopup<bool>(
+  Future<bool> _showFraudWarningDialog(KycOcrResult r) async {
+    if (!mounted) return false;
+    // 使用 iOS 风格 ActionSheet 或 Material Dialog 让用户选
+    final result = await showCupertinoModalPopup<bool>(
       context: context,
-      builder: (sheetCtx) => CupertinoActionSheet(
-        title: const Text('Photo quality warning'),
-        message: Text(
-          'Risk score: ${r.fraudScore.toStringAsFixed(0)}\n\n'
-              '$reason\n\n'
-              'You can retake the photo, or continue (it may be rejected later).',
-        ),
+      builder: (ctx) => CupertinoActionSheet(
+        title: const Text('Photo Quality Warning'),
+        message: Text('The ID photo looks a bit blurry or suspicious.\nRisk Score: ${r.fraudScore}'),
         actions: [
           CupertinoActionSheetAction(
-            onPressed: () => Navigator.pop(sheetCtx, true),
-            child: const Text('Continue'),
+            child: const Text('Continue Anyway'),
+            onPressed: () => Navigator.pop(ctx, true),
           ),
         ],
         cancelButton: CupertinoActionSheetAction(
-          onPressed: () => Navigator.pop(sheetCtx, false),
           isDestructiveAction: true,
-          child: const Text('Retake photo'),
+          onPressed: () => Navigator.pop(ctx, false),
+          child: const Text('Retake Photo'),
         ),
       ),
     );
-    return ok == true;
-  }
-
-  Widget _bullet(String text) {
-    return Padding(
-      padding: EdgeInsets.only(bottom: 6.h),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: EdgeInsets.only(top: 6.h),
-            child: Icon(
-              Icons.circle,
-              size: 6.w,
-              color: const Color(0xFF111827),
-            ),
-          ),
-          SizedBox(width: 8.w),
-          Expanded(
-            child: Text(
-              text,
-              style: TextStyle(
-                fontSize: 13.sp,
-                color: const Color(0xFF374151),
-                height: 1.35,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
+    return result ?? false;
   }
 }
 

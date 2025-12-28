@@ -184,14 +184,6 @@ class AppRouter {
             path: '/me/kyc/verify',
             builder: (context, state) => KycVerifyPage()
         ),
-        GoRoute(
-            name: 'kycScan',
-            path: '/me/kyc/scan',
-            builder: (context, state) {
-              final options = state.extra as String;
-              return KycScanPage(kycIdType: KycIdTypes.fromJson(jsonDecode(options)));
-            }
-        ),
 
       ],
       redirect: (context,state){

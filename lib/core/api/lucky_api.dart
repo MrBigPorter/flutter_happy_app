@@ -9,6 +9,7 @@ import 'package:flutter_app/core/models/region.dart';
 import 'package:flutter_app/utils/helper.dart';
 import 'package:flutter_app/core/models/index.dart';
 
+import '../../utils/upload/global_upload_service.dart';
 import '../models/kyc.dart';
 
 class Api {
@@ -290,9 +291,30 @@ class Api {
   }
   
   // kyc submit
-  static Future<KycResponse> kycSubmitApi(SubmitKycDto data) async {
-   final res = await Http.post('/api/v1/kyc/submit', data: data);
-    return KycResponse.fromJson(res);
+  /// 这里的 dto 包含的是图片路径 String，我们在内部把它转成 File
+  static Future<KycResponse> kycSubmitApi(SubmitKycDto dto) async {
+
+    // 1. 把 DTO 转成 Map (获取纯文本数据)
+    final Map<String, dynamic> bodyData = dto.toJson();
+
+    // 否则后端会收到一个叫 "idCardFront" 的字符串文本，干扰文件上传
+    bodyData.remove('idCardFront');
+    bodyData.remove('idCardBack');
+
+    // 3. 特殊处理：把 OCR 对象转成字符串 (因为 FormData 不支持嵌套 JSON 对象)
+    if (bodyData['ocrRawData'] != null) {
+      bodyData['ocrRawData'] = jsonEncode(bodyData['ocrRawData']);
+    }
+
+    // 它负责把你的本地路径 (String) 变成二进制文件流 (MultipartFile)
+    final responseData = await GlobalUploadService().submitKyc(
+      frontPath: dto.idCardFront!,
+      backPath: dto.idCardBack,
+      bodyData: bodyData,
+    );
+
+    // 5. 转成响应模型
+    return KycResponse.fromJson(responseData);
   }
 
 

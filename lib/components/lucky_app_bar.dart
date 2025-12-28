@@ -94,7 +94,7 @@ class _Title extends StatelessWidget {
     return Align(
       alignment: Alignment.center,
       child: Text(
-        title!.tr(),
+        title.toString(),
         style: TextStyle(
           fontSize: 16.w,
           fontWeight: FontWeight.w800,

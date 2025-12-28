@@ -129,6 +129,8 @@ class Http {
               } catch (_) {}
             }
 
+            // 定义一个变量标记是否“抢救成功”
+            bool rescueSuccess = false;
             // 2) 真过期：刷新一次，再 retry（避免无限循环）
             final alreadyRetried = reqExtra['__retryAfterRefresh__'] == true;
             if (!alreadyRetried) {
@@ -143,10 +145,24 @@ class Http {
                 }
 
                 try {
+                  // 尝试重试
                   final newResp = await _rawDio.fetch(options);
+                  // 只要重试的网络请求通了（哪怕业务 Code 不是 10000），就算抢救成功
+                  // 我们不能因为业务报错（比如图片模糊）就让用户退登
+                  rescueSuccess = true;
+
+                  // 尝试解包，如果解包成功直接返回
                   final unwrapped = _unwrapApiResponse(newResp);
-                  if (unwrapped != null) return handler.resolve(unwrapped);
-                } catch (_) {}
+                  if (unwrapped != null) {
+                    return handler.resolve(unwrapped);
+                  }
+
+                } catch (e) {
+                  // 如果重试过程报错（比如 FormData 无法复用），
+                  // 我们认定这次请求失败，但不代表 Token 无效（因为刷新已经成功了）
+                  // 所以我们要 Reject 这次请求，但阻止代码向下执行去 ClearToken
+                  return handler.reject(_asDioError(response, 'Retry failed: ${e.toString()}'));
+                }
               }
             }
 
@@ -186,6 +202,8 @@ class Http {
 
         onError: (e, handler) {
           final noToast = e.requestOptions.extra['noErrorToast'] == true;
+          print('HTTP Error: ${e.message}');
+          print('Request Options: ${e.requestOptions}');
           if (!noToast) {
             Fluttertoast.showToast(
               msg: e.message ?? 'Network error',
