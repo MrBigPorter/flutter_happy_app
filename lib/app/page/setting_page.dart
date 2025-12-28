@@ -12,8 +12,10 @@ import 'package:flutter_app/ui/button/button.dart';
 import 'package:flutter_app/ui/index.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../theme/theme_provider.dart';
+import 'kyc_status_page.dart';
 
 enum SettingRowType {
   normal,
@@ -87,6 +89,15 @@ class _SettingPageState extends ConsumerState<SettingPage> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    // 每次进入设置页面，刷新 KYC 状态
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.refresh(kycMeProvider);
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     return BaseScaffold(
       title: "common.setting".tr(),
@@ -133,7 +144,35 @@ class _SettingRowWidget extends ConsumerWidget {
           return;
         }
 
-        // 你原本是 /me/kyc/verify，这里保持不变
+        final kycState = ref.read(kycMeProvider);
+        kycState.when(
+            data: (data){
+              final statusCode = KycStatusEnum.fromStatus(data.kycStatus);
+              switch(statusCode){
+                case KycStatusEnum.draft:
+                   appRouter.push('/me/kyc/verify');
+                  break;
+                default:
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (ctx) => KycStatusPage(),
+                    ),
+                  );
+                  break;
+              }
+            },
+            error: (err, stack){
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Error: $err')),
+              );
+            },
+            loading: (){
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('loading...')),
+              );
+            }
+        );
+
         appRouter.push('/me/kyc/verify');
         break;
 
@@ -340,7 +379,6 @@ class _KycRight extends StatelessWidget {
     final text = _labelText(context, status);
     final color = _labelColor(context, status);
     
-    print('KYC Status: $text, Color: $color');
 
     return Text(
       text,
