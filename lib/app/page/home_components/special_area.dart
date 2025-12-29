@@ -15,8 +15,9 @@ import 'package:flutter_app/core/models/index.dart';
 
 class SpecialArea extends StatelessWidget {
   final List<ProductListItem>? list;
+  final String title;
 
-  const SpecialArea({super.key, required this.list});
+  const SpecialArea({super.key, required this.list, required this.title});
 
   @override
   Widget build(BuildContext context) {
@@ -32,7 +33,7 @@ class SpecialArea extends StatelessWidget {
           child: Align(
             alignment: Alignment.centerLeft,
             child: Text(
-              'Special Area',
+              title,
               style: TextStyle(
                 fontSize: 16.sp,
                 fontWeight: FontWeight.w800,
@@ -62,7 +63,7 @@ class SpecialArea extends StatelessWidget {
             itemBuilder: (context, index) {
               final item = list![index];
               return AnimatedListItem(
-                id: int.parse(item.treasureId),
+                id: index,
                 child: Padding(
                   padding: EdgeInsets.symmetric(vertical: 12.2),
                   child: Column(

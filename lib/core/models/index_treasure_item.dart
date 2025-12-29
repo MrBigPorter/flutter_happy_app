@@ -5,22 +5,25 @@ part 'index_treasure_item.g.dart';
 
 @JsonSerializable(checked: true)
 class IndexTreasureItem {
-  final int actId;
+  final String actId;
   final int imgStyleType;
+  final String title;
   final List<ProductListItem>? treasureResp;
 
   IndexTreasureItem({
     required this.actId,
+      required this.title,
     required this.imgStyleType,
      this.treasureResp,
   });
 
-  factory IndexTreasureItem.fromJson(Map<String,dynamic> json){
-    try{
-      return _$IndexTreasureItemFromJson(json);
-    }catch(e){
-      throw Exception('IndexTreasureItem fromJson error: $e');
-    }
+  factory IndexTreasureItem.fromJson(Map<String,dynamic> json) => _$IndexTreasureItemFromJson(json);
+
+  Map<String,dynamic> toJson() => _$IndexTreasureItemToJson(this);
+
+  @override
+  String toString() {
+   return toJson().toString();
   }
 }
 

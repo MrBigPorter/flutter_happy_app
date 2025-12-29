@@ -7,7 +7,8 @@ import 'package:flutter_app/core/models/index.dart';
 
 class Ending extends StatelessWidget {
   final List<ProductListItem>? list;
-  const Ending({super.key, required this.list});
+  final String title;
+  const Ending({super.key, required this.list, required this.title});
 
   @override
   Widget build(BuildContext context) {
@@ -19,7 +20,7 @@ class Ending extends StatelessWidget {
           child: Align(
             alignment: Alignment.centerLeft,
             child: Text(
-              'common.ending.soon'.tr(),
+              title,
               style: TextStyle(
                   fontSize: 16.sp,
                   fontWeight: FontWeight.w800,

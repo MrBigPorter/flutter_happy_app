@@ -13,19 +13,20 @@ class HomeTreasures extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    
     return SliverPadding(
       padding: EdgeInsets.symmetric(horizontal: 8.w),
       sliver: SliverList(
         delegate: SliverChildBuilderDelegate((context, index) {
           final item = treasures![index];
           if (item.imgStyleType == 1) {
-            return Ending(list: item.treasureResp);
+            return Ending(list: item.treasureResp,title: item.title);
           } else if (item.imgStyleType == 2) {
-            return SpecialArea(list: item.treasureResp);
+            return SpecialArea(list: item.treasureResp, title: item.title);
           } else if (item.imgStyleType == 3) {
-            return HomeFuture(list: item.treasureResp);
+            return HomeFuture(list: item.treasureResp, title: item.title);
           } else if (item.imgStyleType == 4) {
-            return Recommendation(list: item.treasureResp);
+            return Recommendation(list: item.treasureResp, title: item.title);
           }
           return SizedBox.shrink();
         }, childCount: treasures?.length ?? 0),

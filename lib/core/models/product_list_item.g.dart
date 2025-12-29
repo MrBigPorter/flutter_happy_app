@@ -10,9 +10,15 @@ ProductListItem _$ProductListItemFromJson(
   Map<String, dynamic> json,
 ) => $checkedCreate('ProductListItem', json, ($checkedConvert) {
   final val = ProductListItem(
+    treasureId: $checkedConvert('treasureId', (v) => v as String),
+    treasureName: $checkedConvert('treasureName', (v) => v as String),
     buyQuantityRate: $checkedConvert(
       'buyQuantityRate',
       (v) => (v as num).toDouble(),
+    ),
+    unitAmount: $checkedConvert(
+      'unitAmount',
+      (v) => JsonNumConverter.toDouble(v),
     ),
     costAmount: $checkedConvert('costAmount', (v) => v as String?),
     imgStyleType: $checkedConvert('imgStyleType', (v) => (v as num?)?.toInt()),
@@ -35,12 +41,6 @@ ProductListItem _$ProductListItemFromJson(
       'seqShelvesQuantity',
       (v) => (v as num?)?.toInt(),
     ),
-    treasureId: $checkedConvert('treasureId', (v) => v as String),
-    treasureName: $checkedConvert('treasureName', (v) => v as String),
-    unitAmount: $checkedConvert(
-      'unitAmount',
-      (v) => JsonNumConverter.toDouble(v),
-    ),
     treasureCoverImg: $checkedConvert('treasureCoverImg', (v) => v as String?),
     rate: $checkedConvert('rate', (v) => (v as num?)?.toInt()),
     ruleContent: $checkedConvert('ruleContent', (v) => v as String?),
@@ -60,7 +60,10 @@ ProductListItem _$ProductListItemFromJson(
 
 Map<String, dynamic> _$ProductListItemToJson(ProductListItem instance) =>
     <String, dynamic>{
+      'treasureId': instance.treasureId,
+      'treasureName': instance.treasureName,
       'buyQuantityRate': instance.buyQuantityRate,
+      'unitAmount': JsonNumConverter.doubleToString(instance.unitAmount),
       'costAmount': instance.costAmount,
       'imgStyleType': instance.imgStyleType,
       'lotteryMode': instance.lotteryMode,
@@ -70,9 +73,6 @@ Map<String, dynamic> _$ProductListItemToJson(ProductListItem instance) =>
       'productName': instance.productName,
       'seqBuyQuantity': instance.seqBuyQuantity,
       'seqShelvesQuantity': instance.seqShelvesQuantity,
-      'treasureId': instance.treasureId,
-      'treasureName': instance.treasureName,
-      'unitAmount': JsonNumConverter.doubleToString(instance.unitAmount),
       'treasureCoverImg': instance.treasureCoverImg,
       'rate': instance.rate,
       'ruleContent': instance.ruleContent,
@@ -126,12 +126,9 @@ GroupUser _$GroupUserFromJson(Map<String, dynamic> json) =>
         userId: $checkedConvert('userId', (v) => v as String),
         username: $checkedConvert('username', (v) => v as String),
         avatar: $checkedConvert('avatar', (v) => v as String),
-        createdAt: $checkedConvert(
-          'createdAt',
-          (v) => DateTime.parse(v as String),
-        ),
-        leaderUserId: $checkedConvert('leaderUserId', (v) => v as String),
-        leaderUsername: $checkedConvert('leaderUsername', (v) => v as String),
+        createdAt: $checkedConvert('createdAt', (v) => (v as num?)?.toInt()),
+        leaderUserId: $checkedConvert('leaderUserId', (v) => v as String?),
+        leaderUsername: $checkedConvert('leaderUsername', (v) => v as String?),
       );
       return val;
     });
@@ -140,7 +137,7 @@ Map<String, dynamic> _$GroupUserToJson(GroupUser instance) => <String, dynamic>{
   'userId': instance.userId,
   'username': instance.username,
   'avatar': instance.avatar,
-  'createdAt': instance.createdAt.toIso8601String(),
+  'createdAt': instance.createdAt,
   'leaderUserId': instance.leaderUserId,
   'leaderUsername': instance.leaderUsername,
 };

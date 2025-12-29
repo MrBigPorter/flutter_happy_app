@@ -8,7 +8,9 @@ final homeBannerProvider = FutureProvider((ref) async{
 
 /// Home page treasures provider
 final homeTreasuresProvider = FutureProvider((ref) async{
-  return Api.indexTreasuresApi();
+  final data = await Api.indexTreasuresApi();
+  print('data:${data.toString()}');
+  return data;
 });
 
 /// Home page ad provider

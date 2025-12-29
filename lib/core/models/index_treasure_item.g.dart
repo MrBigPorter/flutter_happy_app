@@ -9,7 +9,8 @@ part of 'index_treasure_item.dart';
 IndexTreasureItem _$IndexTreasureItemFromJson(Map<String, dynamic> json) =>
     $checkedCreate('IndexTreasureItem', json, ($checkedConvert) {
       final val = IndexTreasureItem(
-        actId: $checkedConvert('actId', (v) => (v as num).toInt()),
+        actId: $checkedConvert('actId', (v) => v as String),
+        title: $checkedConvert('title', (v) => v as String),
         imgStyleType: $checkedConvert(
           'imgStyleType',
           (v) => (v as num).toInt(),
@@ -28,5 +29,6 @@ Map<String, dynamic> _$IndexTreasureItemToJson(IndexTreasureItem instance) =>
     <String, dynamic>{
       'actId': instance.actId,
       'imgStyleType': instance.imgStyleType,
+      'title': instance.title,
       'treasureResp': instance.treasureResp,
     };

@@ -10,7 +10,6 @@ class UserInfo {
   final String phone;
   final String inviteCode;
   final int vipLevel;
-  final int lastLoginAt;
   final int? kycStatus;
   final int deliveryAddressId;
   final int selfExclusionExpireAt;
@@ -23,7 +22,6 @@ class UserInfo {
     required this.phone,
     required this.inviteCode,
     required this.vipLevel,
-    required this.lastLoginAt,
     this.kycStatus,
     required this.deliveryAddressId,
     required this.selfExclusionExpireAt,

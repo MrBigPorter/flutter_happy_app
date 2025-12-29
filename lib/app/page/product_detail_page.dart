@@ -120,6 +120,8 @@ class _ProductDetailPageState extends ConsumerState<ProductDetailPage>
     );
 
     final expandedHeight = 250.w;
+
+    final double bottom = MediaQuery.viewInsetsOf(context).bottom.clamp(0, 9999.0);
     
     return detail.when(
       data: (detail) {
@@ -221,8 +223,7 @@ class _ProductDetailPageState extends ConsumerState<ProductDetailPage>
           ),
           bottomNavigationBar: AnimatedPadding(
             padding: EdgeInsets.only(
-              // Adapt to keyboard height
-              bottom: MediaQuery.of(context).viewInsets.bottom,
+              bottom: bottom,
             ),
             curve: Curves.easeOut,
             duration: Duration(milliseconds: 200),
@@ -433,7 +434,6 @@ class _TopTreasureSectionState extends State<_TopTreasureSection>
       padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.w),
       child: Container(
         width: double.infinity,
-        height: 220.w,
         decoration: BoxDecoration(
           color: context.bgPrimary,
           border: Border.all(color: context.borderPrimary, width: 1),
@@ -472,7 +472,7 @@ class _TopTreasureSectionState extends State<_TopTreasureSection>
               ),
             ),
             Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.w),
+              padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 30.h),
               child: Column(
                 children: [
                   Text(
@@ -504,7 +504,7 @@ class _TopTreasureSectionState extends State<_TopTreasureSection>
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        '0',
+                        data.seqBuyQuantity.toString(),
                         style: TextStyle(
                           fontSize: context.text2xs,
                           color: context.textSecondary700,

@@ -13,8 +13,9 @@ import 'package:flutter_app/core/models/index.dart';
 /// 首页未来可期 (商品列表) Home Future (list of products)
 class HomeFuture extends StatelessWidget {
   final List<ProductListItem>? list;
+  final String title;
 
-  const HomeFuture({super.key, required this.list});
+  const HomeFuture({super.key, required this.list, required this.title});
 
   @override
   Widget build(BuildContext context) {
@@ -30,7 +31,7 @@ class HomeFuture extends StatelessWidget {
           child: Align(
             alignment: Alignment.centerLeft,
             child: Text(
-              'common.featured'.tr(),
+              title,
               style: TextStyle(
                 fontSize: 16.sp,
                 fontWeight: FontWeight.w800,

@@ -6,8 +6,9 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_app/core/models/index.dart';
 class Recommendation extends StatelessWidget {
   final List<ProductListItem>? list;
+  final String title;
 
-  const Recommendation({super.key, required this.list});
+  const Recommendation({super.key, required this.list, required this.title});
 
   @override
   Widget build(BuildContext context) {
@@ -25,7 +26,7 @@ class Recommendation extends StatelessWidget {
           Align(
             alignment: Alignment.centerLeft,
             child: Text(
-              'common.recommendations'.tr(),
+              title,
               style: TextStyle(
                 fontSize: 16.sp,
                 fontWeight: FontWeight.w800,

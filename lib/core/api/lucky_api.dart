@@ -35,12 +35,20 @@ class Api {
 
   /// 首页宝藏推荐  home treasures
   static Future<List<IndexTreasureItem>> indexTreasuresApi() async {
-    final res = await Http.get("/api/v1/home/sections", query: {'limit': 10});
+    try{
+      final res = await Http.get("/api/v1/home/sections", query: {'limit': 10});
 
-    return parseList<IndexTreasureItem>(
-      res,
-      (e) => IndexTreasureItem.fromJson(e),
-    );
+      final data = parseList<IndexTreasureItem>(
+        res,
+            (e) => IndexTreasureItem.fromJson(e),
+      );
+      print('index treasures api data: ${data.toString()}');
+
+      return data;
+    }catch (e){
+      print('index treasures api error: $e');
+      return [];
+    }
   }
 
   /// 首页广告 type 1: banner 2: 广告 home ad

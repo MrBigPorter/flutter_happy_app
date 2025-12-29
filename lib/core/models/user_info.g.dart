@@ -16,7 +16,6 @@ UserInfo _$UserInfoFromJson(Map<String, dynamic> json) =>
         phone: $checkedConvert('phone', (v) => v as String),
         inviteCode: $checkedConvert('inviteCode', (v) => v as String),
         vipLevel: $checkedConvert('vipLevel', (v) => (v as num).toInt()),
-        lastLoginAt: $checkedConvert('lastLoginAt', (v) => (v as num).toInt()),
         kycStatus: $checkedConvert('kycStatus', (v) => (v as num?)?.toInt()),
         deliveryAddressId: $checkedConvert(
           'deliveryAddressId',
@@ -38,7 +37,6 @@ Map<String, dynamic> _$UserInfoToJson(UserInfo instance) => <String, dynamic>{
   'phone': instance.phone,
   'inviteCode': instance.inviteCode,
   'vipLevel': instance.vipLevel,
-  'lastLoginAt': instance.lastLoginAt,
   'kycStatus': instance.kycStatus,
   'deliveryAddressId': instance.deliveryAddressId,
   'selfExclusionExpireAt': instance.selfExclusionExpireAt,

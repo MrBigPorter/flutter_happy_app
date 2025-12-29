@@ -1,13 +1,19 @@
-
 import 'package:json_annotation/json_annotation.dart';
-
 import '../json/json_num_converters.dart';
 
 part 'product_list_item.g.dart';
 
 @JsonSerializable(checked: true)
 class ProductListItem {
+  // --- 核心字段 (建议保持必填) ---
+  final String treasureId;
+  final String treasureName;
   final double buyQuantityRate;
+
+  @JsonKey(name: 'unitAmount', fromJson: JsonNumConverter.toDouble, toJson: JsonNumConverter.doubleToString)
+  final double unitAmount;
+
+  // --- 详情/可选字段 (建议全部设为可空，防止后端数据不完整导致崩溃) ---
   final String? costAmount;
   final int? imgStyleType;
   final int? lotteryMode;
@@ -17,47 +23,33 @@ class ProductListItem {
   final String? productName;
   final int? seqBuyQuantity;
   final int? seqShelvesQuantity;
-  final String treasureId;
-  final String treasureName;
-
-  @JsonKey(name: 'unitAmount', fromJson:JsonNumConverter.toDouble , toJson: JsonNumConverter.doubleToString)
-  final double unitAmount;
   final String? treasureCoverImg;
   final int? rate;
-
   final String? ruleContent;
-
   final String? desc;
-
   final String? maxUnitCoins;
-
   final String? maxUnitAmount;
-
   final int? maxPerBuyQuantity;
-
   final String? charityAmount;
-
   final String? treasureSeq;
-
   final int? cashState; // 1 普通, 2 现金
 
   ProductListItem({
-    required this.buyQuantityRate,
-    required this.costAmount,
-    required this.imgStyleType,
-    required this.lotteryMode,
-    required this.lotteryTime,
-    this.mainImageList,
-    required this.minBuyQuantity,
-    required this.productName,
-    required this.seqBuyQuantity,
-    required this.seqShelvesQuantity,
     required this.treasureId,
     required this.treasureName,
+    required this.buyQuantityRate,
     required this.unitAmount,
-    required this.treasureCoverImg,
+    this.costAmount,
+    this.imgStyleType,
+    this.lotteryMode,
+    this.lotteryTime,
+    this.mainImageList,
+    this.minBuyQuantity,
+    this.productName,
+    this.seqBuyQuantity,
+    this.seqShelvesQuantity,
+    this.treasureCoverImg,
     this.rate,
-
     this.ruleContent,
     this.desc,
     this.maxUnitCoins,
@@ -74,11 +66,10 @@ class ProductListItem {
   Map<String, dynamic> toJson() => _$ProductListItemToJson(this);
 
   @override
-  String toString() {
-    return toJson().toString();
-  }
+  String toString() => toJson().toString();
 }
 
+// 分页参数保持不变
 class ProductListParams {
   final int categoryId;
   final int page;
@@ -110,6 +101,11 @@ class GroupItem {
     required this.totalWinningTimes,
     required this.users,
   });
+
+  factory GroupItem.fromJson(Map<String, dynamic> json) =>
+      _$GroupItemFromJson(json);
+
+  Map<String, dynamic> toJson() => _$GroupItemToJson(this);
 }
 
 @JsonSerializable(checked: true)
@@ -117,18 +113,19 @@ class GroupUser {
   final String userId;
   final String username;
   final String avatar;
-  final DateTime createdAt;
-  final String leaderUserId;
-  final String leaderUsername;
 
+  final int? createdAt;
+
+  final String? leaderUserId; // 增加可空标识，防止非团员查询时报错
+  final String? leaderUsername;
 
   GroupUser({
     required this.userId,
     required this.username,
     required this.avatar,
-    required this.createdAt,
-    required this.leaderUserId,
-    required this.leaderUsername,
+    this.createdAt,
+    this.leaderUserId,
+    this.leaderUsername,
   });
 
   factory GroupUser.fromJson(Map<String, dynamic> json) =>
@@ -137,7 +134,5 @@ class GroupUser {
   Map<String, dynamic> toJson() => _$GroupUserToJson(this);
 
   @override
-  String toString() {
-    return toJson().toString();
-  }
+  String toString() => toJson().toString();
 }
