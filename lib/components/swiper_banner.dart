@@ -1,11 +1,9 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_app/common.dart';
 import 'package:flutter_app/components/skeleton.dart';
 import 'package:card_swiper/card_swiper.dart';
 import 'package:flutter_app/ui/img/app_image.dart';
 import 'package:flutter_app/utils/helper.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 
 
@@ -39,7 +37,7 @@ class SwiperBanner<T> extends StatelessWidget {
     required this.banners,
     this.bannerID,
     this.height = 356,
-    this.width = double.infinity,
+    this.width = 375,
     this.showIndicator = true,
     this.autoPlay = true,
     this.interval = const Duration(seconds: 3),
@@ -71,7 +69,7 @@ class SwiperBanner<T> extends StatelessWidget {
 
     return Container(
       clipBehavior: Clip.antiAlias,
-      width: double.infinity,
+      width:width,
       height: height,
       decoration: BoxDecoration(borderRadius: BorderRadius.circular(borderRadius)),
       //  给 Swiper 一个稳定的 key，避免被当成“新对象”

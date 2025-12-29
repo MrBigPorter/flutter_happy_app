@@ -7,6 +7,7 @@ import 'package:flutter_app/components/featured_skeleton.dart';
 import 'package:flutter_app/components/home_banner.dart';
 import 'package:flutter_app/components/lucky_custom_material_indicator.dart';
 import 'package:flutter_app/components/skeleton.dart';
+import 'package:flutter_app/components/swiper_banner.dart';
 import 'package:flutter_app/utils/helper.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -23,7 +24,6 @@ class HomePage extends ConsumerWidget {
     final treasures = ref.watch(homeTreasuresProvider);
     final ads = ref.watch(homeAdProvider);
     final statistics = ref.watch(homeStatisticsProvider);
-
 
     /// 下拉刷新 refresh handler
     Future<void> onRefresh() async {
@@ -46,8 +46,12 @@ class HomePage extends ConsumerWidget {
           slivers: [
             // 轮播图 Banner
             banners.when(
-              data: (list) =>
-                  SliverToBoxAdapter(child: HomeBanner(banners: list)),
+              data: (list) => SliverToBoxAdapter(
+                child: Padding(
+                  padding: EdgeInsets.all(16.w),
+                  child: SwiperBanner(banners: list),
+                ),
+              ),
               error: (_, __) => HomeBannerSkeleton(),
               loading: () => HomeBannerSkeleton(),
             ),
