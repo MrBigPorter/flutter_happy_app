@@ -189,7 +189,7 @@
   "got-it": "GOT IT !",
   "common.luck.number": "{{number}} Lucky Number, won {{time}} times",
   "common.reffle.end": "raffle end {{days}} days",
-  "common.days": "{{days}} days",
+  "common.days": "{days} days",
   "learning-center": "Learning Center",
   "video-explanation": "Video Explanation",
   "how-to-share-fa": "How to share Prizes to Facebook or copy links?",

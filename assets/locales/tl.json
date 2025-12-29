@@ -188,7 +188,7 @@
   "got-it": "NAKUHA KO",
   "common.luck.number": "{{number}} Masuwerteng Numero, nanalo ng {{time}} beses",
   "common.reffle.end": "Raffle magtatapos sa loob ng {{days}} araw",
-  "common.days": "{{days}} araw",
+  "common.days": "{days} araw",
   "learning-center": "Learning Center",
   "video-explanation": "Paliwanag sa Video",
   "how-to-share-fa": "Paano magbahagi ng mga produkto sa Facebook/kopya ng mga link?",

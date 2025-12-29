@@ -47,7 +47,7 @@ class _ProductPageState extends ConsumerState<ProductPage> with SingleTickerProv
   }
 
   void _initializeCategory(List<ProductCategoryItem> category){
-    if (category.isNotEmpty) {
+    if (category.isNotEmpty && mounted) {
       setState(() {
         _tabs = category;
         _listKeys
@@ -63,6 +63,8 @@ class _ProductPageState extends ConsumerState<ProductPage> with SingleTickerProv
   @override
   void dispose() {
     scrollProgress.dispose();
+    _tabController?.dispose();
+    _listKeys.clear();
     super.dispose();
   }
 

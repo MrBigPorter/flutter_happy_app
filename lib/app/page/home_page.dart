@@ -4,7 +4,6 @@ import 'package:flutter_app/app/page/home_components/home_statistics.dart';
 import 'package:flutter_app/app/page/home_components/home_treasures.dart';
 import 'package:flutter_app/components/base_scaffold.dart';
 import 'package:flutter_app/components/featured_skeleton.dart';
-import 'package:flutter_app/components/home_banner.dart';
 import 'package:flutter_app/components/lucky_custom_material_indicator.dart';
 import 'package:flutter_app/components/skeleton.dart';
 import 'package:flutter_app/components/swiper_banner.dart';
@@ -43,6 +42,7 @@ class HomePage extends ConsumerWidget {
         onRefresh: onRefresh,
         child: CustomScrollView(
           physics: platformScrollPhysics(),
+          cacheExtent: 1000,// 提前缓存区域，提升滚动流畅度 pre-cache area to improve scrolling smoothness
           slivers: [
             // 轮播图 Banner
             banners.when(
@@ -85,6 +85,12 @@ class HomePage extends ConsumerWidget {
 
             /// bottom padding 底部留白
             SliverToBoxAdapter(child: SizedBox(height: 20.h)),
+
+            const SliverFillRemaining(
+              hasScrollBody: false, // prevent scrolling 当内容不足时防止滚动,只是填充剩余空间
+              fillOverscroll: false,
+              child: SizedBox.shrink(),
+            )
           ],
         ),
       ),
