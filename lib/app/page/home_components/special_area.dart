@@ -152,7 +152,7 @@ class SpecialArea extends StatelessWidget {
                   SizedBox(height: 4.h), // 稍微增加一点间距
                   /// 进度条
                   BubbleProgress(
-                    value: item.buyQuantityRate ?? 0.0, // 空安全
+                    value: item.buyQuantityRate, // 空安全
                     showTipBg: true,
                   ),
                 ],

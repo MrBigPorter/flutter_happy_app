@@ -17,6 +17,7 @@ class BaseScaffold extends StatelessWidget {
   final Widget? bottomNavigationBar; // scaffold bottom navigation bar
   final bool? resizeToAvoidBottomInset; // whether resize to avoid bottom inset
   final double? elevation; // app bar elevation
+  final Color? backgroundColor;  // scaffold background color
 
   const BaseScaffold({
     super.key,
@@ -29,11 +30,13 @@ class BaseScaffold extends StatelessWidget {
     this.bottomNavigationBar,
     this.resizeToAvoidBottomInset,
     this.elevation,
+    this.backgroundColor,
   });
 
   @override
   Widget build(BuildContext context) {
     final scaffold =  Scaffold(
+      backgroundColor:backgroundColor ,
       appBar: showAppBar ? LuckyAppBar(
               title: title,
               actions: actions,
