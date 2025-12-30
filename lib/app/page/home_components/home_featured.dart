@@ -24,14 +24,12 @@ class HomeFuture extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // 1. 安全检查
     if (list == null || list!.isEmpty) {
       return const SizedBox.shrink();
     }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Title
         Padding(
           padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
           child: Text(
@@ -43,16 +41,13 @@ class HomeFuture extends StatelessWidget {
             ),
           ),
         ),
-
-        // 2. 性能优化：移除 shrinkWrap ListView，改用 Column 生成
-        // 因为外层通常已经是 ScrollView，这样做性能最好且无冲突
         Padding(
           padding: EdgeInsets.symmetric(horizontal: 16.w),
           child: Column(
             children: List.generate(list!.length, (index) {
               final item = list![index];
               return Padding(
-                padding: EdgeInsets.only(bottom: 8.h), // 替代 separatorBuilder
+                padding: EdgeInsets.only(bottom: 8.h),
                 child: VerticalAnimatedItem(
                   uniqueKey: item.treasureId,
                   index: index,
@@ -67,7 +62,6 @@ class HomeFuture extends StatelessWidget {
   }
 }
 
-/// 垂直动画包装器 (复用之前的旗舰级逻辑)
 class VerticalAnimatedItem extends StatefulWidget {
   final Widget child;
   final String uniqueKey;
@@ -96,8 +90,6 @@ class _VerticalAnimatedItemState extends State<VerticalAnimatedItem>
       vsync: this,
       duration: const Duration(milliseconds: 400),
     );
-
-    // Index 0 同步启动
     if (widget.index == 0) {
       _startAnimation(isFast: false, forceSync: true);
     }
@@ -106,11 +98,9 @@ class _VerticalAnimatedItemState extends State<VerticalAnimatedItem>
   void _startAnimation({required bool isFast, bool forceSync = false}) {
     if (_hasStarted) return;
     _hasStarted = true;
-
     if (isFast) {
       _controller.value = 1.0;
     } else {
-      // 瀑布流：每项延迟 50ms
       final delayMs = 50 * (widget.index % 5);
       if (delayMs == 0 || forceSync) {
         _controller.forward();
@@ -139,7 +129,7 @@ class _VerticalAnimatedItemState extends State<VerticalAnimatedItem>
       onVisibilityChanged: (info) {
         if (_hasStarted) return;
         if (info.visibleFraction > 0.01) {
-          bool isTopItem = widget.index < 3; // 大卡片一屏也就2-3个
+          bool isTopItem = widget.index < 3;
           bool isFast = !isTopItem && (info.visibleFraction > 0.6 || info.visibleFraction == 1.0);
           _startAnimation(isFast: isFast);
         }
@@ -147,27 +137,23 @@ class _VerticalAnimatedItemState extends State<VerticalAnimatedItem>
       child: widget.child
           .animate(controller: _controller, autoPlay: false)
           .fadeIn(duration: 400.ms, curve: Curves.easeOut)
-          .slideY(begin: 0.1, end: 0, duration: 400.ms, curve: Curves.easeOutQuart), // 上浮效果
+          .slideY(begin: 0.1, end: 0, duration: 400.ms, curve: Curves.easeOutQuart),
     );
   }
 }
 
-/// 商品卡片
 class ProductCard extends StatelessWidget {
   final ProductListItem item;
   const ProductCard({super.key, required this.item});
 
   @override
   Widget build(BuildContext context) {
-    // 3. 交互优化：整个卡片可点击
     return GestureDetector(
       onTap: () => appRouter.push('/product/${item.treasureId}'),
       child: Container(
-        // 给一个背景色防止图片加载前透视
         decoration: BoxDecoration(
           color: context.bgSecondary,
           borderRadius: BorderRadius.circular(8.r),
-          // 可选：加个轻微的阴影提升立体感
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.05),
@@ -180,21 +166,33 @@ class ProductCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(8.r),
           child: Stack(
             children: [
-              /// Image Layer
               CachedNetworkImage(
                 imageUrl: item.treasureCoverImg!,
                 width: 343.w,
-                height: 288.w, // 这里的宽高比需要根据设计稿确认
+                height: 288.w,
                 fit: BoxFit.cover,
-                // 4. 内存优化：指定内存缓存大小，防止大图撑爆内存
-                memCacheWidth: (343.w * 2).toInt(), // 2倍像素密度
-                placeholder: (_, __) =>
-                    Skeleton.react(width: 343.w, height: 288.w),
-                errorWidget: (_, __, ___) =>
-                    Skeleton.react(width: 343.w, height: 288.w),
+                memCacheWidth: (343.w * 2).toInt(),
+                placeholder: (_, __) => Skeleton.react(width: 343.w, height: 288.w),
+                errorWidget: (_, __, ___) => Skeleton.react(width: 343.w, height: 288.w),
               ),
 
-              /// Info Layer
+              /// ✨ [新增] 左上角业务标签
+              Positioned(
+                top: 10.h,
+                left: 10.w,
+                child: Row(
+                  children: [
+                    if (item.groupSize != null && item.groupSize! > 1)
+                      _buildTag(context, '${item.groupSize}P Group', Colors.orange),
+                    if (item.shippingType == 2)
+                      Padding(
+                        padding: EdgeInsets.only(left: 4.w),
+                        child: _buildTag(context, 'E-Voucher', Colors.blue),
+                      ),
+                  ],
+                ),
+              ),
+
               Positioned(
                 bottom: 0,
                 left: 0,
@@ -207,9 +205,22 @@ class ProductCard extends StatelessWidget {
       ),
     );
   }
+
+  Widget _buildTag(BuildContext context, String text, Color color) {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.85),
+        borderRadius: BorderRadius.circular(4.r),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(color: Colors.white, fontSize: 10.sp, fontWeight: FontWeight.bold),
+      ),
+    );
+  }
 }
 
-/// 商品信息卡片 (带毛玻璃效果)
 class ProductInfoCard extends StatelessWidget {
   final ProductListItem item;
   const ProductInfoCard({super.key, required this.item});
@@ -218,26 +229,23 @@ class ProductInfoCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: EdgeInsets.all(6.w),
-      // 5. 视觉优化：毛玻璃效果 (Glassmorphism)
       child: ClipRRect(
         borderRadius: BorderRadius.circular(context.radiusXs),
         child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10), // 高斯模糊
+          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
           child: Container(
             padding: EdgeInsets.all(8.w),
             decoration: BoxDecoration(
-              // 颜色调淡一点，配合模糊效果更通透
                 color: Colors.black.withValues(alpha: 0.6),
                 borderRadius: BorderRadius.circular(context.radiusXs),
                 border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.1), // 1像素的微光边框
+                  color: Colors.white.withValues(alpha: 0.1),
                   width: 0.5,
                 )
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                /// Title
                 Text(
                   item.treasureName,
                   maxLines: 1,
@@ -247,17 +255,11 @@ class ProductInfoCard extends StatelessWidget {
                       fontWeight: FontWeight.w800,
                       color: Colors.white,
                       shadows: [
-                        Shadow(
-                          offset: Offset(0, 1),
-                          blurRadius: 2,
-                          color: Colors.black.withValues(alpha: 0.5),
-                        )
+                        Shadow(offset: Offset(0, 1), blurRadius: 2, color: Colors.black.withValues(alpha: 0.5))
                       ]
                   ),
                 ),
                 SizedBox(height: 15.h),
-
-                /// Progress
                 BubbleProgress(
                   value: item.buyQuantityRate,
                   showTipBg: false,
@@ -265,17 +267,11 @@ class ProductInfoCard extends StatelessWidget {
                     final txt = FormatHelper.parseRate(v);
                     return Text(
                       'common.sold.upperCase'.tr(namedArgs: {'number': '$txt%'}),
-                      style: TextStyle(
-                        fontSize: context.text2xs,
-                        fontWeight: FontWeight.w600,
-                        color: context.utilityBrand500,
-                      ),
+                      style: TextStyle(fontSize: context.text2xs, fontWeight: FontWeight.w600, color: context.utilityBrand500),
                     );
                   },
                 ),
                 SizedBox(height: 10.h),
-
-                /// Bottom Area
                 ProductInfoCardBottom(item: item)
               ],
             ),
@@ -286,72 +282,90 @@ class ProductInfoCard extends StatelessWidget {
   }
 }
 
-class ProductInfoCardBottom extends StatelessWidget {
+class ProductInfoCardBottom extends StatefulWidget {
   final ProductListItem item;
   const ProductInfoCardBottom({super.key, required this.item});
 
   @override
+  State<ProductInfoCardBottom> createState() => _ProductInfoCardBottomState();
+}
+
+class _ProductInfoCardBottomState extends State<ProductInfoCardBottom> {
+  @override
   Widget build(BuildContext context) {
+    // 每次 build 重新获取当前时间，用于计算业务状态
+    final now = DateTime.now().millisecondsSinceEpoch;
+
+    final salesStart = widget.item.salesStartAt ?? 0;
+    final salesEnd = widget.item.salesEndAt ?? 0;
+
+    // 状态判定逻辑
+    final bool isSoldOut = widget.item.buyQuantityRate >= 100;
+    final bool isWaitingSale = salesStart > now;
+    final bool isExpired = salesEnd != 0 && now >= salesEnd;
+
     return Row(
       children: [
-        // Price
+        // --- 价格区 ---
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               'common.ticket.price'.tr(),
-              style: TextStyle(
-                fontSize: context.textXs,
-                fontWeight: FontWeight.w400,
-                color: Colors.white.withValues(alpha: 0.8),
-              ),
+              style: TextStyle(fontSize: context.textXs, color: Colors.white.withOpacity(0.8)),
             ),
             Text(
-              '₱${item.costAmount}', // 建议使用 FormatHelper.formatCurrency
-              style: TextStyle(
-                fontSize: context.textXs,
-                fontWeight: FontWeight.w800,
-                color: Colors.white,
-              ),
+              '₱${widget.item.costAmount}',
+              style: TextStyle(fontSize: context.textXs, fontWeight: FontWeight.bold, color: Colors.white),
             ),
           ],
         ),
         const Spacer(),
 
-        // Countdown / Status
-        // 6. 国际化优化：修复硬编码字符串
-        RenderCountdown(
-          lotteryTime: item.lotteryTime,
-          renderSoldOut: () => _buildStatusText(
+        // --- 核心倒计时/End 逻辑区 ---
+        if (isSoldOut)
+          _buildStatusText(context, 'common.status'.tr(), 'common.sold_out'.tr())
+        else if (isExpired)
+          _buildStatusText(context, 'common.status'.tr(), 'common.activity_ended'.tr(), isError: true)
+        else
+          RenderCountdown(
+            // 目标时间：预售中取开始时间，否则取结束时间
+            lotteryTime: isWaitingSale ? salesStart : salesEnd,
+
+            // ✨ 重点：倒计时归零时触发刷新，状态机重新计算
+            onFinished: () {
+              if (mounted) setState(() {});
+            },
+
+            renderCountdown: (time) => _buildStatusText(
               context,
-              'common.draw_once'.tr(),
-              'common.sold'.tr(),
-              isError: false
+              isWaitingSale ? 'common.starts_in'.tr() : 'common.countdown'.tr(),
+              time,
+            ),
+            renderEnd: (days) => _buildStatusText(
+              context,
+              isWaitingSale ? 'common.pre_sale'.tr() : 'common.countdown'.tr(),
+              'common.days_left'.tr(namedArgs: {'days': days}),
+            ),
+            renderSoldOut: () => _buildStatusText(
+              context,
+              'common.status'.tr(),
+              'common.activity_ended'.tr(),
+            ),
           ),
-          renderEnd: (days) => _buildStatusText(
-            context,
-            'common.refile_end'.tr(),
-            'common.days'.tr(namedArgs: {'days': days.toString()}),
-            isError: true,
-          ),
-          renderCountdown: (time) => _buildStatusText(
-            context,
-            'common.countdown'.tr(),
-            time,
-            isError: true,
-          ),
-        ),
         const Spacer(),
 
-        // Button
-        // 因为外层 GestureDetector 已经处理了点击，这里的按钮只做视觉展示
-        // 或者保留点击，视交互需求而定
+        // --- 按钮区 ---
         IgnorePointer(
-          ignoring: true, // 让点击穿透到整个卡片
+          ignoring: true,
           child: Button(
-            height: 36.w, // 稍微调小一点，显得精致
-            child: Text('common.enter.now'.tr()),
-            onPressed: () {},
+            height: 36.w,
+            backgroundColor: (isWaitingSale || isSoldOut || isExpired) ? context.bgTertiary : null,
+            child: Text(
+              isWaitingSale
+                  ? 'common.pre_sale'.tr()
+                  : (isSoldOut ? 'common.sold_out'.tr() : 'common.join_group'.tr()),
+            ),
           ),
         ),
       ],
@@ -364,17 +378,13 @@ class ProductInfoCardBottom extends StatelessWidget {
       children: [
         Text(
           label,
-          style: TextStyle(
-            fontSize: context.textXs,
-            fontWeight: FontWeight.w400,
-            color: Colors.white.withValues(alpha: 0.8),
-          ),
+          style: TextStyle(fontSize: 10.sp, color: Colors.white.withOpacity(0.7)),
         ),
         Text(
           value,
           style: TextStyle(
-            fontSize: context.textXs,
-            fontWeight: FontWeight.w800,
+            fontSize: 11.sp,
+            fontWeight: FontWeight.bold,
             color: isError ? context.textErrorPrimary600 : Colors.white,
           ),
         ),

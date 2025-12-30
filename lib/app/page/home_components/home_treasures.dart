@@ -22,11 +22,11 @@ class HomeTreasures extends StatelessWidget {
           final item = treasures![index];
           // Dart 3 Switch 表达式：清晰、简洁
           return switch (item.imgStyleType) {
-            // 1 => Ending(list: item.treasureResp, title: item.title),
+             1 => Ending(list: item.treasureResp, title: item.title),
             2 => SpecialArea(list: item.treasureResp, title: item.title),
             3 => HomeFuture(list: item.treasureResp, title: item.title),
             4 => Recommendation(list: item.treasureResp, title: item.title),
-            1 => GroupBuyingSection(list: item.treasureResp, title: item.title),
+            //1 => GroupBuyingSection(list: item.treasureResp, title: item.title),
             _ => const SizedBox.shrink(),
           };
         }, childCount: treasures?.length ?? 0),

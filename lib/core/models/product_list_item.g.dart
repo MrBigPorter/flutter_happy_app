@@ -20,6 +20,24 @@ ProductListItem _$ProductListItemFromJson(
       'unitAmount',
       (v) => JsonNumConverter.toDouble(v),
     ),
+    categories: $checkedConvert(
+      'categories',
+      (v) => (v as List<dynamic>?)
+          ?.map((e) => CategoryItem.fromJson(e as Map<String, dynamic>))
+          .toList(),
+    ),
+    shippingType: $checkedConvert('shippingType', (v) => (v as num?)?.toInt()),
+    groupSize: $checkedConvert('groupSize', (v) => (v as num?)?.toInt()),
+    groupTimeLimit: $checkedConvert(
+      'groupTimeLimit',
+      (v) => (v as num?)?.toInt(),
+    ),
+    salesStartAt: $checkedConvert('salesStartAt', (v) => (v as num?)?.toInt()),
+    salesEndAt: $checkedConvert('salesEndAt', (v) => (v as num?)?.toInt()),
+    bonusConfig: $checkedConvert(
+      'bonusConfig',
+      (v) => v as Map<String, dynamic>?,
+    ),
     costAmount: $checkedConvert('costAmount', (v) => v as String?),
     imgStyleType: $checkedConvert('imgStyleType', (v) => (v as num?)?.toInt()),
     lotteryMode: $checkedConvert('lotteryMode', (v) => (v as num?)?.toInt()),
@@ -42,7 +60,6 @@ ProductListItem _$ProductListItemFromJson(
       (v) => (v as num?)?.toInt(),
     ),
     treasureCoverImg: $checkedConvert('treasureCoverImg', (v) => v as String?),
-    rate: $checkedConvert('rate', (v) => (v as num?)?.toInt()),
     ruleContent: $checkedConvert('ruleContent', (v) => v as String?),
     desc: $checkedConvert('desc', (v) => v as String?),
     maxUnitCoins: $checkedConvert('maxUnitCoins', (v) => v as String?),
@@ -64,6 +81,13 @@ Map<String, dynamic> _$ProductListItemToJson(ProductListItem instance) =>
       'treasureName': instance.treasureName,
       'buyQuantityRate': instance.buyQuantityRate,
       'unitAmount': JsonNumConverter.doubleToString(instance.unitAmount),
+      'shippingType': instance.shippingType,
+      'groupSize': instance.groupSize,
+      'groupTimeLimit': instance.groupTimeLimit,
+      'salesStartAt': instance.salesStartAt,
+      'salesEndAt': instance.salesEndAt,
+      'categories': instance.categories,
+      'bonusConfig': instance.bonusConfig,
       'costAmount': instance.costAmount,
       'imgStyleType': instance.imgStyleType,
       'lotteryMode': instance.lotteryMode,
@@ -74,7 +98,6 @@ Map<String, dynamic> _$ProductListItemToJson(ProductListItem instance) =>
       'seqBuyQuantity': instance.seqBuyQuantity,
       'seqShelvesQuantity': instance.seqShelvesQuantity,
       'treasureCoverImg': instance.treasureCoverImg,
-      'rate': instance.rate,
       'ruleContent': instance.ruleContent,
       'desc': instance.desc,
       'maxUnitCoins': instance.maxUnitCoins,
@@ -84,6 +107,18 @@ Map<String, dynamic> _$ProductListItemToJson(ProductListItem instance) =>
       'treasureSeq': instance.treasureSeq,
       'cashState': instance.cashState,
     };
+
+CategoryItem _$CategoryItemFromJson(Map<String, dynamic> json) =>
+    $checkedCreate('CategoryItem', json, ($checkedConvert) {
+      final val = CategoryItem(
+        id: $checkedConvert('id', (v) => v as String),
+        name: $checkedConvert('name', (v) => v as String),
+      );
+      return val;
+    });
+
+Map<String, dynamic> _$CategoryItemToJson(CategoryItem instance) =>
+    <String, dynamic>{'id': instance.id, 'name': instance.name};
 
 GroupItem _$GroupItemFromJson(Map<String, dynamic> json) =>
     $checkedCreate('GroupItem', json, ($checkedConvert) {

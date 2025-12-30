@@ -3,17 +3,32 @@ import '../json/json_num_converters.dart';
 
 part 'product_list_item.g.dart';
 
+
 @JsonSerializable(checked: true)
 class ProductListItem {
-  // --- 核心字段 (建议保持必填) ---
+  // --- 核心字段 ---
   final String treasureId;
   final String treasureName;
+
+  // ✨ 后端返回的是 0~100 的保留两位小数的 double
   final double buyQuantityRate;
 
   @JsonKey(name: 'unitAmount', fromJson: JsonNumConverter.toDouble, toJson: JsonNumConverter.doubleToString)
   final double unitAmount;
 
-  // --- 详情/可选字段 (建议全部设为可空，防止后端数据不完整导致崩溃) ---
+  // --- 业务字段 ---
+  final int? shippingType;    // 1-实物, 2-电子券
+  final int? groupSize;       // 团购人数
+  final int? groupTimeLimit;
+  final int? salesStartAt;    // 时间戳 (ms)
+  final int? salesEndAt;      // 时间戳 (ms)
+
+  // ✨ 列表接口返回的拍平后的分类信息
+  final List<CategoryItem>? categories;
+
+  final Map<String, dynamic>? bonusConfig;
+
+  // --- 详情/可选字段 ---
   final String? costAmount;
   final int? imgStyleType;
   final int? lotteryMode;
@@ -24,7 +39,6 @@ class ProductListItem {
   final int? seqBuyQuantity;
   final int? seqShelvesQuantity;
   final String? treasureCoverImg;
-  final int? rate;
   final String? ruleContent;
   final String? desc;
   final String? maxUnitCoins;
@@ -32,13 +46,20 @@ class ProductListItem {
   final int? maxPerBuyQuantity;
   final String? charityAmount;
   final String? treasureSeq;
-  final int? cashState; // 1 普通, 2 现金
+  final int? cashState;
 
   ProductListItem({
     required this.treasureId,
     required this.treasureName,
     required this.buyQuantityRate,
     required this.unitAmount,
+    this.categories,
+    this.shippingType,
+    this.groupSize,
+    this.groupTimeLimit,
+    this.salesStartAt,
+    this.salesEndAt,
+    this.bonusConfig,
     this.costAmount,
     this.imgStyleType,
     this.lotteryMode,
@@ -49,7 +70,6 @@ class ProductListItem {
     this.seqBuyQuantity,
     this.seqShelvesQuantity,
     this.treasureCoverImg,
-    this.rate,
     this.ruleContent,
     this.desc,
     this.maxUnitCoins,
@@ -64,11 +84,47 @@ class ProductListItem {
       _$ProductListItemFromJson(json);
 
   Map<String, dynamic> toJson() => _$ProductListItemToJson(this);
-
-  @override
-  String toString() => toJson().toString();
 }
 
+// ✨ 新增：分类简单模型
+@JsonSerializable(checked: true)
+class CategoryItem {
+  final String id;
+  final String name;
+
+  CategoryItem({required this.id, required this.name});
+
+  factory CategoryItem.fromJson(Map<String, dynamic> json) =>
+      _$CategoryItemFromJson(json);
+
+  Map<String, dynamic> toJson() => _$CategoryItemToJson(this);
+}
+
+// --- 分页包装类 (建议加上，方便接口解析) ---
+class TreasureListResponse {
+  final int page;
+  final int pageSize;
+  final int total;
+  final List<ProductListItem> list;
+
+  TreasureListResponse({
+    required this.page,
+    required this.pageSize,
+    required this.total,
+    required this.list,
+  });
+
+  factory TreasureListResponse.fromJson(Map<String, dynamic> json) {
+    return TreasureListResponse(
+      page: json['page'] as int,
+      pageSize: json['pageSize'] as int,
+      total: json['total'] as int,
+      list: (json['list'] as List<dynamic>)
+          .map((e) => ProductListItem.fromJson(e as Map<String, dynamic>))
+          .toList(),
+    );
+  }
+}
 // 分页参数保持不变
 class ProductListParams {
   final int categoryId;

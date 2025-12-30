@@ -9,13 +9,9 @@ import 'package:flutter_app/ui/img/app_image.dart';
 import 'package:flutter_app/utils/format_helper.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_app/core/models/index.dart';
-class ProductItem extends StatelessWidget {
-  // 商品数据
-  // Product data
-  final ProductListItem data;
 
-  // 卡片宽度
-  // Card width
+class ProductItem extends StatelessWidget {
+  final ProductListItem data;
   final int? cardWidth;
   final int? imgWidth;
   final int? imgHeight;
@@ -30,308 +26,190 @@ class ProductItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // 获取购买比率
-    // Get purchase rate
-    final double rate = FormatHelper.parseRate(data.buyQuantityRate);
+    // 1. 时间逻辑处理
+    final int now = DateTime.now().millisecondsSinceEpoch;
+    final int salesStart = data.salesStartAt ?? 0;
+    final int salesEnd = data.salesEndAt ?? 0;
 
-    /// 倒计时 Countdown
+    final bool isWaitingSale = salesStart > now;
+    final bool isExpired = salesEnd != 0 && now >= salesEnd;
+    final bool isSoldOut = data.buyQuantityRate >= 100;
+
+    // 获取购买比率
+    final double rate = data.buyQuantityRate.toDouble();
 
     return Container(
       key: ValueKey(data.treasureId),
-      child: SizedBox(
-        width: cardWidth!.w,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Stack(
-              clipBehavior: Clip.none,
+      width: cardWidth!.w,
+      decoration: BoxDecoration(
+        color: context.bgPrimary,
+        borderRadius: BorderRadius.circular(8.w),
+        // 添加轻微阴影提升质感
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // --- 图片区域 ---
+          Stack(
+            clipBehavior: Clip.none,
+            children: [
+              AspectRatio(
+                aspectRatio: 1,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(8.w)),
+                  child: AppCachedImage(
+                    data.treasureCoverImg!,
+                    width: imgWidth!.w,
+                    height: imgHeight!.w,
+                    fit: BoxFit.cover,
+                  ),
+                ),
+              ),
+
+              // 业务标签 (如 5P Group)
+              if (data.groupSize != null && data.groupSize! > 1)
+                Positioned(
+                  top: 8.w,
+                  left: 8.w,
+                  child: _buildTag('${data.groupSize}P Group', Colors.orange),
+                ),
+            ],
+          ),
+
+          // --- 信息区域 ---
+          Padding(
+            padding: EdgeInsets.all(8.w),
+            child: Column(
               children: [
-                // 商品图片
-                // Product image
-                AspectRatio(
-                  aspectRatio: 1,
-                  child: ClipRRect(
-                    clipBehavior: Clip.hardEdge,
-                    borderRadius: BorderRadius.vertical(
-                      top: Radius.circular(8.w),
-                    ),
-                    child:AppCachedImage(
-                        data.treasureCoverImg!,
-                        width: imgWidth!.w,
-                        height: imgHeight!.w,
-                        fit: BoxFit.cover,
+                // 标题
+                SizedBox(
+                  height: 36.w,
+                  child: Text(
+                    data.treasureName,
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 13.w,
+                      fontWeight: FontWeight.w700,
+                      color: context.textPrimary900,
+                      height: 1.2,
                     ),
                   ),
                 ),
+                SizedBox(height: 8.w),
 
-                /// 倒计时 Countdown
-                Positioned(
-                  top: -10.w,
-                  left: 0,
-                  right: 0,
-                  child: Center(
-                    child: RenderCountdown(
-                      lotteryTime: data.lotteryTime,
-                      renderSoldOut: () => SizedBox.shrink(),
-                      renderEnd: (days) => Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Center(
-                            child: Container(
-                              padding: EdgeInsets.symmetric(
-                                horizontal: 15.w,
-                                vertical: 2.w,
-                              ),
-                              height: 22.w,
-                              decoration: BoxDecoration(
-                                color: Colors.black,
-                                borderRadius: BorderRadius.circular(
-                                  context.radius2xl,
-                                ),
-                              ),
-                              child: Row(
-                                children: [
-                                  Text(
-                                    'reffle end ',
-                                    style: TextStyle(
-                                      fontSize: 12.w,
-                                      fontWeight: FontWeight.w600,
-                                      color: Colors.white,
-                                      height: 1,
-                                    ),
-                                  ),
-                                  Text(
-                                    '$days days',
-                                    style: TextStyle(
-                                      fontSize: 12.w,
-                                      fontWeight: FontWeight.w600,
-                                      color: context.textErrorPrimary600,
-                                      height: 1,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      renderCountdown: (timeDilation) => Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: 15.w,
-                              vertical: 2.w,
-                            ),
-                            alignment: Alignment.center,
-                            height: 22.w,
-                            decoration: BoxDecoration(
-                              color: context.utilityError500,
-                              borderRadius: BorderRadius.circular(
-                                context.radius2xl,
-                              ),
-                            ),
-                            child: Text(
-                              timeDilation,
-                              style: TextStyle(
-                                fontSize: 12.w,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.white,
-                                height: 1,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+                // 价格
+                Text(
+                  FormatHelper.formatCurrency(data.unitAmount, symbol: "₱"),
+                  style: TextStyle(
+                    fontSize: 16.w,
+                    fontWeight: FontWeight.w900,
+                    color: context.utilityBrand500,
+                  ),
+                ),
+                SizedBox(height: 8.w),
+
+                // 进度条
+                BubbleProgress(
+                  value: rate,
+                  showTip: false,
+                  color: context.utilityBrand500,
+                  trackHeight: 4,
+                  // 进度条描述
+                ),
+                Padding(
+                  padding: EdgeInsets.symmetric(vertical: 4.w),
+                  child: Text(
+                    'common.sold.upperCase'.tr(namedArgs: {'number': rate.toStringAsFixed(0)}),
+                    style: TextStyle(fontSize: 10.w, color: context.textPrimary900),
+                  ),
+                ),
+
+                // --- 倒计时逻辑区 ---
+                _buildCountdownSection(context, isWaitingSale, isSoldOut, isExpired, salesStart, salesEnd),
+
+                SizedBox(height: 10.w),
+
+                // 按钮
+                Button(
+                  height: 36.w,
+                  backgroundColor: (isWaitingSale || isSoldOut || isExpired) ? context.bgTertiary : null,
+                  onPressed: () {
+                    appRouter.pushNamed('productDetail', pathParameters: {'id': data.treasureId});
+                  },
+                  child: Text(
+                    isWaitingSale ? 'common.pre_sale'.tr() : 'common.enter.now'.tr(),
+                    style: TextStyle(fontSize: 12.w, fontWeight: FontWeight.bold),
                   ),
                 ),
               ],
             ),
-            // 商品信息容器
-            // Product info container
-            Flexible(
-              fit: FlexFit.loose,
-              child: Container(
-                padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 12.w),
-                decoration: BoxDecoration(
-                  color: context.bgPrimary,
-                  borderRadius: BorderRadius.vertical(
-                    bottom: Radius.circular(8.w),
-                  ),
-                ),
-                child: Column(
-                  children: [
-                    // 商品标题
-                    // Product title
-                    Container(
-                      alignment: Alignment.center,
-                      height: 40.w,
-                      child: Text(
-                        data.treasureName,
-                        textAlign: TextAlign.center,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 14.w,
-                          height: context.leadingSm,
-                          fontWeight: FontWeight.w800,
-                          color: context.textPrimary900,
-                        ),
-                      ),
-                    ),
-                    SizedBox(height: 8.w),
+          ),
+        ],
+      ),
+    );
+  }
 
-                    // 价格标签
-                    // Price tag
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          height: 22.w,
-                          padding: EdgeInsets.symmetric(horizontal: 8.w),
-                          alignment: Alignment.center,
-                          decoration: BoxDecoration(
-                            color: context.utilityBrand500,
-                            borderRadius: BorderRadius.circular(4.w),
-                          ),
-                          child: Text(
-                            FormatHelper.formatCurrency(
-                              data.unitAmount,
-                              symbol: "₱ ",
-                            ),
-                            style: TextStyle(
-                              fontSize:10.w,
-                              fontWeight: FontWeight.w800,
-                              height: 1.4,
-                              color: context.textPrimaryOnBrand,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: 6.w),
+  // 构建状态文字/倒计时
+  Widget _buildCountdownSection(BuildContext context, bool isWaitingSale, bool isSoldOut, bool isExpired, int start, int end) {
+    if (isSoldOut) return _statusText('common.status'.tr(), 'common.sold_out'.tr());
+    if (isExpired) return _statusText('common.status'.tr(), 'common.activity_ended'.tr(), isError: true);
 
-                    // 销售进度条
-                    // Sales progress bar
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        /// 进度条 Progress bar
-                        BubbleProgress(
-                          value: rate,
-                          showTip: true,
-                          showTipBg: false,
-                          color: context.utilityBrand500,
-                          trackHeight: 4,
-                          thumbSize: 8,
-                          tipBuilder: (v) {
-                            final txt = v
-                                .toStringAsFixed(2)
-                                .replaceFirst(RegExp(r'\.00$'), '');
-                            return RichText(
-                              text: TextSpan(
-                                children: [
-                                  TextSpan(
-                                    text: "$txt%",
-                                    style: TextStyle(
-                                      fontSize: 10.w,
-                                      fontWeight: FontWeight.w600,
-                                      color: context.textPrimary900,
-                                      height: 1.4,
-                                    ),
-                                  ),
-                                  TextSpan(
-                                    text: " Sold",
-                                    style: TextStyle(
-                                      fontSize: 10.w,
-                                      fontWeight: FontWeight.w600,
-                                      color: context.textPrimary900,
-                                      height: 1.4,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            );
-                          },
-                        ),
+    return RenderCountdown(
+      // 动态目标：预售期看开始时间，热卖期看结束时间
+      lotteryTime: isWaitingSale ? start : end,
+      renderCountdown: (time) => _statusText(
+        isWaitingSale ? 'common.starts_in'.tr() : 'common.countdown'.tr(),
+        time,
+        isError: true,
+      ),
+      renderEnd: (days) => _statusText(
+        isWaitingSale ? 'common.starts_in'.tr() : 'common.countdown'.tr(),
+        'common.days_left'.tr(namedArgs: {'days': days}),
+        isError: true,
+      ),
+      renderSoldOut: () => _statusText('common.status'.tr(), 'common.activity_ended'.tr()),
+    );
+  }
 
-                        ///  倒计时 Countdown
-                        RenderCountdown(
-                          lotteryTime: data.lotteryTime,
-                          renderSoldOut: () => Text(
-                            'Draw once sold out',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              fontSize: 10.w,
-                              fontWeight: FontWeight.w600,
-                              color: context.textPrimary900,
-                            ),
-                          ),
-                          renderEnd: (days) => Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(
-                                'reffle end',
-                                style: TextStyle(
-                                  fontSize: 10.w,
-                                  fontWeight: FontWeight.w600,
-                                  color: context.textPrimary900,
-                                ),
-                              ),
-                              SizedBox(width: 4.w),
-                              Text(
-                                '$days days',
-                                style: TextStyle(
-                                  fontSize: 10.w,
-                                  fontWeight: FontWeight.w800,
-                                  color: context.textErrorPrimary600,
-                                ),
-                              ),
-                            ],
-                          ),
-                          renderCountdown: (time) => Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(
-                                'Countdown',
-                                style: TextStyle(
-                                  fontSize: 10.w,
-                                  fontWeight: FontWeight.w600,
-                                  color: context.textPrimary900,
-                                ),
-                              ),
-                              SizedBox(width: 4.w),
-                              Text(
-                                time,
-                                style: TextStyle(
-                                  fontSize: 10.w,
-                                  fontWeight: FontWeight.w800,
-                                  color: context.textErrorPrimary600,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-
-                        // 底部间距 Bottom spacing
-                        SizedBox(height: 8.w),
-                        Button(
-                          height: 46.w,
-                          child: Text('common.enter.now'.tr()),
-                          onPressed: () {
-                            appRouter.pushNamed('productDetail', pathParameters: {'id': data.treasureId});
-                          },
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
+  Widget _statusText(String label, String value, {bool isError = false}) {
+    return Column(
+      children: [
+        Text(
+          label,
+          style: TextStyle(fontSize: 10.w, color: Colors.grey[600]),
         ),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 10.w,
+            fontWeight: FontWeight.w800,
+            color: isError ? Colors.redAccent : Colors.black,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTag(String text, Color color) {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.w),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.9),
+        borderRadius: BorderRadius.circular(4.w),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(color: Colors.white, fontSize: 9.w, fontWeight: FontWeight.bold),
       ),
     );
   }

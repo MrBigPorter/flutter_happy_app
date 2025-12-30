@@ -42,11 +42,9 @@ class Api {
         res,
             (e) => IndexTreasureItem.fromJson(e),
       );
-      print('index treasures api data: ${data.toString()}');
 
       return data;
     }catch (e){
-      print('index treasures api error: $e');
       return [];
     }
   }

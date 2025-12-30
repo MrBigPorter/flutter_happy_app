@@ -1,6 +1,7 @@
 // main.dart
 import 'dart:ui';
 
+import 'package:firebase_performance/firebase_performance.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_app/common.dart';
@@ -17,8 +18,7 @@ import 'app/app.dart';
 
 
 Future<void> main() async {
-
-
+// main.dart 中正常初始化 Firebase 即可
   // Web 去掉 #，其它平台无影响
   if (kIsWeb) usePathUrlStrategy();
   //  让 push 也同步 URL

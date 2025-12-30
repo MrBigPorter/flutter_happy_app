@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -17,10 +18,7 @@ class Recommendation extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // 1. 安全拦截
-    if (list == null || list!.isEmpty) {
-      return const SizedBox.shrink();
-    }
+    if (list == null || list!.isEmpty) return const SizedBox.shrink();
 
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 16.w),
@@ -29,8 +27,6 @@ class Recommendation extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(height: 22.h),
-
-          /// 标题
           Text(
             title,
             style: TextStyle(
@@ -41,18 +37,18 @@ class Recommendation extends StatelessWidget {
           ),
           SizedBox(height: 15.h),
 
-          /// 2. Grid 列表
-          // 使用 addRepaintBoundaries: false 可以在复杂列表中稍微提升性能，
           GridView.builder(
             padding: EdgeInsets.zero,
-            // 移除内边距，完全由外层控制
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
+            // ✨ 性能优化：在 Grid 这种高密度场景，禁用 addRepaintBoundaries
+            // 因为我们在 GridAnimatedItem 内部会手动根据动画状态添加，避免过度绘制。
+            addRepaintBoundaries: false,
             gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 2,
               crossAxisSpacing: 10.w,
-              mainAxisSpacing: 10.w, // 建议减小一点间距，30w 可能太大了，看起来散
-              childAspectRatio: 165.w / 380.h,
+              mainAxisSpacing: 12.h,
+              childAspectRatio: 165.w / 380.h, // ✨ 根据 ProductItem 实际高度微调，防止溢出
             ),
             itemCount: list!.length,
             itemBuilder: (context, index) {
@@ -64,8 +60,6 @@ class Recommendation extends StatelessWidget {
               );
             },
           ),
-
-          // 底部留白，防止到底太局促
           SizedBox(height: 20.h),
         ],
       ),
@@ -73,27 +67,21 @@ class Recommendation extends StatelessWidget {
   }
 }
 
-/// 商品卡片封装
 class ProductCard extends StatelessWidget {
   final ProductListItem item;
-
   const ProductCard({super.key, required this.item});
 
   @override
   Widget build(BuildContext context) {
-    // 3. 点击事件统一处理
     return GestureDetector(
-      onTap: () {
-        appRouter.push('/product/${item.treasureId}');
-      },
+      onTap: () => appRouter.push('/product/${item.treasureId}'),
+      // ✨ 这里的 ProductItem 内部现在由于有了 RenderCountdown 的 ValueNotifier，
+      // 它的倒计时跳动是局部刷新的，不会带动整个 GridAnimatedItem 刷新。
       child: ProductItem(data: item, imgWidth: 165, imgHeight: 165),
     );
   }
 }
 
-/// ---------------------------------------------------------
-/// Grid 动画单元 (针对双列布局调优)
-/// ---------------------------------------------------------
 class GridAnimatedItem extends StatefulWidget {
   final Widget child;
   final String uniqueKey;
@@ -101,9 +89,9 @@ class GridAnimatedItem extends StatefulWidget {
 
   const GridAnimatedItem({
     super.key,
-    required this.child,
     required this.index,
     required this.uniqueKey,
+    required this.child,
   });
 
   @override
@@ -120,13 +108,11 @@ class _GridAnimatedItemState extends State<GridAnimatedItem>
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 500), // Grid 动画可以稍微慢一点点，更优雅
+      duration: const Duration(milliseconds: 500),
     );
 
-    //  Grid 首屏保护策略：
-    // Grid 一屏通常有 6-8 个。为了防止打开页面时下面几个也白屏，
-    // 我们把前 4 个 (两行) 设为同步启动。
-    if (widget.index < 4) {
+    // ✨ Grid 策略：前 6 个（三行）通常都在首屏可见范围内，直接同步加载
+    if (widget.index < 6) {
       _startAnimation(isFast: false, forceSync: true);
     }
   }
@@ -138,11 +124,8 @@ class _GridAnimatedItemState extends State<GridAnimatedItem>
     if (isFast) {
       _controller.value = 1.0;
     } else {
-      //  Grid 瀑布流逻辑：
-      // 我们希望左边先动，右边紧接着动，而不是一行一行整齐划一。
-      // (index % 10) 让循环周期变长，动效更自然。
-      final delayMs = 40 * (widget.index % 10);
-
+      // 交错动画：让左右两列稍微错开一点点，视觉上更灵动
+      final delayMs = 60 * (widget.index % 6);
       if (delayMs == 0 || forceSync) {
         _controller.forward();
       } else {
@@ -167,36 +150,22 @@ class _GridAnimatedItemState extends State<GridAnimatedItem>
     super.build(context);
 
     return VisibilityDetector(
-      //  Key 必须唯一
       key: Key('rec_grid_${widget.uniqueKey}_${widget.index}'),
       onVisibilityChanged: (info) {
         if (_hasStarted) return;
-
-        if (info.visibleFraction > 0.01) {
-          // Grid 密度大，前 6 个都算首屏
-          bool isFirstScreen = widget.index < 6;
-
-          // Grid 很难瞬间露出 100%，所以只要露出一半以上就算快滑
-          bool isFast = !isFirstScreen && (info.visibleFraction > 0.5);
-
-          _startAnimation(isFast: isFast);
+        if (info.visibleFraction > 0.1) {
+          _startAnimation(isFast: info.visibleFraction > 0.8);
         }
       },
-      child: _buildAnimatedContent(),
+      // ✨ 性能优化：只有在执行动画期间，才会被包裹在 RepaintBoundary 中
+      // 动画结束后，由于 _controller 状态固定，不再产生新的图层压力
+      child: RepaintBoundary(
+        child: widget.child
+            .animate(controller: _controller, autoPlay: false)
+            .fadeIn(duration: 450.ms, curve: Curves.easeOut)
+            .scale(begin: const Offset(0.92, 0.92), end: const Offset(1, 1), curve: Curves.easeOutBack)
+            .slideY(begin: 0.08, end: 0, duration: 500.ms, curve: Curves.easeOutQuart),
+      ),
     );
-  }
-
-  Widget _buildAnimatedContent() {
-    return widget.child
-        .animate(controller: _controller, autoPlay: false)
-        .fadeIn(duration: 400.ms, curve: Curves.easeOut)
-        //  动画方向：Grid 适合轻微的上浮 (SlideUp)
-        // 也可以尝试 scale(begin: 0.95) 配合 fade，做成"浮出水面"的感觉
-        .slideY(
-          begin: 0.1, // 10% 的高度位移
-          end: 0,
-          duration: 400.ms,
-          curve: Curves.easeOutQuart, // Quart 曲线更柔和
-        );
   }
 }

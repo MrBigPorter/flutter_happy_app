@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:flutter_app/app/routes/app_router.dart';
 import 'package:flutter_app/core/store/auth/auth_initial.dart';
+import 'package:flutter_app/utils/time/server_time_helper.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 
 import '../../utils/device_utils.dart';
@@ -87,9 +88,16 @@ class Http {
         onResponse: (response, handler) async {
           final data = response.data;
 
+
           if (data == null || data is! Map<String, dynamic>) {
             return handler.reject(_asDioError(response, 'Invalid response data'));
           }
+
+          // 每次请求回来，都自动校准一次时间
+          // 获取 header 时注意，有时它是 List<String>
+          final serverTimeHeader = response.headers.value('x-server-time');
+          ServerTimeHelper.updateOffset(serverTimeHeader);
+
 
           final code = data['code'] as int?;
           final message = (data['message'] as String?) ?? 'Unknown error';
