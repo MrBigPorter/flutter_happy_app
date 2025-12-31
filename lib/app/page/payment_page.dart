@@ -54,7 +54,11 @@ class _PaymentPageState extends ConsumerState<PaymentPage>
       // You can also refresh other necessary data here
       final treasureId = widget.params.treasureId;
       if (treasureId != null) {
+        // 1. 刷新静态详情
         ref.invalidate(productDetailProvider(treasureId));
+        // 新增：强制刷新实时状态！
+        // 确保用户进入下单页那一刻，库存和价格是最新的
+        ref.refresh(productRealtimeStatusProvider(treasureId));
       }
     });
   }
@@ -91,30 +95,33 @@ class _PaymentPageState extends ConsumerState<PaymentPage>
         }
         return BaseScaffold(
           title: 'checkout'.tr(),
-          body: LayoutBuilder(
-            builder: (context, constrains) {
-              return SingleChildScrollView(
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(minHeight: constrains.maxHeight),
-                  child: Column(
-                    children: [
-                      _AddressSection(),
-                      SizedBox(height: 8.w),
-                      _ProductSection(detail: value),
-                      SizedBox(height: 8.w),
-                      _InfoSection(
-                        detail: value,
-                        treasureId: params.treasureId!,
-                      ),
-                      SizedBox(height: 8.w),
-                      _VoucherSection(treasureId: params.treasureId!),
-                      SizedBox(height: 8.w),
-                      _PaymentMethodSection(treasureId: params.treasureId!),
-                    ],
+          body: GestureDetector(
+            onTap: ()=> FocusScope.of(context).unfocus(),
+            child: LayoutBuilder(
+              builder: (context, constrains) {
+                return SingleChildScrollView(
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(minHeight: constrains.maxHeight),
+                    child: Column(
+                      children: [
+                        _AddressSection(),
+                        SizedBox(height: 8.w),
+                        _ProductSection(detail: value),
+                        SizedBox(height: 8.w),
+                        _InfoSection(
+                          detail: value,
+                          treasureId: params.treasureId!,
+                        ),
+                        SizedBox(height: 8.w),
+                        _VoucherSection(treasureId: params.treasureId!),
+                        SizedBox(height: 8.w),
+                        _PaymentMethodSection(treasureId: params.treasureId!),
+                      ],
+                    ),
                   ),
-                ),
-              );
-            },
+                );
+              },
+            ),
           ),
           bottomNavigationBar: _BottomNavigationBar(
             params: params,

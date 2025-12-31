@@ -40,7 +40,7 @@ class Ending extends StatelessWidget {
             scrollDirection: Axis.horizontal,
             physics: const BouncingScrollPhysics(),
             itemCount: list!.length,
-            // ✨ 性能优化：禁用默认重绘边界，由 HorizontalAnimatedItem 内部按需控制
+            //  性能优化：禁用默认重绘边界，由 HorizontalAnimatedItem 内部按需控制
             addRepaintBoundaries: false,
             cacheExtent: 800.w, // 预加载两三个卡片的宽度，滑动更丝滑
             separatorBuilder: (_, __) => SizedBox(width: 8.w),
