@@ -20,6 +20,8 @@ ProductListItem _$ProductListItemFromJson(
       'unitAmount',
       (v) => JsonNumConverter.toDouble(v),
     ),
+    state: $checkedConvert('state', (v) => (v as num?)?.toInt() ?? 1),
+    statusTag: $checkedConvert('statusTag', (v) => v as String?),
     categories: $checkedConvert(
       'categories',
       (v) => (v as List<dynamic>?)
@@ -38,7 +40,10 @@ ProductListItem _$ProductListItemFromJson(
       'bonusConfig',
       (v) => v as Map<String, dynamic>?,
     ),
-    costAmount: $checkedConvert('costAmount', (v) => v as String?),
+    costAmount: $checkedConvert(
+      'costAmount',
+      (v) => JsonNumConverter.toStringOrNull(v),
+    ),
     imgStyleType: $checkedConvert('imgStyleType', (v) => (v as num?)?.toInt()),
     lotteryMode: $checkedConvert('lotteryMode', (v) => (v as num?)?.toInt()),
     lotteryTime: $checkedConvert('lotteryTime', (v) => (v as num?)?.toInt()),
@@ -62,13 +67,22 @@ ProductListItem _$ProductListItemFromJson(
     treasureCoverImg: $checkedConvert('treasureCoverImg', (v) => v as String?),
     ruleContent: $checkedConvert('ruleContent', (v) => v as String?),
     desc: $checkedConvert('desc', (v) => v as String?),
-    maxUnitCoins: $checkedConvert('maxUnitCoins', (v) => v as String?),
-    maxUnitAmount: $checkedConvert('maxUnitAmount', (v) => v as String?),
+    maxUnitCoins: $checkedConvert(
+      'maxUnitCoins',
+      (v) => JsonNumConverter.toStringOrNull(v),
+    ),
+    maxUnitAmount: $checkedConvert(
+      'maxUnitAmount',
+      (v) => JsonNumConverter.toStringOrNull(v),
+    ),
     maxPerBuyQuantity: $checkedConvert(
       'maxPerBuyQuantity',
       (v) => (v as num?)?.toInt(),
     ),
-    charityAmount: $checkedConvert('charityAmount', (v) => v as String?),
+    charityAmount: $checkedConvert(
+      'charityAmount',
+      (v) => JsonNumConverter.toStringOrNull(v),
+    ),
     treasureSeq: $checkedConvert('treasureSeq', (v) => v as String?),
     cashState: $checkedConvert('cashState', (v) => (v as num?)?.toInt()),
   );
@@ -81,6 +95,8 @@ Map<String, dynamic> _$ProductListItemToJson(ProductListItem instance) =>
       'treasureName': instance.treasureName,
       'buyQuantityRate': instance.buyQuantityRate,
       'unitAmount': JsonNumConverter.doubleToString(instance.unitAmount),
+      'state': instance.state,
+      'statusTag': instance.statusTag,
       'shippingType': instance.shippingType,
       'groupSize': instance.groupSize,
       'groupTimeLimit': instance.groupTimeLimit,
@@ -111,7 +127,7 @@ Map<String, dynamic> _$ProductListItemToJson(ProductListItem instance) =>
 CategoryItem _$CategoryItemFromJson(Map<String, dynamic> json) =>
     $checkedCreate('CategoryItem', json, ($checkedConvert) {
       final val = CategoryItem(
-        id: $checkedConvert('id', (v) => v as String),
+        id: $checkedConvert('id', (v) => (v as num).toInt()),
         name: $checkedConvert('name', (v) => v as String),
       );
       return val;

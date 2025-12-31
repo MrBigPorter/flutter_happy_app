@@ -1,7 +1,7 @@
 {
   "common.hello": "Kamusta",
   "common.title.faq": "Tulong",
-  "common.enter.now": "Sumali",
+  "common.enter.now": "Sali Na",
   "common.sold": "Nabenta",
   "common.tabbar.home": "Home",
   "common.tabbar.product": "Prize",
@@ -19,6 +19,7 @@
   "common.month.mar": "Marso",
   "common.month.feb": "Pebrero",
   "common.month.jan": "Enero",
+
   "winner.number": "{bilang} Na Ang Nanalo!",
   "winner.next": "Ikaw Na Ba Ang Susunod",
   "winner.latest": "Pinakabagong Nanalo",
@@ -62,6 +63,7 @@
   "common.total.expend": "Total Debit",
   "common.details.rules": "Mga Detalye ng Patakaran",
   "common.wallet.details": "Mga Detalye ng Wallet",
+  "product.chance_to_win": "CHANCE TO WIN",
   "common.available.treasure.coins": "Available na Lucky Coins",
   "redeem.treasureCoins": "I-redeem ang Lucky Coins",
   "redeem.bind.redemption.code": "I-bind ang redemption code",
@@ -102,7 +104,7 @@
   "common.starts_in": "Magsisimula sa",
   "common.days_left": "{days} Araw na Lang",
   "common.activity_ended": "Tapos na ang Aktibidad",
-  "common.pre_sale": "Pre-sale",
+  "common.pre_sale": "Pre sale",
   "common.remind_me": "I-remind Ako",
   "common.join_group": "Sali sa Grupo",
   "common.draw_now": "Sali na",

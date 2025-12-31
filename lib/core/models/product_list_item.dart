@@ -16,20 +16,28 @@ class ProductListItem {
   @JsonKey(name: 'unitAmount', fromJson: JsonNumConverter.toDouble, toJson: JsonNumConverter.doubleToString)
   final double unitAmount;
 
+  // 🚨 必须补上这个！详情页 JoinTreasureBar 用它判断是否下架
+  @JsonKey(defaultValue: 1)
+  final int state;
+
+  // ✨ 建议补上这个，虽然前端能算，但拿后端的标记更准
+  final String? statusTag;
+
   // --- 业务字段 ---
-  final int? shippingType;    // 1-实物, 2-电子券
-  final int? groupSize;       // 团购人数
+  final int? shippingType;
+  final int? groupSize;
   final int? groupTimeLimit;
-  final int? salesStartAt;    // 时间戳 (ms)
-  final int? salesEndAt;      // 时间戳 (ms)
+  final int? salesStartAt;
+  final int? salesEndAt;
 
-  // ✨ 列表接口返回的拍平后的分类信息
   final List<CategoryItem>? categories;
-
   final Map<String, dynamic>? bonusConfig;
 
   // --- 详情/可选字段 ---
+  // 🚨 建议：金额类字段最好都加上转换器，防止后端传 number 前端崩
+  @JsonKey(fromJson: JsonNumConverter.toStringOrNull)
   final String? costAmount;
+
   final int? imgStyleType;
   final int? lotteryMode;
   final int? lotteryTime;
@@ -41,10 +49,18 @@ class ProductListItem {
   final String? treasureCoverImg;
   final String? ruleContent;
   final String? desc;
+
+  @JsonKey(fromJson: JsonNumConverter.toStringOrNull)
   final String? maxUnitCoins;
+
+  @JsonKey(fromJson: JsonNumConverter.toStringOrNull)
   final String? maxUnitAmount;
+
   final int? maxPerBuyQuantity;
+
+  @JsonKey(fromJson: JsonNumConverter.toStringOrNull)
   final String? charityAmount;
+
   final String? treasureSeq;
   final int? cashState;
 
@@ -53,6 +69,8 @@ class ProductListItem {
     required this.treasureName,
     required this.buyQuantityRate,
     required this.unitAmount,
+    this.state = 1, // 默认为 1
+    this.statusTag,
     this.categories,
     this.shippingType,
     this.groupSize,
@@ -84,12 +102,17 @@ class ProductListItem {
       _$ProductListItemFromJson(json);
 
   Map<String, dynamic> toJson() => _$ProductListItemToJson(this);
+
+  @override
+  String toString() {
+    return toJson().toString();
+  }
 }
 
 // ✨ 新增：分类简单模型
 @JsonSerializable(checked: true)
 class CategoryItem {
-  final String id;
+  final int id;
   final String name;
 
   CategoryItem({required this.id, required this.name});
@@ -125,17 +148,36 @@ class TreasureListResponse {
     );
   }
 }
-// 分页参数保持不变
 class ProductListParams {
-  final int categoryId;
+  // 🚨 修改：categoryId 改为可空，因为选“全部”时可能传 null
+  final int? categoryId;
   final int page;
   final int pageSize;
 
+  // 🚨 新增：搜索关键词
+  final String? q;
+
+  // 🚨 新增：筛选类型 (ALL, PRE_SALE, ON_SALE)
+  final String? filterType;
+
   ProductListParams({
-    required this.categoryId,
+    this.categoryId,
     required this.page,
     required this.pageSize,
+    this.q,
+    this.filterType,
   });
+
+  Map<String, dynamic> toJson() {
+    final Map<String, dynamic> data = {
+      'page': page,
+      'pageSize': pageSize,
+    };
+    if (categoryId != null) data['categoryId'] = categoryId;
+    if (q != null) data['q'] = q;
+    if (filterType != null) data['filterType'] = filterType;
+    return data;
+  }
 }
 
 @JsonSerializable(checked: true)

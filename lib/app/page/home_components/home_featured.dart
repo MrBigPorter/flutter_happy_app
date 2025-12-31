@@ -360,7 +360,8 @@ class _ProductInfoCardBottomState extends State<ProductInfoCardBottom> {
           ignoring: true,
           child: Button(
             height: 36.w,
-            backgroundColor: (isWaitingSale || isSoldOut || isExpired) ? context.bgTertiary : null,
+            backgroundColor: (isWaitingSale || isSoldOut || isExpired) ? context.buttonSecondaryBg : null,
+            foregroundColor: (isWaitingSale || isSoldOut || isExpired) ? context.textPrimary900 : context.textWhite,
             child: Text(
               isWaitingSale
                   ? 'common.pre_sale'.tr()
