@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_app/app/page/home_components/home_ad.dart';
-import 'package:flutter_app/app/page/home_components/home_statistics.dart';
 import 'package:flutter_app/app/page/home_components/home_treasures.dart';
 import 'package:flutter_app/components/base_scaffold.dart';
 import 'package:flutter_app/components/featured_skeleton.dart';
@@ -21,15 +19,12 @@ class HomePage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final banners = ref.watch(homeBannerProvider);
     final treasures = ref.watch(homeTreasuresProvider);
-    final ads = ref.watch(homeAdProvider);
-    final statistics = ref.watch(homeStatisticsProvider);
 
     /// 下拉刷新 refresh handler
     Future<void> onRefresh() async {
       /// only delete cache, not re-fetch data
       ref.invalidate(homeBannerProvider);
       ref.invalidate(homeTreasuresProvider);
-      ref.invalidate(homeAdProvider);
       ref.invalidate(homeStatisticsProvider);
 
       /// wait for a while to show the refresh effect
@@ -54,26 +49,6 @@ class HomePage extends ConsumerWidget {
               ),
               error: (_, __) => HomeBannerSkeleton(),
               loading: () => HomeBannerSkeleton(),
-            ),
-
-            /// statistics 统计数据
-            statistics.when(
-              data: (data) =>
-                  SliverToBoxAdapter(child: HomeStatistics(statistics: data)),
-              error: (_, __) => HomeStatisticsSkeleton(),
-              loading: () => HomeStatisticsSkeleton(),
-            ),
-
-            /// ad 广告位
-            ads.when(
-              data: (data) => SliverToBoxAdapter(
-                child: Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 16.w),
-                  child: HomeAd(list: data),
-                ),
-              ),
-              error: (_, __) => HomeAdSkeleton(),
-              loading: () => HomeAdSkeleton(),
             ),
 
             /// 宝贝列表 Treasure List
@@ -113,54 +88,6 @@ class HomeTreasureSkeleton extends StatelessWidget {
   }
 }
 
-/// home ad loading skeleton
-class HomeAdSkeleton extends StatelessWidget {
-  const HomeAdSkeleton({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return SliverToBoxAdapter(
-      child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: 16.w),
-        child: Column(
-          children: [
-            Skeleton.react(width: double.infinity, height: 114),
-            SizedBox(height: 8.h),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Skeleton.react(width: 205, height: 267),
-                SizedBox(width: 8.w),
-                Column(
-                  children: [
-                    Skeleton.react(width: 130, height: 130),
-                    SizedBox(height: 8.h),
-                    Skeleton.react(width: 130, height: 130),
-                  ],
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// home ad loading skeleton
-class HomeStatisticsSkeleton extends StatelessWidget {
-  const HomeStatisticsSkeleton({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return SliverToBoxAdapter(
-      child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 9.h),
-        child: Skeleton.react(width: double.infinity, height: 80),
-      ),
-    );
-  }
-}
 
 /// home banner loading skeleton
 class HomeBannerSkeleton extends StatelessWidget {
