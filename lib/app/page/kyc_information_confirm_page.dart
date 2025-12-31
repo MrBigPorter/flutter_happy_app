@@ -14,7 +14,7 @@ import 'package:reactive_forms/reactive_forms.dart';
 
 import '../../core/models/region_providers.dart';
 import '../../core/providers/liveness_provider.dart';
-import '../../utils/form/validation/kKycValidationMessages.dart';
+import '../../utils/form/validation/k_kyc_validation_messages.dart';
 import 'kyc_status_page.dart';
 
 class KycInformationConfirmPage extends ConsumerStatefulWidget {
@@ -60,7 +60,7 @@ class _KycInformationConfirmPageState
     kycForm.form.patchValue({
       // 关键：同时回填 type (int) 和 typeText (String)
       'type': ocr.type,
-      'typeText': ocr.typeText ?? 'UNKNOWN',
+      'typeText': ocr.typeText ,
 
       'firstName': ocr.firstName,
       'middleName': ocr.middleName,
@@ -174,7 +174,7 @@ class _KycInformationConfirmPageState
       final dto = SubmitKycDto(
         sessionId: sessionId,
         // 这里确保 confirmed.type 有值，或者 fallback 到 widget.kycOcrResult.type
-        idType: confirmed.type ?? widget.kycOcrResult.type,
+        idType: confirmed.type,
         idNumber: confirmed.idNumber,
         realName: confirmed.realName,
         firstName: confirmed.firstName,

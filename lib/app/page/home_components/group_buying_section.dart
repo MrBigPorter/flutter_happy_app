@@ -118,7 +118,7 @@ class GroupBuyingCard extends StatelessWidget {
     ];
 
     // 计算进度
-    final double progress = item.buyQuantityRate ?? 0.0;
+    final double progress = item.buyQuantityRate;
     final int remainingPercent = (100 - progress * 100).toInt();
 
     return Container(

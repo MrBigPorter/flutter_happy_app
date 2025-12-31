@@ -67,7 +67,7 @@ class JoinTreasureBar extends ConsumerWidget {
     // 1. 判断是否已下架
     if (state.productState != 1) {
       activeWidget = Button(
-        // 🔑 关键点：加 Key，让 Flutter 知道这是个新组件，需要执行动画
+        //  关键点：加 Key，让 Flutter 知道这是个新组件，需要执行动画
         key: const ValueKey('offline'),
         width: double.infinity,
         height: 44.w,

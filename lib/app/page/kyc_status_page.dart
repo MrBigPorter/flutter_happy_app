@@ -25,9 +25,9 @@ class _KycStatusPageState extends ConsumerState<KycStatusPage> {
   void initState() {
     super.initState();
     // 每次进入页面，强制刷新一次最新状态，确保数据实时
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+   /* WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.refresh(kycMeProvider);
-    });
+    });*/
   }
 
   // -------------------------------------------------------
@@ -195,7 +195,6 @@ class _StatusView extends StatelessWidget {
   final VoidCallback? onSecondaryPressed;
 
   const _StatusView({
-    super.key, // 加上这个好习惯
     required this.iconData,
     required this.themeColor,
     required this.title,

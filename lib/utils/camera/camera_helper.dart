@@ -40,7 +40,6 @@ class CameraHelper {
         orElse: () => cameras.first,
       );
     } catch (e) {
-      print("获取摄像头失败: $e");
       return null;
     }
   }

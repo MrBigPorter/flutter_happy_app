@@ -5,7 +5,6 @@ import 'package:flutter_app/app/page/home_components/special_area.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_app/core/models/index.dart';
 import 'ending.dart';
-import 'group_buying_section.dart';
 
 class HomeTreasures extends StatelessWidget {
   final List<IndexTreasureItem>? treasures;

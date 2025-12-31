@@ -125,6 +125,13 @@ class Api {
     return ProductListItem.fromJson(res);
   }
 
+
+  // 获取实时价格
+  static Future<TreasureStatusModel> getRealTimePriceApi(String treasureId) async {
+    final res = await Http.get('/api/v1/treasure/status/$treasureId');
+    return TreasureStatusModel.fromJson(res);
+  }
+
   /// 中奖总人数 total winners quantity
   static Future<WinnersQuantity> winnersQuantityApi() async {
     final res = await Http.get('/actWinnersQuantity.json');

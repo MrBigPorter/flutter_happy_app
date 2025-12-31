@@ -94,28 +94,37 @@ class CouponSection extends StatelessWidget {
   }
 }
 
-
 // 3. Top Treasure Info Section (电商重构版)
 class TopTreasureSection extends StatelessWidget {
   final ProductListItem item;
+  final TreasureStatusModel? realTimeItem;
   final String? url;
 
-  const TopTreasureSection({super.key, required this.item, this.url});
+  const TopTreasureSection({
+    super.key,
+    required this.item,
+    this.realTimeItem,
+    this.url,
+  });
 
   @override
   Widget build(BuildContext context) {
     // --- 1. 数据计算 ---
     // 价格相关
     final double marketPrice = double.tryParse(item.costAmount ?? '0') ?? 0;
-    final double currentPrice = item.unitAmount;
+    final double currentPrice = realTimeItem?.price ?? item.unitAmount;
     final double savedAmount = (marketPrice > currentPrice)
         ? (marketPrice - currentPrice)
         : 0;
 
     // 库存相关
-    final int sold = item.seqBuyQuantity ?? 0;
-    final int total = item.seqShelvesQuantity ?? 0;
-    final int left = (total - sold).clamp(0, total);
+    final int sold = realTimeItem?.stock ?? item.seqBuyQuantity ?? 0;
+    // 1. 优先用实时库存
+    // 2. 没有实时库存，用缓存详情里的库存 (seqShelves - seqBuy)
+    // 3. 都没有，才显示 0
+    final int cachedLeft =
+        (item.seqShelvesQuantity ?? 0) - (item.seqBuyQuantity ?? 0);
+    final int left = realTimeItem?.stock ?? cachedLeft;
 
     // 礼品相关 (优先读配置，没有配置则根据 lotteryMode 判断)
     // 假设 item.bonusConfig 是 Map<String, dynamic>
@@ -430,7 +439,6 @@ class TopTreasureSection extends StatelessWidget {
   }
 }
 
-
 // 4. Group Section
 class GroupSection extends ConsumerWidget {
   final String treasureId;
@@ -501,8 +509,6 @@ class GroupSection extends ConsumerWidget {
   }
 }
 
-
-
 // 5. Content Details
 class DetailContentSection extends StatefulWidget {
   final String? ruleContent;
@@ -518,10 +524,20 @@ class _DetailContentSectionState extends State<DetailContentSection>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
+  int _selectedIndex = 0; // 当前选中的 Tab 索引
+
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+
+    _tabController.addListener((){
+      if (_tabController.indexIsChanging) {
+        setState(() {
+          _selectedIndex = _tabController.index;
+        });
+      }
+    });
   }
 
   @override
@@ -548,22 +564,23 @@ class _DetailContentSectionState extends State<DetailContentSection>
               ],
             ),
             SizedBox(height: 16.h),
-            SizedBox(
-              height: 300.w, // 给个最小高度，或者使用 AutoHeight 方案
-              child: TabBarView(
-                controller: _tabController,
-                children: [
-                  SingleChildScrollView(
-                    physics: const NeverScrollableScrollPhysics(),
-                    child: HtmlWidget(widget.desc ?? 'No description'),
+            _selectedIndex == 0
+                ? HtmlWidget(
+                    widget.desc ?? 'No details available.',
+                    textStyle: TextStyle(
+                      fontSize: context.textSm,
+                      color: context.fgPrimary900,
+                      height: 1.6,
+                    ),
+                  )
+                : HtmlWidget(
+                    widget.ruleContent ?? 'No rules available.',
+                    textStyle: TextStyle(
+                      fontSize: context.textSm,
+                      color: context.fgPrimary900,
+                      height: 1.6,
+                    ),
                   ),
-                  SingleChildScrollView(
-                    physics: const NeverScrollableScrollPhysics(),
-                    child: HtmlWidget(widget.ruleContent ?? 'No rules'),
-                  ),
-                ],
-              ),
-            ),
           ],
         ),
       ),

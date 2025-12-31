@@ -196,7 +196,7 @@ class _KycVerifyPageState extends ConsumerState<KycVerifyPage> {
 
   /// 任务：跳转
   Future<void> _navigateToConfirm(KycOcrResult data) async {
-    final result = await Navigator.push(
+    await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => KycInformationConfirmPage(kycOcrResult: data),

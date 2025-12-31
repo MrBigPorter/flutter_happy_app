@@ -302,3 +302,28 @@ class _LuckyIndicatorPainter extends BoxPainter {
     canvas.drawRRect(rrect, paint);
   }
 }
+
+class LuckySliverTabBarDelegateSkeleton {
+  final double? height;
+  const LuckySliverTabBarDelegateSkeleton({this.height = 60});
+
+  Widget build(
+      BuildContext context,
+      double shrinkOffset,
+      bool overlapsContent,
+      ) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      physics: platformScrollPhysics(),
+      child: Row(
+        children: List.generate(6, (index){
+          return Padding(
+            padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 10.w),
+            child: Skeleton.react(width: 60.w, height: height ?? 60),
+          );
+        }),
+      ),
+    );
+  }
+
+}

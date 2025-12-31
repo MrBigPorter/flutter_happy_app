@@ -18,7 +18,7 @@ class PurchaseState {
   final bool useDiscountCoins; // 是否使用金币抵扣
   final bool isSubmitting; // 提交中状态
 
-  // ✨ 新增：时间控制字段，用于提交时校验
+  // 时间控制字段，用于提交时校验
   final int? salesStartAt;
   final int? salesEndAt;
   final int productState; // 1=上架
@@ -137,18 +137,16 @@ class PurchaseNotifier extends StateNotifier<PurchaseState> {
 
   /// 场景：用户停留在详情页，此时库存变动，或者商品下架
   void _listenToProductUpdates() {
-    // 使用 listen 而不是 read，确保后续更新能收到
-    ref.listen(productDetailProvider(treasureId), (prev, next) {
-      next.whenData((detail) {
-        if (detail == null) return;
 
-        final newStock = (detail.seqShelvesQuantity ?? 0) - (detail.seqBuyQuantity ?? 0);
+    ref.listen(productRealtimeStatusProvider(treasureId), (prev,next){
+      next.whenData((status){
+        // 转换价格 String -> double
+        final newStock = status.stock;
+        final newPrice = status.price;
+        final newState = status.state;
 
-        // 只有当关键数据变化时才更新 state，避免不必要的重绘
-        if (newStock != state.stockLeft ||
-            detail.state != state.productState ||
-            detail.unitAmount != state.unitAmount) {
-
+        // 只有数据真的变了才更新
+        if(newStock != state.stockLeft || newState != state.productState || newPrice != state.unitAmount){
           // 智能处理 entries：如果当前选的份数超过了新库存，才强制调小
           // 否则保持用户输入的份数不变
           final currentEntries = state.entries;
@@ -158,10 +156,40 @@ class PurchaseNotifier extends StateNotifier<PurchaseState> {
           state = state.copyWith(
             stockLeft: newStock,
             entries: safeEntries,
-            unitAmount: detail.unitAmount, // 支持秒杀价格变动
-            productState: detail.state,
+            unitAmount: newPrice,
+            productState: newState,
           );
         }
+
+      });
+    });
+
+    // 2. 监听【静态详情】：主要为了防备运营后台改了限购配置 (maxPerBuyQuantity)
+    ref.listen(productDetailProvider(treasureId), (prev, next) {
+      next.whenData((detail) {
+        if (detail == null) return;
+
+        // 注意：这里我们只更新 配置类 字段，库存和价格以 Realtime 为准，忽略 Detail 里的旧数据
+        final newMaxLimit = JsonNumConverter.toInt(detail.maxPerBuyQuantity ?? 0);
+        final newMinLimit = detail.minBuyQuantity ?? 1;
+        if( newMaxLimit != state.maxPerBuyQuantity ||
+            newMinLimit != state.minBuyQuantity) {
+
+          // 智能处理 entries：如果当前选的份数超过了新库存，才强制调小
+          final currentEntries = state.entries;
+          final currentAuthoritativeStock = state.stockLeft;
+          final maxAllowed = math.min(currentAuthoritativeStock, newMaxLimit > 0 ? newMaxLimit : currentAuthoritativeStock);
+          final safeEntries = math.min(currentEntries, math.max(1, maxAllowed));
+
+          state = state.copyWith(
+            entries: safeEntries,
+            maxPerBuyQuantity: newMaxLimit,
+            minBuyQuantity: newMinLimit,
+            //坚决不更新 stockLeft 和 unitAmount
+          );
+        }
+
+
       });
     });
   }
@@ -283,8 +311,9 @@ class PurchaseNotifier extends StateNotifier<PurchaseState> {
 
       // 成功后刷新余额
       ref.read(luckyProvider.notifier).updateWalletBalance();
-      // 成功后最好也刷新一下当前商品详情，确保库存显示最新
-      ref.invalidate(productDetailProvider(treasureId));
+      //  关键优化：下单成功后，强制刷新【实时状态】，而不是详情
+      // 因为库存变了，我们需要最新的 Realtime Status
+      ref.invalidate(productRealtimeStatusProvider(treasureId));
 
       return PurchaseSubmitResult.ok(orderCheckoutResult);
     } catch (e) {
@@ -331,31 +360,38 @@ class PurchaseNotifier extends StateNotifier<PurchaseState> {
   }
 }
 
-// ✨ 优化 Provider 定义：使用 autoDispose 并在初始化时处理异步数据
+//  优化 Provider 定义：使用 autoDispose 并在初始化时处理异步数据
 final purchaseProvider = StateNotifierProvider.family.autoDispose<PurchaseNotifier, PurchaseState, String>((ref, id) {
 
-  // 1. 这里使用 watch，确保如果详情页 ID 变了，或者 Provider 重置了，能拿到最新数据
-  // 注意：我们这里拿的是 valueOrNull，因为详情页 UI 肯定会由外层的 AsyncValue.when 包裹
-  // 所以当代码执行到这里时，数据通常已经有了。
+  // 1. 获取【静态详情】(大概率有缓存)
   final detail = ref.watch(productDetailProvider(id)).valueOrNull;
+  // 2. 获取【实时状态】(可能正在加载，也可能有了)
+  final status = ref.watch(productRealtimeStatusProvider(id)).valueOrNull;
+  //  3. 数据融合策略
+  // - 库存/价格/状态：优先用 status，没有则用 detail 兜底
+  // - 配置/限购：只能用 detail
 
-  final stockLeft = (detail?.seqShelvesQuantity ?? 0) - (detail?.seqBuyQuantity ?? 0);
+  final stockLeft = status?.stock ??
+      ((detail?.seqShelvesQuantity ?? 0) - (detail?.seqBuyQuantity ?? 0));
+  final price = status?.price ?? (detail?.unitAmount ?? 0.0);
+  final productState = status?.state ?? (detail?.state ?? 1);
+
   final minBuy = detail?.minBuyQuantity ?? 1;
 
   // 2. 初始化状态
   final initialState = PurchaseState(
     entries: stockLeft > 0 ? minBuy : 0,
-    unitAmount: detail?.unitAmount ?? 0.0,
+    unitAmount: price, // 价格优先用实时的
     maxUnitCoins: JsonNumConverter.toDouble(detail?.maxUnitCoins),
     maxPerBuyQuantity: JsonNumConverter.toInt(detail?.maxPerBuyQuantity ?? 0), // 0代表不限
     minBuyQuantity: minBuy,
-    stockLeft: stockLeft,
+    stockLeft: stockLeft,// 库存优先用实时的
     useDiscountCoins: true,
     isSubmitting: false,
     // 注入时间字段
     salesStartAt: detail?.salesStartAt,
     salesEndAt: detail?.salesEndAt,
-    productState: detail?.state ?? 1,
+    productState: productState,
   );
 
   return PurchaseNotifier(ref: ref, treasureId: id, state: initialState);

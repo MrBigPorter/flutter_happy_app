@@ -192,3 +192,27 @@ Map<String, dynamic> _$GroupUserToJson(GroupUser instance) => <String, dynamic>{
   'leaderUserId': instance.leaderUserId,
   'leaderUsername': instance.leaderUsername,
 };
+
+TreasureStatusModel _$TreasureStatusModelFromJson(Map<String, dynamic> json) =>
+    $checkedCreate('TreasureStatusModel', json, ($checkedConvert) {
+      final val = TreasureStatusModel(
+        id: $checkedConvert('id', (v) => v as String),
+        stock: $checkedConvert('stock', (v) => (v as num).toInt()),
+        price: $checkedConvert('price', (v) => JsonNumConverter.toDouble(v)),
+        isSoldOut: $checkedConvert('isSoldOut', (v) => v as bool),
+        state: $checkedConvert('state', (v) => (v as num).toInt()),
+        isExpired: $checkedConvert('isExpired', (v) => v as bool),
+      );
+      return val;
+    });
+
+Map<String, dynamic> _$TreasureStatusModelToJson(
+  TreasureStatusModel instance,
+) => <String, dynamic>{
+  'id': instance.id,
+  'stock': instance.stock,
+  'price': JsonNumConverter.doubleToString(instance.price),
+  'isSoldOut': instance.isSoldOut,
+  'state': instance.state,
+  'isExpired': instance.isExpired,
+};

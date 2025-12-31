@@ -1,3 +1,5 @@
+import 'dart:ffi';
+
 import 'package:json_annotation/json_annotation.dart';
 import '../json/json_num_converters.dart';
 
@@ -233,4 +235,34 @@ class GroupUser {
 
   @override
   String toString() => toJson().toString();
+}
+
+@JsonSerializable(checked: true)
+class TreasureStatusModel{
+  final String id;
+  final int stock;
+  @JsonKey(fromJson:JsonNumConverter.toDouble,toJson: JsonNumConverter.doubleToString)
+  final double price;
+  final bool isSoldOut;
+  final int state;
+  final bool isExpired;
+
+  TreasureStatusModel({
+    required this.id,
+    required this.stock,
+    required this.price,
+    required this.isSoldOut,
+    required this.state,
+    required this.isExpired,
+  });
+
+  factory TreasureStatusModel.fromJson(Map<String, dynamic> json) =>
+      _$TreasureStatusModelFromJson(json);
+
+
+  Map<String, dynamic> toJson() => _$TreasureStatusModelToJson(this);
+
+  @override
+  String toString() => toJson().toString();
+
 }

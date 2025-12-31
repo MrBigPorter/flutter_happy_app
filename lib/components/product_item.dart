@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_app/app/routes/app_router.dart';
 import 'package:flutter_app/common.dart';
 import 'package:flutter_app/components/render_countdown.dart';
+import 'package:flutter_app/components/skeleton.dart';
 import 'package:flutter_app/ui/bubble_progress.dart';
 import 'package:flutter_app/ui/button/index.dart';
 import 'package:flutter_app/ui/img/app_image.dart';
@@ -68,7 +69,7 @@ class ProductItem extends StatelessWidget {
                   child: AppCachedImage(
                     data.treasureCoverImg!,
                     width: imgWidth!.w,
-                    height: imgHeight!.w,
+                    height: imgHeight!.h,
                     fit: BoxFit.cover,
                   ),
                 ),
@@ -211,6 +212,119 @@ class ProductItem extends StatelessWidget {
       child: Text(
         text,
         style: TextStyle(color: Colors.white, fontSize: 9.w, fontWeight: FontWeight.bold),
+      ),
+    );
+  }
+}
+
+class ProductItemSkeleton extends StatelessWidget {
+  final int? cardWidth;
+  final int? imgWidth;
+  final int? imgHeight;
+
+  const ProductItemSkeleton({
+    super.key,
+    this.cardWidth = 157,
+    this.imgWidth = 157,
+    this.imgHeight = 157,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: cardWidth!.w,
+      decoration: BoxDecoration(
+        color: context.bgPrimary,
+        borderRadius: BorderRadius.circular(8.w),
+        // 模拟真实卡片的阴影，占位感更强
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.02),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // 1. 图片区域 (保持正方形比例)
+          AspectRatio(
+            aspectRatio: 1,
+            child: Skeleton.react(
+              width: double.infinity,
+              height: double.infinity,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(8.w)),
+            ),
+          ),
+
+          // 2. 信息区域
+          Padding(
+            padding: EdgeInsets.all(8.w),
+            child: Column(
+              children: [
+                // 模拟两行标题 (Title)
+                // 第一行略长
+                Skeleton.react(
+                    width: double.infinity,
+                    height: 12.h,
+                    borderRadius: BorderRadius.circular(2.w)
+                ),
+                SizedBox(height: 6.h),
+                // 第二行略短
+                Skeleton.react(
+                    width: 100.w, // 模拟标题第二行较短
+                    height: 12.h,
+                    borderRadius: BorderRadius.circular(2.w)
+                ),
+                SizedBox(height: 12.h),
+
+                // 模拟价格 (Price - 大字体)
+                Skeleton.react(
+                    width: 80.w,
+                    height: 16.h,
+                    borderRadius: BorderRadius.circular(4.w)
+                ),
+                SizedBox(height: 12.h),
+
+                // 模拟进度条 (Progress Bar)
+                Skeleton.react(
+                    width: double.infinity,
+                    height: 6.h,
+                    borderRadius: BorderRadius.circular(3.w)
+                ),
+                SizedBox(height: 6.h),
+                // 模拟进度文字
+                Skeleton.react(
+                    width: 40.w,
+                    height: 8.h,
+                    borderRadius: BorderRadius.circular(2.w)
+                ),
+
+                SizedBox(height: 12.h),
+
+                // 模拟倒计时区域 (Countdown - 两行小字)
+                Column(
+                  children: [
+                    Skeleton.react(width: 60.w, height: 8.h, borderRadius: BorderRadius.circular(2.w)),
+                    SizedBox(height: 4.h),
+                    Skeleton.react(width: 80.w, height: 8.h, borderRadius: BorderRadius.circular(2.w)),
+                  ],
+                ),
+
+                SizedBox(height: 12.h),
+
+                // 模拟底部按钮 (Button)
+                Skeleton.react(
+                    width: double.infinity,
+                    height: 36.h,
+                    borderRadius: BorderRadius.circular(18.w) // 保持和真实按钮一样的圆角
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

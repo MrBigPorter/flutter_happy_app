@@ -64,7 +64,10 @@ class _ProductDetailPageState extends ConsumerState<ProductDetailPage>
 
   @override
   Widget build(BuildContext context) {
+    //监听【静态详情】(带缓存，瞬间返回)
     final detailAsync = ref.watch(productDetailProvider(widget.productId));
+    //监听【实时状态】(不缓存，每次进都会请求，慢几百毫秒)
+    final statusAsync = ref.watch(productRealtimeStatusProvider(widget.productId));
     final webBaseUrl = ref.watch(luckyProvider.select((s) => s.sysConfig.webBaseUrl));
 
     final expandedHeight = 250.w;
@@ -119,7 +122,7 @@ class _ProductDetailPageState extends ConsumerState<ProductDetailPage>
               SliverToBoxAdapter(child: const CouponSection()),
 
               SliverToBoxAdapter(
-                child: TopTreasureSection(item: detail, url: webBaseUrl),
+                child: TopTreasureSection(item: detail, realTimeItem: statusAsync.value ,url: webBaseUrl),
               ),
 
               // 使用 RepaintBoundary 优化长列表滚动的性能
