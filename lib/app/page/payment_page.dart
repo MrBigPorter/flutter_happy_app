@@ -38,7 +38,6 @@ class PaymentPage extends ConsumerStatefulWidget {
 
 class _PaymentPageState extends ConsumerState<PaymentPage>
     with SingleTickerProviderStateMixin {
-  bool _isInit = false;
 
   @override
   void initState() {
@@ -59,6 +58,16 @@ class _PaymentPageState extends ConsumerState<PaymentPage>
         // 新增：强制刷新实时状态！
         // 确保用户进入下单页那一刻，库存和价格是最新的
         ref.refresh(productRealtimeStatusProvider(treasureId));
+
+       //  优化: 将原本在 build 里的初始化份数逻辑移到这里
+        // 这样避免了在 build 过程中产生副作用，也防止热重载时数据重置
+        final action = ref.read(purchaseProvider(treasureId).notifier);
+
+        if(widget.params.entries != null){
+          final entries = int.tryParse(widget.params.entries!) ?? 1;
+          action.resetEntries(entries);
+        }
+
       }
     });
   }
@@ -78,23 +87,9 @@ class _PaymentPageState extends ConsumerState<PaymentPage>
       loading: () => _PaymentSkeleton(),
       error: (_, __) => _PaymentSkeleton(),
       data: (value) {
-        if (!_isInit) {
-          _isInit = true;
-          Future.microtask(() {
-            final action = ref.read(
-              purchaseProvider(params.treasureId!).notifier,
-            );
-            final purchaseState = ref.read(
-              purchaseProvider(params.treasureId!),
-            );
-            final entries =
-                int.tryParse(params.entries ?? '') ??
-                purchaseState.minBuyQuantity;
-            action.resetEntries(entries);
-          });
-        }
         return BaseScaffold(
           title: 'checkout'.tr(),
+           // 优化: 加上 GestureDetector，点击空白处收起键盘
           body: GestureDetector(
             onTap: ()=> FocusScope.of(context).unfocus(),
             child: LayoutBuilder(
@@ -309,26 +304,17 @@ class _QuantityControlState extends ConsumerState<_QuantityControl> {
     _textEditingController.text = entries.toString();
   }
 
-  void _handleFocusChange() {
-    if (!_focusNode.hasFocus) {
-      final action = ref.read(purchaseProvider(widget.treasureId).notifier);
-      action.setEntriesFromText(_textEditingController.text);
-      final purchaseState = ref.read(purchaseProvider(widget.treasureId));
-      _updateEntries(purchaseState.entries);
-    }
-  }
 
   @override
   void initState() {
     super.initState();
     _textEditingController = TextEditingController();
-    _focusNode = FocusNode()..addListener(_handleFocusChange);
+    _focusNode = FocusNode();
   }
 
   @override
   void dispose() {
     _textEditingController.dispose();
-    _focusNode.removeListener(_handleFocusChange);
     _focusNode.dispose();
     super.dispose();
   }
@@ -338,6 +324,8 @@ class _QuantityControlState extends ConsumerState<_QuantityControl> {
     final entries = ref.watch(purchaseProvider(widget.treasureId).select((select)=> select.entries));
     final action = ref.read(purchaseProvider(widget.treasureId).notifier);
 
+    // 只有当没有焦点时，才同步 Provider 的值到输入框
+    // 避免用户正在输入时输入框内容跳变
     if (!_focusNode.hasFocus) {
       final text = entries.toString();
       if (_textEditingController.text != text) {
@@ -450,7 +438,9 @@ class _InfoSection extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final entries = ref.watch(purchaseProvider(treasureId).select((select) => select.entries));
-
+   //  优化: 从 notifier 获取计算好的总价，比手动计算更可靠
+    final notifier = ref.read(purchaseProvider(treasureId).notifier);
+    final purchaseState = ref.watch(purchaseProvider(treasureId));
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 16.w),
       child: Container(
@@ -466,7 +456,7 @@ class _InfoSection extends ConsumerWidget {
             SizedBox(height: 12.w),
             _InfoRow(
               label: 'common.ticket.price'.tr(),
-              value: FormatHelper.formatCurrency(detail.unitAmount),
+              value: FormatHelper.formatCurrency(purchaseState.unitAmount),
             ),
             SizedBox(height: 12.w),
             _InfoRow(
@@ -477,7 +467,7 @@ class _InfoSection extends ConsumerWidget {
             _InfoRow(
               label: 'common.total.price'.tr(),
               value: FormatHelper.formatCurrency(
-                detail.unitAmount * entries,
+                purchaseState.subtotal
               ),
             ),
           ],
