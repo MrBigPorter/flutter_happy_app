@@ -25,12 +25,21 @@ class BannerSection extends StatelessWidget {
   final PageStorageKey? storageKey;
   final double? height;
 
-  const BannerSection({super.key, required this.banners, this.storageKey, this.height});
+  const BannerSection({
+    super.key,
+    required this.banners,
+    this.storageKey,
+    this.height,
+  });
 
   @override
   Widget build(BuildContext context) {
     if (banners == null || banners!.isEmpty) {
-      return Skeleton.react(width: double.infinity, height: 250, borderRadius: BorderRadius.zero);
+      return Skeleton.react(
+        width: double.infinity,
+        height: 250,
+        borderRadius: BorderRadius.zero,
+      );
     }
     return SwiperBanner(
       width: 375.w,
@@ -55,17 +64,26 @@ class CouponSection extends StatelessWidget {
         child: Row(
           children: [
             Row(
-              children: List.generate(2, (index) => Container(
-                margin: EdgeInsets.only(right: 8.w),
-                padding: EdgeInsets.symmetric(horizontal: 8.w),
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(6.r),
-                  border: Border.all(color: context.utilityBrand200),
-                  color: context.utilityBrand50,
+              children: List.generate(
+                2,
+                (index) => Container(
+                  margin: EdgeInsets.only(right: 8.w),
+                  padding: EdgeInsets.symmetric(horizontal: 8.w),
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(6.r),
+                    border: Border.all(color: context.utilityBrand200),
+                    color: context.utilityBrand50,
+                  ),
+                  child: Text(
+                    'New User Gift',
+                    style: TextStyle(
+                      fontSize: context.textXs,
+                      color: context.utilityBrand700,
+                    ),
+                  ),
                 ),
-                child: Text('New User Gift', style: TextStyle(fontSize: context.textXs, color: context.utilityBrand700)),
-              )),
+              ),
             ),
             const Spacer(),
             Icon(Icons.chevron_right, size: 24.w, color: context.fgQuinary400),
@@ -90,7 +108,9 @@ class TopTreasureSection extends StatelessWidget {
     // 价格相关
     final double marketPrice = double.tryParse(item.costAmount ?? '0') ?? 0;
     final double currentPrice = item.unitAmount;
-    final double savedAmount = (marketPrice > currentPrice) ? (marketPrice - currentPrice) : 0;
+    final double savedAmount = (marketPrice > currentPrice)
+        ? (marketPrice - currentPrice)
+        : 0;
 
     // 库存相关
     final int sold = item.seqBuyQuantity ?? 0;
@@ -99,7 +119,8 @@ class TopTreasureSection extends StatelessWidget {
 
     // 礼品相关 (优先读配置，没有配置则根据 lotteryMode 判断)
     // 假设 item.bonusConfig 是 Map<String, dynamic>
-    final String? giftName = item.bonusConfig?['bonusItemName'] ??
+    final String? giftName =
+        item.bonusConfig?['bonusItemName'] ??
         (item.lotteryMode == 1 ? "Mystery Grand Prize" : null);
     final bool hasGift = giftName != null;
 
@@ -116,7 +137,7 @@ class TopTreasureSection extends StatelessWidget {
               color: Colors.black.withOpacity(0.02),
               blurRadius: 8,
               offset: const Offset(0, 2),
-            )
+            ),
           ],
         ),
         child: Column(
@@ -151,7 +172,10 @@ class TopTreasureSection extends StatelessWidget {
                     child: SvgPicture.asset(
                       'assets/images/product_detail/share.svg',
                       width: 20.w,
-                      colorFilter: ColorFilter.mode(context.fgPrimary900, BlendMode.srcIn),
+                      colorFilter: ColorFilter.mode(
+                        context.fgPrimary900,
+                        BlendMode.srcIn,
+                      ),
                     ),
                   ),
                 ),
@@ -193,7 +217,10 @@ class TopTreasureSection extends StatelessWidget {
                         ),
                       ),
                       Container(
-                        padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 1.w),
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 4.w,
+                          vertical: 1.w,
+                        ),
                         decoration: BoxDecoration(
                           color: context.fgErrorPrimary,
                           borderRadius: BorderRadius.circular(2.r),
@@ -210,7 +237,7 @@ class TopTreasureSection extends StatelessWidget {
                       ),
                     ],
                   ),
-                ]
+                ],
               ],
             ),
 
@@ -237,13 +264,21 @@ class TopTreasureSection extends StatelessWidget {
                     Container(
                       padding: EdgeInsets.all(6.w),
                       decoration: const BoxDecoration(
-                          color: Colors.orange,
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(color: Colors.orangeAccent, blurRadius: 4, offset: Offset(0, 2))
-                          ]
+                        color: Colors.orange,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.orangeAccent,
+                            blurRadius: 4,
+                            offset: Offset(0, 2),
+                          ),
+                        ],
                       ),
-                      child: Icon(FontAwesomeIcons.gift, size: 14.w, color: Colors.white),
+                      child: Icon(
+                        FontAwesomeIcons.gift,
+                        size: 14.w,
+                        color: Colors.white,
+                      ),
                     ),
                     SizedBox(width: 10.w),
                     Expanded(
@@ -288,20 +323,27 @@ class TopTreasureSection extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    Icon(Icons.whatshot, size: 12.w, color: context.textSecondary700),
+                    Icon(
+                      Icons.whatshot,
+                      size: 12.w,
+                      color: context.textSecondary700,
+                    ),
                     SizedBox(width: 2.w),
                     Text(
                       '$sold sold',
-                      style: TextStyle(fontSize: context.textXs, color: context.textSecondary700),
+                      style: TextStyle(
+                        fontSize: context.textXs,
+                        color: context.textSecondary700,
+                      ),
                     ),
                   ],
                 ),
                 Text(
                   'Only $left left',
                   style: TextStyle(
-                      fontSize: context.textXs,
-                      color: context.fgBrandPrimary,
-                      fontWeight: FontWeight.w700
+                    fontSize: context.textXs,
+                    color: context.fgBrandPrimary,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
               ],
@@ -324,14 +366,19 @@ class TopTreasureSection extends StatelessWidget {
                   ),
                 ),
 
-                Container(width: 1, height: 30.h, color: context.borderSecondary),
+                Container(
+                  width: 1,
+                  height: 30.h,
+                  color: context.borderSecondary,
+                ),
 
                 // 2. 限购
                 Expanded(
                   child: _buildInfoItem(
                     context,
                     CupertinoIcons.cart_badge_plus,
-                    (item.maxPerBuyQuantity != null && item.maxPerBuyQuantity! > 0)
+                    (item.maxPerBuyQuantity != null &&
+                            item.maxPerBuyQuantity! > 0)
                         ? '${item.maxPerBuyQuantity} Limit'
                         : 'No Limit',
                     'Per User',
@@ -345,7 +392,12 @@ class TopTreasureSection extends StatelessWidget {
     );
   }
 
-  Widget _buildInfoItem(BuildContext context, IconData icon, String val, String label) {
+  Widget _buildInfoItem(
+    BuildContext context,
+    IconData icon,
+    String val,
+    String label,
+  ) {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
@@ -354,16 +406,22 @@ class TopTreasureSection extends StatelessWidget {
           children: [
             Icon(icon, size: 12.w, color: context.textTertiary600),
             SizedBox(width: 4.w),
-            Text(label, style: TextStyle(fontSize: context.text2xs, color: context.textSecondary700)),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: context.text2xs,
+                color: context.textSecondary700,
+              ),
+            ),
           ],
         ),
         SizedBox(height: 4.h),
         Text(
           val,
           style: TextStyle(
-              fontSize: context.textSm,
-              fontWeight: FontWeight.w700,
-              color: context.fgPrimary900
+            fontSize: context.textSm,
+            fontWeight: FontWeight.w700,
+            color: context.fgPrimary900,
           ),
           textAlign: TextAlign.center,
         ),
@@ -371,6 +429,7 @@ class TopTreasureSection extends StatelessWidget {
     );
   }
 }
+
 
 // 4. Group Section
 class GroupSection extends ConsumerWidget {
@@ -381,7 +440,11 @@ class GroupSection extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     // 简化逻辑，仅展示第一页，若需要更复杂逻辑建议单独封装 Provider
-    final groupsAsync = ref.watch(groupsListProvider(GroupsListRequestParams(page: 1, treasureId: treasureId)));
+    final groupsAsync = ref.watch(
+      groupsListProvider(
+        GroupsListRequestParams(page: 1, treasureId: treasureId),
+      ),
+    );
 
     return groupsAsync.when(
       data: (data) {
@@ -401,12 +464,20 @@ class GroupSection extends ConsumerWidget {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text('Recent Groups', style: TextStyle(fontWeight: FontWeight.w800, fontSize: context.textMd)),
+                      Text(
+                        'Recent Groups',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: context.textMd,
+                        ),
+                      ),
                       Icon(Icons.chevron_right, color: context.fgPrimary900),
                     ],
                   ),
                 ),
-                ...data.list.take(3).map((item) => _buildGroupItem(context, item)), // 只展示前3个
+                ...data.list
+                    .take(3)
+                    .map((item) => _buildGroupItem(context, item)), // 只展示前3个
                 SizedBox(height: 12.h),
               ],
             ),
@@ -420,13 +491,17 @@ class GroupSection extends ConsumerWidget {
 
   Widget _buildGroupItem(BuildContext context, GroupForTreasureItem item) {
     return ListTile(
-      leading: CircleAvatar(backgroundImage: CachedNetworkImageProvider(item.creator.avatar ?? '')),
+      leading: CircleAvatar(
+        backgroundImage: CachedNetworkImageProvider(item.creator.avatar ?? ''),
+      ),
       title: Text(item.creator.nickname ?? 'User'),
       trailing: Icon(Icons.chevron_right, size: 16.w),
       onTap: () => appRouter.push('/group-member?groupId=${item.groupId}'),
     );
   }
 }
+
+
 
 // 5. Content Details
 class DetailContentSection extends StatefulWidget {
@@ -439,7 +514,8 @@ class DetailContentSection extends StatefulWidget {
   State<DetailContentSection> createState() => _DetailContentSectionState();
 }
 
-class _DetailContentSectionState extends State<DetailContentSection> with SingleTickerProviderStateMixin {
+class _DetailContentSectionState extends State<DetailContentSection>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
   @override
@@ -477,9 +553,53 @@ class _DetailContentSectionState extends State<DetailContentSection> with Single
               child: TabBarView(
                 controller: _tabController,
                 children: [
-                  SingleChildScrollView(child: HtmlWidget(widget.desc ?? 'No description')),
-                  SingleChildScrollView(child: HtmlWidget(widget.ruleContent ?? 'No rules')),
+                  SingleChildScrollView(
+                    physics: const NeverScrollableScrollPhysics(),
+                    child: HtmlWidget(widget.desc ?? 'No description'),
+                  ),
+                  SingleChildScrollView(
+                    physics: const NeverScrollableScrollPhysics(),
+                    child: HtmlWidget(widget.ruleContent ?? 'No rules'),
+                  ),
                 ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class DetailContentSectionSkeleton extends StatelessWidget {
+  const DetailContentSectionSkeleton({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: 16.w),
+      child: Container(
+        padding: EdgeInsets.all(16.w),
+        decoration: BoxDecoration(
+          color: context.bgPrimary,
+          borderRadius: BorderRadius.circular(context.radiusMd),
+          border: Border.all(color: context.borderPrimary),
+        ),
+        child: Column(
+          children: [
+            Skeleton.react(width: 100.w, height: 24.h),
+            SizedBox(height: 16.h),
+            Column(
+              children: List.generate(
+                5,
+                (index) => Padding(
+                  padding: EdgeInsets.only(bottom: 12.h),
+                  child: Skeleton.react(
+                    width: double.infinity,
+                    height: 16.h,
+                    borderRadius: BorderRadius.circular(4.r),
+                  ),
+                ),
               ),
             ),
           ],
