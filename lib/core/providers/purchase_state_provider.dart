@@ -167,9 +167,6 @@ class PurchaseNotifier extends StateNotifier<PurchaseState> {
     // 2. 监听【静态详情】：主要为了防备运营后台改了限购配置 (maxPerBuyQuantity)
     ref.listen(productDetailProvider(treasureId), (prev, next) {
       next.whenData((detail) {
-        if (detail == null) return;
-
-        // 注意：这里我们只更新 配置类 字段，库存和价格以 Realtime 为准，忽略 Detail 里的旧数据
         final newMaxLimit = JsonNumConverter.toInt(detail.maxPerBuyQuantity ?? 0);
         final newMinLimit = detail.minBuyQuantity ?? 1;
         if( newMaxLimit != state.maxPerBuyQuantity ||

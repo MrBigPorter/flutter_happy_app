@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_app/app/page/home_components/home_treasures.dart';
 import 'package:flutter_app/components/base_scaffold.dart';
-import 'package:flutter_app/components/featured_skeleton.dart';
 import 'package:flutter_app/components/lucky_custom_material_indicator.dart';
-import 'package:flutter_app/components/skeleton.dart';
 import 'package:flutter_app/components/swiper_banner.dart';
 import 'package:flutter_app/utils/helper.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_app/core/providers/index.dart';
+
+import 'home_components/home_skeleton.dart';
 
 /// 首页 Home Page
 /// 包含轮播图、宝贝列表、广告位、数据统计等模块 including carousel, treasure list, ad space, data statistics, etc.
@@ -73,33 +73,5 @@ class HomePage extends ConsumerWidget {
   }
 }
 
-/// home treasures loading skeleton
-class HomeTreasureSkeleton extends StatelessWidget {
-  const HomeTreasureSkeleton({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return SliverToBoxAdapter(
-      child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: 8.w),
-        child: FeaturedSkeleton(),
-      ),
-    );
-  }
-}
 
 
-/// home banner loading skeleton
-class HomeBannerSkeleton extends StatelessWidget {
-  const HomeBannerSkeleton({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return SliverToBoxAdapter(
-      child: Padding(
-        padding: EdgeInsets.all(16.w),
-        child: Skeleton.react(width: double.infinity, height: 356),
-      ),
-    );
-  }
-}

@@ -1,9 +1,6 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:easy_localization/easy_localization.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_app/app/page/payment/payment_section.dart';
 import 'package:flutter_app/app/page/payment/payment_skeleton.dart';
 import 'package:flutter_app/app/page/payment_components/insufficient_balance_sheet.dart';
@@ -12,8 +9,6 @@ import 'package:flutter_app/app/routes/app_router.dart';
 import 'package:flutter_app/common.dart';
 import 'package:flutter_app/components/base_scaffold.dart';
 import 'package:flutter_app/components/kyc_modal.dart';
-import 'package:flutter_app/components/skeleton.dart';
-import 'package:flutter_app/core/models/index.dart';
 
 import 'package:flutter_app/core/models/payment.dart';
 import 'package:flutter_app/core/providers/index.dart';
@@ -22,12 +17,10 @@ import 'package:flutter_app/core/store/auth/auth_provider.dart';
 import 'package:flutter_app/core/store/lucky_store.dart';
 import 'package:flutter_app/ui/index.dart';
 import 'package:flutter_app/ui/modal/sheet/modal_sheet_config.dart';
-import 'package:flutter_app/utils/date_helper.dart';
 import 'package:flutter_app/utils/format_helper.dart';
 import 'package:flutter_app/utils/helper.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 
 class PaymentPage extends ConsumerStatefulWidget {
   final PagePaymentParams params;

@@ -1,14 +1,11 @@
 import 'dart:async';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 
 import 'package:flutter_app/common.dart';
-import 'package:flutter_app/components/skeleton.dart';
 import 'package:flutter_app/ui/img/app_image.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
-import '../utils/helper.dart';
 import '../utils/jump_helper.dart';
 import 'package:flutter_app/core/models/index.dart';
 

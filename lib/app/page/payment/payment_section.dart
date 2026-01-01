@@ -1,4 +1,3 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -8,7 +7,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/svg.dart';
 
-import '../../../components/skeleton.dart';
 import '../../../core/models/product_list_item.dart';
 import '../../../core/providers/purchase_state_provider.dart';
 import '../../../core/store/lucky_store.dart';
@@ -19,9 +17,10 @@ import '../../../ui/button/variant.dart';
 import '../../../ui/modal/sheet/radix_sheet.dart';
 import '../../../utils/date_helper.dart';
 import '../../../utils/format_helper.dart';
-import '../../../utils/helper.dart';
 
 class AddressSection extends StatelessWidget {
+  const AddressSection({super.key});
+
   void _onAddressTap() {
     RadixSheet.show(
       builder: (context, close) {
@@ -84,7 +83,7 @@ class AddressSection extends StatelessWidget {
 class ProductSection extends StatelessWidget {
   final ProductListItem detail;
 
-  const ProductSection({required this.detail});
+  const ProductSection({super.key, required this.detail});
 
   @override
   Widget build(BuildContext context) {
@@ -170,7 +169,7 @@ class ProductSection extends StatelessWidget {
 class QuantityControl extends ConsumerStatefulWidget {
   final String treasureId;
 
-  const QuantityControl({required this.treasureId});
+  const QuantityControl({super.key, required this.treasureId});
 
   @override
   ConsumerState<QuantityControl> createState() => QuantityControlState();
@@ -314,7 +313,7 @@ class InfoSection extends ConsumerWidget {
   final ProductListItem detail;
   final String treasureId;
 
-  const InfoSection({required this.detail, required this.treasureId});
+  const InfoSection({super.key, required this.detail, required this.treasureId});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -322,7 +321,6 @@ class InfoSection extends ConsumerWidget {
       purchaseProvider(treasureId).select((select) => select.entries),
     );
     //  优化: 从 notifier 获取计算好的总价，比手动计算更可靠
-    final notifier = ref.read(purchaseProvider(treasureId).notifier);
     final purchaseState = ref.watch(purchaseProvider(treasureId));
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 16.w),
@@ -359,7 +357,7 @@ class InfoRow extends StatelessWidget {
   final String label;
   final String value;
 
-  const InfoRow({required this.label, required this.value});
+  const InfoRow({super.key, required this.label, required this.value});
 
   @override
   Widget build(BuildContext context) {
@@ -392,7 +390,7 @@ class InfoRow extends StatelessWidget {
 class VoucherSection extends ConsumerWidget {
   final String treasureId;
 
-  const VoucherSection({required this.treasureId});
+  const VoucherSection({super.key, required this.treasureId});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -522,7 +520,7 @@ class VoucherSection extends ConsumerWidget {
 class PaymentMethodSection extends ConsumerWidget {
   final String treasureId;
 
-  const PaymentMethodSection({required this.treasureId});
+  const PaymentMethodSection({super.key, required this.treasureId});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {

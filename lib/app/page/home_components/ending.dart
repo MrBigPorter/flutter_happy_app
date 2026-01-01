@@ -6,6 +6,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_app/core/models/index.dart';
 import 'package:visibility_detector/visibility_detector.dart';
 
+
 class Ending extends StatelessWidget {
   final List<ProductListItem>? list;
   final String title;
@@ -158,3 +159,4 @@ class _HorizontalAnimatedItemState extends State<HorizontalAnimatedItem>
     );
   }
 }
+

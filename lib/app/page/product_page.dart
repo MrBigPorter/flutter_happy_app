@@ -28,15 +28,6 @@ class ProductPage extends ConsumerWidget {
     // 1. 使用 Riverpod 监听分类数据，自动处理 Loading/Error
     final categoriesAsync = ref.watch(categoryProvider);
 
-    Future<bool> onRefresh() async {
-      final cur = ref.read(activeCategoryProvider.notifier).state;
-
-      Future.wait([ref.refresh(categoryProvider.future)]);
-      final req = ref.refresh(productListProvider(cur.id));
-      req(pageSize: 20, page: 1);
-      await Future.delayed(const Duration(milliseconds: 400));
-      return true;
-    }
 
     return BaseScaffold(
       showBack: false,
@@ -106,7 +97,7 @@ class _ProductContentState extends ConsumerState<_ProductContent>
     // 同步当前选中的分类到 Provider
     _tabController.addListener(() {
       if (_tabController.indexIsChanging) {
-        final curCategory = widget.categories[_tabController.index];
+        //final curCategory = widget.categories[_tabController.index];
         // 注意：这会导致频繁通知，根据业务需求决定是否需要同步给 activeCategoryProvider
         // ref.read(activeCategoryProvider.notifier).state = curCategory;
       }

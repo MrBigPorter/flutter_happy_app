@@ -10,7 +10,6 @@ import 'package:flutter_app/core/models/index.dart';
 import 'package:flutter_app/ui/animations/transparent_fade_route.dart';
 import 'package:flutter_app/ui/button/index.dart';
 import 'package:flutter_app/utils/format_helper.dart';
-import 'package:flutter_app/utils/helper.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 

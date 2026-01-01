@@ -13,6 +13,8 @@ import 'package:flutter_app/ui/img/app_image.dart';
 import 'package:flutter_app/utils/format_helper.dart';
 import 'package:flutter_app/core/models/index.dart';
 
+import '../../../components/skeleton.dart';
+
 class SpecialArea extends StatelessWidget {
   final List<ProductListItem>? list;
   final String title;
@@ -382,3 +384,4 @@ class _AnimatedListItemState extends State<AnimatedListItem>
         .shimmer(duration: 1000.ms, color: Colors.white.withValues(alpha: 0.4));
   }
 }
+
