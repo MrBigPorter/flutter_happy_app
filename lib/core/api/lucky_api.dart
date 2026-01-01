@@ -354,18 +354,18 @@ class Api {
     return parsePageResponse(res, (e) => AddressRes.fromJson(e));
   }
 
-  static Future<AddressRes> addressCreateApi (AddressRes data) async {
+  static Future<AddressRes> addressCreateApi (AddressCreateDto data) async {
     final res = await Http.post('/api/v1/client/address/create',data:data);
     return AddressRes.fromJson(res);
   }
 
-  static Future<AddressRes> addressUpdateApi (String addressId, AddressRes data) async {
+  static Future<AddressRes> addressUpdateApi (String addressId, AddressCreateDto data) async {
     final res = await Http.post('/api/v1/client/address/update/$addressId',data:data);
     return AddressRes.fromJson(res);
   }
 
   static Future<AddressRes> addressDeleteApi (String addressId) async {
-    final res = await Http.post('/api/v1/client/address/delete/$addressId');
+    final res = await Http.delete('/api/v1/client/address/delete/$addressId');
     return AddressRes.fromJson(res);
   }
 

@@ -304,7 +304,7 @@ class AddressFormModelForm
 
   String get _phoneValue => phoneControl.value ?? '';
 
-  int get _isDefaultValue => isDefaultControl.value ?? 0;
+  bool get _isDefaultValue => isDefaultControl.value ?? false;
 
   String? get _labelValue => labelControl.value;
 
@@ -328,7 +328,7 @@ class AddressFormModelForm
 
   String get _phoneRawValue => phoneControl.value ?? '';
 
-  int get _isDefaultRawValue => isDefaultControl.value ?? 0;
+  bool get _isDefaultRawValue => isDefaultControl.value ?? false;
 
   String? get _labelRawValue => labelControl.value;
 
@@ -827,7 +827,7 @@ class AddressFormModelForm
   }
 
   void isDefaultValueUpdate(
-    int value, {
+    bool value, {
     bool updateParent = true,
     bool emitEvent = true,
   }) {
@@ -935,7 +935,7 @@ class AddressFormModelForm
   }
 
   void isDefaultValuePatch(
-    int value, {
+    bool value, {
     bool updateParent = true,
     bool emitEvent = true,
   }) {
@@ -1103,7 +1103,7 @@ class AddressFormModelForm
       );
 
   void isDefaultValueReset(
-    int value, {
+    bool value, {
     bool updateParent = true,
     bool emitEvent = true,
     bool removeFocus = false,
@@ -1162,8 +1162,8 @@ class AddressFormModelForm
   FormControl<String> get phoneControl =>
       form.control(phoneControlPath()) as FormControl<String>;
 
-  FormControl<int> get isDefaultControl =>
-      form.control(isDefaultControlPath()) as FormControl<int>;
+  FormControl<bool> get isDefaultControl =>
+      form.control(isDefaultControlPath()) as FormControl<bool>;
 
   FormControl<String> get labelControl =>
       form.control(labelControlPath()) as FormControl<String>;
@@ -1585,7 +1585,7 @@ class AddressFormModelForm
             asyncValidatorsDebounceTime: 250,
             disabled: false,
             touched: false),
-        isDefaultControlName: FormControl<int>(
+        isDefaultControlName: FormControl<bool>(
             value: addressFormModel?.isDefault,
             validators: [Required()],
             asyncValidators: [],

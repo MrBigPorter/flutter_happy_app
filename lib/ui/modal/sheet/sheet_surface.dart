@@ -29,11 +29,14 @@ class SheetSurface<T> extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // 1. 如果是全屏模式，顶部留出刘海高度；否则留一点间距
     final double top = isFullScreen ? ViewUtils.statusBarHeight : 8.h;
 
     return Padding(
-      padding:EdgeInsets.symmetric(horizontal: 16.w,vertical: 16.h),
+      // 2. 这里的 Padding 只管水平，垂直的交给 Column 内部或 Child，避免计算打架
+      padding:EdgeInsets.symmetric(horizontal: 16.w,),
       child: Column(
+        // 核心 A：使用 min，表示“我们尽量紧凑，别瞎占空”
         mainAxisSize: MainAxisSize.min,
         children: [
           if(config.enableHeader ?? true) ...[
@@ -56,7 +59,15 @@ class SheetSurface<T> extends StatelessWidget {
               showThumb: config.showThumb ?? false,
             ),
           ],
-          child,
+          // 核心 B：关键中的关键！
+          // 使用 Flexible + fit: loose
+          // 翻译：“儿子（child），你多大都行，但要是太大了，你就得在剩下的空间里呆着，别把屋顶顶破了。”
+          Flexible(
+            fit: FlexFit.loose,
+            child: child,
+          ),
+          // 底部可以加个安全距离，防止贴底
+          SizedBox(height: MediaQuery.of(context).padding.bottom),
         ],
       ),
     );

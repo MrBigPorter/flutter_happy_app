@@ -11,6 +11,7 @@ import '../../core/models/address_res.dart';
 import '../../core/providers/address_provider.dart';
 import '../../ui/animations/transparent_fade_route.dart';
 import '../../ui/button/variant.dart';
+import '../../ui/toast/radix_toast.dart';
 import 'address_manager_page.dart';
 
 class AddressList extends ConsumerStatefulWidget {
@@ -36,13 +37,13 @@ class _AddressListState extends ConsumerState<AddressList> {
           mainAxisSize: MainAxisSize.min, // 自适应高度
           children: [
             Flexible(
-              fit: FlexFit.loose, // 关键：允许内容少时收缩，内容多时滚动
+              fit: FlexFit.loose,// 关键：让 ListView 占据剩余空间
               child: currentList.isEmpty
                   ? _buildNoAddress()
                   //  传入真实数据
                   : _buildAddressList(currentList),
             ),
-            Padding(padding: EdgeInsets.all(16.w), child: _buildAddButton()),
+            Padding(padding: EdgeInsets.all(16.w), child: _buildAddButton())
           ],
         );
       },
@@ -172,14 +173,16 @@ class _AddressListState extends ConsumerState<AddressList> {
   }
 
   Widget _buildAddressList(List<AddressRes> items) {
+    // 关键优化：去掉 shrinkWrap: true
+    // 让 ListView 占据 Flexible 给它的剩余空间，并自己处理滚动
     return ListView.separated(
-      shrinkWrap: true,
+      shrinkWrap: false,
       // 配合 Column MainAxisSize.min 使用
-      physics: const ClampingScrollPhysics(),
+      physics: const AlwaysScrollableScrollPhysics(),
       // 避免弹窗内的弹性效果冲突
-      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.w),
+      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
       itemCount: items.length,
-      separatorBuilder: (context, index) => SizedBox(height: 12.w),
+      separatorBuilder: (context, index) => SizedBox(height: 12.h),
       itemBuilder: (context, index) {
         final address = items[index];
         //  Item Widget，性能更好，且方便处理局部 Loading
@@ -210,11 +213,19 @@ class _AddressItemState extends ConsumerState<_AddressItem> {
         .read(addressManagerProvider.notifier)
         .deleteAddress(widget.address.addressId);
 
+    if(success) {
+      if (mounted) {
+        RadixToast.success( 'Address deleted successfully');
+      }
+    } else {
+      if (mounted) {
+        RadixToast.error('Failed to delete address');
+      }
+    }
+
+
     if (mounted) {
       setState(() => _isDeleting = false);
-      if (!success) {
-        // RadixToast.error("Delete failed");
-      }
     }
   }
 
@@ -222,153 +233,168 @@ class _AddressItemState extends ConsumerState<_AddressItem> {
   Widget build(BuildContext context) {
     final isSelected = widget.address.isDefault == 1;
 
-    return Slidable(
-      // key: ValueKey(widget.address.addressId), // 已经在父级传了 key
-      endActionPane: ActionPane(
-        motion: const ScrollMotion(),
-        extentRatio: 0.25,
-        children: [
-          CustomSlidableAction(
-            onPressed: (context) => _handleDelete(),
-            backgroundColor: const Color(0xFFFE4A49),
-            foregroundColor: Colors.white,
-            borderRadius: BorderRadius.horizontal(right: Radius.circular(12.r)),
-            // 如果正在删除，显示转圈，否则显示图标
-            child: _isDeleting
-                ? SizedBox(
-                    width: 20.w,
-                    height: 20.w,
-                    child: const CircularProgressIndicator(
-                      color: Colors.white,
-                      strokeWidth: 2,
-                    ),
-                  )
-                : Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.delete_outline, size: 20.w),
-                      SizedBox(height: 4.w),
-                      Text("Delete", style: TextStyle(fontSize: 10.sp)),
-                    ],
-                  ),
-          ),
-        ],
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(12.r),
+        border: isSelected ? Border.all(color: context.bgErrorPrimary, width: 1.w)
+            : Border.all(color: context.alphaBlack10, width: 1.w),
+        boxShadow: [
+          BoxShadow(
+            color: context.bgSecondary,
+            offset: const Offset(0, 4),
+            blurRadius: 10,
+            spreadRadius: 0
+          )
+        ]
       ),
-      child: GestureDetector(
-        onTap: () {
-          // TODO: 选中逻辑
-        },
-        child: Container(
-          padding: EdgeInsets.all(16.w),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12.r),
-            border: Border.all(
-              color: isSelected ? Colors.red : const Color(0xFFF3F4F6),
-              width: isSelected ? 1.5.w : 1.w,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: const Color(0xFF101828).withOpacity(0.05),
-                offset: const Offset(0, 2),
-                blurRadius: 4,
-              ),
-            ],
-          ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(12.r),
+        child: Slidable(
+           key: ValueKey(widget.address.addressId), // 已经在父级传了 key
+          endActionPane: ActionPane(
+            // DrawerMotion: 按钮紧贴着卡片边缘拉出来 (最像 iOS/微信)
+            // ScrollMotion: 按钮固定在底部 (像旧版 iOS)
+            motion: const DrawerMotion(),
+            extentRatio: 0.25, // 删除按钮占整个卡片的 25%
+            dismissible: DismissiblePane(onDismissed: ()=>_handleDelete()),
             children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+              CustomSlidableAction(
+                onPressed: (context) => _handleDelete(),
+                backgroundColor: context.bgErrorPrimary,
+                foregroundColor: context.textWhite,
+                // 如果正在删除，显示转圈，否则显示图标
+                child: _isDeleting
+                    ? SizedBox(
+                  width: 20.w,
+                  height: 20.w,
+                  child:  CircularProgressIndicator(
+                    color: context.textWhite,
+                    strokeWidth: 2,
+                  ),
+                )
+                    : Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Row(
-                      children: [
-                        Text(
-                          widget.address.contactName,
-                          style: TextStyle(
-                            fontSize: 16.sp,
-                            fontWeight: FontWeight.w700,
-                            color: const Color(0xFF111827),
-                          ),
-                        ),
-                        if (isSelected) ...[
-                          SizedBox(width: 8.w),
-                          Container(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: 6.w,
-                              vertical: 2.w,
-                            ),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFFEF2F2),
-                              border: Border.all(
-                                color: const Color(0xFFFECACA),
-                              ),
-                              borderRadius: BorderRadius.circular(4.r),
-                            ),
-                            child: Text(
-                              "Default",
-                              style: TextStyle(
-                                fontSize: 10.sp,
-                                fontWeight: FontWeight.w600,
-                                color: const Color(0xFFDC2626),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                    SizedBox(height: 6.w),
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.phone_iphone_rounded,
-                          size: 14.w,
-                          color: const Color(0xFF6B7280),
-                        ),
-                        SizedBox(width: 4.w),
-                        Text(
-                          widget.address.phone,
-                          style: TextStyle(
-                            fontSize: 13.sp,
-                            color: const Color(0xFF4B5563),
-                            fontFamily: "Monospace",
-                          ),
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: 8.w),
-                    Text(
-                      widget.address.fullAddress,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 13.sp,
-                        color: const Color(0xFF6B7280),
-                        height: 1.4,
-                      ),
-                    ),
+                    Icon(Icons.delete_outline, size: 20.w),
+                    SizedBox(height: 4.h),
+                    Text("Delete", style: TextStyle(fontSize: 10.sp)),
                   ],
                 ),
               ),
-              GestureDetector(
-                onTap: () {
-                  // TODO: 编辑
-                },
-                child: Container(
-                  padding: EdgeInsets.only(left: 12.w, top: 2.w, bottom: 20.w),
-                  color: Colors.transparent,
-                  child: Icon(
-                    Icons.edit_square,
-                    size: 20.w,
-                    color: const Color(0xFF9CA3AF),
-                  ),
-                ),
-              ),
             ],
           ),
+          child: GestureDetector(
+            onTap: () {
+              // TODO: 选中逻辑
+            },
+            child: Container(
+              padding: EdgeInsets.all(16.w),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Text(
+                              widget.address.contactName ?? '',
+                              style: TextStyle(
+                                fontSize: 16.sp,
+                                fontWeight: FontWeight.w700,
+                                color: context.textWhite,
+                              ),
+                            ),
+                            if (isSelected) ...[
+                              SizedBox(width: 8.w),
+                              Container(
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: 6.w,
+                                  vertical: 2.w,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: context.utilityBrand50,
+                                  border: Border.all(
+                                    color: context.utilityBrand200,
+                                  ),
+                                  borderRadius: BorderRadius.circular(4.r),
+                                ),
+                                child: Text(
+                                  "Default",
+                                  style: TextStyle(
+                                    fontSize: 10.sp,
+                                    fontWeight: FontWeight.w600,
+                                    color: context.utilityBrand700,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                        SizedBox(height: 6.w),
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.phone_iphone_rounded,
+                              size: 14.w,
+                              color: context.textSecondary700,
+                            ),
+                            SizedBox(width: 4.w),
+                            Text(
+                              widget.address.phone,
+                              style: TextStyle(
+                                fontSize: 13.sp,
+                                color: context.textSecondary700,
+                                fontFamily: "Monospace",
+                              ),
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: 8.w),
+                        Text(
+                          widget.address.fullAddress,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 13.sp,
+                            color: context.textSecondary700,
+                            height: 1.4,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.of(context).push(
+                        TransparentFadeRoute(
+                          child: AddressManagerPage(
+                            address: widget.address,
+                            onClose: () {
+                              Navigator.of(context).pop();
+                            },
+                          )
+                        )
+                      );
+                    },
+                    child: Container(
+                      padding: EdgeInsets.only(left: 12.w, top: 2.w, bottom: 20.w),
+                      color: Colors.transparent,
+                      child: Icon(
+                        Icons.edit_square,
+                        size: 20.w,
+                        color: context.textSecondary700,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
         ),
-      ),
+      )
     );
   }
 }

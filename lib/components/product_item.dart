@@ -317,9 +317,9 @@ class ProductItemSkeleton extends StatelessWidget {
 
                 // 模拟底部按钮 (Button)
                 Skeleton.react(
-                    width: double.infinity,
-                    height: 36.h,
-                    borderRadius: BorderRadius.circular(18.w) // 保持和真实按钮一样的圆角
+                    width: 80.w,
+                    height: 30.h,
+                    borderRadius: BorderRadius.circular(8.r) // 保持和真实按钮一样的圆角
                 ),
               ],
             ),

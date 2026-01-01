@@ -15,7 +15,7 @@ class AddressFormModel {
   final int? barangayId;
   final String? postalCode;
   final String phone;
-  final int isDefault;
+  final bool isDefault;
   final String? label;
 
   const AddressFormModel({
@@ -29,7 +29,7 @@ class AddressFormModel {
     @RfControl(validators: [Required()]) this.barangayId,
     @RfControl(validators: [PostalCode()]) this.postalCode,
     @RfControl(validators: [NonEmpty(), Phone10()]) this.phone = '',
-    @RfControl(validators: [Required()]) this.isDefault = 0,
+    @RfControl(validators: [Required()]) this.isDefault = false,
     @RfControl() this.label,
   });
 

@@ -56,7 +56,7 @@ class CouponSectionSkeleton extends StatelessWidget {
               padding: EdgeInsets.symmetric(horizontal: 8.w),
               alignment: Alignment.center,
               child: Skeleton.react(
-                width: 57.w,
+                width: 50.w,
                 height: 22.h,
                 borderRadius: BorderRadius.circular(6.r),
               ),
