@@ -2,32 +2,31 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_app/components/address/address_list.dart';
 import 'package:flutter_app/ui/img/app_image.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/svg.dart';
 
-import '../../../core/models/product_list_item.dart';
-import '../../../core/providers/purchase_state_provider.dart';
-import '../../../core/store/lucky_store.dart';
-import '../../../theme/design_tokens.g.dart';
-import '../../../theme/leading_tokens.dart';
-import '../../../ui/button/button.dart';
-import '../../../ui/button/variant.dart';
-import '../../../ui/modal/sheet/radix_sheet.dart';
-import '../../../utils/date_helper.dart';
-import '../../../utils/format_helper.dart';
+import 'package:flutter_app/core/models/product_list_item.dart';
+import 'package:flutter_app/core/providers/purchase_state_provider.dart';
+import 'package:flutter_app/core/store/lucky_store.dart';
+import 'package:flutter_app/theme/design_tokens.g.dart';
+import 'package:flutter_app/theme/leading_tokens.dart';
+import 'package:flutter_app/ui/button/button.dart';
+import 'package:flutter_app/ui/button/variant.dart';
+import 'package:flutter_app/ui/modal/sheet/radix_sheet.dart';
+import 'package:flutter_app/utils/date_helper.dart';
+import 'package:flutter_app/utils/format_helper.dart';
 
 class AddressSection extends StatelessWidget {
   const AddressSection({super.key});
 
   void _onAddressTap() {
     RadixSheet.show(
+      enableShrink: true,
       builder: (context, close) {
-        return SizedBox(
-          height: 300.h,
-          child: Center(child: Text('Address Selection Page')), //todo
-        );
+        return AddressList();
       },
     );
   }
@@ -55,7 +54,7 @@ class AddressSection extends StatelessWidget {
             children: [
               Icon(
                 CupertinoIcons.location_solid,
-                color: context.bgPrimarySolid,
+                color: context.buttonPrimaryBg,
                 size: 24.w,
               ),
               SizedBox(width: 10.w),

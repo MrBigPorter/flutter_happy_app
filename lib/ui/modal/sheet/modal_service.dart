@@ -37,7 +37,7 @@ class ModalSheetService {
     ModalSheetConfig config = const ModalSheetConfig(),
     Widget? Function(BuildContext)? headerBuilder,
 
-    // 🔥 [新增参数] 是否启用背景缩放动画
+    //  [新增参数] 是否启用背景缩放动画
     // 默认为 true (保持原有逻辑)。
     // 调用 Picker 时请传 false，这样页面绝对不会动！
     bool enableShrink = true,

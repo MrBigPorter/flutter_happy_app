@@ -10,10 +10,11 @@ class AddressRes {
   final String city;
   final String postalCode;
   final String fullAddress;
-  final String isDefault;
-  final String firstName;
-  final String middleName;
-  final String lastName;
+  final int isDefault;
+  final String? firstName;
+  final String? middleName;
+  final String contactName;
+  final String? lastName;
 
 
   const AddressRes({
@@ -23,9 +24,10 @@ class AddressRes {
     required this.postalCode,
     required this.fullAddress,
     required this.isDefault,
-    required this.firstName,
-    required this.middleName,
-    required this.lastName,
+     this.firstName,
+     this.middleName,
+     this.lastName,
+    required this.contactName,
   });
 
   factory AddressRes.fromJson(Map<String, dynamic> json) => _$AddressResFromJson(json);

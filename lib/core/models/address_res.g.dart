@@ -14,10 +14,11 @@ AddressRes _$AddressResFromJson(Map<String, dynamic> json) =>
         city: $checkedConvert('city', (v) => v as String),
         postalCode: $checkedConvert('postalCode', (v) => v as String),
         fullAddress: $checkedConvert('fullAddress', (v) => v as String),
-        isDefault: $checkedConvert('isDefault', (v) => v as String),
-        firstName: $checkedConvert('firstName', (v) => v as String),
-        middleName: $checkedConvert('middleName', (v) => v as String),
-        lastName: $checkedConvert('lastName', (v) => v as String),
+        isDefault: $checkedConvert('isDefault', (v) => (v as num).toInt()),
+        firstName: $checkedConvert('firstName', (v) => v as String?),
+        middleName: $checkedConvert('middleName', (v) => v as String?),
+        lastName: $checkedConvert('lastName', (v) => v as String?),
+        contactName: $checkedConvert('contactName', (v) => v as String),
       );
       return val;
     });
@@ -32,5 +33,6 @@ Map<String, dynamic> _$AddressResToJson(AddressRes instance) =>
       'isDefault': instance.isDefault,
       'firstName': instance.firstName,
       'middleName': instance.middleName,
+      'contactName': instance.contactName,
       'lastName': instance.lastName,
     };

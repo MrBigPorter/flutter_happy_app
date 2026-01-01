@@ -293,7 +293,6 @@ class Api {
   // kyc me
   static Future<KycMe> kycMeApi() async {
     final res = await Http.get('/api/v1/kyc/me');
-    print(res);
     return KycMe.fromJson(res);
   }
 
@@ -337,15 +336,43 @@ class Api {
   }
 
   static Future<List<City>> cityApi(int provinceId) async {
-    final res = await Http.get('/api/v1/client/region/cities/${provinceId}');
+    final res = await Http.get('/api/v1/client/region/cities/$provinceId');
     return parseList<City>(res, (e) => City.fromJson(e));
   }
 
   static Future<List<Barangay>> barangayApi(int cityId) async {
-    final res = await Http.get('/api/v1/client/region/barangays/${cityId}');
+    final res = await Http.get('/api/v1/client/region/barangays/$cityId');
     return parseList<Barangay>(res, (e) => Barangay.fromJson(e));
   }
 
+  // address list
+  static Future<PageResult<AddressRes>> addressListApi() async {
+    final res = await Http.get('/api/v1/client/address/list',query:{
+      'page':1,
+      'pageSize':100,
+    });
+    return parsePageResponse(res, (e) => AddressRes.fromJson(e));
+  }
+
+  static Future<AddressRes> addressCreateApi (AddressRes data) async {
+    final res = await Http.post('/api/v1/client/address/create',data:data);
+    return AddressRes.fromJson(res);
+  }
+
+  static Future<AddressRes> addressUpdateApi (String addressId, AddressRes data) async {
+    final res = await Http.post('/api/v1/client/address/update/$addressId',data:data);
+    return AddressRes.fromJson(res);
+  }
+
+  static Future<AddressRes> addressDeleteApi (String addressId) async {
+    final res = await Http.post('/api/v1/client/address/delete/$addressId');
+    return AddressRes.fromJson(res);
+  }
+
+  static Future<AddressRes> addressDetailApi (String addressId) async {
+    final res = await Http.get('/api/v1/client/address/address/$addressId');
+    return AddressRes.fromJson(res);
+  }
 
 }
 

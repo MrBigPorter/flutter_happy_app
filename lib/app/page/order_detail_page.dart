@@ -94,7 +94,7 @@ class _OrderDetailPageState extends ConsumerState<OrderDetailPage> {
                          }
                          final double opacity = 1.0 - ( offset / 356.w).clamp(0.0, 1.0);
                          return  SizedBox(
-                           height: 356.w,
+                           height: 356.h,
                            child: Opacity(
                              opacity: opacity,
                              child: SwiperBanner(
