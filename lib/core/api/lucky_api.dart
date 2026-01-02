@@ -364,9 +364,8 @@ class Api {
     return AddressRes.fromJson(res);
   }
 
-  static Future<AddressRes> addressDeleteApi (String addressId) async {
-    final res = await Http.delete('/api/v1/client/address/delete/$addressId');
-    return AddressRes.fromJson(res);
+  static Future<dynamic> addressDeleteApi (String addressId) async {
+    return await Http.delete('/api/v1/client/address/delete/$addressId');
   }
 
   static Future<AddressRes> addressDetailApi (String addressId) async {

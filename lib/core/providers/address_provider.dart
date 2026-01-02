@@ -60,13 +60,16 @@ Future<PageResult<AddressRes>> addressList(AddressListRef ref) {
   return Api.addressListApi();
 }
 
+//1. 小写 @riverpod (最常用)
+//特点：默认开启 autoDispose（没人监听时自动销毁）
 //优化 2: 详情页 Provider 也改写 (Family 变体)
 @riverpod
 Future<AddressRes> addressDetail(AddressDetailRef ref, String addressId) {
   return Api.addressDetailApi(addressId);
 }
 
-@riverpod
+//大写 @Riverpod：是一个类（构造函数），用于“自定义配置”（比如保活）。
+@Riverpod(keepAlive: true)
 class AddressManager extends _$AddressManager {
   @override
   AsyncValue<void> build() => const AsyncValue.data(null);
@@ -112,7 +115,10 @@ class AddressManager extends _$AddressManager {
       ref.invalidate(addressListProvider);
       // 刷新地址列表
       return true;
-    } catch (_) {
+    } catch (e, s) {
+      // 🔥🔥🔥 必须加上这行打印！看看控制台输出了什么 🔥🔥🔥
+      print('❌ 删除失败详细报错: $e');
+      print(s); // 打印堆栈
       return false;
     }
   }

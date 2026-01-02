@@ -165,7 +165,7 @@ class _AddressDetailProviderElement
   String get addressId => (origin as AddressDetailProvider).addressId;
 }
 
-String _$selectedAddressHash() => r'6c31912720dab83c5c7ca8fab52292a15b080c6e';
+String _$selectedAddressHash() => r'bd8ea455919f4164b519b9f1741b82c66e0994fd';
 
 /// See also [SelectedAddress].
 @ProviderFor(SelectedAddress)
@@ -181,12 +181,12 @@ final selectedAddressProvider =
     );
 
 typedef _$SelectedAddress = AutoDisposeNotifier<AddressRes?>;
-String _$addressManagerHash() => r'0c2fcf29b0d356dbd890785003b08c31b74ef43b';
+String _$addressManagerHash() => r'54e23099bb84f773235daf1c3c6dcc4c84ed2ee4';
 
 /// See also [AddressManager].
 @ProviderFor(AddressManager)
 final addressManagerProvider =
-    AutoDisposeNotifierProvider<AddressManager, AsyncValue<void>>.internal(
+    NotifierProvider<AddressManager, AsyncValue<void>>.internal(
       AddressManager.new,
       name: r'addressManagerProvider',
       debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
@@ -196,6 +196,6 @@ final addressManagerProvider =
       allTransitiveDependencies: null,
     );
 
-typedef _$AddressManager = AutoDisposeNotifier<AsyncValue<void>>;
+typedef _$AddressManager = Notifier<AsyncValue<void>>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package

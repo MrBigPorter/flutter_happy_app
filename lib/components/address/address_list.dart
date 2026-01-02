@@ -13,6 +13,7 @@ import 'package:flutter_app/core/providers/address_provider.dart';
 import 'package:flutter_app/ui/animations/transparent_fade_route.dart';
 import 'package:flutter_app/ui/button/variant.dart';
 import 'package:flutter_app/ui/toast/radix_toast.dart';
+import '../skeleton.dart';
 import 'address_manager_page.dart';
 
 class AddressList extends ConsumerStatefulWidget {
@@ -59,15 +60,98 @@ class _AddressListState extends ConsumerState<AddressList> {
           ),
         );
       },
-      loading: () => Container(
-        height: 200.h,
-        alignment: Alignment.center,
-        child: const CircularProgressIndicator(),
-      ),
+      // 使用骨架屏列表，并传入最大高度以防止布局跳动
+      loading: () => _buildSkeletonList(maxContentHeight),
       error: (error, stackTrace) => Container(
         height: 200.h,
         alignment: Alignment.center,
         child: Text('Error: $error'),
+      ),
+    );
+  }
+
+  /// 构建骨架屏列表结构
+  Widget _buildSkeletonList(double maxHeight) {
+    return ConstrainedBox(
+      constraints: BoxConstraints(maxHeight: maxHeight),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Flexible(
+            fit: FlexFit.loose,
+            child: ListView.separated(
+              shrinkWrap: true,
+              // 骨架屏通常禁止滚动，或者跟随内容
+              physics: const NeverScrollableScrollPhysics(),
+              padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+              itemCount: 3, // 显示 3-4 个假数据占位
+              separatorBuilder: (context, index) => SizedBox(height: 12.h),
+              itemBuilder: (context, index) => _buildSkeletonItem(),
+            ),
+          ),
+          // 即使在 Loading，也把底部按钮显示出来，保持页面底部稳定
+          Padding(
+            padding: EdgeInsets.all(16.w),
+            child: _buildAddButton(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 单个骨架屏 Item
+  Widget _buildSkeletonItem() {
+    return Container(
+      padding: EdgeInsets.all(16.w),
+      decoration: BoxDecoration(
+        color: context.bgMobilePrimary,
+        borderRadius: BorderRadius.circular(12.r),
+        border: Border.all(color: context.borderPrimary, width: 1.w),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // 模拟姓名
+                Skeleton.react(
+                  width: 80.w,
+                  height: 16.h,
+                  borderRadius: BorderRadius.circular(4.r),
+                ),
+                SizedBox(height: 10.h),
+                // 模拟电话
+                Skeleton.react(
+                  width: 120.w,
+                  height: 14.h,
+                  borderRadius: BorderRadius.circular(4.r),
+                ),
+                SizedBox(height: 10.h),
+                // 模拟详细地址 (两行)
+                Skeleton.react(
+                  width: double.infinity,
+                  height: 14.h,
+                  borderRadius: BorderRadius.circular(4.r),
+                ),
+                SizedBox(height: 6.h),
+                Skeleton.react(
+                  width: 150.w,
+                  height: 14.h,
+                  borderRadius: BorderRadius.circular(4.r),
+                ),
+              ],
+            ),
+          ),
+          SizedBox(width: 20.w),
+          // 模拟编辑图标
+          Skeleton.react(
+            width: 20.w,
+            height: 20.w,
+            borderRadius: BorderRadius.circular(4.r),
+          ),
+        ],
       ),
     );
   }
@@ -111,19 +195,19 @@ class _AddressListState extends ConsumerState<AddressList> {
 
   Widget _buildNoAddress() {
     return Padding(
-      padding: EdgeInsets.symmetric(vertical: 40.w),
+      padding: EdgeInsets.symmetric(vertical: 40.h),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           SizedBox(
             width: 120.w,
-            height: 120.w,
+            height: 120.h,
             child: Stack(
               alignment: Alignment.center,
               children: [
                 Container(
                   width: 100.w,
-                  height: 100.w,
+                  height: 100.h,
                   decoration: BoxDecoration(
                     color: Colors.grey.withOpacity(0.1),
                     shape: BoxShape.circle,
@@ -218,7 +302,8 @@ class _AddressItemState extends ConsumerState<_AddressItem> {
 
   Future<void> _handleDelete() async {
     setState(() => _isDeleting = true);
-
+    // 由于这里没有watch，调用完delete后，发现没有watch，就会auto dispose，所以需要判断mounted
+    //导致列表刷新不了，可以使用@riverpod(keepAlive: true)常驻，或者watch
     // 调用 Manager
     final success = await ref
         .read(addressManagerProvider.notifier)
@@ -241,14 +326,16 @@ class _AddressItemState extends ConsumerState<_AddressItem> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    final isSelected = widget.address.isDefault == 1;
+  Widget build(BuildContext context,) {
+    final address = ref.watch(selectedAddressProvider);
+    final isChecked = widget.address.addressId == address?.addressId;
+    final isDefault = widget.address.isDefault == 1;
 
     return Container(
       decoration: BoxDecoration(
         color: context.bgMobilePrimary,
         borderRadius: BorderRadius.circular(12.r),
-        border: isSelected ? Border.all(color: context.borderBrand, width: 1.w)
+        border: isChecked ? Border.all(color: context.borderBrand, width: 1.w)
             : Border.all(color: context.borderPrimary, width: 1.w),
         boxShadow: [
           BoxShadow(
@@ -268,7 +355,6 @@ class _AddressItemState extends ConsumerState<_AddressItem> {
             // ScrollMotion: 按钮固定在底部 (像旧版 iOS)
             motion: const DrawerMotion(),
             extentRatio: 0.25, // 删除按钮占整个卡片的 25%
-            dismissible: DismissiblePane(onDismissed: ()=>_handleDelete()),
             children: [
               CustomSlidableAction(
                 onPressed: (context) => _handleDelete(),
@@ -296,8 +382,12 @@ class _AddressItemState extends ConsumerState<_AddressItem> {
             ],
           ),
           child: GestureDetector(
+            // opaque 表示：即使是透明的空白区域（Padding），也要响应点击
+              behavior: HitTestBehavior.opaque,
             onTap: () {
-              NavHub.key.currentState?.pop(widget.address);
+              print('Selected address ID: ${widget.address.addressId}');
+              ref.read(selectedAddressProvider.notifier).select(widget.address);
+              NavHub.key.currentState?.pop();
             },
             child: Container(
               padding: EdgeInsets.all(16.w),
@@ -318,7 +408,7 @@ class _AddressItemState extends ConsumerState<_AddressItem> {
                                 color: context.textPrimary900,
                               ),
                             ),
-                            if (isSelected) ...[
+                            if (isDefault) ...[
                               SizedBox(width: 8.w),
                               Container(
                                 padding: EdgeInsets.symmetric(

@@ -1,5 +1,7 @@
 import 'dart:math' as math;
+import 'package:flutter_app/core/models/kyc.dart';
 import 'package:flutter_app/core/models/payment.dart';
+import 'package:flutter_app/core/providers/address_provider.dart';
 import 'package:flutter_app/core/providers/index.dart'; // productDetailProvider
 import 'package:flutter_app/core/providers/order_provider.dart';
 import 'package:flutter_app/core/store/auth/auth_provider.dart';
@@ -22,8 +24,6 @@ class PurchaseState {
   final int? salesStartAt;
   final int? salesEndAt;
   final int productState; // 1=上架
-
-
 
   PurchaseState({
     required this.entries,
@@ -77,13 +77,15 @@ class PurchaseState {
     return PurchaseState(
       entries: entries ?? this.entries,
       unitAmount: unitAmount ?? this.unitAmount,
-      maxUnitCoins: maxUnitCoins, // 通常不变
+      maxUnitCoins: maxUnitCoins,
+      // 通常不变
       maxPerBuyQuantity: maxPerBuyQuantity ?? this.maxPerBuyQuantity,
       minBuyQuantity: minBuyQuantity ?? this.minBuyQuantity,
       stockLeft: stockLeft ?? this.stockLeft,
       useDiscountCoins: useDiscountCoins ?? this.useDiscountCoins,
       isSubmitting: isSubmitting ?? this.isSubmitting,
-      salesStartAt: salesStartAt, // 这种字段通常初始化后很少变，暂不开放 copyWith
+      salesStartAt: salesStartAt,
+      // 这种字段通常初始化后很少变，暂不开放 copyWith
       salesEndAt: salesEndAt,
       productState: productState ?? this.productState,
     );
@@ -98,14 +100,14 @@ enum PurchaseSubmitError {
   purchaseLimitExceeded,
   soldOut,
   unknown,
-  // ✨ 新增错误类型
+  //  新增错误类型
   preSaleNotStarted,
   salesEnded,
   productOffline,
 
-  // 🚨 补回这两个业务错误
-  needKyc,      // 需要 KYC 认证
-  noAddress,    // 需要收货地址 (之前你的注释里也有这个，建议一起补上)
+  //  补回这两个业务错误
+  needKyc, // 需要 KYC 认证
+  noAddress, // 需要收货地址 (之前你的注释里也有这个，建议一起补上)
 }
 
 class PurchaseSubmitResult {
@@ -119,8 +121,10 @@ class PurchaseSubmitResult {
   factory PurchaseSubmitResult.ok(data) =>
       PurchaseSubmitResult._(true, PurchaseSubmitError.none, null, data);
 
-  factory PurchaseSubmitResult.error(PurchaseSubmitError error, {String? message}) =>
-      PurchaseSubmitResult._(false, error, message);
+  factory PurchaseSubmitResult.error(
+    PurchaseSubmitError error, {
+    String? message,
+  }) => PurchaseSubmitResult._(false, error, message);
 }
 
 class PurchaseNotifier extends StateNotifier<PurchaseState> {
@@ -137,20 +141,24 @@ class PurchaseNotifier extends StateNotifier<PurchaseState> {
 
   /// 场景：用户停留在详情页，此时库存变动，或者商品下架
   void _listenToProductUpdates() {
-
-    ref.listen(productRealtimeStatusProvider(treasureId), (prev,next){
-      next.whenData((status){
+    ref.listen(productRealtimeStatusProvider(treasureId), (prev, next) {
+      next.whenData((status) {
         // 转换价格 String -> double
         final newStock = status.stock;
         final newPrice = status.price;
         final newState = status.state;
 
         // 只有数据真的变了才更新
-        if(newStock != state.stockLeft || newState != state.productState || newPrice != state.unitAmount){
+        if (newStock != state.stockLeft ||
+            newState != state.productState ||
+            newPrice != state.unitAmount) {
           // 智能处理 entries：如果当前选的份数超过了新库存，才强制调小
           // 否则保持用户输入的份数不变
           final currentEntries = state.entries;
-          final maxAllowed = math.min(newStock, state.maxPerBuyQuantity > 0 ? state.maxPerBuyQuantity : newStock);
+          final maxAllowed = math.min(
+            newStock,
+            state.maxPerBuyQuantity > 0 ? state.maxPerBuyQuantity : newStock,
+          );
           final safeEntries = math.min(currentEntries, math.max(1, maxAllowed));
 
           state = state.copyWith(
@@ -160,22 +168,25 @@ class PurchaseNotifier extends StateNotifier<PurchaseState> {
             productState: newState,
           );
         }
-
       });
     });
 
     // 2. 监听【静态详情】：主要为了防备运营后台改了限购配置 (maxPerBuyQuantity)
     ref.listen(productDetailProvider(treasureId), (prev, next) {
       next.whenData((detail) {
-        final newMaxLimit = JsonNumConverter.toInt(detail.maxPerBuyQuantity ?? 0);
+        final newMaxLimit = JsonNumConverter.toInt(
+          detail.maxPerBuyQuantity ?? 0,
+        );
         final newMinLimit = detail.minBuyQuantity ?? 1;
-        if( newMaxLimit != state.maxPerBuyQuantity ||
+        if (newMaxLimit != state.maxPerBuyQuantity ||
             newMinLimit != state.minBuyQuantity) {
-
           // 智能处理 entries：如果当前选的份数超过了新库存，才强制调小
           final currentEntries = state.entries;
           final currentAuthoritativeStock = state.stockLeft;
-          final maxAllowed = math.min(currentAuthoritativeStock, newMaxLimit > 0 ? newMaxLimit : currentAuthoritativeStock);
+          final maxAllowed = math.min(
+            currentAuthoritativeStock,
+            newMaxLimit > 0 ? newMaxLimit : currentAuthoritativeStock,
+          );
           final safeEntries = math.min(currentEntries, math.max(1, maxAllowed));
 
           state = state.copyWith(
@@ -185,8 +196,6 @@ class PurchaseNotifier extends StateNotifier<PurchaseState> {
             //坚决不更新 stockLeft 和 unitAmount
           );
         }
-
-
       });
     });
   }
@@ -206,8 +215,11 @@ class PurchaseNotifier extends StateNotifier<PurchaseState> {
 
   // Getters 保持不变
   double get _balanceCoins => ref.read(luckyProvider).balance.coinBalance;
+
   double get _realBalance => ref.read(luckyProvider).balance.realBalance;
+
   double get _exchangeRate => ref.read(luckyProvider).sysConfig.exChangeRate;
+
   bool get _isAuthenticated => ref.read(authProvider).isAuthenticated;
 
   double get coinsCanUse {
@@ -230,64 +242,76 @@ class PurchaseNotifier extends StateNotifier<PurchaseState> {
   }
 
   Future<PurchaseSubmitResult> submitOrder({String? groupId}) async {
-    if (!mounted) return PurchaseSubmitResult.error(PurchaseSubmitError.unknown);
+    if (!mounted) {
+      return PurchaseSubmitResult.error(PurchaseSubmitError.unknown);
+    }
+
+    // 0 防御：防止重复提交
+    if (state.isSubmitting) {
+      return PurchaseSubmitResult.error(PurchaseSubmitError.unknown);
+    }
 
     // 1. 基础校验
-    if (!_isAuthenticated) return PurchaseSubmitResult.error(PurchaseSubmitError.needLogin);
-    if (state.stockLeft <= 0) return PurchaseSubmitResult.error(PurchaseSubmitError.soldOut);
-    if (state.productState != 1) return PurchaseSubmitResult.error(PurchaseSubmitError.productOffline);
+    if (!_isAuthenticated) {
+      return PurchaseSubmitResult.error(PurchaseSubmitError.needLogin);
+    }
+    if (state.stockLeft <= 0) {
+      return PurchaseSubmitResult.error(PurchaseSubmitError.soldOut);
+    }
+    if (state.productState != 1) {
+      return PurchaseSubmitResult.error(PurchaseSubmitError.productOffline);
+    }
 
-    // 2. ✨ 时间/状态校验 (核心防御)
+    // 2.  时间/状态校验 (核心防御)
     final now = ServerTimeHelper.nowMilliseconds;
 
     // 预售拦截
     if (state.salesStartAt != null && state.salesStartAt! > now) {
       return PurchaseSubmitResult.error(
-          PurchaseSubmitError.preSaleNotStarted,
-          message: 'Pre-sale has not started yet.'
+        PurchaseSubmitError.preSaleNotStarted,
+        message: 'Pre-sale has not started yet.',
       );
     }
 
     // 过期拦截
     if (state.salesEndAt != null && state.salesEndAt! < now) {
       return PurchaseSubmitResult.error(
-          PurchaseSubmitError.salesEnded,
-          message: 'Sales have ended.'
+        PurchaseSubmitError.salesEnded,
+        message: 'Sales have ended.',
       );
     }
 
     // ---------------------------------------------------------
-    // 🚨 4. 补回 KYC 和 地址 校验 (关键业务风控)
+    //  4. 补回 KYC 和 地址 校验 (关键业务风控)
     // ---------------------------------------------------------
-    final luckyStore = ref.read(luckyProvider);
-    final sysConfig = luckyStore.sysConfig;
-    final user = luckyStore.userInfo;
+    final kycStatus = ref.read(
+      luckyProvider.select((s) => s.userInfo?.kycStatus),
+    );
 
-    // 检查是否开启了强制 KYC (假设配置值为 '1' 代表开启)
-    if (sysConfig.kycAndPhoneVerification == '1') {
-      // 根据你的 Prisma Schema，4 代表已认证 (0-未认证, 1-审核中, 2-失败, 3-补充, 4-已通过)
-      if (user?.kycStatus != 4) {
-        return PurchaseSubmitResult.error(PurchaseSubmitError.needKyc);
-      }
+    // 根据你的 Prisma Schema，4 代表已认证 (0-未认证, 1-审核中, 2-失败, 3-补充, 4-已通过)
+    if (KycStatusEnum.fromStatus(kycStatus ?? 0) != KycStatusEnum.approved) {
+      return PurchaseSubmitResult.error(PurchaseSubmitError.needKyc);
     }
 
     // (可选) 检查是否需要收货地址 - 如果你的业务要求下单前必须有地址
-    /*if (sysConfig.forceAddressBeforeOrder == '1') {
-       // 这里可能需要去 addressProvider 查一下列表，或者 userInfo 里有 defaultAddressId
-       if (user?.deliveryAddressId == null) {
-          return PurchaseSubmitResult.error(PurchaseSubmitError.noAddress);
-       }
-    }*/
-
+    // 这里可能需要去 addressProvider 查一下列表，或者 userInfo 里有 defaultAddressId
+    final address = await ref.read(selectedAddressProvider);
+    if (address == null) {
+      return PurchaseSubmitResult.error(PurchaseSubmitError.noAddress);
+    }
 
     // 3. 限购校验
     if (state.entries > state._maxEntriesAllowed) {
-      return PurchaseSubmitResult.error(PurchaseSubmitError.purchaseLimitExceeded);
+      return PurchaseSubmitResult.error(
+        PurchaseSubmitError.purchaseLimitExceeded,
+      );
     }
 
     // 4. 余额校验
     if (_realBalance < payableAmount) {
-      return PurchaseSubmitResult.error(PurchaseSubmitError.insufficientBalance);
+      return PurchaseSubmitResult.error(
+        PurchaseSubmitError.insufficientBalance,
+      );
     }
 
     try {
@@ -298,13 +322,16 @@ class PurchaseNotifier extends StateNotifier<PurchaseState> {
           OrdersCheckoutParams(
             treasureId: treasureId,
             entries: state.entries,
-            paymentMethod: state.useDiscountCoins ? 2 : 1, // 1=Cash, 2=Hybrid/Coin
+            paymentMethod: state.useDiscountCoins ? 2 : 1,
+            // 1=Cash, 2=Hybrid/Coin
             groupId: groupId,
           ),
         ).future,
       );
 
-      if (!mounted) return PurchaseSubmitResult.error(PurchaseSubmitError.unknown);
+      if (!mounted) {
+        return PurchaseSubmitResult.error(PurchaseSubmitError.unknown);
+      }
 
       // 成功后刷新余额
       ref.read(luckyProvider.notifier).updateWalletBalance();
@@ -314,7 +341,12 @@ class PurchaseNotifier extends StateNotifier<PurchaseState> {
 
       return PurchaseSubmitResult.ok(orderCheckoutResult);
     } catch (e) {
-      return PurchaseSubmitResult.error(PurchaseSubmitError.unknown, message: e.toString());
+      // 可以在这里解析 e，如果 e 包含 "Stock not enough"，
+      // 返回 PurchaseSubmitError.insufficientStock 会比 unknown 体验更好
+      return PurchaseSubmitResult.error(
+        PurchaseSubmitError.unknown,
+        message: e.toString(),
+      );
     } finally {
       if (mounted) state = state.copyWith(isSubmitting: false);
     }
@@ -358,38 +390,46 @@ class PurchaseNotifier extends StateNotifier<PurchaseState> {
 }
 
 //  优化 Provider 定义：使用 autoDispose 并在初始化时处理异步数据
-final purchaseProvider = StateNotifierProvider.family.autoDispose<PurchaseNotifier, PurchaseState, String>((ref, id) {
+final purchaseProvider = StateNotifierProvider.family
+    .autoDispose<PurchaseNotifier, PurchaseState, String>((ref, id) {
+      // 1. 获取【静态详情】(大概率有缓存)
+      final detail = ref.watch(productDetailProvider(id)).valueOrNull;
+      // 2. 获取【实时状态】(可能正在加载，也可能有了)
+      final status = ref.watch(productRealtimeStatusProvider(id)).valueOrNull;
+      //  3. 数据融合策略
+      // - 库存/价格/状态：优先用 status，没有则用 detail 兜底
+      // - 配置/限购：只能用 detail
 
-  // 1. 获取【静态详情】(大概率有缓存)
-  final detail = ref.watch(productDetailProvider(id)).valueOrNull;
-  // 2. 获取【实时状态】(可能正在加载，也可能有了)
-  final status = ref.watch(productRealtimeStatusProvider(id)).valueOrNull;
-  //  3. 数据融合策略
-  // - 库存/价格/状态：优先用 status，没有则用 detail 兜底
-  // - 配置/限购：只能用 detail
+      final stockLeft =
+          status?.stock ??
+          ((detail?.seqShelvesQuantity ?? 0) - (detail?.seqBuyQuantity ?? 0));
+      final price = status?.price ?? (detail?.unitAmount ?? 0.0);
+      final productState = status?.state ?? (detail?.state ?? 1);
 
-  final stockLeft = status?.stock ??
-      ((detail?.seqShelvesQuantity ?? 0) - (detail?.seqBuyQuantity ?? 0));
-  final price = status?.price ?? (detail?.unitAmount ?? 0.0);
-  final productState = status?.state ?? (detail?.state ?? 1);
+      final minBuy = detail?.minBuyQuantity ?? 1;
 
-  final minBuy = detail?.minBuyQuantity ?? 1;
+      // 2. 初始化状态
+      final initialState = PurchaseState(
+        entries: stockLeft > 0 ? minBuy : 0,
+        unitAmount: price,
+        // 价格优先用实时的
+        maxUnitCoins: JsonNumConverter.toDouble(detail?.maxUnitCoins),
+        maxPerBuyQuantity: JsonNumConverter.toInt(
+          detail?.maxPerBuyQuantity ?? 0,
+        ),
+        // 0代表不限
+        minBuyQuantity: minBuy,
+        stockLeft: stockLeft,
+        // 库存优先用实时的
+        useDiscountCoins: true,
+        isSubmitting: false,
+        // 注入时间字段
+        salesStartAt: detail?.salesStartAt,
+        salesEndAt: detail?.salesEndAt,
+        productState: productState,
+      );
 
-  // 2. 初始化状态
-  final initialState = PurchaseState(
-    entries: stockLeft > 0 ? minBuy : 0,
-    unitAmount: price, // 价格优先用实时的
-    maxUnitCoins: JsonNumConverter.toDouble(detail?.maxUnitCoins),
-    maxPerBuyQuantity: JsonNumConverter.toInt(detail?.maxPerBuyQuantity ?? 0), // 0代表不限
-    minBuyQuantity: minBuy,
-    stockLeft: stockLeft,// 库存优先用实时的
-    useDiscountCoins: true,
-    isSubmitting: false,
-    // 注入时间字段
-    salesStartAt: detail?.salesStartAt,
-    salesEndAt: detail?.salesEndAt,
-    productState: productState,
-  );
+      return PurchaseNotifier(ref: ref, treasureId: id, state: initialState);
+    });
 
-  return PurchaseNotifier(ref: ref, treasureId: id, state: initialState);
-});
+

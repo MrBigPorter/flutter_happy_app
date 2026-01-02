@@ -11,6 +11,7 @@ import 'package:flutter_app/components/base_scaffold.dart';
 import 'package:flutter_app/components/kyc_modal.dart';
 
 import 'package:flutter_app/core/models/payment.dart';
+import 'package:flutter_app/core/providers/address_provider.dart';
 import 'package:flutter_app/core/providers/index.dart';
 import 'package:flutter_app/core/providers/purchase_state_provider.dart';
 import 'package:flutter_app/core/store/auth/auth_provider.dart';
@@ -289,6 +290,10 @@ class _BottomNavigationBarState extends ConsumerState<_BottomNavigationBar>
       purchaseProvider(widget.params.treasureId ?? ''),
     );
 
+    //  监听地址的变化，以防用户在结算页更改了地址
+    final addressListAsync = ref.watch(addressListProvider);
+    final isBusy = purchase.isSubmitting || (addressListAsync.isLoading && !addressListAsync.hasValue);
+
     return AnimatedBuilder(
       animation: _animationController,
       builder: (context, child) {
@@ -363,8 +368,8 @@ class _BottomNavigationBarState extends ConsumerState<_BottomNavigationBar>
             SizedBox(width: 16.w),
             Button(
               width: 120.w,
-              height: 40.w,
-              loading: purchase.isSubmitting,
+              height: 40.h,
+              loading: isBusy,
               onPressed: submitPayment,
               child: Text(
                 'common.checkout'.tr(),

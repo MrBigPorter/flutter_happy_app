@@ -22,7 +22,7 @@ import 'package:flutter_app/utils/format_helper.dart';
 
 import 'package:flutter_app/core/providers/address_provider.dart';
 
-import '../../../core/models/address_res.dart';
+import 'package:flutter_app/core/models/address_res.dart';
 
 
 class AddressSection extends ConsumerWidget {

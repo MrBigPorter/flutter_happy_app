@@ -56,7 +56,7 @@ class AddressCreateDto {
   final int barangayId;
 
   final String fullAddress;
-  final String postalCode;
+  final String? postalCode;
   final String? label;
   final int isDefault;
 

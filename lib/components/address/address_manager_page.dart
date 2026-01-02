@@ -112,7 +112,7 @@ class _AddressManagerPageState extends ConsumerState<AddressManagerPage> {
       provinceId: val['provinceId'] as int,
       cityId: val['cityId'] as int,
       barangayId: val['barangayId'] as int,
-      postalCode: val['postalCode'] as String,
+      postalCode: val['postalCode'] as String?,
       phone: val['phone'] as String,
       isDefault: val['isDefault'] == true ? 1 : 0,
       label: null,
