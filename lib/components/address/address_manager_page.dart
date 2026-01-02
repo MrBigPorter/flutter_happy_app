@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -33,18 +35,22 @@ class _AddressManagerPageState extends ConsumerState<AddressManagerPage> {
 
   // 新增标记位：防止回填数据时触发级联清空
   bool _isPatching = false;
+
   bool get isEditing => widget.address != null;
+
+  StreamSubscription? _provinceSub;
+  StreamSubscription? _citySub;
 
   @override
   void initState() {
     super.initState();
-    _setupResetListeners();
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
       if (isEditing) {
         _prefillForm(widget.address!);
       }
-    });
+    _setupResetListeners();
+
+
   }
 
   void _prefillForm(AddressRes address) {
@@ -66,14 +72,14 @@ class _AddressManagerPageState extends ConsumerState<AddressManagerPage> {
   }
 
   void _setupResetListeners() {
-    addressForm.provinceIdControl.valueChanges.listen((_) {
+    _provinceSub = addressForm.provinceIdControl.valueChanges.listen((_) {
       //修改监听逻辑：如果是 Patching 过程中，不要重置
       if (_isPatching) return;
       addressForm.cityIdControl.reset();
       addressForm.barangayIdControl.reset();
     });
 
-    addressForm.cityIdControl.valueChanges.listen((_) {
+    _citySub = addressForm.cityIdControl.valueChanges.listen((_) {
       //修改监听逻辑：如果是 Patching 过程中，不要重置
       if (_isPatching) return;
       addressForm.barangayIdControl.reset();
@@ -124,13 +130,22 @@ class _AddressManagerPageState extends ConsumerState<AddressManagerPage> {
       success = await manager.addAddress(req);
     }
 
+    if (!mounted) return;
+
     // 6. 处理结果
     if (success) {
-      // 关闭弹窗
-      widget.onClose?.call();
       // 显示成功提示
       RadixToast.success('Address saved successfully.');
+      // 关闭弹窗
+      widget.onClose?.call();
     }
+  }
+
+  @override
+  void dispose() {
+    _provinceSub?.cancel();
+    _citySub?.cancel();
+    super.dispose();
   }
 
   @override
@@ -144,6 +159,8 @@ class _AddressManagerPageState extends ConsumerState<AddressManagerPage> {
     // 7. 监听全局 Loading 状态
     final managerState = ref.watch(addressManagerProvider);
     final isLoading = managerState.isLoading;
+    // 1. 获取键盘高度
+    final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
 
     return DraggableScrollableScaffold(
       heroTag: 'add-address-manager',
@@ -205,12 +222,13 @@ class _AddressManagerPageState extends ConsumerState<AddressManagerPage> {
                     ),
                     child: Column(
                       children: [
-                        SizedBox(height: height),
-                        LfInput(name: "contactName", label: "Contact Name"),
+                        SizedBox(height:height,),
+                        LfInput(name: "contactName", label: "Contact Name", required: true,),
                         SizedBox(height: 16.h),
-                        LfInput(name: "fullAddress", label: "full Address"),
+                        LfInput(name: "fullAddress", label: "full Address", required: true,),
                         SizedBox(height: 16.h),
                         LfWheelSelect(
+                          required: true,
                           name: 'provinceId',
                           label: "Province",
                           isLoading:
@@ -226,12 +244,13 @@ class _AddressManagerPageState extends ConsumerState<AddressManagerPage> {
                         ReactiveValueListenableBuilder<int>(
                           formControlName: 'provinceId',
                           builder: (context, control, child) {
-                            final provinceId = control.value;
+                            final provinceId = control.value ?? widget.address?.provinceId;
                             // 监听省份变化，加载对应的城市
                             final citiesAsync = ref.watch(
                               cityProvider(provinceId ?? -1),
                             );
                             return LfWheelSelect(
+                              required: true,
                               name: 'cityId',
                               label: "City",
                               isLoading:
@@ -248,12 +267,13 @@ class _AddressManagerPageState extends ConsumerState<AddressManagerPage> {
                         ReactiveValueListenableBuilder<int>(
                           formControlName: 'cityId',
                           builder: (context, control, child) {
-                            final cityId = control.value;
+                            final cityId = control.value ?? widget.address?.cityId;
                             // 监听城市变化，加载对应的区/县
                             final districtsAsync = ref.watch(
                               barangaysProvider(cityId ?? -1),
                             );
                             return LfWheelSelect(
+                              required: true,
                               name: 'barangayId',
                               label: "Barangay",
                               isLoading:
@@ -270,11 +290,11 @@ class _AddressManagerPageState extends ConsumerState<AddressManagerPage> {
                         SizedBox(height: 16.h),
                         LfInput(name: "postalCode", label: "Postal Code"),
                         SizedBox(height: 16.h),
-                        LfInput(name: "phone", label: "Phone"),
+                        LfInput(name: "phone", label: "Phone", keyboardType: TextInputType.phone, required: true,),
                         LfCheckbox(
-                            name: "isDefault",
-                            label: "Set as Default Address"
-                        )
+                          name: "isDefault",
+                          label: "Set as Default Address",
+                        ),
                       ],
                     ),
                   ),
@@ -286,18 +306,24 @@ class _AddressManagerPageState extends ConsumerState<AddressManagerPage> {
       },
       bottomBar: Container(
         color: context.bgSecondary,
-        padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 16.h),
-        child: SafeArea(
-          top: false,
-          child: Button(
-            width: double.infinity,
-            height: 48.h,
-            onPressed: isLoading ? null : submit,
-            loading: isLoading,
-            child: Text(
-                isEditing?"common.edit".tr():"common.add".tr(),
-              style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w600),
-            ),
+        padding: EdgeInsets.only(
+          left: 16.w,
+          right: 16.w,
+          top: 16.h,
+          bottom:
+              16.h +
+              (keyboardHeight > 0
+                  ? keyboardHeight
+                  : MediaQuery.of(context).padding.bottom),
+        ),
+        child: Button(
+          width: double.infinity,
+          height: 48.h,
+          onPressed: isLoading ? null : submit,
+          loading: isLoading,
+          child: Text(
+            isEditing ? "common.edit".tr() : "common.add".tr(),
+            style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w600),
           ),
         ),
       ),

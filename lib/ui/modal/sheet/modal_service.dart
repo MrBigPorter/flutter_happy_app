@@ -1,14 +1,11 @@
 import 'dart:async';
 import 'dart:ui';
-import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_app/ui/modal/base/modal_auto_close_observer.dart';
 import 'package:flutter_app/ui/modal/base/nav_hub.dart';
 import 'package:flutter_app/ui/modal/progress/modal_progress_observer.dart';
 import 'package:flutter_app/ui/modal/sheet/modal_sheet_config.dart';
-import 'package:flutter_app/utils/helper.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:provider/provider.dart';
 import '../base/animation_policy_resolver.dart';
 import '../progress/overlay_progress_provider.dart';
 import 'animated_sheet_wrapper.dart';
@@ -36,13 +33,13 @@ class ModalSheetService {
     bool clickBgToClose = true,
     ModalSheetConfig config = const ModalSheetConfig(),
     Widget? Function(BuildContext)? headerBuilder,
-
-    //  [新增参数] 是否启用背景缩放动画
-    // 默认为 true (保持原有逻辑)。
-    // 调用 Picker 时请传 false，这样页面绝对不会动！
     bool enableShrink = true,
   }) async {
-    if (isShowing) await close();
+    // 1. 关键修复：如果有弹窗正在显示，等待它完全关闭
+    // 这里的 close() 现在会 await 直到上一个弹窗彻底销毁
+    if (isShowing) {
+      await close();
+    }
 
     final policy = AnimationPolicyResolver.resolve(
       businessStyle: config.animationStyleConfig,
@@ -62,14 +59,13 @@ class ModalSheetService {
     final allowBgClose = (config.allowBackgroundCloseOverride ?? policy.allowBackgroundClose) && clickBgToClose;
     final enableDrag = config.enableDragToClose ?? policy.enableDragToClose;
 
-    // 保持透明，由 Stack 里的 BackdropFilter 控制
     final barrierColor = Colors.transparent;
     final visualBarrierColor = config.theme.barrierColor ?? theme.colorScheme.scrim.withValues(alpha: 0.45);
 
     try {
       _sheetFuture = showModalBottomSheet<T>(
         context: ctx,
-        useRootNavigator: true, // 保持这个，防止 Scaffold 挤压
+        useRootNavigator: true,
         isScrollControlled: true,
         backgroundColor: Colors.transparent,
         useSafeArea: false,
@@ -154,8 +150,6 @@ class ModalSheetService {
             ],
           );
 
-          // 如果 enableShrink 为 false，就不包裹 Observer。
-          // 这样 Provider 里的值永远是 0，OverlayShrink 就永远不会触发，页面就永远不会动！
           if (enableShrink) {
             return ModalProgressObserver(child: content);
           } else {
@@ -169,10 +163,11 @@ class ModalSheetService {
     } catch (error) {
       return null;
     } finally {
+      // 2. 只有在这里才真正的清空引用
+      // 这保证了上一个弹窗的生命周期完全结束
       _sheetFuture = null;
       _sheetContext = null;
 
-      // 只有启用了缩放才需要重置，不过多重置一次也没坏处
       try {
         final currentContext = navigatorKey.currentContext;
         if (currentContext != null && currentContext.mounted) {
@@ -183,11 +178,20 @@ class ModalSheetService {
     }
   }
 
+  // 3. 关键修复：close 方法
   Future<void> close<T>([T? value]) async {
-    if (_sheetContext != null && Navigator.of(_sheetContext!).canPop()) {
+    if (!isShowing) return;
+
+    // 触发关闭动画
+    if (_sheetContext != null && _sheetContext!.mounted && Navigator.of(_sheetContext!).canPop()) {
       Navigator.of(_sheetContext!).pop<T>(value);
     }
-    _sheetFuture = null;
-    _sheetContext = null;
+
+    // 4. 重要：等待 Future 完成
+    // 不要在这里手动置空 _sheetFuture = null
+    // 等待 showModalBottomSheet 内部流程走完（动画结束 -> finally 块执行）
+    if (_sheetFuture != null) {
+      await _sheetFuture;
+    }
   }
 }

@@ -165,6 +165,22 @@ class _AddressDetailProviderElement
   String get addressId => (origin as AddressDetailProvider).addressId;
 }
 
+String _$selectedAddressHash() => r'6c31912720dab83c5c7ca8fab52292a15b080c6e';
+
+/// See also [SelectedAddress].
+@ProviderFor(SelectedAddress)
+final selectedAddressProvider =
+    AutoDisposeNotifierProvider<SelectedAddress, AddressRes?>.internal(
+      SelectedAddress.new,
+      name: r'selectedAddressProvider',
+      debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+          ? null
+          : _$selectedAddressHash,
+      dependencies: null,
+      allTransitiveDependencies: null,
+    );
+
+typedef _$SelectedAddress = AutoDisposeNotifier<AddressRes?>;
 String _$addressManagerHash() => r'0c2fcf29b0d356dbd890785003b08c31b74ef43b';
 
 /// See also [AddressManager].

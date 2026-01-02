@@ -138,7 +138,13 @@ class PostalCode extends Validator<dynamic> {
   @override
   Map<String, dynamic>? validate(AbstractControl<dynamic> control) {
     final v = (control.value ?? '').toString();
-    if(v.isEmpty) return const {'required': true}; // 必填 must not be empty
-    return _re.hasMatch(v) ? null : const {'postalCode': true}; // 非法
+
+    // 修改点：如果为空，直接返回 null (代表通过)，不再返回 required 错误
+    if (v.isEmpty) {
+      return null;
+    }
+
+    // 只有当有值的时候，才校验格式
+    return _re.hasMatch(v) ? null : const {'postalCode': true};
   }
 }

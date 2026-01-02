@@ -3,6 +3,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_app/components/address/address_list.dart';
+import 'package:flutter_app/components/skeleton.dart';
 import 'package:flutter_app/ui/img/app_image.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -19,12 +20,15 @@ import 'package:flutter_app/ui/modal/sheet/radix_sheet.dart';
 import 'package:flutter_app/utils/date_helper.dart';
 import 'package:flutter_app/utils/format_helper.dart';
 
-import '../../../ui/modal/sheet/modal_sheet_config.dart';
+import 'package:flutter_app/core/providers/address_provider.dart';
 
-class AddressSection extends StatelessWidget {
+import '../../../core/models/address_res.dart';
+
+
+class AddressSection extends ConsumerWidget {
   const AddressSection({super.key});
 
-  void _onAddressTap() {
+  void _onAddressTap() async {
     RadixSheet.show(
       enableShrink: true,
       builder: (context, close) {
@@ -34,49 +38,186 @@ class AddressSection extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    // 1. 监听选中项
+    final address = ref.watch(selectedAddressProvider);
+    // 2. 关键：同时监听列表的请求状态
+    final listAsync = ref.watch(addressListProvider);
+
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 16.w),
       child: GestureDetector(
         onTap: () {
-          // Navigate to address selection page
-          _onAddressTap();
+          // 只有加载完了才能点，或者你允许加载中点进去看 Skeleton
+          if (!listAsync.isLoading) {
+            _onAddressTap();
+          }
         },
         child: Container(
           width: double.infinity,
-          height: 80.w,
+          constraints: BoxConstraints(minHeight: 80.w),
           margin: EdgeInsets.only(top: 16.w),
           padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 16.h),
           decoration: BoxDecoration(
             color: context.bgPrimary,
             borderRadius: BorderRadius.circular(context.radiusXl),
           ),
-          child: Row(
+          // 3. 根据状态决定显示什么
+          child: _buildContent(context, listAsync, address),
+        ),
+      ),
+    );
+  }
+
+  /// 核心内容构建逻辑
+  Widget _buildContent(
+      BuildContext context,
+      AsyncValue<dynamic> listAsync,
+      AddressRes? address
+      ) {
+    // 优先级 A: 正在初次加载，且没有数据
+    // (!listAsync.hasValue 保证了下拉刷新时不会突然变成转圈，只有第一次会)
+    if (listAsync.isLoading && !listAsync.hasValue) {
+      return _buildLoadingState(context);
+    }
+
+    // 优先级 B: 有选中的地址
+    if (address != null) {
+      return _buildSelectedState(context, address);
+    }
+
+    // 优先级 C: 加载完了，但没有选中地址 (或者列表为空) -> 显示“去添加”
+    return _buildEmptyState(context);
+  }
+
+  // --- 状态组件 ---
+  // 1. Loading 状态
+  Widget _buildLoadingState(BuildContext context) {
+    return Center(
+      child: Row(
+        children: [
+          Skeleton.react(
+            width: 24.w,
+            height: 24.w,
+            borderRadius: BorderRadius.circular(12.w),
+          ),
+          SizedBox(width: 10.w),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Skeleton.react(
+                width: 120.w,
+                height: 16.h,
+                borderRadius: BorderRadius.circular(4.r),
+              ),
+              SizedBox(height: 8.h),
+              Skeleton.react(
+                width: 200.w,
+                height: 14.h,
+                borderRadius: BorderRadius.circular(4.r),
+              ),
+            ],
+          ),
+          Spacer(),
+          Skeleton.react(
+            width: 16.w,
+            height: 16.w,
+            borderRadius: BorderRadius.circular(4.r),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // 2. 空状态 (去添加)
+  Widget _buildEmptyState(BuildContext context) {
+    return Row(
+      children: [
+        Icon(
+          CupertinoIcons.location_solid,
+          color: context.buttonPrimaryBg,
+          size: 24.w,
+        ),
+        SizedBox(width: 10.w),
+        Expanded(
+          child: Text(
+            'add-delivery-address-for-prize'.tr(),
+            overflow: TextOverflow.ellipsis,
+            maxLines: 2,
+            style: TextStyle(
+              color: context.textSecondary700,
+              fontSize: context.textSm,
+              height: context.leadingSm,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+        Icon(
+          CupertinoIcons.chevron_right,
+          color: context.textQuaternary500,
+          size: 16.w,
+        ),
+      ],
+    );
+  }
+
+  // 3. 选中状态
+  Widget _buildSelectedState(BuildContext context, AddressRes address) {
+    return Row(
+      children: [
+        Icon(
+          CupertinoIcons.location_solid,
+          color: context.textPrimary900,
+          size: 24.w,
+        ),
+        SizedBox(width: 10.w),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(
-                CupertinoIcons.location_solid,
-                color: context.buttonPrimaryBg,
-                size: 24.w,
-              ),
-              SizedBox(width: 10.w),
-              Expanded(
-                child: Text(
-                  'add-delivery-address-for-prize'.tr(),
-                  overflow: TextOverflow.ellipsis,
-                  maxLines: 2,
-                  style: TextStyle(
-                    color: context.textSecondary700,
-                    fontSize: context.textSm,
-                    height: context.leadingSm,
-                    fontWeight: FontWeight.w600,
+              Row(
+                children: [
+                  Text(
+                    address.contactName ?? '',
+                    style: TextStyle(
+                      color: context.textPrimary900,
+                      fontSize: context.textSm,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
+                  SizedBox(width: 8.w),
+                  Text(
+                    address.phone ?? '',
+                    style: TextStyle(
+                      color: context.textSecondary700,
+                      fontSize: context.textSm,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: 4.w),
+              Text(
+                address.fullAddress ?? '',
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: context.textSecondary700,
+                  fontSize: 13.sp,
+                  height: 1.4,
                 ),
               ),
             ],
           ),
         ),
-      ),
+        SizedBox(width: 8.w),
+        Icon(
+          CupertinoIcons.chevron_right,
+          color: context.textQuaternary500,
+          size: 16.w,
+        ),
+      ],
     );
   }
 }

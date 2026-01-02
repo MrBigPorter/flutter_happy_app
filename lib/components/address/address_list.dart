@@ -3,15 +3,16 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_app/common.dart';
 import 'package:flutter_app/ui/button/button.dart';
+import 'package:flutter_app/ui/modal/base/nav_hub.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 
-import '../../core/models/address_res.dart';
-import '../../core/providers/address_provider.dart';
-import '../../ui/animations/transparent_fade_route.dart';
-import '../../ui/button/variant.dart';
-import '../../ui/toast/radix_toast.dart';
+import 'package:flutter_app/core/models/address_res.dart';
+import 'package:flutter_app/core/providers/address_provider.dart';
+import 'package:flutter_app/ui/animations/transparent_fade_route.dart';
+import 'package:flutter_app/ui/button/variant.dart';
+import 'package:flutter_app/ui/toast/radix_toast.dart';
 import 'address_manager_page.dart';
 
 class AddressList extends ConsumerStatefulWidget {
@@ -27,24 +28,35 @@ class _AddressListState extends ConsumerState<AddressList> {
     // 监听 Provider 数据
     final addressListAsync = ref.watch(addressListProvider);
 
+    // 1. 计算最大允许高度 (屏幕的 70%)
+    final screenHeight = MediaQuery.of(context).size.height;
+    final maxContentHeight = screenHeight * 0.7;
+
     return addressListAsync.when(
       data: (data) {
         //  获取真实数据 (假设 data 是 AddressListRes，里面有个 list 字段)
         // 如果 data 本身就是 List<AddressRes>，直接用 data
         final currentList = data.list;
 
-        return Column(
-          mainAxisSize: MainAxisSize.min, // 自适应高度
-          children: [
-            Flexible(
-              fit: FlexFit.loose,// 关键：让 ListView 占据剩余空间
-              child: currentList.isEmpty
-                  ? _buildNoAddress()
-                  //  传入真实数据
-                  : _buildAddressList(currentList),
-            ),
-            Padding(padding: EdgeInsets.all(16.w), child: _buildAddButton())
-          ],
+        // 2. 使用 ConstrainedBox 设置“天花板”
+        return ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: maxContentHeight, // 最多只能这么高
+            // minHeight: 0, // 默认就是0，如果不满最大高度，就按实际高度显示
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min, // 关键：让 Column 尽量紧凑
+            children: [
+              Flexible(
+                fit: FlexFit.loose,// 关键：让 ListView 占据剩余空间
+                child: currentList.isEmpty
+                    ? _buildNoAddress()
+                //  传入真实数据
+                    : _buildAddressList(currentList),
+              ),
+              Padding(padding: EdgeInsets.all(16.w), child: _buildAddButton())
+            ],
+          ),
         );
       },
       loading: () => Container(
@@ -78,7 +90,7 @@ class _AddressListState extends ConsumerState<AddressList> {
                   TransparentFadeRoute(
                     child: AddressManagerPage(
                       onClose: () {
-                        Navigator.of(context).pop();
+                        NavHub.key.currentState?.pop();
                       },
                     )
                   )
@@ -173,10 +185,9 @@ class _AddressListState extends ConsumerState<AddressList> {
   }
 
   Widget _buildAddressList(List<AddressRes> items) {
-    // 关键优化：去掉 shrinkWrap: true
-    // 让 ListView 占据 Flexible 给它的剩余空间，并自己处理滚动
+    // 5. 关键：必须开启 shrinkWrap，让 ListView 计算自己真实高度
     return ListView.separated(
-      shrinkWrap: false,
+      shrinkWrap: true,
       // 配合 Column MainAxisSize.min 使用
       physics: const AlwaysScrollableScrollPhysics(),
       // 避免弹窗内的弹性效果冲突
@@ -192,7 +203,7 @@ class _AddressListState extends ConsumerState<AddressList> {
   }
 }
 
-// ✨✨✨ 提取出来的独立 Item 组件 ✨✨✨
+//  提取出来的独立 Item 组件
 class _AddressItem extends ConsumerStatefulWidget {
   final AddressRes address;
 
@@ -235,10 +246,10 @@ class _AddressItemState extends ConsumerState<_AddressItem> {
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.transparent,
+        color: context.bgMobilePrimary,
         borderRadius: BorderRadius.circular(12.r),
-        border: isSelected ? Border.all(color: context.bgErrorPrimary, width: 1.w)
-            : Border.all(color: context.alphaBlack10, width: 1.w),
+        border: isSelected ? Border.all(color: context.borderBrand, width: 1.w)
+            : Border.all(color: context.borderPrimary, width: 1.w),
         boxShadow: [
           BoxShadow(
             color: context.bgSecondary,
@@ -261,7 +272,7 @@ class _AddressItemState extends ConsumerState<_AddressItem> {
             children: [
               CustomSlidableAction(
                 onPressed: (context) => _handleDelete(),
-                backgroundColor: context.bgErrorPrimary,
+                backgroundColor: context.utilityBrand700,
                 foregroundColor: context.textWhite,
                 // 如果正在删除，显示转圈，否则显示图标
                 child: _isDeleting
@@ -278,7 +289,7 @@ class _AddressItemState extends ConsumerState<_AddressItem> {
                   children: [
                     Icon(Icons.delete_outline, size: 20.w),
                     SizedBox(height: 4.h),
-                    Text("Delete", style: TextStyle(fontSize: 10.sp)),
+                    Text("Delete", style: TextStyle(fontSize: context.textSm)),
                   ],
                 ),
               ),
@@ -286,7 +297,7 @@ class _AddressItemState extends ConsumerState<_AddressItem> {
           ),
           child: GestureDetector(
             onTap: () {
-              // TODO: 选中逻辑
+              NavHub.key.currentState?.pop(widget.address);
             },
             child: Container(
               padding: EdgeInsets.all(16.w),
@@ -304,7 +315,7 @@ class _AddressItemState extends ConsumerState<_AddressItem> {
                               style: TextStyle(
                                 fontSize: 16.sp,
                                 fontWeight: FontWeight.w700,
-                                color: context.textWhite,
+                                color: context.textPrimary900,
                               ),
                             ),
                             if (isSelected) ...[
@@ -373,7 +384,7 @@ class _AddressItemState extends ConsumerState<_AddressItem> {
                           child: AddressManagerPage(
                             address: widget.address,
                             onClose: () {
-                              Navigator.of(context).pop();
+                              NavHub.key.currentState?.pop();
                             },
                           )
                         )
