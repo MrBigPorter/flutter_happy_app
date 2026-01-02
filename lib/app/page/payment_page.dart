@@ -23,6 +23,8 @@ import 'package:flutter_app/utils/helper.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
+import '../../core/guards/kyc_guard.dart';
+
 class PaymentPage extends ConsumerStatefulWidget {
   final PagePaymentParams params;
 
@@ -147,7 +149,7 @@ class _BottomNavigationBarState extends ConsumerState<_BottomNavigationBar>
     final action = ref.read(purchaseProvider(treasureId).notifier);
     final result = await action.submitOrder(groupId: widget.params.groupId);
 
-    if (!context.mounted) return;
+    if (!mounted) return;
 
     if (!result.ok) {
       switch (result.error) {
@@ -155,15 +157,11 @@ class _BottomNavigationBarState extends ConsumerState<_BottomNavigationBar>
           appRouter.pushNamed('login');
           break;
         case PurchaseSubmitError.needKyc:
-          RadixModal.show(
-            title: 'common.modal.kyc.title'.tr(),
-            confirmText: 'common.modal.kyc.button'.tr(),
-            onConfirm: (_) {
-              appRouter.push('/me/kyc/verify');
-            },
-            cancelText: '',
-            builder: (context, close) {
-              return KycModal();
+          KycGuard.ensure(
+            context: context,
+            ref: ref,
+            onApproved: () {
+              // 这里留空，因为如果 Approved 就不会报错了
             },
           );
           break;
