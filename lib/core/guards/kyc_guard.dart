@@ -97,7 +97,8 @@ class KycGuard {
     RadixModal.show(
       // title: 'common.modal.kyc.title'.tr(), // 如果 KycModal 没标题就放这里
       confirmText: 'common.modal.kyc.button'.tr(),
-      onConfirm: (_) {
+      onConfirm: (close) {
+        close();
         appRouter.push('/me/kyc/verify');
       },
       cancelText: '', // 空字符串隐藏取消按钮，或者根据需求显示

@@ -85,6 +85,7 @@ class ModalDialogSurface<T> extends StatelessWidget {
                         ),
                       ),
                     ),
+                  if (config.showCloseButton)
                   Positioned(
                     top: 0,
                     right: 10.w,

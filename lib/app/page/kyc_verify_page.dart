@@ -6,10 +6,12 @@ import 'package:flutter_app/app/page/kyc_information_confirm_page.dart';
 import 'package:flutter_app/common.dart';
 import 'package:flutter_app/components/base_scaffold.dart';
 import 'package:flutter_app/components/upload_progress_dialog.dart';
+import 'package:flutter_app/core/guards/kyc_guard.dart';
 import 'package:flutter_app/core/models/kyc.dart';
 import 'package:flutter_app/core/providers/kyc_provider.dart';
 import 'package:flutter_app/ui/index.dart';
 import 'package:flutter_app/ui/modal/base/nav_hub.dart';
+import 'package:flutter_app/ui/modal/dialog/modal_dialog_config.dart';
 import 'package:flutter_app/utils/camera/services/liveness_service.dart';
 import 'package:flutter_app/utils/upload/global_upload_service.dart';
 import 'package:flutter_app/utils/upload/upload_types.dart';
@@ -17,7 +19,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import '../../components/select_id_type.dart';
+import '../../core/store/lucky_store.dart';
 import '../../utils/camera/services/unified_kyc_cuard.dart';
+import '../routes/app_router.dart';
 
 class KycVerifyPage extends ConsumerStatefulWidget {
   const KycVerifyPage({super.key});
@@ -30,6 +34,74 @@ class _KycVerifyPageState extends ConsumerState<KycVerifyPage> {
   // 风险阈值配置
   static const double kFraudBlockScore = 60.0;
   static const double kFraudWarnScore = 30.0;
+
+  @override
+  void initState() {
+    super.initState();
+    // 页面渲染完的一瞬间，检查状态并弹窗
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkStatusAndShowDialog();
+    });
+  }
+
+  void _checkStatusAndShowDialog() {
+    final kycStatus = ref.read(
+      luckyProvider.select((s) => s.userInfo?.kycStatus),
+    );
+    final statusEnum = KycStatusEnum.fromStatus(kycStatus ?? 0);
+
+    // 如果是 Pending 或 Approved，直接弹窗
+    if (statusEnum != KycStatusEnum.reviewing ||
+        statusEnum != KycStatusEnum.approved) {
+      final isPending = statusEnum == KycStatusEnum.reviewing;
+
+      RadixModal.show(
+        config: ModalDialogConfig(showCloseButton: false),
+        clickBgToClose: false,
+        // 标题
+        title: isPending
+            ? 'kyc.status.pending.title'.tr()
+            : 'kyc.status.approved.title'.tr(),
+        // 隐藏取消按钮
+        cancelText: '',
+        // 确认按钮文案
+        confirmText: 'kyc.status.go_back'.tr(),
+        // 点击确认后，退出当前页面
+        onConfirm: (_) {
+          appRouter.go('/home');
+        },
+        builder: (context, close) {
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // 图标
+              Icon(
+                isPending
+                    ? CupertinoIcons.time
+                    : CupertinoIcons.checkmark_seal_fill,
+                size: 60.w,
+                color: isPending
+                    ? context.utilityWarning500
+                    : context.utilitySuccess500,
+              ),
+              SizedBox(height: 16.w),
+              // 文案
+              Text(
+                isPending
+                    ? 'kyc.status.pending.desc'.tr()
+                    : 'kyc.status.approved.desc'.tr(),
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 16.sp,
+                  color: context.textSecondary700,
+                ),
+              ),
+            ],
+          );
+        },
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -50,7 +122,26 @@ class _KycVerifyPageState extends ConsumerState<KycVerifyPage> {
   }
 
   Widget _buildBottomNavigationBar() {
+    // 1. 监听 Loading 状态
     final kycTypeAsyncValue = ref.watch(kycIdTypeProvider);
+    // 2. 监听 KYC 状态 (用于控制按钮是否可点)
+    final kycStatus = ref.watch(
+      luckyProvider.select((s) => s.userInfo?.kycStatus),
+    );
+    final statusEnum = KycStatusEnum.fromStatus(kycStatus ?? 0);
+    // 判断是否不可操作 (Pending 或 Approved)
+    final bool isLocked =
+        statusEnum == KycStatusEnum.reviewing ||
+        statusEnum == KycStatusEnum.approved;
+
+    // 动态文案
+    String buttonText = 'start-now'.tr();
+    if (statusEnum == KycStatusEnum.reviewing) {
+      buttonText = 'kyc.status.pending.btn'.tr();
+    }
+    if (statusEnum == KycStatusEnum.approved) {
+      buttonText = 'kyc.status.approved.btn'.tr();
+    }
 
     return Container(
       color: context.bgPrimary,
@@ -61,10 +152,13 @@ class _KycVerifyPageState extends ConsumerState<KycVerifyPage> {
           width: double.infinity,
           height: 48.h,
           child: Button(
+            // 如果 loading 或者 状态被锁定，则显示 loading 或 禁用
             loading: kycTypeAsyncValue.isLoading,
-            onPressed: _onStartKycPressed,
+            // 关键点：如果是锁定状态，禁用点击 (disabled: true)
+            disabled: isLocked,
+            onPressed: isLocked ? null : _onStartKycPressed,
             child: Text(
-              'start-now'.tr(),
+              buttonText,
               style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w600),
             ),
           ),
@@ -106,7 +200,6 @@ class _KycVerifyPageState extends ConsumerState<KycVerifyPage> {
 
       // 5. 跳转确认页
       await _navigateToConfirm(ocrResult);
-
     } catch (e) {
       debugPrint("KYC Flow Error: $e");
       if (mounted) _handleGeneralError(e);
@@ -144,7 +237,10 @@ class _KycVerifyPageState extends ConsumerState<KycVerifyPage> {
           messageNotifier.value = '1/3 Checking photo quality...';
           await Future.delayed(const Duration(milliseconds: 200));
 
-          final bool isPass = await UnifiedKycGuard().check(imagePath, KycDocType.idCard);
+          final bool isPass = await UnifiedKycGuard().check(
+            imagePath,
+            KycDocType.idCard,
+          );
           if (!isPass) throw 'GUARD_CHECK_FAILED';
 
           // --- 子步骤 2: 上传 OCR ---
@@ -202,7 +298,6 @@ class _KycVerifyPageState extends ConsumerState<KycVerifyPage> {
         builder: (context) => KycInformationConfirmPage(kycOcrResult: data),
       ),
     );
-
   }
 
   // =========================================================
@@ -216,7 +311,9 @@ class _KycVerifyPageState extends ConsumerState<KycVerifyPage> {
       RadixModal.show(
         title: 'Please retake photo',
         cancelText: 'OK',
-        builder: (_, __) => const Text('Make sure the ID is inside the frame and clearly visible.'),
+        builder: (_, __) => const Text(
+          'Make sure the ID is inside the frame and clearly visible.',
+        ),
       );
     } else if (error is DioException && CancelToken.isCancel(error)) {
       // 用户取消，忽略
@@ -242,7 +339,8 @@ class _KycVerifyPageState extends ConsumerState<KycVerifyPage> {
 
   void _showFraudBlockedDialog(KycOcrResult r) {
     if (!mounted) return;
-    final reason = r.fraudReason ?? 'Potential screen capture or editing detected.';
+    final reason =
+        r.fraudReason ?? 'Potential screen capture or editing detected.';
 
     RadixModal.show(
       title: 'ID Verification Failed',
@@ -251,11 +349,17 @@ class _KycVerifyPageState extends ConsumerState<KycVerifyPage> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('We cannot accept this ID photo due to security reasons.', style: TextStyle(fontWeight: FontWeight.bold)),
+          Text(
+            'We cannot accept this ID photo due to security reasons.',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
           SizedBox(height: 8.h),
           Text('Reason: $reason'),
           SizedBox(height: 8.h),
-          Text('Please use the original physical ID card.', style: TextStyle(color: Colors.red)),
+          Text(
+            'Please use the original physical ID card.',
+            style: TextStyle(color: Colors.red),
+          ),
         ],
       ),
     );
@@ -268,7 +372,9 @@ class _KycVerifyPageState extends ConsumerState<KycVerifyPage> {
       context: context,
       builder: (ctx) => CupertinoActionSheet(
         title: const Text('Photo Quality Warning'),
-        message: Text('The ID photo looks a bit blurry or suspicious.\nRisk Score: ${r.fraudScore}'),
+        message: Text(
+          'The ID photo looks a bit blurry or suspicious.\nRisk Score: ${r.fraudScore}',
+        ),
         actions: [
           CupertinoActionSheetAction(
             child: const Text('Continue Anyway'),
@@ -302,7 +408,8 @@ class _StepList extends StatelessWidget {
         _StepItem(
           title: '${'common.step'.tr()} 1',
           subTitle: 'Scan your ID',
-          description: 'Use the camera to scan your ID. Make sure it is clear and not blurry.',
+          description:
+              'Use the camera to scan your ID. Make sure it is clear and not blurry.',
           detail: _buildStep1Detail(context),
           completed: false,
           img: 'assets/images/verify/step1.png',
@@ -311,7 +418,8 @@ class _StepList extends StatelessWidget {
         _StepItem(
           title: '${'common.step'.tr()} 2',
           subTitle: 'Confirm your information',
-          description: 'We will extract your name and ID number automatically. Please check carefully before submitting.',
+          description:
+              'We will extract your name and ID number automatically. Please check carefully before submitting.',
           completed: false,
           img: 'assets/images/verify/step2.png',
         ),
@@ -319,7 +427,8 @@ class _StepList extends StatelessWidget {
         _StepItem(
           title: '${'common.step'.tr()} 3',
           subTitle: 'Take a selfie (Liveness)',
-          description: 'We will do a quick selfie check to confirm you are the real owner of the ID.',
+          description:
+              'We will do a quick selfie check to confirm you are the real owner of the ID.',
           completed: false,
           img: 'assets/images/verify/step3.png',
         ),
@@ -349,7 +458,7 @@ class _StepList extends StatelessWidget {
         ),
         SizedBox(height: 10.h),
         ...tips.map(
-              (t) => Padding(
+          (t) => Padding(
             padding: EdgeInsets.only(bottom: 6.h),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -438,7 +547,8 @@ class _StepItem extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(
-              child: detail ??
+              child:
+                  detail ??
                   Text(
                     description,
                     style: TextStyle(
