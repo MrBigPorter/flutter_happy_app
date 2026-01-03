@@ -53,7 +53,12 @@ class HomePage extends ConsumerWidget {
 
             /// 宝贝列表 Treasure List
             treasures.when(
-              data: (data) => HomeTreasures(treasures: data),
+              data: (data){
+                if(data.isNotEmpty){
+                 return HomeTreasures(treasures: data);
+                }
+                return HomeTreasureSkeleton();
+              },
               error: (_, __) => HomeTreasureSkeleton(),
               loading: () => HomeTreasureSkeleton(),
             ),
