@@ -8,6 +8,8 @@ import 'package:flutter_app/ui/modal/dialog/radix_modal.dart';
 import 'package:flutter_app/utils/events/event_bus.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'dart:io'; //  必须加这个，为了用 exit(0) 和 Platform
+import 'package:flutter/services.dart'; // 为了用 SystemNavigator
 
 import '../../theme/design_tokens.g.dart';
 import '../../utils/events/global_events.dart';
@@ -110,14 +112,26 @@ class _GlobalHandlerState extends State<GlobalHandler> {
 
                 // 按钮 2: 退出应用 (Secondary Action)
                 GestureDetector(
+                  behavior: HitTestBehavior.opaque, //  扩大点击区域，防止点不中
                   onTap: () {
-                    // 真正的退出 App，杀掉进程
-                    SystemNavigator.pop();
+                    //  Android: 尝试优雅退出
+                    if (Platform.isAndroid) {
+                      try {
+                        SystemNavigator.pop();
+                      } catch (e) {
+                        // 如果失败，直接强杀
+                        exit(0);
+                      }
+                    }
+                    //  iOS: 必须强杀 (SystemNavigator 在 iOS 通常没反应)
+                    else {
+                      exit(0);
+                    }
                   },
                   child: Padding(
-                    padding: EdgeInsets.symmetric(vertical: 8.h),
+                    padding: EdgeInsets.symmetric(vertical: 8.h, horizontal: 24.w), // 增加触摸面积
                     child: Text(
-                      'security.btn_exit_app'.tr(), //  Key: Exit App
+                      'security.btn_exit_app'.tr(),
                       style: TextStyle(
                         fontSize: context.textSm,
                         fontWeight: FontWeight.w600,
@@ -131,6 +145,8 @@ class _GlobalHandlerState extends State<GlobalHandler> {
           ),
         );
       },
+      confirmText: '', // 不显示确认按钮
+      cancelText: '', // 不显示取消按钮
     );
   }
 

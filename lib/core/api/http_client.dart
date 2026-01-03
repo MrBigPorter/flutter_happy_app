@@ -1,12 +1,9 @@
 import 'dart:async';
-
 import 'package:dio/dio.dart';
 import 'package:flutter_app/app/routes/app_router.dart';
 import 'package:flutter_app/core/store/auth/auth_initial.dart';
-import 'package:flutter_app/utils/time/server_time_helper.dart';
-import 'package:fluttertoast/fluttertoast.dart';
 
-import '../../utils/device_utils.dart';
+import '../network/unified_interceptor.dart';
 import 'env.dart';
 
 typedef FromJson<T> = T Function(dynamic json);
@@ -14,7 +11,10 @@ typedef FromJson<T> = T Function(dynamic json);
 class Http {
   Http._();
 
-  /// 业务 Dio：带拦截器（Queued）
+  // =========================================================
+  // 1. 基础配置 (保持不变)
+  // =========================================================
+
   static final Dio _dio = Dio(
     BaseOptions(
       baseUrl: Env.apiBaseEffective,
@@ -31,7 +31,7 @@ class Http {
     ),
   );
 
-  /// 干净 Dio：专门用于 refresh / retry（无拦截器，避免死锁）
+  /// 干净 Dio (给拦截器刷新 Token 用)
   static final Dio _rawDio = Dio(
     BaseOptions(
       baseUrl: Env.apiBaseEffective,
@@ -48,187 +48,38 @@ class Http {
     ),
   );
 
-  static const _successCodes = <int>[10000];
-  static const _tokenErrorCodes = <int>[40100];
+  // =========================================================
+  // 2. 共享变量 (去掉下划线，让拦截器能访问)
+  // =========================================================
 
-  static bool _navigatingToLogin = false;
+  //  改动：变成 public，拦截器要读它
+  static String? tokenCache;
 
-  static String? _tokenCache;
+  // 改动：变成 public，拦截器要读锁
+  static Future<bool>? refreshingFuture;
 
-  /// 刷新锁：并发只刷新一次，其他请求等同一个 Future
-  static Future<bool>? _refreshingFuture;
+  // ️ 改动：变成 public
+  static bool navigatingToLogin = false;
+
+  static Future<void> Function()? onTokenInvalid;
+  static Future<void> Function(String access, String? refresh)? onTokenRefresh;
+
+  // =========================================================
+  // 3. 初始化 (核心改动)
+  // =========================================================
 
   static Future<void> init() async {
-    _dio.interceptors.add(
-      QueuedInterceptorsWrapper(
-        onRequest: (options, handler) async {
-          // 通用头
-          final fingerprint = await DeviceUtils.getFingerprint();
-          final now = DateTime.now().millisecondsSinceEpoch.toString();
-
-          options.headers['signature_nonce'] = now;
-          options.headers['currentTime'] = now;
-          options.headers['lang'] = 'en';
-          options.headers['x-device-id'] = fingerprint.deviceId;
-          options.headers['x-device-model'] = fingerprint.deviceModel;
-          options.headers['x-platform'] = fingerprint.platform;
-
-          // 注入 token（除非显式标记 noAuth）
-          final noAuth = options.extra['noAuth'] == true;
-          if (!noAuth) {
-            final token = await _getToken();
-            if (token != null && token.isNotEmpty) {
-              options.headers['Authorization'] = 'Bearer $token';
-            }
-          }
-
-          handler.next(options);
-        },
-
-        onResponse: (response, handler) async {
-          final data = response.data;
-
-
-          if (data == null || data is! Map<String, dynamic>) {
-            return handler.reject(_asDioError(response, 'Invalid response data'));
-          }
-
-          // 每次请求回来，都自动校准一次时间
-          // 获取 header 时注意，有时它是 List<String>
-          final serverTimeHeader = response.headers.value('x-server-time');
-          ServerTimeHelper.updateOffset(serverTimeHeader);
-
-
-          final code = data['code'] as int?;
-          final message = (data['message'] as String?) ?? 'Unknown error';
-          final resData = data['data'];
-
-          if (code == null) {
-            return handler.reject(_asDioError(response, 'Missing code'));
-          }
-
-          // 成功：把 data 透给调用方
-          if (_successCodes.contains(code)) {
-            response.data = resData;
-            return handler.next(response);
-          }
-
-          final reqExtra = response.requestOptions.extra;
-          final noToast = reqExtra['noErrorToast'] == true;
-          final skipTokenGuard = reqExtra['skipTokenGuard'] == true;
-
-          // token 失效处理
-          if (_tokenErrorCodes.contains(code) && !skipTokenGuard) {
-            final requestToken = response.requestOptions.headers['Authorization'] as String?;
-            final latestToken = _tokenCache;
-
-            final isTokenOutdated = latestToken != null &&
-                requestToken != null &&
-                requestToken != 'Bearer $latestToken';
-
-            // 1) 如果只是“旧 token”导致失败：直接用新 token retry（走 rawDio）
-            if (isTokenOutdated) {
-              final options = response.requestOptions;
-              options.headers['Authorization'] = 'Bearer $latestToken';
-              try {
-                final newResp = await _rawDio.fetch(options);
-                final unwrapped = _unwrapApiResponse(newResp);
-                if (unwrapped != null) return handler.resolve(unwrapped);
-              } catch (_) {}
-            }
-
-            // 定义一个变量标记是否“抢救成功”
-            bool rescueSuccess = false;
-            // 2) 真过期：刷新一次，再 retry（避免无限循环）
-            final alreadyRetried = reqExtra['__retryAfterRefresh__'] == true;
-            if (!alreadyRetried) {
-              final refreshed = await _tryRefreshToken();
-              if (refreshed) {
-                final options = response.requestOptions;
-                options.extra['__retryAfterRefresh__'] = true;
-
-                final newToken = _tokenCache;
-                if (newToken != null && newToken.isNotEmpty) {
-                  options.headers['Authorization'] = 'Bearer $newToken';
-                }
-
-                try {
-                  // 尝试重试
-                  final newResp = await _rawDio.fetch(options);
-                  // 只要重试的网络请求通了（哪怕业务 Code 不是 10000），就算抢救成功
-                  // 我们不能因为业务报错（比如图片模糊）就让用户退登
-                  rescueSuccess = true;
-
-                  // 尝试解包，如果解包成功直接返回
-                  final unwrapped = _unwrapApiResponse(newResp);
-                  if (unwrapped != null) {
-                    return handler.resolve(unwrapped);
-                  }
-
-                } catch (e) {
-                  // 如果重试过程报错（比如 FormData 无法复用），
-                  // 我们认定这次请求失败，但不代表 Token 无效（因为刷新已经成功了）
-                  // 所以我们要 Reject 这次请求，但阻止代码向下执行去 ClearToken
-                  return handler.reject(_asDioError(response, 'Retry failed: ${e.toString()}'));
-                }
-              }
-            }
-
-            // 3) 刷新失败：清 token + 去登录
-            await _clearToken();
-
-            if (onTokenInvalid != null) {
-              await onTokenInvalid!();
-            }
-
-            if (!_navigatingToLogin) {
-              _navigatingToLogin = true;
-              appRouter.go('/login');
-              Future.delayed(const Duration(seconds: 1), () {
-                _navigatingToLogin = false;
-              });
-            }
-          } else if (code == 92001) {
-            appRouter.go('/me/setting');
-          } else if (code == 93001) {
-            appRouter.go('/me/kyc/verify');
-          } else if (code == 18023) {
-            appRouter.go('/me/bind-phone');
-          }
-
-          if (!noToast) {
-            final errorMsg = (data['errorMsg'] as String?) ?? message;
-            Fluttertoast.showToast(
-              msg: errorMsg,
-              toastLength: Toast.LENGTH_LONG,
-              gravity: ToastGravity.TOP,
-            );
-          }
-
-          return handler.reject(_asDioError(response, (data['errorMsg'] as String?) ?? message));
-        },
-
-        onError: (e, handler) {
-          final noToast = e.requestOptions.extra['noErrorToast'] == true;
-          print('HTTP Error: ${e.message}');
-          print('Request Options: ${e.requestOptions}');
-          if (!noToast) {
-            Fluttertoast.showToast(
-              msg: e.message ?? 'Network error',
-              toastLength: Toast.LENGTH_LONG,
-              gravity: ToastGravity.TOP,
-            );
-          }
-          handler.next(e);
-        },
-      ),
-    );
+    //  以前这里有几百行代码，现在全部委托给 UnifiedInterceptor
+    // 我们把 _rawDio 传给它，让它去处理刷新逻辑
+    _dio.interceptors.add(UnifiedInterceptor(_rawDio));
   }
 
-  /// 对外暴露
+  // =========================================================
+  // 4. 对外 API (完全保持不变，这就是你想要的)
+  // =========================================================
+
   static Dio get dio => _dio;
 
-  /// 便捷请求
   static Future<T> get<T>(
       String path, {
         Map<String, dynamic>? query,
@@ -310,11 +161,50 @@ class Http {
     return _decode<T>(resp.data, fromJson);
   }
 
-  /// refresh：只允许一个在跑，其他请求等它
-  static Future<bool> _tryRefreshToken() async {
-    if (_refreshingFuture != null) return _refreshingFuture!;
+  // =========================================================
+  // 5. 辅助方法 (去掉下划线，让拦截器调用)
+  // =========================================================
+
+  //  改动：去掉了前面的 _
+  static void setToken(String token) {
+    tokenCache = token;
+  }
+
+  // ️ 改动：去掉了前面的 _
+  static Future<void> clearToken() async {
+    tokenCache = null;
+    final storage = authInitialTokenStorage();
+    await storage.clear();
+  }
+
+  //  改动：去掉了前面的 _
+  static Future<String?> getToken() async {
+    if (tokenCache != null) return tokenCache;
+    final auth = authInitialTokenStorage();
+    final tokens = await auth.read();
+    tokenCache = tokens.$1;
+    return tokens.$1;
+  }
+
+  //  改动：去掉了前面的 _，拦截器发现 Token 失效时调用
+  static Future<void> performLogout() async {
+    await clearToken();
+    if (onTokenInvalid != null) await onTokenInvalid!();
+
+    if (!navigatingToLogin) {
+      navigatingToLogin = true;
+      appRouter.go('/login');
+      Future.delayed(const Duration(seconds: 1), () {
+        navigatingToLogin = false;
+      });
+    }
+  }
+
+  //  改动：去掉了前面的 _，拦截器需要刷新 Token 时调用
+  static Future<bool> tryRefreshToken(Dio rawDio) async {
+    if (refreshingFuture != null) return refreshingFuture!;
     final completer = Completer<bool>();
-    _refreshingFuture = completer.future;
+    refreshingFuture = completer.future;
 
     try {
       final storage = authInitialTokenStorage();
@@ -326,8 +216,8 @@ class Http {
         return false;
       }
 
-      // 用 rawDio 直接打 refresh（不要进队列拦截器）
-      final resp = await _rawDio.post(
+      // 使用传入的 rawDio (或者是 _rawDio 也可以，既然在类内部)
+      final resp = await rawDio.post(
         '/api/v1/auth/refresh',
         data: {'refreshToken': refreshToken},
         options: Options(extra: {
@@ -343,6 +233,7 @@ class Http {
         return false;
       }
 
+      // 注意：这里检查的是 API 的业务码
       final code = map['code'] as int?;
       if (code != 10000) {
         completer.complete(false);
@@ -350,91 +241,32 @@ class Http {
       }
 
       final data = map['data'];
-      if (data is! Map<String, dynamic>) {
-        completer.complete(false);
-        return false;
-      }
-
       final tokensMap = data['tokens'];
-      if (tokensMap is! Map<String, dynamic>) {
-        completer.complete(false);
-        return false;
-      }
-
       final newAccessToken = tokensMap['accessToken'] as String?;
       final newRefreshToken = tokensMap['refreshToken'] as String?;
 
-      if (newAccessToken == null || newAccessToken.isEmpty) {
-        completer.complete(false);
-        return false;
+      if (newAccessToken != null && newAccessToken.isNotEmpty) {
+        tokenCache = newAccessToken; // 更新内存
+        await storage.save(newAccessToken, newRefreshToken); // 更新硬盘
+
+        if (onTokenRefresh != null) {
+          await onTokenRefresh!(newAccessToken, newRefreshToken!);
+        }
+        completer.complete(true);
+        return true;
       }
 
-      _tokenCache = newAccessToken;
-      await storage.save(newAccessToken, newRefreshToken);
-
-      if (onTokenRefresh != null) {
-        await onTokenRefresh!(newAccessToken, newRefreshToken);
-      }
-
-      completer.complete(true);
-      return true;
+      completer.complete(false);
+      return false;
     } catch (_) {
       completer.complete(false);
       return false;
     } finally {
-      _refreshingFuture = null;
+      refreshingFuture = null;
     }
   }
 
-  /// Token 管理
-  static void setToken(String token) {
-    _tokenCache = token;
-  }
-
-  static Future<void> clearToken() => _clearToken();
-
-  static Future<String?> _getToken() async {
-    if (_tokenCache != null) return _tokenCache;
-    final auth = authInitialTokenStorage();
-    final tokens = await auth.read();
-    _tokenCache = tokens.$1;
-    return tokens.$1;
-  }
-
-  static Future<void> Function()? onTokenInvalid;
-  static Future<void> Function(String access, String? refresh)? onTokenRefresh;
-
-  static Future<void> _clearToken() async {
-    _tokenCache = null;
-    final storage = authInitialTokenStorage();
-    await storage.clear();
-  }
-
-  /// 工具：把 rawDio 的标准响应也“剥壳”为 data，保持你上层 API 的一致性
-  static Response? _unwrapApiResponse(Response resp) {
-    final raw = resp.data;
-    if (raw == null || raw is! Map<String, dynamic>) return null;
-
-    final code = raw['code'] as int?;
-    if (code == null) return null;
-
-    if (_successCodes.contains(code)) {
-      resp.data = raw['data'];
-      return resp;
-    }
-
-    return null;
-  }
-
-  static DioException _asDioError(Response resp, String message) {
-    return DioException(
-      requestOptions: resp.requestOptions,
-      response: resp,
-      type: DioExceptionType.badResponse,
-      message: message,
-    );
-  }
-
+  // 内部解码辅助
   static T _decode<T>(dynamic raw, FromJson<T>? parse) {
     if (parse != null) return parse(raw);
     return raw as T;
