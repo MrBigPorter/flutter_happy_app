@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_app/common.dart';
+import 'package:flutter_app/core/events/global_handler.dart';
 import 'package:flutter_app/core/providers/app_router_provider.dart';
 import 'package:flutter_app/core/store/auth/auth_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -53,7 +54,7 @@ class MyApp extends ConsumerWidget {
           child: child!,
         );
 
-        return content;
+        return GlobalHandler(child: content);
       },
     );
   }

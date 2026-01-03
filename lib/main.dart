@@ -1,7 +1,6 @@
 // main.dart
 import 'dart:ui';
 
-import 'package:firebase_performance/firebase_performance.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_app/common.dart';

@@ -6,7 +6,6 @@ import 'package:flutter_app/app/page/kyc_information_confirm_page.dart';
 import 'package:flutter_app/common.dart';
 import 'package:flutter_app/components/base_scaffold.dart';
 import 'package:flutter_app/components/upload_progress_dialog.dart';
-import 'package:flutter_app/core/guards/kyc_guard.dart';
 import 'package:flutter_app/core/models/kyc.dart';
 import 'package:flutter_app/core/providers/kyc_provider.dart';
 import 'package:flutter_app/ui/index.dart';
@@ -51,8 +50,8 @@ class _KycVerifyPageState extends ConsumerState<KycVerifyPage> {
     final statusEnum = KycStatusEnum.fromStatus(kycStatus ?? 0);
 
     // 如果是 Pending 或 Approved，直接弹窗
-    if (statusEnum != KycStatusEnum.reviewing ||
-        statusEnum != KycStatusEnum.approved) {
+    if (statusEnum == KycStatusEnum.reviewing ||
+        statusEnum == KycStatusEnum.approved) {
       final isPending = statusEnum == KycStatusEnum.reviewing;
 
       RadixModal.show(
@@ -133,6 +132,8 @@ class _KycVerifyPageState extends ConsumerState<KycVerifyPage> {
     final bool isLocked =
         statusEnum == KycStatusEnum.reviewing ||
         statusEnum == KycStatusEnum.approved;
+    
+    print('KYC Status: $statusEnum, isLocked: $isLocked');
 
     // 动态文案
     String buttonText = 'start-now'.tr();
@@ -172,6 +173,7 @@ class _KycVerifyPageState extends ConsumerState<KycVerifyPage> {
   // =========================================================
 
   Future<void> _onStartKycPressed() async {
+    print('KYC: Start button pressed');
     // 1. 获取证件类型配置
     final options = await ref.read(kycIdTypeProvider.future);
     if (!mounted) return;
