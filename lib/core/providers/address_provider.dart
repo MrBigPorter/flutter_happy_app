@@ -1,7 +1,5 @@
 import 'package:flutter_app/common.dart';
-import 'package:flutter_app/core/models/address_res.dart';
 import 'package:flutter_app/core/models/index.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'address_provider.g.dart';

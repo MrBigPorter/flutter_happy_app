@@ -27,3 +27,42 @@ class Balance {
 
 
 }
+
+@JsonSerializable(checked: true)
+class CreateRechargeDto{
+   final num amount;
+   final int? channelCode;
+   final int? paymentMethod;
+
+   CreateRechargeDto({
+      required this.amount,
+      this.channelCode,
+      this.paymentMethod,
+    });
+
+    factory CreateRechargeDto.fromJson(Map<String, dynamic> json) => _$CreateRechargeDtoFromJson(json);
+    Map<String, dynamic> toJson() => _$CreateRechargeDtoToJson(this);
+}
+
+@JsonSerializable(checked: true)
+class RechargeResponse{
+   final String rechargeNo;
+   final String rechargeAmount;
+   final String payUrl;
+   final int rechargeStatus;
+
+    RechargeResponse({
+      required this.rechargeNo,
+      required this.rechargeAmount,
+      required this.payUrl,
+      required this.rechargeStatus,
+    });
+
+    factory RechargeResponse.fromJson(Map<String, dynamic> json) => _$RechargeResponseFromJson(json);
+    Map<String, dynamic> toJson() => _$RechargeResponseToJson(this);
+
+    @override
+    String toString() {
+      return toJson().toString();
+    }
+}

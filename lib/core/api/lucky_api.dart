@@ -79,6 +79,13 @@ class Api {
     return Balance.fromJson(res);
   }
 
+  /// 创建充值订单 create recharge order
+  static Future<RechargeResponse> walletRechargeCreateApi(CreateRechargeDto data) async {
+    final res = await Http.post('/v1/wallet/recharge/create', data: data.toJson());
+    return RechargeResponse.fromJson(res);
+  }
+
+
 
   /// checkout order
   static Future<OrderCheckoutResponse> ordersCheckOutApi(OrdersCheckoutParams params) async{
