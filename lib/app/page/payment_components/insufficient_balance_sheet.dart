@@ -115,7 +115,7 @@ class InsufficientBalanceSheet extends StatelessWidget {
                 height: 52.h,
                 onPressed: () {
                   close();
-                  appRouter.push('/me/wallet');
+                  appRouter.push('/me/wallet/deposit');
                 },
                 child: Text(
                   'common.to.recharge'.tr(),

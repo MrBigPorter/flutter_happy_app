@@ -19,14 +19,14 @@ class FormatHelper {
 
   /// 金额格式化（带千分号，保留2位小数)
   /// 支持传 num / String
-  static String formatCurrency(Object? amount, {String symbol = '₱'}) {
+  static String formatCurrency(Object? amount, {String symbol = '₱', decimalDigits = 2}) {
     final n = _toNum(amount);
     if (n == null) return '${symbol}0.00';
 
     final formatter = NumberFormat.currency(
       locale: 'en_US',
       symbol: symbol,
-      decimalDigits: 2,
+      decimalDigits: decimalDigits,
     );
     return formatter.format(n);
   }

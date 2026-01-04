@@ -150,3 +150,47 @@ class PostalCode extends Validator<dynamic> {
     return _re.hasMatch(v) ? null : const {'postalCode': true};
   }
 }
+
+class DepositAmount extends Validator<dynamic> {
+  final double minAmount;
+  final double? maxAmount;
+  const DepositAmount({
+    this.minAmount = 100.0,
+    this.maxAmount,
+  });
+
+  @override
+  Map<String, dynamic>? validate(AbstractControl<dynamic> control) {
+    final raw = control.value;
+    //空值交给 Validators.required 处理
+    if (raw == null || raw.toString().trim().isEmpty) return null;
+
+    final amount = double.tryParse(raw.toString().trim());
+
+    if (amount == null) {
+      return const {'amount': {'reason': 'invalid'}};
+    }
+
+    if(amount < minAmount){
+      return {
+        'amount':{
+          'reason':'min',
+          'min':minAmount,
+          if (maxAmount != null) 'max': maxAmount,
+        }
+      };
+    }
+
+    if (maxAmount != null && amount > maxAmount!) {
+      return {
+        'amount':{
+          'reason':'max',
+          'max':maxAmount,
+          'min':minAmount,
+        }
+      };
+    }
+
+    return null;
+  }
+}
