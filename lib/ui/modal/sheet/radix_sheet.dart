@@ -17,7 +17,7 @@ class RadixSheet {
     required Widget Function(BuildContext context, void Function([T? res]) close) builder,
     bool clickBgToClose = true,
     bool showClose = true,
-    bool enableShrink = false,
+    bool enableShrink = true,
     ModalSheetConfig? config,
     Widget? Function(BuildContext)? headerBuilder,
   }) {

@@ -70,7 +70,7 @@ class Api {
   /// 用户信息 user info
   static Future<UserInfo> getUserInfo() async {
     final res = await Http.get("/api/v1/auth/profile");
-    return UserInfo.fromJson(jsonDecode(res));
+    return UserInfo.fromJson(res);
   }
 
   /// 钱包余额 wallet balance

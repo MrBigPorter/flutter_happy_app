@@ -19,7 +19,7 @@ class Http {
     BaseOptions(
       baseUrl: Env.apiBaseEffective,
       connectTimeout: const Duration(seconds: 20),
-      receiveTimeout: const Duration(seconds: 20),
+      receiveTimeout: const Duration(seconds: 60),
       responseType: ResponseType.json,
       headers: {
         'Content-Type': 'application/json',

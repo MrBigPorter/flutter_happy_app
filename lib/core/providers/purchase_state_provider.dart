@@ -288,7 +288,12 @@ class PurchaseNotifier extends StateNotifier<PurchaseState> {
       luckyProvider.select((s) => s.userInfo?.kycStatus),
     );
 
+   final user =  ref.read(
+      luckyProvider.select((s) => s.userInfo),
+    );
+
     // 根据你的 Prisma Schema，4 代表已认证 (0-未认证, 1-审核中, 2-失败, 3-补充, 4-已通过)
+
     if (KycStatusEnum.fromStatus(kycStatus ?? 0) != KycStatusEnum.approved) {
       return PurchaseSubmitResult.error(PurchaseSubmitError.needKyc);
     }

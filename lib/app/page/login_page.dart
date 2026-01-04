@@ -114,7 +114,6 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   }
 
   Future<void> sendCode() async {
-    print('send code clicked');
     final form = _usePasswordLogin ? passwordForm.form : otpForm.form;
     final phone = form.control('phone');
     phone.markAsTouched();
@@ -140,6 +139,8 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   Widget build(BuildContext context) {
 
     final send = ref.watch(sendOtpCtrlProvider);
+    final verify = ref.watch(verifyOtpCtrlProvider);
+    final login = ref.watch(authLoginOtpCtrlProvider);
 
     return BaseScaffold(
       body: LayoutBuilder(
@@ -254,7 +255,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                                         valueListenable: cd.seconds,
                                         builder: (context, int seconds, _) {
                                           final running = cd.running;
-                                          return TextButton(
+                                          return Button(
+                                              variant: ButtonVariant.text,
+                                              loading: send.isLoading,
                                               onPressed: running || send.isLoading ? null:sendCode,
                                               child: Text(
                                                   running?'Resend in ${seconds}s':'send code',
@@ -277,6 +280,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
                                 // 提交
                                 Button(
+                                  loading: verify.isLoading || login.isLoading,
                                   width: double.infinity,
                                   onPressed: submit,
                                   child: Text('common.login'.tr()),

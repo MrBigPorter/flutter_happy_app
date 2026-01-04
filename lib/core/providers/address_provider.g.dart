@@ -181,7 +181,7 @@ final selectedAddressProvider =
     );
 
 typedef _$SelectedAddress = AutoDisposeNotifier<AddressRes?>;
-String _$addressManagerHash() => r'54e23099bb84f773235daf1c3c6dcc4c84ed2ee4';
+String _$addressManagerHash() => r'6d9b60aa090bbff101986aeb9467c9844f525b8a';
 
 /// See also [AddressManager].
 @ProviderFor(AddressManager)

@@ -138,11 +138,10 @@ class LuckyNotifier extends HydratedStateNotifier<LuckyState> {
   Future<void> refreshAll() async {
      final user = await Api.getUserInfo();
      final balance = await ref.read(walletBalanceProvider.future);
-     final sysConfig = await ref.read(sysConfigProvider.future);
      state = LuckyState(
        userInfo: user,
        balance: balance,
-       sysConfig: sysConfig,
+       sysConfig: state.sysConfig,
      );
   }
 

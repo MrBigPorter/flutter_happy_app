@@ -72,7 +72,9 @@ class InviteCode extends Validator<dynamic> {
 // 1. 实名验证：支持中文、英文及菲律宾常见名字字符
 class RealName extends Validator<dynamic> {
   const RealName();
-  static final _re = RegExp(r'^[\u4e00-\u9fa5a-zA-Z·\s]{2,50}$');
+
+// 这种写法更宽松：只要不是数字和大部分奇怪的标点符号就行
+  static final _re = RegExp(r'^[^\d0-9`~!@#$%^&*()_+={}\[\]|\\:;\"<>,?/]+$');
 
   @override
   Map<String, dynamic>? validate(AbstractControl<dynamic> control) {

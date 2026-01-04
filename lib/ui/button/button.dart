@@ -118,9 +118,22 @@ class _ButtonState extends State<Button> {
     final targetScale = widget.noPressAnimation
         ? 1.0
         : (_isPressed ? 0.92 : 1.0);
+
+    Color getBackgroundColor() {
+      // 1. 如果是文本变体，背景永远透明
+      if (widget.variant == ButtonVariant.text) return Colors.transparent;
+
+      // 2. 基础颜色：优先用传入的，否则用主题默认的
+      final baseColor = widget.backgroundColor ?? theme.bg;
+      
+
+      // 3. 处理禁用状态：0.8 的透明度，否则返回原色
+      return effectiveDisabled ? baseColor.withValues(alpha: 0.8) : baseColor;
+    }
+
+    final bg = getBackgroundColor();
     
 
-    final bg = effectiveDisabled ? (widget.backgroundColor?.withValues(alpha: 0.8) ?? theme.bg.withValues(alpha: 0.8)) : (widget.backgroundColor??theme.bg);
     final fg = widget.foregroundColor??theme.fg;
     final border = widget.borderColor??theme.border;
     final shadow = effectiveDisabled ? const <BoxShadow>[] : widget.boxShadow??theme.shadow;

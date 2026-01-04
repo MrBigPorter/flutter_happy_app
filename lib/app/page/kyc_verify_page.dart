@@ -132,8 +132,6 @@ class _KycVerifyPageState extends ConsumerState<KycVerifyPage> {
     final bool isLocked =
         statusEnum == KycStatusEnum.reviewing ||
         statusEnum == KycStatusEnum.approved;
-    
-    print('KYC Status: $statusEnum, isLocked: $isLocked');
 
     // 动态文案
     String buttonText = 'start-now'.tr();

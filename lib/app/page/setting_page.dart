@@ -170,8 +170,6 @@ class _SettingRowWidget extends ConsumerWidget {
               );
             }
         );
-
-        appRouter.push('/me/kyc/verify');
         break;
 
       case SettingRowType.darkModeSwitch:

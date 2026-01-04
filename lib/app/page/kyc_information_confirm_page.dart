@@ -232,13 +232,37 @@ class _KycInformationConfirmPageState
     );
   }
 
+  void _handlePopInvocation(bool didPop, dynamic result) {
+    // 如果 didPop 为 true，说明页面已经被 pop 了（比如你手动调用了 Navigator.pop）
+    // 此时直接 return，避免重复弹窗或逻辑死循环
+    if (didPop || _isSubmitting) return;
+
+    // 这里的逻辑是：用户触发了物理返回/手势，但被 PopScope 拦截了
+    RadixModal.show(
+      title: 'Discard Changes?',
+      builder: (_, __) =>
+      const Text('If you go back now, you will lose all information.'),
+      cancelText: 'Cancel',
+      confirmText: 'Discard',
+      onConfirm: (close) {
+        close(); // 关闭弹窗
+        // 关键：手动调用 Navigator.pop，此时由于 pop 是你主动触发的，
+        // 页面会真正退出。
+        Navigator.of(context).pop();
+      },
+    );
+  }
+
   Future<bool> _showFinalConfirmDialog() async {
-    return await RadixModal.show(
+    return await RadixModal.show<bool>(
           title: 'Confirm Submission',
           builder: (_, __) =>
               const Text('Ensure all details match your ID exactly.'),
           cancelText: 'Review',
           confirmText: 'Submit',
+          onConfirm: (close) {
+            close(true);
+          },
         ) ??
         false;
   }
@@ -265,9 +289,15 @@ class _KycInformationConfirmPageState
 
     return PopScope(
       canPop: false,
-      onPopInvoked: _onWillPop,
       child: BaseScaffold(
         title: 'Information Confirm', // 暂时硬编码避免 key not found
+        showBack: false, // 隐藏 LuckyAppBar 那个不听话的返回键
+        actions: [
+          IconButton(
+            icon: Icon(Icons.close),
+            onPressed: () => _handlePopInvocation(false, null),
+          )
+        ],
         resizeToAvoidBottomInset: true, // 关键：键盘弹出时允许页面上顶
         body: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),

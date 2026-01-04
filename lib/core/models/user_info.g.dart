@@ -6,28 +6,32 @@ part of 'user_info.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-UserInfo _$UserInfoFromJson(Map<String, dynamic> json) =>
-    $checkedCreate('UserInfo', json, ($checkedConvert) {
-      final val = UserInfo(
-        id: $checkedConvert('id', (v) => v as String),
-        nickname: $checkedConvert('nickname', (v) => v as String),
-        avatar: $checkedConvert('avatar', (v) => v as String),
-        phoneMd5: $checkedConvert('phoneMd5', (v) => v as String),
-        phone: $checkedConvert('phone', (v) => v as String),
-        inviteCode: $checkedConvert('inviteCode', (v) => v as String),
-        vipLevel: $checkedConvert('vipLevel', (v) => (v as num).toInt()),
-        kycStatus: $checkedConvert('kycStatus', (v) => (v as num?)?.toInt()),
-        deliveryAddressId: $checkedConvert(
-          'deliveryAddressId',
-          (v) => (v as num).toInt(),
-        ),
-        selfExclusionExpireAt: $checkedConvert(
-          'selfExclusionExpireAt',
-          (v) => (v as num).toInt(),
-        ),
-      );
-      return val;
-    });
+UserInfo _$UserInfoFromJson(Map<String, dynamic> json) => $checkedCreate(
+  'UserInfo',
+  json,
+  ($checkedConvert) {
+    final val = UserInfo(
+      id: $checkedConvert('id', (v) => v as String),
+      nickname: $checkedConvert('nickname', (v) => v as String),
+      avatar: $checkedConvert('avatar', (v) => v as String?),
+      phoneMd5: $checkedConvert('phoneMd5', (v) => v as String),
+      phone: $checkedConvert('phone', (v) => v as String),
+      inviteCode: $checkedConvert('inviteCode', (v) => v as String?),
+      vipLevel: $checkedConvert('vipLevel', (v) => (v as num).toInt()),
+      kycStatus: $checkedConvert('kycStatus', (v) => (v as num).toInt()),
+      deliveryAddressId: $checkedConvert(
+        'deliveryAddressId',
+        (v) => (v as num).toInt(),
+      ),
+      selfExclusionExpireAt: $checkedConvert(
+        'selfExclusionExpireAt',
+        (v) => (v as num).toInt(),
+      ),
+      lastLoginAt: $checkedConvert('lastLoginAt', (v) => (v as num?)?.toInt()),
+    );
+    return val;
+  },
+);
 
 Map<String, dynamic> _$UserInfoToJson(UserInfo instance) => <String, dynamic>{
   'id': instance.id,
@@ -40,4 +44,5 @@ Map<String, dynamic> _$UserInfoToJson(UserInfo instance) => <String, dynamic>{
   'kycStatus': instance.kycStatus,
   'deliveryAddressId': instance.deliveryAddressId,
   'selfExclusionExpireAt': instance.selfExclusionExpireAt,
+  'lastLoginAt': instance.lastLoginAt,
 };
