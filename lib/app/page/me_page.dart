@@ -8,6 +8,7 @@ import 'package:flutter_app/common.dart';
 import 'package:flutter_app/components/base_scaffold.dart';
 import 'package:flutter_app/components/lucky_custom_material_indicator.dart';
 import 'package:flutter_app/core/models/index.dart';
+import 'package:flutter_app/core/providers/wallet_provider.dart';
 import 'package:flutter_app/core/store/auth/auth_provider.dart';
 import 'package:flutter_app/core/store/lucky_store.dart';
 import 'package:flutter_app/ui/button/index.dart';
@@ -28,19 +29,18 @@ class MePage extends ConsumerStatefulWidget {
 class _MePageState extends ConsumerState<MePage>{
 
   Future<void> _onRefresh() async {
-    Future.wait([
-    ]);
+      ref.read(luckyProvider.notifier).updateWalletBalance();
   }
 
   @override
   Widget build(BuildContext context) {
-
 
     // check if user is authenticated
     var isAuthenticated = ref.watch(
       authProvider.select((s) => s.isAuthenticated),
     );
     final balance = ref.watch(luckyProvider.select((s) => s.balance));
+
 
 
     return BaseScaffold(

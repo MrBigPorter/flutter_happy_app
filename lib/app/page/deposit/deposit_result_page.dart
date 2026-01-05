@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_app/common.dart';
+import 'package:flutter_app/core/store/lucky_store.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -109,7 +110,7 @@ class _DepositResultPageState extends ConsumerState<DepositResultPage> {
   void _handleSuccess() {
     if (!mounted) return;
     // 刷新余额
-    ref.invalidate(walletBalanceProvider);
+    ref.read(luckyProvider.notifier).updateWalletBalance();
     setState(() => _status = 'success');
   }
 

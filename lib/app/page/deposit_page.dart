@@ -15,6 +15,7 @@ import 'package:reactive_forms/reactive_forms.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/models/balance.dart';
+import '../../core/store/lucky_store.dart';
 import '../../utils/form/validation/k_deposit_validation_messages.dart';
 import 'deposit/payment_webview_page.dart';
 
@@ -66,7 +67,7 @@ class _DepositPageState extends ConsumerState<DepositPage> {
       }finally{
         if(mounted){
           // 刷新余额
-          ref.invalidate(walletBalanceProvider);
+          ref.read(luckyProvider.notifier).updateWalletBalance();
         }
       }
     }
