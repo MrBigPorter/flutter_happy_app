@@ -16,12 +16,12 @@ class OrderItem {
   // 金额字段
   final String unitPrice;
   final String originalAmount;
-  final String? discountAmount; // 改为可空，兼容旧数据
-  final String? couponAmount;   // 改为可空
-  final String? coinAmount;     // 改为可空
+  final String? discountAmount;
+  final String? couponAmount;
+  final String? coinAmount;
   final String finalAmount;
 
-  // 状态字段
+  // 状态字段 (对应后端 int 值)
   final int orderStatus;
   final int payStatus;
   final int refundStatus;
@@ -39,7 +39,7 @@ class OrderItem {
   // 1. 售后原因
   final String? refundReason;
 
-  // 2. 中奖标识 (后端未返回时默认为 false，防止报错)
+  // 2. 中奖标识 (后端未返回时默认为 false)
   @JsonKey(defaultValue: false)
   final bool isWinner;
 
@@ -70,7 +70,6 @@ class OrderItem {
     this.ticketList,
     this.refundReason,
     this.group,
-    // 新增字段初始化
     this.isWinner = false,
     this.prizeAmount,
     this.prizeCoin,
@@ -89,7 +88,6 @@ class OrderItem {
 
 @JsonSerializable(checked: true)
 class OrderDetailItem extends OrderItem {
-
   // 详情页流水 (若后端未返回，默认为空数组)
   @JsonKey(defaultValue: [])
   final List<WalletTransaction> transactions;
@@ -175,8 +173,7 @@ class WalletTransaction {
   final String transactionNo;
   final String amount;
 
-  // 🔥 改为 dynamic，兼容后端返回 int 或 string
-  // 前端显示时建议用 .toString()
+  // 兼容后端返回 int 或 string
   final dynamic balanceType;
 
   final int status;
@@ -311,52 +308,107 @@ class TabItem {
 }
 
 // -----------------------------------------------------------------------------
-// 状态枚举与扩展逻辑
+// 1. 后端常量定义 (Backend Constants)
 // -----------------------------------------------------------------------------
 
-enum OrderStatus {
-  pending,       // 1: 未开奖/进行中
-  won,           // 2: 用户中奖
-  refunded,      // 4: 已退款
-  groupSuccess,  // 6: 拼团达成
-  ended,         // 其他: 已结束未中奖/已取消
+class OrderStatusConst {
+  static const int pendingPayment = 1;    // 待支付
+  static const int processingPayment = 2; // 支付中
+  static const int paid = 3;              // 已支付 (待发货/待开奖)
+  static const int canceled = 4;          // 已取消
+  static const int refunded = 5;          // 已退款
 }
 
+class PayStatusConst {
+  static const int unpaid = 0;
+  static const int paid = 1;
+  static const int failed = 2;
+}
+
+class RefundStatusConst {
+  static const int noRefund = 0;    // 未退款
+  static const int refunding = 1;   // 退款中
+  static const int refunded = 2;    // 已退款
+  static const int refundFailed = 3; // 退款失败
+}
+
+// -----------------------------------------------------------------------------
+// 2. 前端 UI 状态枚举 (UI Layer)
+// -----------------------------------------------------------------------------
+enum OrderStatus {
+  pending,       // 待支付
+  processing,    // 支付中
+  paid,          // 已支付/进行中
+  won,           // 用户中奖 (高光状态)
+  refunded,      // 已退款
+  cancelled,     // 已取消
+  groupSuccess,  // 拼团成功
+  ended,         // 已结束未中奖
+}
+
+// -----------------------------------------------------------------------------
+// 3. 业务扩展逻辑 (Business Logic)
+// -----------------------------------------------------------------------------
 extension OrderItemExtension on OrderItem {
 
-  /// 智能状态解析 (兼容新旧字段)
+  /// 智能状态解析
   OrderStatus get orderStatusEnum {
-    // 1. 优先信赖明确的 isWinner 字段
+    // 1. 优先判断中奖 (最高优先级)
     if (isWinner) return OrderStatus.won;
 
-    // 2. 其次检查状态码 (兼容旧后端)
-    if (orderStatus == 2) return OrderStatus.won;
+    // 2. 判断退款 (Order=5 或 Refund=2)
+    if (orderStatus == OrderStatusConst.refunded ||
+        refundStatus == RefundStatusConst.refunded) {
+      return OrderStatus.refunded;
+    }
 
-    // 3. 检查退款
-    if (refundStatus == 2 || orderStatus == 4) return OrderStatus.refunded;
+    // 3. 判断取消
+    if (orderStatus == OrderStatusConst.canceled) {
+      return OrderStatus.cancelled;
+    }
 
-    // 4. 检查拼团
-    // 假设 groupStatus: 2 是成功
-    if (group?.groupStatus == 2) return OrderStatus.groupSuccess;
+    // 4. 判断拼团 (假设 groupStatus: 2 是成功)
+    if (group?.groupStatus == 2) {
+      return OrderStatus.groupSuccess;
+    }
 
-    // 5. 默认状态
-    return OrderStatus.pending;
+    // 5. 基础状态映射
+    switch (orderStatus) {
+      case OrderStatusConst.pendingPayment:
+        return OrderStatus.pending;
+      case OrderStatusConst.processingPayment:
+        return OrderStatus.processing;
+      case OrderStatusConst.paid:
+        return OrderStatus.paid; // 默认已支付状态
+      default:
+        return OrderStatus.pending;
+    }
   }
 
+  // --- 便捷 Getter ---
   bool get isPending => orderStatusEnum == OrderStatus.pending;
   bool get isWon => orderStatusEnum == OrderStatus.won;
   bool get isRefunded => orderStatusEnum == OrderStatus.refunded;
   bool get isGroupSuccess => orderStatusEnum == OrderStatus.groupSuccess;
+  bool get isCancelled => orderStatusEnum == OrderStatus.cancelled;
 
-  // 这里可以根据实际 ended 状态码调整，比如 status 3 or 5
-  bool get isEnded => orderStatusEnum == OrderStatus.ended;
-
-  /// 订单 UI 显示逻辑
-  /// 是否显示金色的“中奖/拼团成功”板块
+  // --- UI 逻辑 ---
   bool get showGroupSuccessSection => isGroupSuccess || isWon;
-
-  // 是否实物订单
   bool get isPhysical => treasure.virtual == 1;
-  // 是否虚拟订单
   bool get isVirtual => treasure.virtual == 2;
+
+  /// --- 核心业务：能否申请退款？---
+  /// 规则：
+  /// 1. 订单状态必须是 PAID (3)
+  /// 2. 支付状态必须是 PAID (1)
+  /// 3. 退款状态必须是 NO_REFUND (0) 或 REFUND_FAILED (3) (失败允许重试)
+  /// 4. 不是中奖订单 (isWinner == false)
+  bool get canRequestRefund {
+    final isOrderPaid = orderStatus == OrderStatusConst.paid;
+    final isPaySuccess = payStatus == PayStatusConst.paid;
+    final isNoRefund = refundStatus == RefundStatusConst.noRefund ||
+        refundStatus == RefundStatusConst.refundFailed;
+
+    return isOrderPaid && isPaySuccess && isNoRefund && !isWinner;
+  }
 }

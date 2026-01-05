@@ -69,7 +69,6 @@ class ModalSheetService {
         isScrollControlled: true,
         backgroundColor: Colors.transparent,
         useSafeArea: false,
-        barrierColor: barrierColor,
         isDismissible: allowBgClose,
         enableDrag: enableDrag,
         builder: (modalContext) {
@@ -120,18 +119,6 @@ class ModalSheetService {
 
           final Widget content = Stack(
             children: [
-              Positioned.fill(
-                child: GestureDetector(
-                  onTap: allowBgClose ? () => finish() : null,
-                  child: BackdropFilter(
-                    filter: ImageFilter.blur(
-                      sigmaX: policy.blurSigma,
-                      sigmaY: policy.blurSigma,
-                    ),
-                    child: Container(color: visualBarrierColor),
-                  ),
-                ),
-              ),
               Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
