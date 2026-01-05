@@ -16,6 +16,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/models/balance.dart';
 import '../../utils/form/validation/k_deposit_validation_messages.dart';
+import 'deposit/payment_webview_page.dart';
 
 class DepositPage extends ConsumerStatefulWidget {
   const DepositPage({super.key});
@@ -33,7 +34,6 @@ class _DepositPageState extends ConsumerState<DepositPage> {
   );
 
   Future<void> _onSubmit() async {
-    print('Submitting deposit form...${_form.form.errors}');
     if (_form.form.valid) {
       // 提交时收起键盘，体验更好
       FocusScope.of(context).unfocus();
@@ -45,16 +45,17 @@ class _DepositPageState extends ConsumerState<DepositPage> {
             amount: int.parse(amount),
           ),
         );
-        print('Recharge Response: $response');
         if(response != null && response.payUrl.isNotEmpty){
           if(!mounted) return;
           final payUrl = Uri.parse(response.payUrl);
-          if(await canLaunchUrl(payUrl)){
-            // 关键点：一定要用 externalApplication，否则有些支付网页在 App 内嵌浏览器里打不开
-            await launchUrl(payUrl,mode: LaunchMode.externalApplication);
-          }else{
-            throw 'Could not launch payment URL';
-          }
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => PaymentWebViewPage(
+                url: response.payUrl,
+                orderNo: response.rechargeNo,
+              ),
+            )
+          );
         }else {
           // 接口成功了但没给 URL (极少见，兜底逻辑)
           throw 'Payment URL is empty';
