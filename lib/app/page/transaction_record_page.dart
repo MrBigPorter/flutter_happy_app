@@ -1,5 +1,6 @@
 import 'package:extended_nested_scroll_view/extended_nested_scroll_view.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_app/app/page/transaction/transaction_card.dart';
 import 'package:flutter_app/app/page/transaction/transaction_ui_model.dart';
 import 'package:flutter_app/common.dart';
@@ -210,32 +211,50 @@ class _TransactionListViewState extends ConsumerState<TransactionListView>
     return _ctl.wrapWithNotification(
       child: ExtendedVisibilityDetector(
         uniqueKey: Key('transaction_list_${widget.type.name}'),
-        child: CustomScrollView(
-          // 记住滚动位置
-          key: PageStorageKey('transaction_list_storage_${widget.type.name}'),
-          physics: const AlwaysScrollableScrollPhysics(), // 确保回弹
-          cacheExtent: 600,
-          slivers: [
-            PageListViewPro<TransactionUiModel>(
-              controller: _ctl,
-              sliverMode: true,
-              separatorSpace: 12.h,
-              padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 16.h),
-              skeletonPadding: EdgeInsets.all(
-                16.w
+
+        // 使用 RefreshIndicator 包裹 CustomScrollView
+        child: RefreshIndicator(
+          // 1. 触发刷新回调
+          onRefresh: () async {
+            // 调用控制器的刷新方法，它会重置 page=1 并重新请求数据
+             HapticFeedback.mediumImpact(); // 如果想要震动反馈可以解注这一行
+            await _ctl.refresh();
+          },
+
+          // 2. 样式配置 (可选，根据你的 UI 规范调整)
+          color: context.textBrandPrimary900, // loading 转圈的颜色
+          backgroundColor: context.bgPrimary, // loading 背景色(白色)
+          displacement: 40.h, // 下拉触发的距离
+
+          child: CustomScrollView(
+            // 记住滚动位置
+            key: PageStorageKey('transaction_list_storage_${widget.type.name}'),
+
+            // 必须设置为 AlwaysScrollableScrollPhysics
+            // 否则当列表内容不足一屏时，无法下拉
+            physics: const AlwaysScrollableScrollPhysics(),
+
+            cacheExtent: 600,
+            slivers: [
+              PageListViewPro<TransactionUiModel>(
+                controller: _ctl,
+                sliverMode: true,
+                separatorSpace: 12.h,
+                padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 16.h),
+                skeletonPadding: EdgeInsets.all(16.w),
+
+                // 渲染真实 Item
+                itemBuilder: (context, item, index, isLast) {
+                  return TransactionCard(item: item, index: index);
+                },
+
+                // 渲染骨架屏
+                skeletonBuilder: (context, {bool isLast = false}) {
+                  return const TransactionSkeleton(); // 记得加 const 如果组件支持
+                },
               ),
-
-              // 渲染真实 Item
-              itemBuilder: (context, item, index, isLast) {
-                return TransactionCard(item: item, index: index,);
-              },
-
-              // 渲染骨架屏
-              skeletonBuilder: (context, {bool isLast = false}) {
-                return  TransactionSkeleton();
-              },
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
