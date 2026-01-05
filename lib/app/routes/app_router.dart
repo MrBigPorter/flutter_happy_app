@@ -23,6 +23,7 @@ import '../page/deposit_detail_page.dart';
 import '../page/guide_page.dart';
 import '../page/home_page.dart';
 import '../page/product_page.dart';
+import '../page/transaction_record_page.dart';
 import '../page/winners_page.dart';
 import '../page/me_page.dart';
 import '../page/login_page.dart';
@@ -186,6 +187,11 @@ class AppRouter {
             name: 'deposit',
             path: '/me/wallet/deposit',
             builder: (context, state) => DepositPage()
+        ),
+        GoRoute(
+            name: 'transactionRecord',
+            path: '/me/wallet/transaction/record',
+            builder: (context, state) => TransactionHistoryPage()
         ),
 
       ],

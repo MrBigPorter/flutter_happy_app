@@ -302,7 +302,7 @@ class _WalletArea extends StatelessWidget {
               Expanded(
                 child: InkWell(
                   onTap: () {
-                    appRouter.push('/me/wallet');
+                    appRouter.push('/me/wallet/transaction/record');
                   },
                   child: Container(
                     padding: EdgeInsets.symmetric(
