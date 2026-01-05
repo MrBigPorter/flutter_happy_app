@@ -19,9 +19,9 @@ OrderItem _$OrderItemFromJson(Map<String, dynamic> json) => $checkedCreate(
       treasureId: $checkedConvert('treasureId', (v) => v as String),
       unitPrice: $checkedConvert('unitPrice', (v) => v as String),
       originalAmount: $checkedConvert('originalAmount', (v) => v as String),
-      discountAmount: $checkedConvert('discountAmount', (v) => v as String),
-      couponAmount: $checkedConvert('couponAmount', (v) => v as String),
-      coinAmount: $checkedConvert('coinAmount', (v) => v as String),
+      discountAmount: $checkedConvert('discountAmount', (v) => v as String?),
+      couponAmount: $checkedConvert('couponAmount', (v) => v as String?),
+      coinAmount: $checkedConvert('coinAmount', (v) => v as String?),
       finalAmount: $checkedConvert('finalAmount', (v) => v as String),
       orderStatus: $checkedConvert('orderStatus', (v) => (v as num).toInt()),
       payStatus: $checkedConvert('payStatus', (v) => (v as num).toInt()),
@@ -48,6 +48,9 @@ OrderItem _$OrderItemFromJson(Map<String, dynamic> json) => $checkedCreate(
         'group',
         (v) => v == null ? null : Group.fromJson(v as Map<String, dynamic>),
       ),
+      isWinner: $checkedConvert('isWinner', (v) => v as bool? ?? false),
+      prizeAmount: $checkedConvert('prizeAmount', (v) => v as String?),
+      prizeCoin: $checkedConvert('prizeCoin', (v) => (v as num?)?.toInt()),
     );
     return val;
   },
@@ -76,6 +79,9 @@ Map<String, dynamic> _$OrderItemToJson(OrderItem instance) => <String, dynamic>{
   'addressResp': instance.addressResp,
   'ticketList': instance.ticketList,
   'refundReason': instance.refundReason,
+  'isWinner': instance.isWinner,
+  'prizeAmount': instance.prizeAmount,
+  'prizeCoin': instance.prizeCoin,
 };
 
 OrderDetailItem _$OrderDetailItemFromJson(Map<String, dynamic> json) =>
@@ -89,9 +95,9 @@ OrderDetailItem _$OrderDetailItemFromJson(Map<String, dynamic> json) =>
         treasureId: $checkedConvert('treasureId', (v) => v as String),
         unitPrice: $checkedConvert('unitPrice', (v) => v as String),
         originalAmount: $checkedConvert('originalAmount', (v) => v as String),
-        discountAmount: $checkedConvert('discountAmount', (v) => v as String),
-        couponAmount: $checkedConvert('couponAmount', (v) => v as String),
-        coinAmount: $checkedConvert('coinAmount', (v) => v as String),
+        discountAmount: $checkedConvert('discountAmount', (v) => v as String?),
+        couponAmount: $checkedConvert('couponAmount', (v) => v as String?),
+        coinAmount: $checkedConvert('coinAmount', (v) => v as String?),
         finalAmount: $checkedConvert('finalAmount', (v) => v as String),
         orderStatus: $checkedConvert('orderStatus', (v) => (v as num).toInt()),
         payStatus: $checkedConvert('payStatus', (v) => (v as num).toInt()),
@@ -121,11 +127,19 @@ OrderDetailItem _$OrderDetailItemFromJson(Map<String, dynamic> json) =>
           'group',
           (v) => v == null ? null : Group.fromJson(v as Map<String, dynamic>),
         ),
+        isWinner: $checkedConvert('isWinner', (v) => v as bool? ?? false),
+        prizeAmount: $checkedConvert('prizeAmount', (v) => v as String?),
+        prizeCoin: $checkedConvert('prizeCoin', (v) => (v as num?)?.toInt()),
         transactions: $checkedConvert(
           'transactions',
-          (v) => (v as List<dynamic>)
-              .map((e) => WalletTransaction.fromJson(e as Map<String, dynamic>))
-              .toList(),
+          (v) =>
+              (v as List<dynamic>?)
+                  ?.map(
+                    (e) =>
+                        WalletTransaction.fromJson(e as Map<String, dynamic>),
+                  )
+                  .toList() ??
+              [],
         ),
       );
       return val;
@@ -155,6 +169,9 @@ Map<String, dynamic> _$OrderDetailItemToJson(OrderDetailItem instance) =>
       'addressResp': instance.addressResp,
       'ticketList': instance.ticketList,
       'refundReason': instance.refundReason,
+      'isWinner': instance.isWinner,
+      'prizeAmount': instance.prizeAmount,
+      'prizeCoin': instance.prizeCoin,
       'transactions': instance.transactions,
     };
 
@@ -190,7 +207,7 @@ WalletTransaction _$WalletTransactionFromJson(Map<String, dynamic> json) =>
       final val = WalletTransaction(
         transactionNo: $checkedConvert('transactionNo', (v) => v as String),
         amount: $checkedConvert('amount', (v) => v as String),
-        balanceType: $checkedConvert('balanceType', (v) => (v as num).toInt()),
+        balanceType: $checkedConvert('balanceType', (v) => v),
         status: $checkedConvert('status', (v) => (v as num).toInt()),
         createdAt: $checkedConvert('createdAt', (v) => v as num),
       );

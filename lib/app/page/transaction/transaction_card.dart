@@ -27,7 +27,7 @@ class TransactionCard extends StatelessWidget {
 
     Color statusColor = item.statusCode == 2 ? const Color(0xFF2E7D32) : const Color(0xFFEF6C00);
     if (item.statusCode == 3) statusColor = const Color(0xFFC62828);
-    final statusBg = statusColor.withOpacity(0.1);
+    final statusBg = statusColor.withValues(alpha: 0.1);
     final formatter = NumberFormat("#,##0.00", "en_US");
 
     return _ScaleButton(
@@ -45,107 +45,110 @@ class TransactionCard extends StatelessWidget {
       },
       child: Hero(
           tag: 'txn_${item.id}',
-          child: Container(
-            padding: EdgeInsets.all(16.w),
-            decoration: BoxDecoration(
-              color: context.bgPrimary,
-              borderRadius: BorderRadius.circular(12.r),
-              boxShadow: [
-                BoxShadow(
-                  color: context.textPrimary900.withOpacity(0.03), // 极淡的阴影，更高级
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                )
-              ],
-            ),
-            child: Row(
-              children: [
-                // 图标
-                Container(
-                  width: 44.w,
-                  height: 44.w,
-                  decoration: BoxDecoration(
-                    color: isDeposit
-                        ? const Color(0xFF2E7D32).withOpacity(0.08)
-                        : const Color(0xFF9C27B0).withOpacity(0.08),
-                    shape: BoxShape.circle,
+          child: Material(
+            type: MaterialType.transparency,
+            child: Container(
+              padding: EdgeInsets.all(16.w),
+              decoration: BoxDecoration(
+                color: context.bgPrimary,
+                borderRadius: BorderRadius.circular(12.r),
+                boxShadow: [
+                  BoxShadow(
+                    color: context.textPrimary900.withValues(alpha: 0.03), // 极淡的阴影，更高级
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  )
+                ],
+              ),
+              child: Row(
+                children: [
+                  // 图标
+                  Container(
+                    width: 44.w,
+                    height: 44.w,
+                    decoration: BoxDecoration(
+                      color: isDeposit
+                          ? const Color(0xFF2E7D32).withValues(alpha: 0.08)
+                          : const Color(0xFF9C27B0).withValues(alpha: 0.08),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      isDeposit ? Icons.account_balance_wallet : Icons.local_atm,
+                      color: isDeposit ? const Color(0xFF2E7D32) : Colors.purple,
+                      size: 22.w,
+                    ),
                   ),
-                  child: Icon(
-                    isDeposit ? Icons.account_balance_wallet : Icons.local_atm,
-                    color: isDeposit ? const Color(0xFF2E7D32) : Colors.purple,
-                    size: 22.w,
-                  ),
-                ),
-                SizedBox(width: 12.w),
+                  SizedBox(width: 12.w),
 
-                // 中间信息
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  // 中间信息
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          item.title,
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14.sp,
+                            color: context.textPrimary900,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        SizedBox(height: 4.h),
+                        Text(
+                          DateFormat('yyyy-MM-dd HH:mm').format(item.time),
+                          style: TextStyle(
+                              color: context.textSecondary700,
+                              fontSize: 12.sp
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // 右侧金额
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
                       Text(
-                        item.title,
+                        "${isDeposit ? '+' : '-'}${formatter.format(item.amount)}",
                         style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14.sp,
-                          color: context.textPrimary900,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      SizedBox(height: 4.h),
-                      Text(
-                        DateFormat('yyyy-MM-dd HH:mm').format(item.time),
-                        style: TextStyle(
-                            color: context.textSecondary700,
-                            fontSize: 12.sp
+                          fontWeight: FontWeight.w800,
+                          fontSize: 16.sp,
+                          color: isDeposit ? const Color(0xFF2E7D32) : context.textPrimary900,
+                          fontFamily: 'Monospace',
                         ),
                       ),
+                      SizedBox(height: 6.h),
+                      Container(
+                        padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
+                        decoration: BoxDecoration(
+                          color: statusBg,
+                          borderRadius: BorderRadius.circular(6.r),
+                        ),
+                        child: Text(
+                          item.statusText,
+                          style: TextStyle(
+                            color: statusColor,
+                            fontSize: 10.sp,
+                            fontWeight: FontWeight.bold,
+                            height: 1.1,
+                          ),
+                        ),
+                      )
                     ],
                   ),
-                ),
-
-                // 右侧金额
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      "${isDeposit ? '+' : '-'}${formatter.format(item.amount)}",
-                      style: TextStyle(
-                        fontWeight: FontWeight.w800,
-                        fontSize: 16.sp,
-                        color: isDeposit ? const Color(0xFF2E7D32) : context.textPrimary900,
-                        fontFamily: 'Monospace',
-                      ),
-                    ),
-                    SizedBox(height: 6.h),
-                    Container(
-                      padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
-                      decoration: BoxDecoration(
-                        color: statusBg,
-                        borderRadius: BorderRadius.circular(6.r),
-                      ),
-                      child: Text(
-                        item.statusText,
-                        style: TextStyle(
-                          color: statusColor,
-                          fontSize: 10.sp,
-                          fontWeight: FontWeight.bold,
-                          height: 1.1,
-                        ),
-                      ),
-                    )
-                  ],
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
+          )
       )
       )
         .animate(delay: (50 * index).ms) //  阶梯式延迟：第1个立即显示，第2个延后50ms...
         .fadeIn(duration: 400.ms, curve: Curves.easeOut) // 淡入
         .slideX(begin: 0.1, end: 0, duration: 400.ms, curve: Curves.easeOut) // 微微右滑入
-        .shimmer(duration: 1200.ms, color: Colors.white.withOpacity(0.4), delay: 400.ms); //  扫光效果：出现后闪一下
+        .shimmer(duration: 1200.ms, color: Colors.white.withValues(alpha: 0.4), delay: 400.ms); //  扫光效果：出现后闪一下
   }
 }
 

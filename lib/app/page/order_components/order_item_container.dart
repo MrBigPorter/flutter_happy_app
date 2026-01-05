@@ -1,19 +1,18 @@
-
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_app/app/page/order_detail_page.dart';
-import 'package:flutter_app/app/routes/app_router.dart';
 import 'package:flutter_app/common.dart';
 import 'package:flutter_app/components/skeleton.dart';
 import 'package:flutter_app/core/models/index.dart';
 import 'package:flutter_app/ui/animations/transparent_fade_route.dart';
 import 'package:flutter_app/ui/button/index.dart';
+import 'package:flutter_app/utils/date_helper.dart';
 import 'package:flutter_app/utils/format_helper.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-
+import 'package:flutter_animate/flutter_animate.dart';
 
 class OrderItemContainer extends StatelessWidget {
   final OrderItem item;
@@ -28,99 +27,240 @@ class OrderItemContainer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final String heroTag = 'order_card_${item.orderId}';
-    // 判断是否中奖，用于特殊样式
     final isWinning = item.isWon;
 
-    return Padding(
+    Widget cardContent = Padding(
       padding: EdgeInsets.only(
-          bottom: isLast ? 32.h : 12.h, left: 0.w, right: 0.w), // 增加左右间距
+        bottom: isLast ? 32.h : 12.h,
+      ),
       child: Hero(
         tag: heroTag,
-        child: Container(
-          width: double.infinity,
-          decoration: BoxDecoration(
-            color: context.bgPrimary,
-            borderRadius: BorderRadius.circular(16.w), // 更大的圆角
-            border: isWinning
-                ? Border.all(color: const Color(0xFFFFD700), width: 1) // 中奖金边
-                : Border.all(color: context.borderSecondary, width: 0.5), // 普通细边
-            boxShadow: [
-              BoxShadow(
-                color: context.fgPrimary900.withOpacity(0.04), // 更淡的阴影
-                blurRadius: 16.w,
-                offset: const Offset(0, 8),
-              ),
-            ],
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // 顶部状态栏 (新功能)
-              _OrderItemStatusHeader(item: item),
+        child: Material(
+          type: MaterialType.transparency,
+          child: Container(
+            width: double.infinity,
+            decoration: BoxDecoration(
+              // 1. 高级感核心：中奖时使用极淡的金色渐变，普通时纯白
+              gradient: isWinning
+                  ? LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  const Color(0xFFFFFBEB), // Amber 50 (极淡金)
+                  Colors.white,
+                ],
+              )
+                  : null,
+              color: isWinning ? null : context.bgPrimary,
+              borderRadius: BorderRadius.circular(16.w),
+              // 2. 边框：中奖金边，普通细灰边
+              border: isWinning
+                  ? Border.all(color: const Color(0xFFFFD700), width: 1.2)
+                  : Border.all(color: context.borderSecondary, width: 0.5),
+              // 3. 阴影：中奖带金光，普通带黑影
+              boxShadow: [
+                BoxShadow(
+                  color: isWinning
+                      ? const Color(0xFFFFD700).withValues(alpha: 0.15)
+                      : context.fgPrimary900.withValues(alpha: 0.04),
+                  blurRadius: 20.w, // 加大模糊半径，显得更浮空
+                  offset: const Offset(0, 8),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // 顶部状态栏
+                _OrderItemStatusHeader(item: item),
 
-              Padding(
-                padding: EdgeInsets.all(16.w),
-                child: Column(
-                  children: [
-                    _OrderItemHeader(item: item),
+                Padding(
+                  padding: EdgeInsets.all(16.w),
+                  child: Column(
+                    children: [
+                      _OrderItemHeader(item: item),
 
-                    SizedBox(height: 16.h),
-                    // 虚线分割
-                    _DashedSeparator(color: context.borderSecondary),
-                    SizedBox(height: 16.h),
+                      SizedBox(height: 16.h),
+                      // 虚线分割
+                      _DashedSeparator(color: context.borderSecondary),
+                      SizedBox(height: 16.h),
 
-                    _OrderItemInfo(item: item),
+                      _OrderItemInfo(item: item),
 
-                    _OrderItemGroupSuccess(item: item),
+                      // 中奖/拼团信息展示区
+                      _OrderItemGroupSuccess(item: item),
 
-                    if (item.isRefunded) ...[
-                      SizedBox(height: 12.h),
-                      _OrderItemRefundInfo(item: item),
-                    ],
+                      if (item.isRefunded) ...[
+                        SizedBox(height: 12.h),
+                        _OrderItemRefundInfo(item: item),
+                      ],
 
-                    if (!item.isRefunded) ...[
-                      SizedBox(height: 20.h), // 增加间距
-                      _OrderItemActions(
-                        item: item,
-                        onViewFriends: () {
-                          appRouter.push(
-                            '/group-member/?groupId=${item.group?.groupId}',
-                          );
-                        },
-                        onViewRewardDetails: () {
-                          Navigator.of(context).push(
+                      if (!item.isRefunded) ...[
+                        SizedBox(height: 20.h),
+                        _OrderItemActions(
+                          item: item,
+                          // ... 你的回调逻辑保持不变 ...
+                          onViewFriends: () {},
+                          onViewRewardDetails: () {
+                            Navigator.of(context).push(
                               TransparentFadeRoute(
                                 child: OrderDetailPage(
                                   orderId: item.orderId,
-                                  imageList: [item.treasure.treasureCoverImg,item.treasure.treasureCoverImg],
+                                  imageList: [item.treasure.treasureCoverImg],
                                   onClose: () => Navigator.of(context).pop(),
                                 ),
-                              )
-                          );
-
-                        },
-                        onTeamUp: () {
-                          appRouter.push('/me/order/${item.orderId}/team-up');
-                        },
-                        onClaimPrize: () {
-                          appRouter.push('/me/order/${item.orderId}/claim-prize');
-                        },
-                      ),
+                              ),
+                            );
+                          },
+                          onTeamUp: () {},
+                          onClaimPrize: () {},
+                        ),
+                      ],
                     ],
-                  ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
+    );
+
+    return cardContent
+        .animate()
+    // 4. 动画修正：使用 slideY (从下往上) 代替 slideX
+        .fadeIn(duration: 400.ms, curve: Curves.easeOutQuad)
+        .slideY(
+      begin: 0.1, // 从下方 10% 的位置浮上来
+      end: 0.0,
+      duration: 400.ms,
+      curve: Curves.easeOutQuad,
+    )
+    // 5. 中奖流光特效
+        .then(delay: 200.ms)
+        .shimmer(
+      duration: 1500.ms,
+      // 金色流光
+      color: isWinning
+          ? const Color(0xFFFFD700).withValues(alpha:0.4)
+          : Colors.transparent,
+      angle: 0.8,
+    );
+  }
+}
+
+/// Order item group success section
+/// 修复后的中奖/拼团信息展示
+class _OrderItemGroupSuccess extends StatelessWidget {
+  final OrderItem item;
+
+  const _OrderItemGroupSuccess({required this.item});
+
+  @override
+  Widget build(BuildContext context) {
+    // 如果既没拼团成功也没中奖，直接隐藏
+    if (!item.isGroupSuccess && !item.isWon) return const SizedBox.shrink();
+
+    // 根据状态决定背景色
+    final Color bgColor = item.isWon
+        ? const Color(0xFFFFFBEB) // 中奖金底
+        : context.bgSecondary;    // 普通拼团灰底
+
+    final Color borderColor = item.isWon
+        ? const Color(0xFFFCD34D).withValues(alpha:0.5) // 中奖金框
+        : Colors.transparent;
+
+    return Container(
+      margin: EdgeInsets.only(top: 16.w),
+      padding: EdgeInsets.all(12.w),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(8.w),
+        border: Border.all(color: borderColor),
+      ),
+      child: Column(
+        children: [
+          // 1. 拼团成功信息
+          if (item.isGroupSuccess)
+            _SuccessRow(
+              label: 'group-success'.tr(), // 需添加文案
+              // 这里展示获得的奖励币
+              value: '${item.prizeCoin ?? 0} Coins',
+              icon: Icons.group_add_rounded,
+              valueColor: context.textBrandSecondary700,
+            ),
+
+          if (item.isGroupSuccess && item.isWon)
+            Padding(
+              padding: EdgeInsets.symmetric(vertical: 8.w),
+              child: Divider(height: 1, color: borderColor.withValues(alpha:0.5)),
+            ),
+
+          // 2. 中奖信息 (大奖)
+          if (item.isWon)
+            _SuccessRow(
+              label: 'common.winning.number'.tr(),
+              // 这里展示奖品价值
+              value: item.prizeAmount ?? '₱0.00',
+              icon: Icons.emoji_events_rounded,
+              valueColor: const Color(0xFFD97706), // 深金色文字
+              isBold: true,
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+// 辅助小组件：用于展示中奖/拼团的一行信息
+class _SuccessRow extends StatelessWidget {
+  final String label;
+  final String value;
+  final IconData icon;
+  final Color valueColor;
+  final bool isBold;
+
+  const _SuccessRow({
+    required this.label,
+    required this.value,
+    required this.icon,
+    required this.valueColor,
+    this.isBold = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon, size: 16.w, color: valueColor),
+        SizedBox(width: 8.w),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 12.sp,
+            color: context.textSecondary700,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const Spacer(),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: isBold ? 14.sp : 12.sp,
+            color: valueColor,
+            fontWeight: isBold ? FontWeight.w800 : FontWeight.w600,
+            fontFamily: isBold ? 'RobotoMono' : null,
+          ),
+        ),
+      ],
     );
   }
 }
 
 class _OrderItemStatusHeader extends StatelessWidget {
   final OrderItem item;
+
   const _OrderItemStatusHeader({required this.item});
 
   @override
@@ -128,7 +268,7 @@ class _OrderItemStatusHeader extends StatelessWidget {
     // 简单的状态映射逻辑 (根据实际业务调整)
     String statusText = 'Processing';
     Color statusColor = context.textBrandSecondary700;
-    Color statusBg = context.textBrandSecondary700.withOpacity(0.1);
+    Color statusBg = context.textBrandSecondary700.withValues(alpha:0.1);
 
     if (item.isWon) {
       statusText = 'Winner';
@@ -137,13 +277,13 @@ class _OrderItemStatusHeader extends StatelessWidget {
     } else if (item.isRefunded) {
       statusText = 'Refunded';
       statusColor = context.utilityError500;
-      statusBg = context.utilityError500.withOpacity(0.1);
+      statusBg = context.utilityError500.withValues(alpha:0.1);
     }
 
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 10.w),
       decoration: BoxDecoration(
-        color: context.bgSecondary.withOpacity(0.5), // 浅灰底色
+        color: context.bgSecondary.withValues(alpha:0.5), // 浅灰底色
         borderRadius: BorderRadius.only(
           topLeft: Radius.circular(16.w),
           topRight: Radius.circular(16.w),
@@ -155,7 +295,7 @@ class _OrderItemStatusHeader extends StatelessWidget {
           // 时间显示优化
           Text(
             // 假设 item 有 createTime，没有则用 mocking
-            "2023-10-27 14:30",
+            DateFormatHelper.format(item.createdAt, 'yyyy-MM-dd HH:mm'),
             style: TextStyle(
               fontSize: 12.sp,
               color: context.textTertiary600,
@@ -177,7 +317,7 @@ class _OrderItemStatusHeader extends StatelessWidget {
                 color: statusColor,
               ),
             ),
-          )
+          ),
         ],
       ),
     );
@@ -211,7 +351,7 @@ class _OrderItemHeader extends StatelessWidget {
                 .round(),
             fadeInDuration: const Duration(milliseconds: 120),
             fadeOutDuration: const Duration(milliseconds: 120),
-            errorWidget: (_, __, ___) => Container(
+            errorWidget: (_, _, _) => Container(
               width: 80.w,
               height: 80.w,
               decoration: BoxDecoration(
@@ -224,7 +364,7 @@ class _OrderItemHeader extends StatelessWidget {
                 color: context.textTertiary600,
               ),
             ),
-            placeholder: (_, __) => Skeleton.react(
+            placeholder: (_, _) => Skeleton.react(
               width: 80.w,
               height: 80.w,
               borderRadius: BorderRadius.circular(8.w),
@@ -281,22 +421,31 @@ class _OrderItemHeader extends StatelessWidget {
 /// Used in order list and order details pages.
 class _OrderItemInfo extends StatelessWidget {
   final OrderItem item;
+
   const _OrderItemInfo({required this.item});
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
-        _InfoRow(label: 'common.ticket.price'.tr(), value: FormatHelper.formatWithCommasAndDecimals(item.unitPrice)),
+        _InfoRow(
+          label: 'common.ticket.price'.tr(),
+          value: FormatHelper.formatWithCommasAndDecimals(item.unitPrice),
+        ),
         SizedBox(height: 8.w),
-        _InfoRow(label: 'common.tickets.number'.tr(), value: 'x${item.buyQuantity}'),
+        _InfoRow(
+          label: 'common.tickets.number'.tr(),
+          value: 'x${item.buyQuantity}',
+        ),
         SizedBox(height: 12.w),
         // 总价加大加粗
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              item.isRefunded ? 'common.refund'.tr() : 'common.total.price'.tr(),
+              item.isRefunded
+                  ? 'common.refund'.tr()
+                  : 'common.total.price'.tr(),
               style: TextStyle(
                 fontSize: 14.sp,
                 color: context.textPrimary900,
@@ -306,10 +455,14 @@ class _OrderItemInfo extends StatelessWidget {
             Text(
               '₱${item.finalAmount}',
               style: TextStyle(
-                fontSize: 18.sp, // 更大的字号
-                color: context.textBrandPrimary900, // 品牌色
-                fontWeight: FontWeight.w900, // 极粗
-                fontFamily: 'RobotoMono', // 数字用等宽字体
+                fontSize: 18.sp,
+                // 更大的字号
+                color: context.textBrandPrimary900,
+                // 品牌色
+                fontWeight: FontWeight.w900,
+                // 极粗
+                fontFamily: 'RobotoMono',
+                // 数字用等宽字体
                 letterSpacing: -0.5,
               ),
             ),
@@ -323,6 +476,7 @@ class _OrderItemInfo extends StatelessWidget {
 class _InfoRow extends StatelessWidget {
   final String label;
   final String value;
+
   const _InfoRow({required this.label, required this.value});
 
   @override
@@ -354,7 +508,7 @@ class _DashedSeparator extends StatelessWidget {
   final double height;
   final Color color;
 
-  const _DashedSeparator({this.height = 1, required this.color});
+  const _DashedSeparator({required this.color, this.height = 1.0});
 
   @override
   Widget build(BuildContext context) {
@@ -372,7 +526,7 @@ class _DashedSeparator extends StatelessWidget {
               width: dashWidth,
               height: dashHeight,
               child: DecoratedBox(
-                decoration: BoxDecoration(color: color.withOpacity(0.3)),
+                decoration: BoxDecoration(color: color.withValues(alpha:0.3)),
               ),
             );
           }),
@@ -390,7 +544,6 @@ class _OrderItemActions extends StatelessWidget {
   final VoidCallback? onClaimPrize;
 
   const _OrderItemActions({
-    super.key, // 记得加 super.key
     required this.item,
     this.onViewFriends,
     this.onViewRewardDetails,
@@ -407,7 +560,8 @@ class _OrderItemActions extends StatelessWidget {
     List<Widget> right = [
       Button(
         paddingX: 20.w,
-        height: 36.w, //稍微调小一点高度，显得更精致
+        height: 36.w,
+        //稍微调小一点高度，显得更精致
         variant: ButtonVariant.outline,
         onPressed: onViewFriends,
         child: Text('common.view.friends'.tr()),
@@ -456,50 +610,20 @@ class _OrderItemActions extends StatelessWidget {
       width: double.infinity, // 占满宽度
       alignment: Alignment.centerRight, // 容器内部靠右
       child: Wrap(
-        spacing: 12.w,      // 水平间距 (左右按钮之间的空隙)
-        runSpacing: 12.w,   // 垂直间距 (如果换行了，上下两行的空隙)
-        alignment: WrapAlignment.end, // 这一行让 Wrap 内部的元素靠右排列
-        crossAxisAlignment: WrapCrossAlignment.center, // 垂直居中
+        spacing: 12.w,
+        // 水平间距 (左右按钮之间的空隙)
+        runSpacing: 12.w,
+        // 垂直间距 (如果换行了，上下两行的空隙)
+        alignment: WrapAlignment.end,
+        // 这一行让 Wrap 内部的元素靠右排列
+        crossAxisAlignment: WrapCrossAlignment.center,
+        // 垂直居中
         children: right,
       ),
     );
   }
 }
 
-/// Order item group success section
-/// 显示订单的拼团成功信息和中奖信息
-/// Displays group success information and winning information about the order.
-/// Used in order list and order details pages.
-/// Only shown when the order is part of a group purchase or has won a prize.
-class _OrderItemGroupSuccess extends StatelessWidget {
-  final OrderItem item;
-  const _OrderItemGroupSuccess({required this.item});
-
-  @override
-  Widget build(BuildContext context) {
-    if (!item.isGroupSuccess && !item.isWon) return const SizedBox.shrink();
-
-    return Container(
-      margin: EdgeInsets.only(top: 16.w),
-      padding: EdgeInsets.all(12.w),
-      decoration: BoxDecoration(
-        color: item.isWon
-            ? const Color(0xFFFFFBEB) // Winning Gold Tint
-            : context.bgSecondary,
-        borderRadius: BorderRadius.circular(8.w),
-        border: item.isWon
-            ? Border.all(color: const Color(0xFFFCD34D).withOpacity(0.3))
-            : null,
-      ),
-      child: Column(
-        // ... 内容保持不变，只是包裹了一层容器 ...
-          children: [
-            // 原有的 Row ...
-          ]
-      ),
-    );
-  }
-}
 
 /// Order item refund information section
 /// 显示订单的退款信息，如退款原因

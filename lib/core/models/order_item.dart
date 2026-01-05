@@ -12,37 +12,53 @@ class OrderItem {
   final num? updatedAt;
   final num buyQuantity;
   final String treasureId;
+
+  // 金额字段
   final String unitPrice;
   final String originalAmount;
-  final String discountAmount;
-  final String couponAmount;
-  final String coinAmount;
+  final String? discountAmount; // 改为可空，兼容旧数据
+  final String? couponAmount;   // 改为可空
+  final String? coinAmount;     // 改为可空
   final String finalAmount;
+
+  // 状态字段
   final int orderStatus;
   final int payStatus;
   final int refundStatus;
   final num? paidAt;
+
+  // 关联对象
   final Treasure treasure;
   final Group? group;
-
-
   final String? addressId;
   final AddressRes? addressResp;
   final List<TicketItem>? ticketList;
+
+  // --- 🔥 新增/增强字段 (兼容性处理) ---
+
+  // 1. 售后原因
   final String? refundReason;
 
-  const OrderItem( {
+  // 2. 中奖标识 (后端未返回时默认为 false，防止报错)
+  @JsonKey(defaultValue: false)
+  final bool isWinner;
+
+  // 3. 奖品信息 (中奖才有)
+  final String? prizeAmount;
+  final int? prizeCoin;
+
+  const OrderItem({
     required this.orderId,
     required this.orderNo,
-     this.createdAt,
-     this.updatedAt,
+    this.createdAt,
+    this.updatedAt,
     required this.buyQuantity,
     required this.treasureId,
     required this.unitPrice,
     required this.originalAmount,
-    required this.discountAmount,
-    required this.couponAmount,
-    required this.coinAmount,
+    this.discountAmount,
+    this.couponAmount,
+    this.coinAmount,
     required this.finalAmount,
     required this.orderStatus,
     required this.payStatus,
@@ -54,6 +70,10 @@ class OrderItem {
     this.ticketList,
     this.refundReason,
     this.group,
+    // 新增字段初始化
+    this.isWinner = false,
+    this.prizeAmount,
+    this.prizeCoin,
   });
 
   factory OrderItem.fromJson(Map<String, dynamic> json) =>
@@ -70,6 +90,8 @@ class OrderItem {
 @JsonSerializable(checked: true)
 class OrderDetailItem extends OrderItem {
 
+  // 详情页流水 (若后端未返回，默认为空数组)
+  @JsonKey(defaultValue: [])
   final List<WalletTransaction> transactions;
 
   OrderDetailItem({
@@ -81,9 +103,9 @@ class OrderDetailItem extends OrderItem {
     required super.treasureId,
     required super.unitPrice,
     required super.originalAmount,
-    required super.discountAmount,
-    required super.couponAmount,
-    required super.coinAmount,
+    super.discountAmount,
+    super.couponAmount,
+    super.coinAmount,
     required super.finalAmount,
     required super.orderStatus,
     required super.payStatus,
@@ -95,6 +117,9 @@ class OrderDetailItem extends OrderItem {
     super.ticketList,
     super.refundReason,
     super.group,
+    super.isWinner = false,
+    super.prizeAmount,
+    super.prizeCoin,
     required this.transactions,
   });
 
@@ -110,8 +135,6 @@ class OrderDetailItem extends OrderItem {
   }
 }
 
-
-
 @JsonSerializable(checked: true)
 class Treasure {
   final String treasureName;
@@ -120,19 +143,20 @@ class Treasure {
   final int virtual;
   final String? cashAmount;
   final int? cashState;
+
+  // 进度条相关，使用 num 兼容 int 和 double
   final num? seqShelvesQuantity;
   final num? seqBuyQuantity;
-
 
   const Treasure({
     required this.treasureName,
     required this.treasureCoverImg,
-     this.productName,
+    this.productName,
     required this.virtual,
-     this.cashAmount,
-     this.cashState,
-      this.seqShelvesQuantity,
-      this.seqBuyQuantity,
+    this.cashAmount,
+    this.cashState,
+    this.seqShelvesQuantity,
+    this.seqBuyQuantity,
   });
 
   factory Treasure.fromJson(Map<String, dynamic> json) =>
@@ -147,10 +171,14 @@ class Treasure {
 }
 
 @JsonSerializable(checked: true)
-class WalletTransaction{
+class WalletTransaction {
   final String transactionNo;
   final String amount;
-  final int balanceType;
+
+  // 🔥 改为 dynamic，兼容后端返回 int 或 string
+  // 前端显示时建议用 .toString()
+  final dynamic balanceType;
+
   final int status;
   final num createdAt;
 
@@ -194,7 +222,6 @@ class Group {
   String toString() {
     return toJson().toString();
   }
-
 }
 
 @JsonSerializable(checked: true)
@@ -224,7 +251,7 @@ class OrderCount {
     required this.cancelled,
   });
 
-  Map<String,int> asMap() {
+  Map<String, int> asMap() {
     return {
       'paid': paid,
       'unpaid': unpaid,
@@ -244,7 +271,6 @@ class OrderCount {
   }
 }
 
-
 @JsonSerializable(checked: true)
 class OrderListParams {
   final String status;
@@ -259,9 +285,7 @@ class OrderListParams {
     this.treasureId,
   });
 
-
   Map<String, dynamic> toJson() => _$OrderListParamsToJson(this);
-
 }
 
 /// model for tab item in order screen
@@ -286,69 +310,53 @@ class TabItem {
   }
 }
 
-enum OrderStatus {
-  pending,// 未开奖
-  won,// 用户中奖
-  refunded,// 已退款
-  groupSuccess, // 拼团达成
-  ended,// 已结束未中奖
-}
+// -----------------------------------------------------------------------------
+// 状态枚举与扩展逻辑
+// -----------------------------------------------------------------------------
 
-OrderStatus parseOrderStatus(int status) {
-  switch (status) {
-    case 2: return OrderStatus.won;
-    case 4: return OrderStatus.refunded;
-    case 6: return OrderStatus.groupSuccess;
-    default: return OrderStatus.pending;
-  }
+enum OrderStatus {
+  pending,       // 1: 未开奖/进行中
+  won,           // 2: 用户中奖
+  refunded,      // 4: 已退款
+  groupSuccess,  // 6: 拼团达成
+  ended,         // 其他: 已结束未中奖/已取消
 }
 
 extension OrderItemExtension on OrderItem {
-  OrderStatus get orderStatusEnum => parseOrderStatus(orderStatus);
+
+  /// 智能状态解析 (兼容新旧字段)
+  OrderStatus get orderStatusEnum {
+    // 1. 优先信赖明确的 isWinner 字段
+    if (isWinner) return OrderStatus.won;
+
+    // 2. 其次检查状态码 (兼容旧后端)
+    if (orderStatus == 2) return OrderStatus.won;
+
+    // 3. 检查退款
+    if (refundStatus == 2 || orderStatus == 4) return OrderStatus.refunded;
+
+    // 4. 检查拼团
+    // 假设 groupStatus: 2 是成功
+    if (group?.groupStatus == 2) return OrderStatus.groupSuccess;
+
+    // 5. 默认状态
+    return OrderStatus.pending;
+  }
 
   bool get isPending => orderStatusEnum == OrderStatus.pending;
-  /// 是否中奖
   bool get isWon => orderStatusEnum == OrderStatus.won;
-  /// 是否已经退款
   bool get isRefunded => orderStatusEnum == OrderStatus.refunded;
-  /// 是否拼团成功
   bool get isGroupSuccess => orderStatusEnum == OrderStatus.groupSuccess;
+
+  // 这里可以根据实际 ended 状态码调整，比如 status 3 or 5
   bool get isEnded => orderStatusEnum == OrderStatus.ended;
 
-  /// 订单显示逻辑
-  bool get showGroupSuccessSection =>
-      isGroupSuccess || isWon;
+  /// 订单 UI 显示逻辑
+  /// 是否显示金色的“中奖/拼团成功”板块
+  bool get showGroupSuccessSection => isGroupSuccess || isWon;
 
   // 是否实物订单
   bool get isPhysical => treasure.virtual == 1;
   // 是否虚拟订单
   bool get isVirtual => treasure.virtual == 2;
-
-  /// 奖励状态语义
-/*  bool get isRewardClaim => confirmState == 2;
-  bool get isRewardCashOut => confirmState == 3;
-  bool get isRewardPending => confirmState == 1;*/
-
-
-  /// 处理状态语义
-/*  bool get isHandlePending => handleStatus == 1;
-  bool get isHandleConfirmed => handleStatus == 2;
-  bool get isHandleProcessed => handleStatus == 3;
-  bool get isHandleShipped => handleStatus == 4;
-  bool get isHandleDelivered => handleStatus == 5;
-  bool get isHandleCanceled => handleStatus == 6;*/
-
-  /// 物流状态语义
-/*  bool get isShipping => currentStatus == 3 || currentStatus == 4;
-  bool get isCurrentDelivered => currentStatus == 5;
-  bool get isCurrentCanceled => currentStatus == 7;
-  bool get isShippingFailed => currentStatus == 6;*/
-
-  /// 配送方式
-  //bool get isSelfPickup => deliveryWay== 1;
-  //bool get isExpress => deliveryWay == 2;
-
-  /// 合并（强业务逻辑）
-  //bool get shouldShowTracking =>
-  //    isExpress && isHandleShipped && !isCurrentDelivered;
 }
