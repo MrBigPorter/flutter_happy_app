@@ -164,7 +164,7 @@ Treasure _$TreasureFromJson(
   final val = Treasure(
     treasureName: $checkedConvert('treasureName', (v) => v as String),
     treasureCoverImg: $checkedConvert('treasureCoverImg', (v) => v as String),
-    productName: $checkedConvert('productName', (v) => v as String),
+    productName: $checkedConvert('productName', (v) => v as String?),
     virtual: $checkedConvert('virtual', (v) => (v as num).toInt()),
     cashAmount: $checkedConvert('cashAmount', (v) => v as String?),
     cashState: $checkedConvert('cashState', (v) => (v as num?)?.toInt()),

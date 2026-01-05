@@ -116,7 +116,7 @@ class OrderDetailItem extends OrderItem {
 class Treasure {
   final String treasureName;
   final String treasureCoverImg;
-  final String productName;
+  final String? productName;
   final int virtual;
   final String? cashAmount;
   final int? cashState;
@@ -127,7 +127,7 @@ class Treasure {
   const Treasure({
     required this.treasureName,
     required this.treasureCoverImg,
-    required this.productName,
+     this.productName,
     required this.virtual,
      this.cashAmount,
      this.cashState,

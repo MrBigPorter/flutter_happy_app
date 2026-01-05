@@ -28,6 +28,7 @@ import '../page/winners_page.dart';
 import '../page/me_page.dart';
 import '../page/login_page.dart';
 import '../page/product_detail_page.dart';
+import '../page/wthdraw_page.dart';
 
 final _shellKey = GlobalKey<NavigatorState>(debugLabel: 'shell');
 // 全局路由器实例  Global router instance
@@ -192,6 +193,11 @@ class AppRouter {
             name: 'transactionRecord',
             path: '/me/wallet/transaction/record',
             builder: (context, state) => TransactionHistoryPage()
+        ),
+        GoRoute(
+            name: 'withdraw',
+            path: '/me/wallet/withdraw',
+            builder: (context, state) => WithdrawPage()
         ),
 
       ],

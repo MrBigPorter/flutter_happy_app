@@ -658,7 +658,6 @@ class _UnLoginTip extends StatelessWidget {
 }
 
 class _OrderArea extends StatelessWidget {
-
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -669,6 +668,7 @@ class _OrderArea extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // 标题栏保持不变
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -705,87 +705,78 @@ class _OrderArea extends StatelessWidget {
               ),
             ],
           ),
-          SizedBox(height: 12.w,),
+          SizedBox(height: 12.w),
+
+          // 图标栏：改为封装方法，并增加第五个图标
           Row(
-            mainAxisAlignment:MainAxisAlignment.spaceBetween,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.start, // 顶部对齐
             children: [
-              Column(
-                children: [
-                  Icon(
-                    CupertinoIcons.creditcard,
-                    size: 24.w,
-                    color: context.fgPrimary900,
-                  ),
-                  SizedBox(height: 8.w),
-                  Text(
-                    'To Pay',
-                    style: TextStyle(
-                      fontSize: context.textXs,
-                      fontWeight: FontWeight.w500,
-                      color: context.textPrimary900,
-                      height: context.leadingXs,
-                    ),
-                  ),
-                ],
+              _buildOrderItem(
+                context,
+                icon: CupertinoIcons.creditcard,
+                label: 'To Pay',
+                onTap: () => appRouter.push('/order/list?status=1'), // 示例路由
               ),
-              Column(
-                children: [
-                  Icon(
-                    CupertinoIcons.cube_box,
-                    size: 24.w,
-                    color: context.fgPrimary900,
-                  ),
-                  SizedBox(height: 8.w),
-                  Text(
-                    'To Ship',
-                    style: TextStyle(
-                      fontSize: context.textXs,
-                      fontWeight: FontWeight.w500,
-                      color: context.textPrimary900,
-                      height: context.leadingXs,
-                    ),
-                  ),
-                ],
+              _buildOrderItem(
+                context,
+                icon: CupertinoIcons.cube_box,
+                label: 'To Ship',
+                onTap: () => appRouter.push('/order/list?status=2'),
               ),
-              Column(
-                children: [
-                  Icon(
-                    Icons.local_shipping_outlined,
-                    size: 24.w,
-                    color: context.fgPrimary900,
-                  ),
-                  SizedBox(height: 8.w),
-                  Text(
-                    'To Receive',
-                    style: TextStyle(
-                      fontSize: context.textXs,
-                      fontWeight: FontWeight.w500,
-                      color: context.textPrimary900,
-                      height: context.leadingXs,
-                    ),
-                  ),
-                ],
+              _buildOrderItem(
+                context,
+                icon: Icons.local_shipping_outlined,
+                label: 'To Receive',
+                onTap: () => appRouter.push('/order/list?status=3'),
               ),
-              Column(
-                children: [
-                  Icon(
-                    CupertinoIcons.star_circle,
-                    size: 24.w,
-                    color: context.fgPrimary900,
-                  ),
-                  SizedBox(height: 8.w),
-                  Text(
-                    'To Rate',
-                    style: TextStyle(
-                      fontSize: context.textXs,
-                      fontWeight: FontWeight.w500,
-                      color: context.textPrimary900,
-                      height: context.leadingXs,
-                    ),
-                  ),
-                ],
-              )
+              _buildOrderItem(
+                context,
+                icon: CupertinoIcons.star_circle,
+                label: 'To Rate',
+                onTap: () => appRouter.push('/order/list?status=4'),
+              ),
+              // --- 新增退款入口 ---
+              _buildOrderItem(
+                context,
+                // 这里用 assignment_return 或者 coin 相关的图标
+                icon: Icons.assignment_return_outlined,
+                label: 'Refund', // 建议使用 'common.refund'.tr()
+                onTap: () => appRouter.push('/order/refund/list'), // 跳转到售后列表
+              ),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // 封装每个订单状态的小组件，减少重复代码
+  Widget _buildOrderItem(
+      BuildContext context, {
+        required IconData icon,
+        required String label,
+        required VoidCallback onTap,
+      }) {
+    return InkWell(
+      onTap: onTap,
+      child: Column(
+        mainAxisSize: MainAxisSize.min, // 紧凑布局
+        children: [
+          Icon(
+            icon,
+            size: 24.w,
+            color: context.fgPrimary900,
+          ),
+          SizedBox(height: 8.w),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: context.textXs, // 稍微调小一点字体，防止5个放不下
+              fontWeight: FontWeight.w500,
+              color: context.textPrimary900,
+              height: context.leadingXs,
+            ),
           ),
         ],
       ),
