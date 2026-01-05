@@ -110,7 +110,7 @@ class _DepositResultPageState extends ConsumerState<DepositResultPage> {
     if (!mounted) return;
     // 刷新余额
     ref.invalidate(walletBalanceProvider);
-    setState(() => _status = 'processing');
+    setState(() => _status = 'success');
   }
 
   void _onExit() {
