@@ -65,26 +65,95 @@ class TransactionHistoryPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // 使用 DefaultTabController 控制 Tab 切换
     return DefaultTabController(
       length: 2,
       child: Scaffold(
+        // 1. 背景色：通常金融页面的底色要稍微灰一点，突出白色卡片
+        backgroundColor: context.bgSecondary, // 假设这是你的浅灰背景色
+
         appBar: AppBar(
-          title: const Text("Transaction History"),
-          elevation: 0,
-          bottom:  TabBar(
-            labelColor: context.textBrandPrimary900,
-            unselectedLabelColor: context.textPrimary900,
-            indicatorColor: context.borderBrand,
-            tabs: [
-              Tab(text: "Deposit"),
-              Tab(text: "Withdraw"),
-            ],
+          title: Text(
+            "Transaction History",
+            style: TextStyle(
+                fontWeight: FontWeight.w700,
+                color: context.textPrimary900,
+                fontSize: 18.sp
+            ),
           ),
+          centerTitle: true,
+          backgroundColor: context.bgPrimary, // 导航栏背景白色
+          elevation: 0, // 去掉 AppBar 自带的阴影，我们要自己控制
+          iconTheme: IconThemeData(color: context.textPrimary900),
         ),
-        body: const TabBarView(
+
+        body: Column(
           children: [
-            TransactionListView(type: UiTransactionType.deposit),
-            TransactionListView(type: UiTransactionType.withdraw),
+            // 2. 高大上的胶囊 TabBar 区域
+            Container(
+              color: context.bgPrimary, // 保持和 AppBar 一样的背景，视觉延伸
+              padding: EdgeInsets.symmetric(vertical: 8.h, horizontal: 16.w),
+              child: Container(
+                height: 40.h, // 控制高度，显得修长
+                decoration: BoxDecoration(
+                  color: context.bgSecondary, // 槽位背景色 (浅灰)
+                  borderRadius: BorderRadius.circular(20.r), // 大圆角
+                ),
+                child: TabBar(
+                  // 移除点击波纹效果，更像原生控件
+                  overlayColor: MaterialStateProperty.all(Colors.transparent),
+                  // 指示器样式：白色悬浮胶囊 + 阴影
+                  indicator: BoxDecoration(
+                    color: context.bgPrimary, // 激活项背景 (白)
+                    borderRadius: BorderRadius.circular(18.r), // 比外层稍微小一点
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.08),
+                        blurRadius: 4,
+                        offset: const Offset(0, 1),
+                        spreadRadius: 0,
+                      )
+                    ],
+                  ),
+                  // 调整指示器大小以匹配 Tab
+                  indicatorSize: TabBarIndicatorSize.tab,
+                  // 留一点内边距，让白色胶囊看起来是“嵌”在里面的
+                  indicatorPadding: EdgeInsets.all(3.w),
+
+                  // 选中态文字样式
+                  labelColor: context.textBrandPrimary900, // 品牌色或深黑
+                  labelStyle: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14.sp,
+                  ),
+
+                  // 未选中态文字样式
+                  unselectedLabelColor: context.textSecondary700, // 灰色
+                  unselectedLabelStyle: TextStyle(
+                    fontWeight: FontWeight.normal,
+                    fontSize: 14.sp,
+                  ),
+
+                  // 去掉原生的下划线
+                  dividerColor: Colors.transparent,
+
+                  tabs: const [
+                    Tab(text: "Deposit"),
+                    Tab(text: "Withdraw"),
+                  ],
+                ),
+              ),
+            ),
+
+            // 3. 列表区域
+            const Expanded(
+              child: TabBarView(
+                children: [
+                  TransactionListView(type: UiTransactionType.deposit),
+                  TransactionListView(type: UiTransactionType.withdraw),
+                ],
+              ),
+            ),
           ],
         ),
       ),
@@ -160,7 +229,7 @@ class _TransactionListViewState extends ConsumerState<TransactionListView>
 
               // 渲染真实 Item
               itemBuilder: (context, item, index, isLast) {
-                return TransactionCard(item: item);
+                return TransactionCard(item: item, index: index,);
               },
 
               // 渲染骨架屏
