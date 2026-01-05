@@ -7,7 +7,7 @@ part 'deposit_form.gform.dart';
 @Rf()
 class DepositFormModel {
   const DepositFormModel({
-    @RfControl(validators: [DepositAmount()]) this.amount = '',
+    @RfControl(validators: [NonEmpty(),DepositAmount()]) this.amount = '',
   });
 
   final String amount;

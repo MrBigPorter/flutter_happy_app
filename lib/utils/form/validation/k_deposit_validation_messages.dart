@@ -5,8 +5,6 @@ final Map<String, ValidationMessageFunction> kDepositValidationMessages = {
 
   'amount': (control) {
     final err = control is FormControl ? control.errors['amount'] : null;
-
-    print('Deposit amount validation error: $err');
     // 兜底：保证一定返回 String
     if (err is! Map) return 'Please enter a valid deposit amount.';
 

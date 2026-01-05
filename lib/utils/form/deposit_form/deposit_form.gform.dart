@@ -422,7 +422,7 @@ class DepositFormModelForm
       FormGroup({
         amountControlName: FormControl<String>(
             value: depositFormModel?.amount,
-            validators: [DepositAmount()],
+            validators: [NonEmpty(), DepositAmount()],
             asyncValidators: [],
             asyncValidatorsDebounceTime: 250,
             disabled: false,

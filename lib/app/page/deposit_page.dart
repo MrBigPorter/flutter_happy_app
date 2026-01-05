@@ -33,6 +33,7 @@ class _DepositPageState extends ConsumerState<DepositPage> {
   );
 
   Future<void> _onSubmit() async {
+    print('Submitting deposit form...${_form.form.errors}');
     if (_form.form.valid) {
       // 提交时收起键盘，体验更好
       FocusScope.of(context).unfocus();
@@ -44,6 +45,7 @@ class _DepositPageState extends ConsumerState<DepositPage> {
             amount: int.parse(amount),
           ),
         );
+        print('Recharge Response: $response');
         if(response != null && response.payUrl.isNotEmpty){
           if(!mounted) return;
           final payUrl = Uri.parse(response.payUrl);
@@ -59,7 +61,7 @@ class _DepositPageState extends ConsumerState<DepositPage> {
         }
       }catch(e){
         if(!mounted) return;
-        RadixToast.error('Failed to create deposit order: ${e.toString()}');
+        //RadixToast.error('Failed to create deposit order: ${e.toString()}');
       }finally{
         if(mounted){
           // 刷新余额
@@ -78,37 +80,41 @@ class _DepositPageState extends ConsumerState<DepositPage> {
         child: BaseScaffold(
           title: 'Deposit',
           resizeToAvoidBottomInset: true,
-          body: SingleChildScrollView(
-            padding: EdgeInsets.symmetric(horizontal: 16.w), // 统一给 Body 加边距
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                SizedBox(height: 24.h),
-                _buildAmountInputCard(),
-                SizedBox(height: 24.h),
-                Text(
-                  'Quick Select',
-                  style: TextStyle(
-                    fontSize: 16.sp,
-                    fontWeight: FontWeight.w700,
-                    color: context.textSecondary700,
-                  ),
-                ).animate().fadeIn(duration: 400.ms).slideX(begin: -0.1, end: 0),
-                SizedBox(height: 12.h),
-                _buildQuickGrid(),
-                SizedBox(height: 24.h),
-                Text(
-                  'Payment Method',
-                  style: TextStyle(
-                    fontSize: 16.sp,
-                    fontWeight: FontWeight.w700,
-                    color: context.textSecondary700,
-                  ),
-                ).animate().fadeIn(delay: 200.ms),
-                SizedBox(height: 12.h),
-                _buildPaymentMethodTile(),
-                SizedBox(height: 40.h), // 底部留白增加一点，防止误触
-              ],
+          body: GestureDetector(
+            onTap: () => FocusScope.of(context).unfocus(),
+            child: SingleChildScrollView(
+              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+              padding: EdgeInsets.symmetric(horizontal: 16.w), // 统一给 Body 加边距
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SizedBox(height: 24.h),
+                  _buildAmountInputCard(),
+                  SizedBox(height: 24.h),
+                  Text(
+                    'Quick Select',
+                    style: TextStyle(
+                      fontSize: 16.sp,
+                      fontWeight: FontWeight.w700,
+                      color: context.textSecondary700,
+                    ),
+                  ).animate().fadeIn(duration: 400.ms).slideX(begin: -0.1, end: 0),
+                  SizedBox(height: 12.h),
+                  _buildQuickGrid(),
+                  SizedBox(height: 24.h),
+                  Text(
+                    'Payment Method',
+                    style: TextStyle(
+                      fontSize: 16.sp,
+                      fontWeight: FontWeight.w700,
+                      color: context.textSecondary700,
+                    ),
+                  ).animate().fadeIn(delay: 200.ms),
+                  SizedBox(height: 12.h),
+                  _buildPaymentMethodTile(),
+                  SizedBox(height: 40.h), // 底部留白增加一点，防止误触
+                ],
+              ),
             ),
           ),
           bottomNavigationBar: _buildBottomBar(),
@@ -175,6 +181,9 @@ class _DepositPageState extends ConsumerState<DepositPage> {
                 child: ReactiveTextField<String>(
                   formControlName: 'amount',
                   keyboardType: TextInputType.number,
+                  //设置键盘动作为“完成”
+                  textInputAction: TextInputAction.done,
+                  onSubmitted: (_)=> FocusScope.of(context).unfocus(),
                   style: TextStyle(
                     fontSize: 36.sp,
                     fontWeight: FontWeight.bold,
@@ -369,6 +378,7 @@ class _QuickSelectChip extends StatelessWidget {
   final VoidCallback onTap;
 
   const _QuickSelectChip({
+    super.key,
     required this.amount,
     required this.isSelected,
     required this.index,
@@ -377,74 +387,73 @@ class _QuickSelectChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // 使用 AnimatedContainer 处理背景色和平滑过渡
-    return GestureDetector(
-      onTap: onTap,
-      // 这里的 key 很关键：当 isSelected 变化时，Animate 会重新评估动画
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        curve: Curves.easeOutQuad,
-        decoration: BoxDecoration(
-          color: isSelected ? context.utilityBrand500 : context.bgPrimary,
-          borderRadius: BorderRadius.circular(12.r),
-          border: Border.all(
-            color: isSelected ? Colors.transparent : context.utilityGray200,
-            width: 1.5, // 稍微加粗一点点边框更有质感
-          ),
-          boxShadow: isSelected
-              ? [
-            BoxShadow(
-              color: context.utilityBrand500.withOpacity(0.4),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
+    // 1. 使用 AnimatedScale 处理点击缩放 (Q弹效果，无倒带 Bug)
+    return AnimatedScale(
+      scale: isSelected ? 1.05 : 1.0,
+      duration: const Duration(milliseconds: 200),
+      curve: Curves.easeOutBack,
+      child: GestureDetector(
+        onTap: onTap,
+        // 2. 使用 AnimatedContainer 处理背景色
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeOut,
+          decoration: BoxDecoration(
+            color: isSelected ? context.utilityBrand500 : context.bgPrimary,
+            borderRadius: BorderRadius.circular(12.r),
+            border: Border.all(
+              color: isSelected ? Colors.transparent : context.utilityGray200,
+              width: 1.5,
             ),
-          ]
-              : [
-            // 未选中时给一个极淡的阴影，增加立体感
-            BoxShadow(
-              color: Colors.black.withOpacity(0.02),
-              blurRadius: 4,
-              offset: const Offset(0, 2),
-            )
-          ],
-        ),
-        alignment: Alignment.center,
-        child: Text(
-          FormatHelper.formatCurrency(amount, decimalDigits: 0),
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontSize: 16.sp,
-            fontWeight: FontWeight.w700,
-            // 颜色切换
-            color: isSelected ? Colors.white : context.textPrimary900,
+            boxShadow: isSelected
+                ? [
+              BoxShadow(
+                color: context.utilityBrand500.withOpacity(0.4),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ]
+                : [],
+          ),
+          alignment: Alignment.center,
+
+          // 3. 只有 isSelected 为 true 时，才挂载流光组件
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              Text(
+                FormatHelper.formatCurrency(amount, decimalDigits: 0),
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 16.sp,
+                  fontWeight: FontWeight.w700,
+                  color: isSelected ? Colors.white : context.textPrimary900,
+                ),
+              ),
+
+              // 关键：只有选中时才渲染流光，避免未选中时乱闪
+              if (isSelected)
+                Positioned.fill(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12.r),
+                    ),
+                  )
+                      .animate(onPlay: (c) => c.repeat())
+                      .shimmer(
+                    duration: 1200.ms,
+                    color: Colors.white.withOpacity(0.3),
+                    angle: -0.5,
+                  ),
+                ),
+            ],
           ),
         ),
-      )
-      // --- 核心动画魔法区 ---
-          .animate(target: isSelected ? 1 : 0) // 根据选中状态切换动画目标
-      // 1. 选中时的“Q弹”效果 (从 0.9 弹到 1.0)
-          .scaleXY(
-          begin: 1.0,
-          end: 0.95,
-          duration: 100.ms,
-          curve: Curves.easeOut
-      ) // 先缩小一点点
-          .swap(builder: (_, child) => child!.animate().scaleXY(
-          begin: 0.95,
-          end: 1.05,
-          duration: 300.ms,
-          curve: Curves.elasticOut
-      )) // 然后用力弹出来
-      // 2. 选中时的“流光”扫过 (高光时刻)
-          .shimmer(
-          duration: 1200.ms,
-          color: Colors.white.withOpacity(0.4),
-          angle: -0.5 // 稍微倾斜一点
       ),
     )
-    // 3. 页面初次加载时的“阶梯式”入场动画
+    // 4. 入场动画 (仅一次)
         .animate()
         .fadeIn(delay: (50 * index).ms, duration: 300.ms)
-        .slideY(begin: 0.2, end: 0, curve: Curves.easeOutQuad);
+        .scale(begin: const Offset(0.8, 0.8), curve: Curves.easeOutQuad);
   }
 }

@@ -81,7 +81,7 @@ class Api {
 
   /// 创建充值订单 create recharge order
   static Future<RechargeResponse> walletRechargeCreateApi(CreateRechargeDto data) async {
-    final res = await Http.post('/v1/wallet/recharge/create', data: data.toJson());
+    final res = await Http.post('/api/v1/wallet/recharge/create', data: data.toJson());
     return RechargeResponse.fromJson(res);
   }
 
