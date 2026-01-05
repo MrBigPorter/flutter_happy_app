@@ -1,18 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_animate/flutter_animate.dart'; // 引入动画库
+import 'package:flutter_app/ui/index.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-// 引入你项目中的组件
+import 'package:flutter_app/utils/format_helper.dart';
 import 'package:flutter_app/ui/modal/draggable/draggable_scrollable_scaffold.dart';
 import 'package:flutter_app/app/page/transaction/transaction_ui_model.dart';
 import 'package:flutter_app/common.dart';
 
 class TransactionHistoryDetailPage extends ConsumerWidget {
   final TransactionUiModel item;
-  final VoidCallback? onClose; // 传入关闭回调
+  final VoidCallback? onClose;
 
   const TransactionHistoryDetailPage({
     super.key,
@@ -22,24 +23,24 @@ class TransactionHistoryDetailPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // 预处理颜色逻辑
+    // 1. 数据预处理
     final isDeposit = item.type == UiTransactionType.deposit;
 
-    // 状态样式定义
+    // 2. 状态样式定义
     Color statusColor;
     IconData statusIcon;
     String statusLabel;
 
     if (item.statusCode == 1) { // Pending
-      statusColor = const Color(0xFFEF6C00); // 或 context.utilityWarning
+      statusColor = const Color(0xFFEF6C00);
       statusIcon = Icons.access_time_filled_rounded;
       statusLabel = "Processing";
     } else if (item.statusCode == 3) { // Failed
-      statusColor = const Color(0xFFC62828); // 或 context.utilityError
+      statusColor = const Color(0xFFC62828);
       statusIcon = Icons.error_rounded;
       statusLabel = "Failed";
     } else { // Success
-      statusColor = const Color(0xFF2E7D32); // 或 context.utilitySuccess
+      statusColor = const Color(0xFF2E7D32);
       statusIcon = Icons.check_circle_rounded;
       statusLabel = "Successful";
     }
@@ -49,7 +50,7 @@ class TransactionHistoryDetailPage extends ConsumerWidget {
       heroTag: 'txn_${item.id}',
       onDismiss: onClose ?? () => Navigator.of(context).pop(),
 
-      // 1. 动态 Header (带毛玻璃和透明度变化)
+      // --- 顶部动态 Header ---
       headerBuilder: (context, dragProgress, scrollController) {
         return _TransactionHeader(
           scrollController: scrollController,
@@ -58,16 +59,16 @@ class TransactionHistoryDetailPage extends ConsumerWidget {
         );
       },
 
-      // 2. 主体内容 (Receipt Card)
+      // --- 主体内容 ---
       bodyBuilder: (context, scrollController, physics) {
         return SingleChildScrollView(
-          // 🔥 关键：必须绑定这个 controller 才能实现拖拽手势
           controller: scrollController,
           physics: physics,
           child: Container(
-            constraints: BoxConstraints(minHeight: 1.sh - 100.w), // 保证够高能拖动
-            color: context.bgSecondary, // 浅灰背景
-            padding: EdgeInsets.fromLTRB(16.w, 80.w, 16.w, 40.w), // Top padding 留给 Header
+            // 【修复2】直接设为屏幕高度，背景铺满，配合底部 padding 防止被遮挡
+            constraints: BoxConstraints(minHeight: 1.sh),
+            color: context.bgSecondary,
+            padding: EdgeInsets.fromLTRB(16.w, 80.w, 16.w, 0), // Bottom padding在最下面处理
             child: Column(
               children: [
                 // --- 核心收据卡片 ---
@@ -75,9 +76,8 @@ class TransactionHistoryDetailPage extends ConsumerWidget {
                   width: double.infinity,
                   padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 32.w),
                   decoration: BoxDecoration(
-                    color: context.bgPrimary, // 白色
+                    color: context.bgPrimary,
                     borderRadius: BorderRadius.circular(24.r),
-                    // 高级阴影
                     boxShadow: [
                       BoxShadow(
                         color: context.textPrimary900.withOpacity(0.04),
@@ -88,7 +88,7 @@ class TransactionHistoryDetailPage extends ConsumerWidget {
                   ),
                   child: Column(
                     children: [
-                      // 图标
+                      // 图标 (独立动画：弹性放大)
                       Container(
                         width: 64.w,
                         height: 64.w,
@@ -96,68 +96,82 @@ class TransactionHistoryDetailPage extends ConsumerWidget {
                           color: statusColor.withOpacity(0.1),
                           shape: BoxShape.circle,
                         ),
-                        child: Icon(statusIcon, color: statusColor, size: 32.w),
-                      ),
-                      SizedBox(height: 16.w),
+                        child: Icon(statusIcon, color: statusColor, size: 32.w)
+                            .animate(delay: 100.ms)
+                            .scale(duration: 400.ms, curve: Curves.elasticOut)
+                            .rotate(begin: -0.1, end: 0),
+                      )
+                          .animate()
+                          .fadeIn(duration: 300.ms)
+                          .scale(begin: const Offset(0.8, 0.8), curve: Curves.easeOutBack),
 
-                      // 状态文字
-                      Text(
-                        statusLabel,
-                        style: TextStyle(
-                          fontSize: 18.sp,
-                          fontWeight: FontWeight.bold,
-                          color: context.textPrimary900,
+                      SizedBox(height: 16.h),
+
+                      // 瀑布流内容组 (状态、金额、详情)
+                      ...[
+                        // 状态文字
+                        Text(
+                          statusLabel,
+                          style: TextStyle(
+                            fontSize: 18.sp,
+                            fontWeight: FontWeight.bold,
+                            color: context.textPrimary900,
+                          ),
                         ),
-                      ),
-                      SizedBox(height: 24.w),
+                        SizedBox(height: 24.h),
 
-                      // 大额金额
-                      Text(
-                        "${isDeposit ? '+' : '-'}${NumberFormat("#,##0.00").format(item.amount)}",
-                        style: TextStyle(
-                          fontSize: 32.sp,
-                          fontWeight: FontWeight.w900,
-                          color: isDeposit ? const Color(0xFF2E7D32) : context.textPrimary900,
-                          fontFamily: 'Monospace',
-                          letterSpacing: -1,
+                        // 大额金额
+                        Text(
+                          "${isDeposit ? '+' : '-'}${FormatHelper.formatCurrency(item.amount)}",
+                          style: TextStyle(
+                            fontSize: 32.sp,
+                            fontWeight: FontWeight.w900,
+                            color: isDeposit ? const Color(0xFF2E7D32) : context.textPrimary900,
+                            fontFamily: 'Monospace',
+                            letterSpacing: -1,
+                          ),
                         ),
-                      ),
-                      SizedBox(height: 8.w),
-                      Text(
-                        "Total Amount",
-                        style: TextStyle(fontSize: 12.sp, color: context.textSecondary700),
-                      ),
+                        SizedBox(height: 8.h),
+                        Text(
+                          "Total Amount",
+                          style: TextStyle(fontSize: 12.sp, color: context.textSecondary700),
+                        ),
 
-                      SizedBox(height: 32.w),
-                      // 虚线分割效果 (用 Divider 模拟)
-                      Divider(height: 1, thickness: 1, color: context.borderSecondary.withOpacity(0.5)),
-                      SizedBox(height: 32.w),
+                        SizedBox(height: 32.h),
+                        Divider(height: 1, thickness: 1, color: context.borderSecondary.withOpacity(0.5)),
+                        SizedBox(height: 32.h),
 
-                      // 详情列表
-                      _DetailRow(label: "Type", value: isDeposit ? "Deposit" : "Withdraw"),
-                      _DetailRow(label: "Payment Method", value: item.title),
-                      _DetailRow(
-                          label: "Time",
-                          value: DateFormat('yyyy-MM-dd HH:mm:ss').format(item.time)
-                      ),
-                      _DetailRow(
-                          label: "Transaction No.",
-                          value: item.id,
-                          isCopyable: true
-                      ),
-
-                      // 如果失败显示原因
-                      if (item.statusCode == 3)
+                        // 详情列表
+                        _DetailRow(label: "Type", value: isDeposit ? "Deposit" : "Withdraw"),
+                        _DetailRow(label: "Payment Method", value: item.title),
                         _DetailRow(
-                          label: "Reason",
-                          value: "Payment Declined", // 这里应从 item 读取
-                          valueColor: context.utilityError500,
+                            label: "Time",
+                            value: DateFormat('yyyy-MM-dd HH:mm:ss').format(item.time)
                         ),
+                        _DetailRow(
+                            label: "Transaction No.",
+                            value: item.id,
+                            isCopyable: true
+                        ),
+                        if (item.statusCode == 3)
+                          _DetailRow(
+                            label: "Reason",
+                            value: "Payment Declined",
+                            valueColor: context.utilityError500,
+                          ),
+                      ]
+                      // 【动画魔法】列表项依次滑入 (瀑布流效果)
+                          .animate(interval: 50.ms)
+                          .fadeIn(duration: 300.ms)
+                          .slideY(begin: 0.2, end: 0, curve: Curves.easeOutQuad),
                     ],
                   ),
-                ),
+                )
+                // 卡片整体稍微上浮一点
+                    .animate()
+                    .moveY(begin: 20, end: 0, curve: Curves.easeOut),
 
-                SizedBox(height: 32.w),
+                SizedBox(height: 32.h),
 
                 // --- 底部帮助 ---
                 TextButton.icon(
@@ -169,10 +183,13 @@ class TransactionHistoryDetailPage extends ConsumerWidget {
                   ),
                   icon: Icon(Icons.help_outline_rounded, size: 16.w),
                   label: Text("Have an issue with this transaction?"),
-                ),
+                )
+                    .animate(delay: 600.ms) // 最后出现
+                    .fadeIn()
+                    .moveY(begin: 10, end: 0),
 
-                // 底部留白，防遮挡
-                SizedBox(height: MediaQuery.of(context).padding.bottom + 20.w),
+                // 【修复2补充】底部安全区适配 + 额外留白
+                SizedBox(height: MediaQuery.of(context).padding.bottom + 40.h),
               ],
             ),
           ),
@@ -183,7 +200,7 @@ class TransactionHistoryDetailPage extends ConsumerWidget {
 }
 
 /// -------------------------------------------
-/// 动态 Header (带透明度变化 + 分享按钮)
+/// 动态 Header (带透明度变化 + 修复了 ScrollController 报错)
 /// -------------------------------------------
 class _TransactionHeader extends StatelessWidget {
   final ScrollController scrollController;
@@ -202,9 +219,13 @@ class _TransactionHeader extends StatelessWidget {
       animation: scrollController,
       builder: (context, child) {
         double offset = 0;
-        if (scrollController.hasClients) {
-          offset = scrollController.offset;
+
+        // 【修复1】核心修复代码：防止多 ScrollView 冲突
+        // 不要直接用 scrollController.offset
+        if (scrollController.hasClients && scrollController.positions.isNotEmpty) {
+          offset = scrollController.positions.first.pixels;
         }
+
         // 计算透明度：滚动 50px 后完全显示 Header 背景
         double opacity = (offset / 50.0).clamp(0.0, 1.0);
 
@@ -238,14 +259,13 @@ class _TransactionHeader extends StatelessWidget {
                 ),
               ),
             ),
-            // 右侧：分享按钮
+            // 右侧：分享按钮 (可选)
             trailing: Padding(
               padding: EdgeInsets.only(right: 8.w),
               child: IconButton(
                 icon: Icon(Icons.ios_share, color: context.textPrimary900),
                 onPressed: () {
-                  // TODO: 调用分享逻辑
-                  // ShareService.shareScreenshot(...)
+                  // 分享逻辑
                 },
               ),
             ),
@@ -292,9 +312,7 @@ class _DetailRow extends StatelessWidget {
               onTap: isCopyable ? () {
                 Clipboard.setData(ClipboardData(text: value));
                 HapticFeedback.selectionClick();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text("Copied"), duration: Duration(seconds: 1)),
-                );
+                RadixToast.success("Copied to clipboard");
               } : null,
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.end,
@@ -307,7 +325,7 @@ class _DetailRow extends StatelessWidget {
                         fontSize: 14.sp,
                         color: valueColor ?? context.textPrimary900,
                         fontWeight: FontWeight.w600,
-                        fontFamily: isCopyable ? 'Monospace' : null, // 单号用等宽
+                        fontFamily: isCopyable ? 'Monospace' : null,
                       ),
                     ),
                   ),

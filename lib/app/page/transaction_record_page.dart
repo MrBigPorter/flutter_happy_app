@@ -26,14 +26,12 @@ final transactionListProvider = Provider.family<TransactionRequestFunc, Transact
   return ({required int page, required int pageSize}) async {
     final dto = WalletTransactionsDto(page: page, pageSize: pageSize);
     final res = await Api.walletTransactionsApi(dto);
-
-    // 示例占位:
-    if (params.type == UiTransactionType.withdraw) {
-      // 调用提现API...
+    
+    if (params.type == UiTransactionType.deposit) {
       return PageResult(
         list: res.list
             .map((e) => e.toUiModel())
-            .where((e) => e.type == UiTransactionType.withdraw)
+            .where((e) => e.type == UiTransactionType.deposit)
             .toList(),
         total: res.total,
         count: res.count,
