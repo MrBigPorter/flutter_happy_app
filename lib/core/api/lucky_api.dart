@@ -85,6 +85,26 @@ class Api {
     return RechargeResponse.fromJson(res);
   }
 
+  /// 钱包交易记录 wallet transactions
+  static Future<PageResult<WalletTransactionItem>> walletTransactionsApi(WalletTransactionsDto data) async {
+    final res = await Http.get('/api/v1/wallet/transactions', query: data.toJson());
+
+    return parsePageResponse(res, (e) => WalletTransactionItem.fromJson(e));
+  }
+
+  /// 提现记录 withdraw history
+  static Future<PageResult<WalletWithdrawHistoryItem>> walletWithdrawHistory(WalletWithdrawHistoryDto data) async {
+    final res = await Http.get('/api/v1/wallet/withdraw/history', query: data.toJson());
+
+    return parsePageResponse(res, (e) => WalletWithdrawHistoryItem.fromJson(e));
+  }
+
+  /// apply withdraw
+  static Future<WalletWithdrawResponse> walletWithdrawApply(WalletWithdrawApplyDto data) async {
+    final res = await Http.post('/api/v1/wallet/withdraw/apply', data: data.toJson());
+    return WalletWithdrawResponse.fromJson(res);
+  }
+
 
 
   /// checkout order
