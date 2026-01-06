@@ -12,54 +12,65 @@ class NonEmpty extends Validator<dynamic> {
 
 class Phone10 extends Validator<dynamic> {
   const Phone10();
+
   static final _re = RegExp(r'^[1-9]\d{9}$');
 
   @override
   Map<String, dynamic>? validate(AbstractControl<dynamic> control) {
     final v = (control.value ?? '').toString();
-    if(v.isEmpty) return null; // 允许空值 let required handle it
+    if (v.isEmpty) return null; // 允许空值 let required handle it
     return _re.hasMatch(v) ? null : const {'phone': true}; // 非法
   }
 }
 
 class CountryCode extends Validator<dynamic> {
   const CountryCode();
+
   static final _re = RegExp(r'^\+[1-9]\d{0,3}$');
 
   @override
   Map<String, dynamic>? validate(AbstractControl<dynamic> control) {
     final v = (control.value ?? '').toString();
-    if(v.isEmpty) return null; // 允许空值 let required handle it
+    if (v.isEmpty) return null; // 允许空值 let required handle it
     return _re.hasMatch(v) ? null : const {'countryCode': true}; // 非法
   }
 }
 
 class OtpLen extends Validator<dynamic> {
   final int length;
+
   const OtpLen([this.length = 6]);
+
   @override
   Map<String, dynamic>? validate(AbstractControl<dynamic> control) {
     final v = (control.value ?? '').toString();
-    if(v.isEmpty) return const {'required': true}; // 必填 must not be empty
-    return v.length == length ? null : {'otp': {'len':length}}; // 非法
+    if (v.isEmpty) return const {'required': true}; // 必填 must not be empty
+    return v.length == length
+        ? null
+        : {
+            'otp': {'len': length},
+          }; // 非法
   }
 }
 
 class StrongPassword extends Validator<dynamic> {
   const StrongPassword();
+
   static final _re = RegExp(
-      r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,20}$');
+    r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,20}$',
+  );
 
   @override
   Map<String, dynamic>? validate(AbstractControl<dynamic> control) {
     final v = (control.value ?? '').toString();
-    if(v.isEmpty) return const {'required': true}; // 必填 must not be empty
+    if (v.isEmpty) return const {'required': true}; // 必填 must not be empty
     return _re.hasMatch(v) ? null : const {'password': true}; // 非法
   }
 }
 
 class InviteCode extends Validator<dynamic> {
   const InviteCode();
+
   static final _re = RegExp(r'^(?:[a-zA-Z0-9]{5,20})?$');
 
   @override
@@ -73,7 +84,7 @@ class InviteCode extends Validator<dynamic> {
 class RealName extends Validator<dynamic> {
   const RealName();
 
-// 这种写法更宽松：只要不是数字和大部分奇怪的标点符号就行
+  // 这种写法更宽松：只要不是数字和大部分奇怪的标点符号就行
   static final _re = RegExp(r'^[^\d0-9`~!@#$%^&*()_+={}\[\]|\\:;\"<>,?/]+$');
 
   @override
@@ -87,6 +98,7 @@ class RealName extends Validator<dynamic> {
 // 2. 证件号验证：兼容性更强
 class IdNumberValidator extends Validator<dynamic> {
   const IdNumberValidator();
+
   static final _re = RegExp(r'^[A-Z0-9-]{5,30}$'); // 增加对连字符的支持
 
   @override
@@ -108,7 +120,8 @@ class IsAdult extends Validator<dynamic> {
       final birthDate = DateTime.parse(control.value.toString());
       final today = DateTime.now();
       int age = today.year - birthDate.year;
-      if (today.month < birthDate.month || (today.month == birthDate.month && today.day < birthDate.day)) {
+      if (today.month < birthDate.month ||
+          (today.month == birthDate.month && today.day < birthDate.day)) {
         age--;
       }
       return age >= 18 ? null : const {'underage': true};
@@ -135,6 +148,7 @@ class Required extends Validator<dynamic> {
 
 class PostalCode extends Validator<dynamic> {
   const PostalCode();
+
   static final _re = RegExp(r'^\d{4}$');
 
   @override
@@ -154,10 +168,8 @@ class PostalCode extends Validator<dynamic> {
 class DepositAmount extends Validator<dynamic> {
   final double minAmount;
   final double? maxAmount;
-  const DepositAmount({
-    this.minAmount = 100.0,
-    this.maxAmount,
-  });
+
+  const DepositAmount({this.minAmount = 100.0, this.maxAmount});
 
   @override
   Map<String, dynamic>? validate(AbstractControl<dynamic> control) {
@@ -168,26 +180,101 @@ class DepositAmount extends Validator<dynamic> {
     final amount = double.tryParse(raw.toString().trim());
 
     if (amount == null) {
-      return const {'amount': {'reason': 'invalid'}};
+      return const {
+        'amount': {'reason': 'invalid'},
+      };
     }
 
-    if(amount < minAmount){
+    if (amount < minAmount) {
       return {
-        'amount':{
-          'reason':'min',
-          'min':minAmount,
+        'amount': {
+          'reason': 'min',
+          'min': minAmount,
           if (maxAmount != null) 'max': maxAmount,
-        }
+        },
       };
     }
 
     if (maxAmount != null && amount > maxAmount!) {
       return {
-        'amount':{
-          'reason':'max',
-          'max':maxAmount,
-          'min':minAmount,
-        }
+        'amount': {'reason': 'max', 'max': maxAmount, 'min': minAmount},
+      };
+    }
+
+    return null;
+  }
+}
+
+class WithdrawAmount extends Validator<dynamic> {
+  final double minAmount; // 最小提现金额
+  final double? maxAmount; // 平台单笔最大上限
+  final double? withdrawableBalance; // 当前实际可提现余额
+  final double feeRate; // 百分比费率 (如 0.02)
+  final double fixedFee; // 固定手续费 (如 5.0)
+  final double? dailyLimit; // 每日剩余提现额度
+  final bool isAccountVerified; // 用户是否完成KYC实名
+  final double minBalanceToKeep; // 账户需保留的最低余额 (有些钱包要求不能取空)
+
+  const WithdrawAmount({
+    this.minAmount = 100.0,
+    this.maxAmount,
+    this.withdrawableBalance,
+    this.feeRate = 0.0,
+    this.fixedFee = 0.0,
+    this.dailyLimit,
+    this.isAccountVerified = true,
+    this.minBalanceToKeep = 0.0,
+  });
+
+  @override
+  Map<String, dynamic>? validate(AbstractControl<dynamic> control) {
+    final raw = control.value;
+    
+
+    if (raw == null || raw.toString().trim().isEmpty) return null;
+    final amount = double.tryParse(raw.toString().trim()) ?? 0;
+    // 1. 基础金额校验
+    if (amount < minAmount) {
+      return {
+        'amount': {'reason': 'min', 'min': minAmount},
+      };
+    }
+    if (maxAmount != null && amount > maxAmount!) {
+      return {
+        'amount': {'reason': 'max', 'max': maxAmount},
+      };
+    }
+
+    // 2. 身份/合规校验
+    if (!isAccountVerified) {
+      return {
+        'amount': {'reason': 'not_verified'},
+      };
+    }
+
+    // 3. 余额校验 (扣除需保留的金额)
+    final actualAvailable = (withdrawableBalance ?? 0) - minBalanceToKeep;
+    if (amount > actualAvailable) {
+      return {
+        'amount': {
+          'reason': 'insufficient',
+          'balance': actualAvailable,
+        },
+      };
+    }
+
+    // 4. 每日额度校验
+    if (dailyLimit != null && amount > dailyLimit!) {
+      return {
+        'amount': {'reason': 'daily_limit', 'limit': dailyLimit},
+      };
+    }
+
+    // 5. 手续费逻辑校验
+    final totalFee = (amount * feeRate) + fixedFee;
+    if (amount <= totalFee) {
+      return {
+        'amount': {'reason': 'too_low_for_fee', 'fee': totalFee},
       };
     }
 

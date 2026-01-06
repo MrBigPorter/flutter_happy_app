@@ -197,6 +197,8 @@ WalletWithdrawHistoryItem _$WalletWithdrawHistoryItemFromJson(
   final val = WalletWithdrawHistoryItem(
     withdrawNo: $checkedConvert('withdrawNo', (v) => v as String),
     amount: $checkedConvert('amount', (v) => v as String),
+    actualAmount: $checkedConvert('actualAmount', (v) => v as String),
+    withdrawAmount: $checkedConvert('withdrawAmount', (v) => v as String),
     feeAmount: $checkedConvert('feeAmount', (v) => v as String),
     withdrawStatus: $checkedConvert(
       'withdrawStatus',
@@ -217,6 +219,8 @@ Map<String, dynamic> _$WalletWithdrawHistoryItemToJson(
 ) => <String, dynamic>{
   'withdrawNo': instance.withdrawNo,
   'amount': instance.amount,
+  'actualAmount': instance.actualAmount,
+  'withdrawAmount': instance.withdrawAmount,
   'feeAmount': instance.feeAmount,
   'withdrawStatus': instance.withdrawStatus,
   'createdAt': instance.createdAt,
@@ -225,4 +229,53 @@ Map<String, dynamic> _$WalletWithdrawHistoryItemToJson(
   'rejectReason': instance.rejectReason,
   'accountName': instance.accountName,
   'withdrawAccount': instance.withdrawAccount,
+};
+
+WalletRechargeHistoryDto _$WalletRechargeHistoryDtoFromJson(
+  Map<String, dynamic> json,
+) => $checkedCreate('WalletRechargeHistoryDto', json, ($checkedConvert) {
+  final val = WalletRechargeHistoryDto(
+    page: $checkedConvert('page', (v) => (v as num).toInt()),
+    pageSize: $checkedConvert('pageSize', (v) => (v as num).toInt()),
+    status: $checkedConvert('status', (v) => (v as num?)?.toInt()),
+  );
+  return val;
+});
+
+Map<String, dynamic> _$WalletRechargeHistoryDtoToJson(
+  WalletRechargeHistoryDto instance,
+) => <String, dynamic>{
+  'page': instance.page,
+  'pageSize': instance.pageSize,
+  'status': instance.status,
+};
+
+WalletRechargeHistoryItem _$WalletRechargeHistoryItemFromJson(
+  Map<String, dynamic> json,
+) => $checkedCreate('WalletRechargeHistoryItem', json, ($checkedConvert) {
+  final val = WalletRechargeHistoryItem(
+    rechargeNo: $checkedConvert('rechargeNo', (v) => v as String),
+    rechargeAmount: $checkedConvert('rechargeAmount', (v) => v as String),
+    actualAmount: $checkedConvert('actualAmount', (v) => v as String),
+    rechargeStatus: $checkedConvert(
+      'rechargeStatus',
+      (v) => (v as num).toInt(),
+    ),
+    paymentMethod: $checkedConvert('paymentMethod', (v) => (v as num).toInt()),
+    createdAt: $checkedConvert('createdAt', (v) => v as num),
+    paidAt: $checkedConvert('paidAt', (v) => v as num?),
+  );
+  return val;
+});
+
+Map<String, dynamic> _$WalletRechargeHistoryItemToJson(
+  WalletRechargeHistoryItem instance,
+) => <String, dynamic>{
+  'rechargeNo': instance.rechargeNo,
+  'rechargeAmount': instance.rechargeAmount,
+  'actualAmount': instance.actualAmount,
+  'rechargeStatus': instance.rechargeStatus,
+  'paymentMethod': instance.paymentMethod,
+  'createdAt': instance.createdAt,
+  'paidAt': instance.paidAt,
 };

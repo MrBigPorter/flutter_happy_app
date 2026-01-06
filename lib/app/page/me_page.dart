@@ -8,11 +8,9 @@ import 'package:flutter_app/common.dart';
 import 'package:flutter_app/components/base_scaffold.dart';
 import 'package:flutter_app/components/lucky_custom_material_indicator.dart';
 import 'package:flutter_app/core/models/index.dart';
-import 'package:flutter_app/core/providers/wallet_provider.dart';
 import 'package:flutter_app/core/store/auth/auth_provider.dart';
 import 'package:flutter_app/core/store/lucky_store.dart';
 import 'package:flutter_app/ui/button/index.dart';
-import 'package:flutter_app/ui/empty.dart';
 import 'package:flutter_app/utils/format_helper.dart';
 import 'package:flutter_app/utils/helper.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -29,19 +27,17 @@ class MePage extends ConsumerStatefulWidget {
 class _MePageState extends ConsumerState<MePage>{
 
   Future<void> _onRefresh() async {
-      ref.read(luckyProvider.notifier).updateWalletBalance();
+    ref.read(luckyProvider.notifier).updateWalletBalance();
   }
 
   @override
   Widget build(BuildContext context) {
-
+    
     // check if user is authenticated
     var isAuthenticated = ref.watch(
       authProvider.select((s) => s.isAuthenticated),
     );
     final balance = ref.watch(luckyProvider.select((s) => s.balance));
-
-
 
     return BaseScaffold(
       showBack: false,
@@ -105,10 +101,7 @@ class _MenuArea extends StatelessWidget {
           'assets/images/video.svg',
           width: 24.w,
           height: 24.w,
-          colorFilter: ColorFilter.mode(
-            context.fgSecondary700,
-            BlendMode.srcIn,
-          ),
+          colorFilter: ColorFilter.mode(context.fgSecondary700, BlendMode.srcIn),
         ),
         path: '/guide',
       ),
@@ -118,10 +111,7 @@ class _MenuArea extends StatelessWidget {
           'assets/images/calendar-check-01.svg',
           width: 24.w,
           height: 24.w,
-          colorFilter: ColorFilter.mode(
-            context.fgSecondary700,
-            BlendMode.srcIn,
-          ),
+          colorFilter: ColorFilter.mode(context.fgSecondary700, BlendMode.srcIn),
         ),
         path: '/me/sign-in',
       ),
@@ -131,12 +121,15 @@ class _MenuArea extends StatelessWidget {
           'assets/images/share.svg',
           width: 24.w,
           height: 24.w,
-          colorFilter: ColorFilter.mode(
-            context.fgSecondary700,
-            BlendMode.srcIn,
-          ),
+          colorFilter: ColorFilter.mode(context.fgSecondary700, BlendMode.srcIn),
         ),
         path: '/me/invitefriends',
+      ),
+      // --- 修改点 1: 在九宫格增加提现入口 ---
+      _MenuItem(
+        text: 'common.withdraw'.tr(),
+        icon: Icon(Icons.account_balance_rounded, size: 24.w, color: context.fgSecondary700),
+        path: '/me/wallet/withdraw',
       ),
       _MenuItem(
         text: 'common.redeem.code'.tr(),
@@ -144,10 +137,7 @@ class _MenuArea extends StatelessWidget {
           'assets/images/redemptionCode.svg',
           width: 24.w,
           height: 24.w,
-          colorFilter: ColorFilter.mode(
-            context.fgSecondary700,
-            BlendMode.srcIn,
-          ),
+          colorFilter: ColorFilter.mode(context.fgSecondary700, BlendMode.srcIn),
         ),
         path: '/me/wallet/treasure-coins/redeem',
       ),
@@ -157,10 +147,7 @@ class _MenuArea extends StatelessWidget {
           'assets/images/setting.svg',
           width: 24.w,
           height: 24.w,
-          colorFilter: ColorFilter.mode(
-            context.fgSecondary700,
-            BlendMode.srcIn,
-          ),
+          colorFilter: ColorFilter.mode(context.fgSecondary700, BlendMode.srcIn),
         ),
         path: '/setting',
       ),
@@ -170,10 +157,7 @@ class _MenuArea extends StatelessWidget {
           'assets/images/faq.svg',
           width: 24.w,
           height: 24.w,
-          colorFilter: ColorFilter.mode(
-            context.fgSecondary700,
-            BlendMode.srcIn,
-          ),
+          colorFilter: ColorFilter.mode(context.fgSecondary700, BlendMode.srcIn),
         ),
         path: '/faq',
       ),
@@ -183,10 +167,7 @@ class _MenuArea extends StatelessWidget {
           'assets/images/workorder.svg',
           width: 24.w,
           height: 24.w,
-          colorFilter: ColorFilter.mode(
-            context.fgSecondary700,
-            BlendMode.srcIn,
-          ),
+          colorFilter: ColorFilter.mode(context.fgSecondary700, BlendMode.srcIn),
         ),
         path: '/setting/workorder',
       ),
@@ -207,9 +188,7 @@ class _MenuArea extends StatelessWidget {
         ),
         children: menuItems.map((item) {
           return InkWell(
-            onTap: () {
-              appRouter.push(item.path);
-            },
+            onTap: () => appRouter.push(item.path),
             child: Column(
               children: [
                 item.icon,
@@ -232,21 +211,6 @@ class _MenuArea extends StatelessWidget {
   }
 }
 
-/// Wallet area showing balance and actions
-/// Contains two sections: Wallet and Treasure Coins
-/// Each section shows balance and action button
-/// Tapping on sections navigates to wallet page
-/// Parameters:
-/// - balance: Balance - User's wallet balance
-/// Usage:
-/// ```dart
-/// _WalletArea(balance: userBalance)
-/// ```
-/// Example:
-/// ```dart
-/// _WalletArea(balance: Balance(realBalance: 100.0, coinBalance:
-/// 50.0))
-/// ```
 class _WalletArea extends StatelessWidget {
   final Balance balance;
 
@@ -277,14 +241,8 @@ class _WalletArea extends StatelessWidget {
                 height: 40.w,
                 variant: ButtonVariant.text,
                 paddingX: 0,
-                trailing: Icon(
-                  Icons.arrow_forward_ios,
-                  size: 12.w,
-                  color: context.textPrimary900,
-                ),
-                onPressed: () {
-                  appRouter.push('/me/wallet/treasure-coins/redeem');
-                },
+                trailing: Icon(Icons.arrow_forward_ios, size: 12.w, color: context.textPrimary900),
+                onPressed: () => appRouter.push('/me/wallet/treasure-coins/redeem'),
                 child: Text(
                   'redemption.code'.tr(),
                   style: TextStyle(
@@ -299,16 +257,12 @@ class _WalletArea extends StatelessWidget {
           ),
           Row(
             children: [
+              // --- 现金余额卡片 (增加提现入口) ---
               Expanded(
                 child: InkWell(
-                  onTap: () {
-                    appRouter.push('/me/wallet/transaction/record');
-                  },
+                  onTap: () => appRouter.push('/me/wallet/transaction/record'),
                   child: Container(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: 8.w,
-                      vertical: 8.w,
-                    ),
+                    padding: EdgeInsets.all(8.w),
                     decoration: BoxDecoration(
                       color: context.alphaBlack5,
                       borderRadius: BorderRadius.circular(context.radiusMd),
@@ -316,8 +270,7 @@ class _WalletArea extends StatelessWidget {
                     child: Row(
                       children: [
                         SizedBox(
-                          width: 60.w,
-                          height: 36.w,
+                          width: 50.w, // 缩小宽度给按钮腾空间
                           child: Text(
                             'common.wallet'.tr(),
                             style: TextStyle(
@@ -330,39 +283,24 @@ class _WalletArea extends StatelessWidget {
                         ),
                         Spacer(),
                         Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
                             Text(
-                              FormatHelper.formatWithCommasAndDecimals(
-                                balance.realBalance,
-                              ),
+                              FormatHelper.formatWithCommasAndDecimals(balance.realBalance),
                               style: TextStyle(
                                 fontSize: context.textXs,
-                                fontWeight: FontWeight.w600,
+                                fontWeight: FontWeight.bold,
                                 color: context.textPrimary900,
                                 height: context.leadingXs,
                               ),
                             ),
-                            SizedBox(height: 4.w),
-                            Container(
-                              padding: EdgeInsets.symmetric(
-                                horizontal: 4.w,
-                                vertical: 2.w,
-                              ),
-                              decoration: BoxDecoration(
-                                color: context.alphaBlack5,
-                                borderRadius: BorderRadius.circular(
-                                  context.radiusMd,
-                                ),
-                              ),
-                              child: Text(
-                                'common.topup'.tr(),
-                                style: TextStyle(
-                                  fontSize: context.text2xs,
-                                  fontWeight: FontWeight.w600,
-                                  color: context.textBrandPrimary900,
-                                  height: context.leading2xs,
-                                ),
-                              ),
+                            SizedBox(height: 6.w),
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                // 充值
+                                _smallActionBtn(context, 'common.topup'.tr(), context.textBrandPrimary900, () => appRouter.push('/me/wallet/deposit')),
+                              ],
                             ),
                           ],
                         ),
@@ -372,16 +310,12 @@ class _WalletArea extends StatelessWidget {
                 ),
               ),
               SizedBox(width: 8.w),
+              // --- 金币余额卡片 ---
               Expanded(
                 child: InkWell(
-                  onTap: () {
-                    appRouter.push('/me/wallet');
-                  },
+                  onTap: () => appRouter.push('/me/wallet'),
                   child: Container(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: 8.w,
-                      vertical: 8.w,
-                    ),
+                    padding: EdgeInsets.all(8.w),
                     decoration: BoxDecoration(
                       color: context.alphaBlack5,
                       borderRadius: BorderRadius.circular(context.radiusMd),
@@ -389,8 +323,7 @@ class _WalletArea extends StatelessWidget {
                     child: Row(
                       children: [
                         SizedBox(
-                          width: 60.w,
-                          height: 36.w,
+                          width: 50.w,
                           child: Text(
                             'common.treasureCoins'.tr(),
                             style: TextStyle(
@@ -403,40 +336,19 @@ class _WalletArea extends StatelessWidget {
                         ),
                         Spacer(),
                         Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
                             Text(
-                              FormatHelper.formatWithCommasAndDecimals(
-                                balance.coinBalance,
-                              ),
+                              FormatHelper.formatWithCommasAndDecimals(balance.coinBalance),
                               style: TextStyle(
                                 fontSize: context.textXs,
-                                fontWeight: FontWeight.w600,
+                                fontWeight: FontWeight.bold,
                                 color: context.textPrimary900,
                                 height: context.leadingXs,
                               ),
                             ),
-                            SizedBox(height: 4.w),
-                            Container(
-                              padding: EdgeInsets.symmetric(
-                                horizontal: 4.w,
-                                vertical: 2.w,
-                              ),
-                              decoration: BoxDecoration(
-                                color: context.alphaBlack5,
-                                borderRadius: BorderRadius.circular(
-                                  context.radiusMd,
-                                ),
-                              ),
-                              child: Text(
-                                'common.view'.tr(),
-                                style: TextStyle(
-                                  fontSize: context.text2xs,
-                                  fontWeight: FontWeight.w600,
-                                  color: context.textBrandPrimary900,
-                                  height: context.leading2xs,
-                                ),
-                              ),
-                            ),
+                            SizedBox(height: 6.w),
+                            _smallActionBtn(context, 'common.view'.tr(), context.textBrandPrimary900, () => appRouter.push('/me/wallet')),
                           ],
                         ),
                       ],
@@ -450,19 +362,30 @@ class _WalletArea extends StatelessWidget {
       ),
     );
   }
+
+  // 辅助构建钱包卡片里的小操作按钮
+  Widget _smallActionBtn(BuildContext context, String text, Color textColor, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 2.w),
+        decoration: BoxDecoration(
+          color: context.alphaBlack5,
+          borderRadius: BorderRadius.circular(context.radiusMd),
+        ),
+        child: Text(
+          text,
+          style: TextStyle(
+            fontSize: 10.sp,
+            fontWeight: FontWeight.w600,
+            color: textColor,
+          ),
+        ),
+      ),
+    );
+  }
 }
 
-/// Login top area showing user info
-/// Used when user is logged in
-/// Contains avatar, greeting, active raffles, and notification icon
-/// Usage:
-/// ```dart
-/// _LoginTopArea()
-/// ```
-/// Example:
-/// ```dart
-/// _LoginTopArea()
-/// ```
 class _LoginTopArea extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -494,12 +417,7 @@ class _Avatar extends StatelessWidget {
             height: 48.w,
             clipBehavior: Clip.antiAlias,
             decoration: BoxDecoration(shape: BoxShape.circle),
-            child: Image.asset(
-              'assets/images/Avatar01.png',
-              width: 48.w,
-              height: 48.w,
-              fit: BoxFit.cover,
-            ),
+            child: Image.asset('assets/images/Avatar01.png', width: 48.w, height: 48.w, fit: BoxFit.cover),
           ),
           SizedBox(width: 8.w),
           Column(
@@ -519,10 +437,7 @@ class _Avatar extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     TextSpan(
                       text: "common.hello".tr(),
-                      children: [
-                        TextSpan(text: ","),
-                        TextSpan(text: "porter"),
-                      ],
+                      children: [const TextSpan(text: ","), const TextSpan(text: "porter")],
                     ),
                   ),
                   SizedBox(width: 8.w),
@@ -530,10 +445,7 @@ class _Avatar extends StatelessWidget {
                     'assets/images/copy.svg',
                     width: 15.w,
                     height: 15.w,
-                    colorFilter: ColorFilter.mode(
-                      context.fgPrimary900,
-                      BlendMode.srcIn,
-                    ),
+                    colorFilter: ColorFilter.mode(context.fgPrimary900, BlendMode.srcIn),
                   ),
                 ],
               ),
@@ -549,7 +461,7 @@ class _Avatar extends StatelessWidget {
               ),
             ],
           ),
-          Spacer(),
+          const Spacer(),
           GestureDetector(
             child: Stack(
               clipBehavior: Clip.none,
@@ -558,10 +470,7 @@ class _Avatar extends StatelessWidget {
                   'assets/images/bell.svg',
                   width: 30.w,
                   height: 30.w,
-                  colorFilter: ColorFilter.mode(
-                    context.fgPrimary900,
-                    BlendMode.srcIn,
-                  ),
+                  colorFilter: ColorFilter.mode(context.fgPrimary900, BlendMode.srcIn),
                 ),
                 Positioned(
                   right: 0.w,
@@ -569,10 +478,7 @@ class _Avatar extends StatelessWidget {
                   child: Container(
                     width: 8.w,
                     height: 8.w,
-                    decoration: BoxDecoration(
-                      color: Colors.red.shade600,
-                      shape: BoxShape.circle,
-                    ),
+                    decoration: BoxDecoration(color: Colors.red.shade600, shape: BoxShape.circle),
                   ),
                 ),
               ],
@@ -585,10 +491,6 @@ class _Avatar extends StatelessWidget {
   }
 }
 
-/// Unlogin top area with login and register buttons
-/// Used when user is not logged in
-/// Contains a tip text and two buttons: login and register
-/// The buttons navigate to the login and register pages respectively
 class _UnLoginTopArea extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -634,29 +536,6 @@ class _UnLoginTopArea extends StatelessWidget {
   }
 }
 
-/// Order area showing order status
-
-class _UnLoginTip extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Empty(),
-        Text(
-          'common.gotoLogin'.tr(),
-          style: TextStyle(
-            fontSize: context.textMd,
-            fontWeight: FontWeight.w600,
-            color: context.textTertiary600,
-            height: context.leadingMd,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
 class _OrderArea extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -668,7 +547,6 @@ class _OrderArea extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 标题栏保持不变
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -683,16 +561,10 @@ class _OrderArea extends StatelessWidget {
               ),
               Button(
                 variant: ButtonVariant.text,
-                onPressed: () {
-                  appRouter.push('/order/list');
-                },
+                onPressed: () => appRouter.push('/order/list'),
                 height: 20.w,
                 paddingX: 0,
-                trailing: Icon(
-                  Icons.arrow_forward_ios,
-                  size: 12.w,
-                  color: context.textPrimary900,
-                ),
+                trailing: Icon(Icons.arrow_forward_ios, size: 12.w, color: context.textPrimary900),
                 child: Text(
                   'common.view.all.order'.tr(),
                   style: TextStyle(
@@ -706,44 +578,16 @@ class _OrderArea extends StatelessWidget {
             ],
           ),
           SizedBox(height: 12.w),
-
-          // 图标栏：改为封装方法，并增加第五个图标
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            crossAxisAlignment: CrossAxisAlignment.start, // 顶部对齐
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildOrderItem(
-                context,
-                icon: CupertinoIcons.creditcard,
-                label: 'To Pay',
-                onTap: () => appRouter.push('/order/list?status=1'), // 示例路由
-              ),
-              _buildOrderItem(
-                context,
-                icon: CupertinoIcons.cube_box,
-                label: 'To Ship',
-                onTap: () => appRouter.push('/order/list?status=2'),
-              ),
-              _buildOrderItem(
-                context,
-                icon: Icons.local_shipping_outlined,
-                label: 'To Receive',
-                onTap: () => appRouter.push('/order/list?status=3'),
-              ),
-              _buildOrderItem(
-                context,
-                icon: CupertinoIcons.star_circle,
-                label: 'To Rate',
-                onTap: () => appRouter.push('/order/list?status=4'),
-              ),
-              // --- 新增退款入口 ---
-              _buildOrderItem(
-                context,
-                // 这里用 assignment_return 或者 coin 相关的图标
-                icon: Icons.assignment_return_outlined,
-                label: 'Refund', // 建议使用 'common.refund'.tr()
-                onTap: () => appRouter.push('/order/refund/list'), // 跳转到售后列表
-              ),
+              _buildOrderItem(context, icon: CupertinoIcons.creditcard, label: 'To Pay', onTap: () => appRouter.push('/order/list?status=unpaid')),
+              _buildOrderItem(context, icon: CupertinoIcons.cube_box, label: 'To Ship', onTap: () => appRouter.push('/order/list?status=paid')),
+              _buildOrderItem(context, icon: Icons.local_shipping_outlined, label: 'To Receive', onTap: () => appRouter.push('/order/list?status=paid')),
+              _buildOrderItem(context, icon: CupertinoIcons.star_circle, label: 'To Rate', onTap: () => appRouter.push('/order/list?status=paid')),
+              // --- 售后入口 ---
+              _buildOrderItem(context, icon: Icons.assignment_return_outlined, label: 'Refund', onTap: () => appRouter.push('/order/list?status=refunded')),
             ],
           ),
         ],
@@ -751,28 +595,18 @@ class _OrderArea extends StatelessWidget {
     );
   }
 
-  // 封装每个订单状态的小组件，减少重复代码
-  Widget _buildOrderItem(
-      BuildContext context, {
-        required IconData icon,
-        required String label,
-        required VoidCallback onTap,
-      }) {
+  Widget _buildOrderItem(BuildContext context, {required IconData icon, required String label, required VoidCallback onTap}) {
     return InkWell(
       onTap: onTap,
       child: Column(
-        mainAxisSize: MainAxisSize.min, // 紧凑布局
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            icon,
-            size: 24.w,
-            color: context.fgPrimary900,
-          ),
+          Icon(icon, size: 24.w, color: context.fgPrimary900),
           SizedBox(height: 8.w),
           Text(
             label,
             style: TextStyle(
-              fontSize: context.textXs, // 稍微调小一点字体，防止5个放不下
+              fontSize: 10.sp,
               fontWeight: FontWeight.w500,
               color: context.textPrimary900,
               height: context.leadingXs,
@@ -783,4 +617,3 @@ class _OrderArea extends StatelessWidget {
     );
   }
 }
-

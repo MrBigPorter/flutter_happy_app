@@ -86,10 +86,10 @@ class Api {
   }
 
   /// 钱包交易记录 wallet transactions
-  static Future<PageResult<WalletTransactionItem>> walletTransactionsApi(WalletTransactionsDto data) async {
-    final res = await Http.get('/api/v1/wallet/transactions', query: data.toJson());
+  static Future<PageResult<WalletRechargeHistoryItem>> walletRechargeHistoryApi(WalletRechargeHistoryDto data) async {
+    final res = await Http.get('/api/v1/wallet/recharge/history', query: data.toJson());
 
-    return parsePageResponse(res, (e) => WalletTransactionItem.fromJson(e));
+    return parsePageResponse(res, (e) => WalletRechargeHistoryItem.fromJson(e));
   }
 
   /// 提现记录 withdraw history

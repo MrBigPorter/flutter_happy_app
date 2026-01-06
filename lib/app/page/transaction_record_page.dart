@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:extended_nested_scroll_view/extended_nested_scroll_view.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -25,10 +26,10 @@ final transactionListProvider = Provider.family<TransactionRequestFunc, Transact
 
   // 返回一个符合定义的函数
   return ({required int page, required int pageSize}) async {
-    final dto = WalletTransactionsDto(page: page, pageSize: pageSize);
 
     if (params.type == UiTransactionType.deposit) {
-      final res = await Api.walletTransactionsApi(dto);
+      final dto = WalletRechargeHistoryDto(page: page, pageSize: pageSize);
+      final res = await Api.walletRechargeHistoryApi(dto);
 
       return PageResult(
         list: res.list
@@ -60,13 +61,19 @@ final transactionListProvider = Provider.family<TransactionRequestFunc, Transact
 
 // 页面主体
 class TransactionHistoryPage extends StatelessWidget {
-  const TransactionHistoryPage({super.key});
+  final UiTransactionType initialType;
+  const TransactionHistoryPage({super.key, this.initialType = UiTransactionType.deposit});
+
 
   @override
   Widget build(BuildContext context) {
+
+    final initialIndex = initialType == UiTransactionType.deposit ? 0 : 1;
+
     // 使用 DefaultTabController 控制 Tab 切换
     return DefaultTabController(
       length: 2,
+      initialIndex: initialIndex,
       child: Scaffold(
         // 1. 背景色：通常金融页面的底色要稍微灰一点，突出白色卡片
         backgroundColor: context.bgSecondary, // 假设这是你的浅灰背景色
@@ -136,9 +143,9 @@ class TransactionHistoryPage extends StatelessWidget {
                   // 去掉原生的下划线
                   dividerColor: Colors.transparent,
 
-                  tabs: const [
-                    Tab(text: "Deposit"),
-                    Tab(text: "Withdraw"),
+                  tabs:  [
+                    Tab(text: "transaction.type_deposit".tr()),
+                    Tab(text: "transaction.type_withdraw".tr()),
                   ],
                 ),
               ),

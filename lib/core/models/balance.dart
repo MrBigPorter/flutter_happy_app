@@ -73,6 +73,10 @@ class RechargeResponse {
   }
 }
 
+// ==========================================
+//  Wallet Transaction (流水/余额变动) - 保持不变
+// ==========================================
+
 @JsonSerializable(checked: true)
 class WalletTransactionsDto {
   final int page;
@@ -123,6 +127,10 @@ class WalletTransactionItem {
     return toJson().toString();
   }
 }
+
+// ==========================================
+//  Withdraw (提现) - 保持不变
+// ==========================================
 
 @JsonSerializable(checked: true)
 class WalletWithdrawApplyDto {
@@ -198,6 +206,8 @@ class WalletWithdrawHistoryDto {
 class WalletWithdrawHistoryItem {
   final String withdrawNo;
   final String amount;
+  final String actualAmount;
+  final String withdrawAmount;
   final String feeAmount;
   final int withdrawStatus;
   final num createdAt;
@@ -210,6 +220,8 @@ class WalletWithdrawHistoryItem {
   WalletWithdrawHistoryItem({
     required this.withdrawNo,
     required this.amount,
+    required this.actualAmount,
+    required this.withdrawAmount,
     required this.feeAmount,
     required this.withdrawStatus,
     required this.createdAt,
@@ -224,6 +236,72 @@ class WalletWithdrawHistoryItem {
       _$WalletWithdrawHistoryItemFromJson(json);
 
   Map<String, dynamic> toJson() => _$WalletWithdrawHistoryItemToJson(this);
+
+  @override
+  String toString() {
+    return toJson().toString();
+  }
+}
+
+// ==========================================
+//  Recharge History (充值订单列表) - 新增
+// ==========================================
+
+/// 充值记录查询参数
+@JsonSerializable(checked: true)
+class WalletRechargeHistoryDto {
+  final int page;
+  final int pageSize;
+
+  /// 状态筛选: 1-Pending, 2-Processing, 3-Success, 4-Failed, 5-Canceled
+  final int? status;
+
+  WalletRechargeHistoryDto({
+    required this.page,
+    required this.pageSize,
+    this.status,
+  });
+
+  factory WalletRechargeHistoryDto.fromJson(Map<String, dynamic> json) =>
+      _$WalletRechargeHistoryDtoFromJson(json);
+
+  Map<String, dynamic> toJson() => _$WalletRechargeHistoryDtoToJson(this);
+}
+
+/// 充值订单项
+@JsonSerializable(checked: true)
+class WalletRechargeHistoryItem {
+  final String rechargeNo;
+
+  /// 充值金额 (后端返回 String)
+  final String rechargeAmount;
+
+  /// 实际到账金额 (后端返回 String)
+  final String actualAmount;
+
+  /// 状态: 1-Pending, 2-Processing, 3-Success, 4-Failed, 5-Canceled
+  final int rechargeStatus;
+
+  /// 支付方式: 1-GCash 2-PayMaya...
+  final int paymentMethod;
+
+  final num createdAt;
+  final num? paidAt;
+
+  WalletRechargeHistoryItem({
+    required this.rechargeNo,
+    required this.rechargeAmount,
+    required this.actualAmount,
+    required this.rechargeStatus,
+    required this.paymentMethod,
+    required this.createdAt,
+    this.paidAt,
+  });
+
+  factory WalletRechargeHistoryItem.fromJson(Map<String, dynamic> json) =>
+      _$WalletRechargeHistoryItemFromJson(json);
+
+  Map<String, dynamic> toJson() => _$WalletRechargeHistoryItemToJson(this);
 
   @override
   String toString() {

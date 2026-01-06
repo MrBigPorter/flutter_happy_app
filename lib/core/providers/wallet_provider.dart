@@ -38,3 +38,28 @@ class CreateRecharge extends _$CreateRecharge {
   }
 }
 
+@riverpod
+class CreateWithdraw extends _$CreateWithdraw {
+  @override
+  // 初始状态是 null (没有订单)
+  AsyncValue<WalletWithdrawResponse?> build() => const AsyncValue.data(null);
+
+  // 创建提现订单
+  Future<WalletWithdrawResponse?> create(WalletWithdrawApplyDto dto) async {
+    state = const AsyncValue.loading();
+    //guard 自动处理异常
+    state = await AsyncValue.guard(() async {
+      return await Api.walletWithdrawApply(dto);
+    });
+
+    // 创建失败，返回 null
+    if(state.hasError){
+      // 或者直接返回 null，UI 层通过监听 state 变红来处理
+      return null;
+    }
+
+    //  此时 state.value 就是 提现单号 了
+    return state.value;
+  }
+}
+

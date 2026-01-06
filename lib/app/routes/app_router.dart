@@ -23,12 +23,13 @@ import '../page/deposit_detail_page.dart';
 import '../page/guide_page.dart';
 import '../page/home_page.dart';
 import '../page/product_page.dart';
+import '../page/transaction/transaction_ui_model.dart';
 import '../page/transaction_record_page.dart';
 import '../page/winners_page.dart';
 import '../page/me_page.dart';
 import '../page/login_page.dart';
 import '../page/product_detail_page.dart';
-import '../page/wthdraw_page.dart';
+import '../page/withdraw_page.dart';
 
 final _shellKey = GlobalKey<NavigatorState>(debugLabel: 'shell');
 // 全局路由器实例  Global router instance
@@ -192,7 +193,11 @@ class AppRouter {
         GoRoute(
             name: 'transactionRecord',
             path: '/me/wallet/transaction/record',
-            builder: (context, state) => TransactionHistoryPage()
+            builder: (context, state){
+              final tab = state.uri.queryParameters['tab'];
+              final type = tab == 'withdraw' ? UiTransactionType.withdraw : UiTransactionType.deposit;
+              return TransactionHistoryPage(initialType: type);
+            }
         ),
         GoRoute(
             name: 'withdraw',

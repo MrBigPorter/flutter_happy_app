@@ -42,5 +42,25 @@ final createRechargeProvider =
     );
 
 typedef _$CreateRecharge = AutoDisposeNotifier<AsyncValue<RechargeResponse?>>;
+String _$createWithdrawHash() => r'8a516a636bc5fc70b32b58a58266ba3f0423dc3d';
+
+/// See also [CreateWithdraw].
+@ProviderFor(CreateWithdraw)
+final createWithdrawProvider =
+    AutoDisposeNotifierProvider<
+      CreateWithdraw,
+      AsyncValue<WalletWithdrawResponse?>
+    >.internal(
+      CreateWithdraw.new,
+      name: r'createWithdrawProvider',
+      debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+          ? null
+          : _$createWithdrawHash,
+      dependencies: null,
+      allTransitiveDependencies: null,
+    );
+
+typedef _$CreateWithdraw =
+    AutoDisposeNotifier<AsyncValue<WalletWithdrawResponse?>>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package

@@ -29,6 +29,7 @@ class TransactionCard extends StatelessWidget {
     if (item.statusCode == 3) statusColor = const Color(0xFFC62828);
     final statusBg = statusColor.withValues(alpha: 0.1);
     final formatter = NumberFormat("#,##0.00", "en_US");
+    
 
     return _ScaleButton(
       onTap: () {
