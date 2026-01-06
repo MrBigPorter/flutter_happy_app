@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter_app/common.dart';
 import 'package:flutter_app/core/models/index.dart';
 import 'package:flutter_app/core/models/payment.dart';
+import 'package:flutter_app/utils/cache/cache_for_extension.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
@@ -14,7 +17,11 @@ final orderCheckoutProvider = FutureProvider.family<OrderCheckoutResponse,Orders
 });
 
 /// Order detail provider, takes orderId as input, returns OrderDetail
-final orderDetailProvider = FutureProvider.autoDispose.family<OrderDetailItem,String>((ref,orderId) async{
+final orderDetailProvider = FutureProvider.family<OrderDetailItem,String>((ref,orderId) async{
+
+  ref.cacheFor(Duration(seconds: 60)); // 缓存 60s
+
+
   return await Api.orderDetailApi(orderId);
 });
 

@@ -141,9 +141,11 @@ class _OrderDetailPageState extends ConsumerState<OrderDetailPage> {
       animation: scrollController,
       builder: (context, child) {
         double offset = 0;
-        if (scrollController.hasClients) offset = scrollController.offset;
+        // 修复多视图绑定：必须使用 positions.first.pixels
+        if (scrollController.hasClients && scrollController.positions.isNotEmpty) {
+          offset = scrollController.positions.first.pixels;
+        }
         double scale = offset < 0 ? 1.0 + (offset.abs() / 356.w) * 0.5 : 1.0;
-
         return Transform.scale(
           scale: scale,
           alignment: Alignment.bottomCenter,
@@ -240,7 +242,12 @@ class _AnimatedHeaderState extends ConsumerState<AnimatedHeader> {
     return AnimatedBuilder(
       animation: widget.scrollController,
       builder: (context, child) {
-        double offset = widget.scrollController.hasClients ? widget.scrollController.offset : 0;
+        double offset = 0;
+        //  关键修复：不再直接使用 .offset，防止 Multiple Positions 断言崩溃
+        if (widget.scrollController.hasClients && widget.scrollController.positions.isNotEmpty) {
+          offset = widget.scrollController.positions.first.pixels;
+        }
+
         double opacity = (offset / 120.0).clamp(0.0, 1.0);
         final double iconBgOpacity = 1.0 - opacity;
 

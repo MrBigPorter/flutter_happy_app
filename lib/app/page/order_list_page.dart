@@ -10,13 +10,15 @@ import 'order_components/order_list.dart';
 
 class OrderListPage extends ConsumerStatefulWidget {
   final dynamic args;
+
   const OrderListPage({super.key, this.args});
 
   @override
   ConsumerState<OrderListPage> createState() => _OrderListPageState();
 }
 
-class _OrderListPageState extends ConsumerState<OrderListPage> with SingleTickerProviderStateMixin {
+class _OrderListPageState extends ConsumerState<OrderListPage>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
   @override
@@ -41,9 +43,12 @@ class _OrderListPageState extends ConsumerState<OrderListPage> with SingleTicker
     _tabController.addListener(() {
       if (!_tabController.indexIsChanging) {
         final tabs = ref.read(tabOrderStateProvider);
-        ref.read(activeOrderTabProvider.notifier).state = tabs[_tabController.index];
+        ref.read(activeOrderTabProvider.notifier).state =
+            tabs[_tabController.index];
       }
     });
+
+
   }
 
   @override
@@ -54,6 +59,15 @@ class _OrderListPageState extends ConsumerState<OrderListPage> with SingleTicker
 
   @override
   Widget build(BuildContext context) {
+
+    ref.listen(activeOrderTabProvider, (previous, next) {
+      final tabs = ref.read(tabOrderStateProvider);
+      final index = tabs.indexWhere((t) => t.key == next.key);
+      if (index != -1 && _tabController.index != index) {
+        _tabController.animateTo(index);
+      }
+    });
+
     final tabs = ref.watch(tabOrderStateProvider);
 
     return BaseScaffold(
@@ -78,11 +92,13 @@ class _OrderListPageState extends ConsumerState<OrderListPage> with SingleTicker
                   highlightColor: Colors.transparent,
                 ),
                 child: TabBar(
-                  tabAlignment: TabAlignment.center, // 居中对齐，如果 Tab 少的时候会居中
+                  tabAlignment: TabAlignment.center,
+                  // 居中对齐，如果 Tab 少的时候会居中
                   controller: _tabController,
                   isScrollable: true,
                   padding: EdgeInsets.zero,
-                  labelPadding: EdgeInsets.symmetric(horizontal: 4.w), // Tab 之间的间距
+                  labelPadding: EdgeInsets.symmetric(horizontal: 4.w),
+                  // Tab 之间的间距
 
                   // --- 指示器样式 ---
                   indicator: BoxDecoration(
@@ -94,7 +110,7 @@ class _OrderListPageState extends ConsumerState<OrderListPage> with SingleTicker
                         blurRadius: 4,
                         offset: const Offset(0, 1),
                         spreadRadius: 0,
-                      )
+                      ),
                     ],
                   ),
                   indicatorSize: TabBarIndicatorSize.tab,
@@ -104,13 +120,13 @@ class _OrderListPageState extends ConsumerState<OrderListPage> with SingleTicker
                   // --- 文字样式 ---
                   labelColor: context.textBrandPrimary900,
                   labelStyle: TextStyle(
-                      fontSize: 14.sp,
-                      fontWeight: FontWeight.w700
+                    fontSize: 14.sp,
+                    fontWeight: FontWeight.w700,
                   ),
                   unselectedLabelColor: context.textPrimary900,
                   unselectedLabelStyle: TextStyle(
-                      fontSize: 14.sp,
-                      fontWeight: FontWeight.w500
+                    fontSize: 14.sp,
+                    fontWeight: FontWeight.w500,
                   ),
 
                   tabs: tabs.map((item) {
@@ -139,11 +155,16 @@ class _OrderListPageState extends ConsumerState<OrderListPage> with SingleTicker
                             if (item.total > 0) ...[
                               SizedBox(width: 4.w),
                               Container(
-                                padding: EdgeInsets.symmetric(horizontal: 5.w, vertical: 2.w),
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: 5.w,
+                                  vertical: 2.w,
+                                ),
                                 constraints: BoxConstraints(minWidth: 16.w),
                                 alignment: Alignment.center,
                                 decoration: BoxDecoration(
-                                  color: context.utilityError500.withOpacity(0.1),
+                                  color: context.utilityError500.withOpacity(
+                                    0.1,
+                                  ),
                                   borderRadius: BorderRadius.circular(8.r),
                                 ),
                                 child: Text(
@@ -156,7 +177,7 @@ class _OrderListPageState extends ConsumerState<OrderListPage> with SingleTicker
                                   ),
                                 ),
                               ),
-                            ]
+                            ],
                           ],
                         ),
                       ),
@@ -172,9 +193,7 @@ class _OrderListPageState extends ConsumerState<OrderListPage> with SingleTicker
             child: TabBarView(
               controller: _tabController,
               children: tabs.map((item) {
-                return OrderList(
-                  status: item.key,
-                );
+                return OrderList(status: item.key);
               }).toList(),
             ),
           ),
@@ -185,11 +204,16 @@ class _OrderListPageState extends ConsumerState<OrderListPage> with SingleTicker
 
   String _getTabName(String key) {
     switch (key) {
-      case 'paid': return 'order.tab.paid'.tr();
-      case 'unpaid': return 'order.tab.unpaid'.tr();
-      case 'refunded': return 'order.tab.refund'.tr();
-      case 'cancelled': return 'order.tab.cancelled'.tr();
-      default: return key;
+      case 'paid':
+        return 'order.tab.paid'.tr();
+      case 'unpaid':
+        return 'order.tab.unpaid'.tr();
+      case 'refunded':
+        return 'order.tab.refund'.tr();
+      case 'cancelled':
+        return 'order.tab.cancelled'.tr();
+      default:
+        return key;
     }
   }
 }
