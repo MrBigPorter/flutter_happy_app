@@ -51,6 +51,10 @@ OrderItem _$OrderItemFromJson(Map<String, dynamic> json) => $checkedCreate(
       isWinner: $checkedConvert('isWinner', (v) => v as bool? ?? false),
       prizeAmount: $checkedConvert('prizeAmount', (v) => v as String?),
       prizeCoin: $checkedConvert('prizeCoin', (v) => (v as num?)?.toInt()),
+      refundRejectReason: $checkedConvert(
+        'refundRejectReason',
+        (v) => v as String?,
+      ),
     );
     return val;
   },
@@ -79,6 +83,7 @@ Map<String, dynamic> _$OrderItemToJson(OrderItem instance) => <String, dynamic>{
   'addressResp': instance.addressResp,
   'ticketList': instance.ticketList,
   'refundReason': instance.refundReason,
+  'refundRejectReason': instance.refundRejectReason,
   'isWinner': instance.isWinner,
   'prizeAmount': instance.prizeAmount,
   'prizeCoin': instance.prizeCoin,
@@ -292,4 +297,38 @@ Map<String, dynamic> _$OrderListParamsToJson(OrderListParams instance) =>
       'treasureId': instance.treasureId,
       'page': instance.page,
       'pageSize': instance.pageSize,
+    };
+
+Map<String, dynamic> _$RefundApplyReqToJson(RefundApplyReq instance) =>
+    <String, dynamic>{'orderId': instance.orderId, 'reason': instance.reason};
+
+RefundOrderResp _$RefundOrderRespFromJson(Map<String, dynamic> json) =>
+    $checkedCreate('RefundOrderResp', json, ($checkedConvert) {
+      final val = RefundOrderResp(
+        orderId: $checkedConvert('orderId', (v) => v as String),
+        orderNo: $checkedConvert('orderNo', (v) => v as String),
+        refundStatus: $checkedConvert(
+          'refundStatus',
+          (v) => (v as num?)?.toInt() ?? 0,
+        ),
+        refundAmount: $checkedConvert('refundAmount', (v) => v as String?),
+        refundReason: $checkedConvert('refundReason', (v) => v as String?),
+        refundRejectReason: $checkedConvert(
+          'refundRejectReason',
+          (v) => v as String?,
+        ),
+        refundedAt: $checkedConvert('refundedAt', (v) => v as num?),
+      );
+      return val;
+    });
+
+Map<String, dynamic> _$RefundOrderRespToJson(RefundOrderResp instance) =>
+    <String, dynamic>{
+      'orderId': instance.orderId,
+      'orderNo': instance.orderNo,
+      'refundStatus': instance.refundStatus,
+      'refundAmount': instance.refundAmount,
+      'refundReason': instance.refundReason,
+      'refundRejectReason': instance.refundRejectReason,
+      'refundedAt': instance.refundedAt,
     };

@@ -255,6 +255,11 @@ class Api {
     return OrderDetailItem.fromJson(res);
   }
 
+  static Future<RefundOrderResp> orderRefundApply(RefundApplyReq params) async {
+    final res = await Http.post('/api/v1/orders/refund/apply',data: params.toJson());
+    return RefundOrderResp.fromJson(res);
+  }
+
   // otp request
   static Future<OtpRequest> otpRequestApi(String phone) async {
     final res = await Http.post('/api/v1/otp/request', data: {'phone': phone});

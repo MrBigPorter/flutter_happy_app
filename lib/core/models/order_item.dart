@@ -34,10 +34,10 @@ class OrderItem {
   final AddressRes? addressResp;
   final List<TicketItem>? ticketList;
 
-  // --- 🔥 新增/增强字段 (兼容性处理) ---
 
   // 1. 售后原因
   final String? refundReason;
+  final String? refundRejectReason;
 
   // 2. 中奖标识 (后端未返回时默认为 false)
   @JsonKey(defaultValue: false)
@@ -73,6 +73,7 @@ class OrderItem {
     this.isWinner = false,
     this.prizeAmount,
     this.prizeCoin,
+    this.refundRejectReason
   });
 
   factory OrderItem.fromJson(Map<String, dynamic> json) =>
@@ -411,4 +412,52 @@ extension OrderItemExtension on OrderItem {
 
     return isOrderPaid && isPaySuccess && isNoRefund && !isWinner;
   }
+}
+
+@JsonSerializable(createFactory: false)
+class RefundApplyReq {
+  final String orderId;
+  final String reason;
+
+  RefundApplyReq({
+    required this.orderId,
+    required this.reason,
+  });
+
+  Map<String, dynamic> toJson() => _$RefundApplyReqToJson(this);
+}
+
+@JsonSerializable(checked: true)
+class RefundOrderResp {
+  final String orderId;
+  final String orderNo;
+
+  // 使用后端定义的 int 值: 0-无 1-退款中 2-成功 3-失败
+  @JsonKey(defaultValue: 0)
+  final int refundStatus;
+
+  // 后端返回的是 String 金额
+  final String? refundAmount;
+
+  final String? refundReason;
+
+  // 只有被拒绝时才有值
+  final String? refundRejectReason;
+
+  final num? refundedAt;
+
+  RefundOrderResp({
+    required this.orderId,
+    required this.orderNo,
+    required this.refundStatus,
+    this.refundAmount,
+    this.refundReason,
+    this.refundRejectReason,
+    this.refundedAt,
+  });
+
+  factory RefundOrderResp.fromJson(Map<String, dynamic> json) =>
+      _$RefundOrderRespFromJson(json);
+
+  Map<String, dynamic> toJson() => _$RefundOrderRespToJson(this);
 }

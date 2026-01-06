@@ -3,10 +3,12 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:flutter_app/ui/modal/sheet/radix_sheet.dart';
+import 'package:flutter_app/ui/index.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
+// --- 你的项目引用，请根据实际路径调整 ---
 import 'package:flutter_app/app/page/order_detail_page.dart';
 import 'package:flutter_app/app/routes/app_router.dart';
 import 'package:flutter_app/common.dart';
@@ -14,56 +16,54 @@ import 'package:flutter_app/components/skeleton.dart';
 import 'package:flutter_app/core/models/index.dart';
 import 'package:flutter_app/ui/animations/transparent_fade_route.dart';
 import 'package:flutter_app/ui/button/index.dart';
-import 'package:flutter_app/ui/toast/radix_toast.dart';
+import 'package:flutter_app/ui/modal/sheet/radix_sheet.dart';
 import 'package:flutter_app/utils/date_helper.dart';
 import 'package:flutter_app/utils/format_helper.dart';
+import '../../../core/providers/me_provider.dart';
+import '../../../core/providers/order_provider.dart';
+import 'refund_request_sheet.dart'; // 刚才写的弹窗组件
 
-import 'refund_request_sheet.dart';
-
-class OrderItemContainer extends StatelessWidget {
+class OrderItemContainer extends ConsumerWidget {
   final OrderItem item;
   final bool isLast;
+  final VoidCallback? onRefresh;
 
   const OrderItemContainer({
     super.key,
     required this.item,
     required this.isLast,
+    this.onRefresh,
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final String heroTag = 'order_card_${item.orderId}';
-    // 使用 Extension 里的 getter
     final isWinning = item.isWon;
 
     Widget cardContent = Padding(
       padding: EdgeInsets.only(bottom: isLast ? 32.h : 12.h),
       child: Hero(
         tag: heroTag,
-        // 关键修复：加一层 Material 避免 Hero 飞行时文字出现黄色下划线
         child: Material(
           type: MaterialType.transparency,
           child: Container(
             width: double.infinity,
             decoration: BoxDecoration(
-              // 1. 高级感核心：中奖时使用极淡的金色渐变
+              // 1. 中奖极淡金色渐变
               gradient: isWinning
                   ? const LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        Color(0xFFFFFBEB), // Amber 50
-                        Colors.white,
-                      ],
-                    )
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Color(0xFFFFFBEB), Colors.white],
+              )
                   : null,
               color: isWinning ? null : context.bgPrimary,
               borderRadius: BorderRadius.circular(16.w),
-              // 2. 边框：中奖金边
+              // 2. 边框
               border: isWinning
                   ? Border.all(color: const Color(0xFFFFD700), width: 1.2)
                   : Border.all(color: context.borderSecondary, width: 0.5),
-              // 3. 阴影：中奖带金光
+              // 3. 阴影
               boxShadow: [
                 BoxShadow(
                   color: isWinning
@@ -96,68 +96,62 @@ class OrderItemContainer extends StatelessWidget {
                       // 中奖/拼团信息
                       _OrderItemGroupSuccess(item: item),
 
-                      // 已退款信息
-                      if (item.isRefunded) ...[
+                      //  修改：只要申请过退款 (状态 > 0)，就显示退款详情块
+                      if (item.refundStatus > 0) ...[
                         SizedBox(height: 12.h),
                         _OrderItemRefundInfo(item: item),
                       ],
 
-                      // 操作按钮区 (未退款时显示)
-                      if (!item.isRefunded) ...[
-                        SizedBox(height: 20.h),
-                        _OrderItemActions(
-                          item: item,
-                          onRequestRefund: () {
-                            // 弹出退款申请 BottomSheet
-                            RadixSheet.show(
-                              builder: (context, close) => RefundRequestSheet(
+                      // 操作按钮区 (只有未完全退款时才显示部分按钮)
+                      SizedBox(height: 20.h),
+                      _OrderItemActions(
+                        item: item,
+                        onRequestRefund: () {
+                          // 弹出退款申请 BottomSheet
+                          RadixSheet.show(
+                            builder: (ctx, close) => RefundRequestSheet(
+                              orderId: item.orderId,
+                              amount: '₱${item.finalAmount}',
+                              onSubmit: (reason) async {
+                                Navigator.pop(ctx);
+
+                                // 调用 Provider
+                                final req = RefundApplyReq(orderId: item.orderId, reason: reason);
+                                final result = await ref.read(orderRefundApplyProvider.notifier).create(req);
+
+                                if (result != null) {
+                                  RadixToast.success('Refund request submitted successfully.');
+                                  // 关键：刷新列表和详情，UI 才会变
+                                  ref.invalidate(orderDetailProvider(item.orderId));
+                                  if (onRefresh != null) onRefresh!();
+                                }
+                              },
+                            ),
+                          );
+                        },
+                        onViewFriends: () {
+                          if (item.group != null) {
+                            appRouter.push('/group-member/?groupId=${item.group!.groupId}');
+                          }
+                        },
+                        onViewRewardDetails: () {
+                          Navigator.of(context).push(
+                            TransparentFadeRoute(
+                              child: OrderDetailPage(
                                 orderId: item.orderId,
-                                amount: '₱${item.finalAmount}', // 传入金额
-
-                                onSubmit: (reason) {
-                                  // 1. 关闭弹窗
-                                  Navigator.pop(context);
-
-                                  // 2. TODO: 调用真正的 API
-                                  // ref.read(orderProvider.notifier).refundOrder(item.orderId, reason);
-
-                                  // 3. 临时反馈
-                                  print("Refund Reason: $reason");
-                                  RadixToast.success(
-                                    "Refund request submitted successfully",
-                                  );
-                                },
+                                imageList: [item.treasure.treasureCoverImg],
+                                onClose: () => Navigator.of(context).pop(),
                               ),
-                            );
-                          },
-                          onViewFriends: () {
-                            if (item.group != null) {
-                              appRouter.push(
-                                '/group-member/?groupId=${item.group!.groupId}',
-                              );
-                            }
-                          },
-                          onViewRewardDetails: () {
-                            Navigator.of(context).push(
-                              TransparentFadeRoute(
-                                child: OrderDetailPage(
-                                  orderId: item.orderId,
-                                  imageList: [item.treasure.treasureCoverImg],
-                                  onClose: () => Navigator.of(context).pop(),
-                                ),
-                              ),
-                            );
-                          },
-                          onTeamUp: () {
-                            appRouter.push('/me/order/${item.orderId}/team-up');
-                          },
-                          onClaimPrize: () {
-                            appRouter.push(
-                              '/me/order/${item.orderId}/claim-prize',
-                            );
-                          },
-                        ),
-                      ],
+                            ),
+                          );
+                        },
+                        onTeamUp: () {
+                          appRouter.push('/me/order/${item.orderId}/team-up');
+                        },
+                        onClaimPrize: () {
+                          appRouter.push('/me/order/${item.orderId}/claim-prize');
+                        },
+                      ),
                     ],
                   ),
                 ),
@@ -171,27 +165,18 @@ class OrderItemContainer extends StatelessWidget {
     return cardContent
         .animate()
         .fadeIn(duration: 400.ms, curve: Curves.easeOutQuad)
-        // 4. 动画修正：使用 slideY (从下往上浮出)
-        .slideY(
-          begin: 0.1,
-          end: 0.0,
-          duration: 400.ms,
-          curve: Curves.easeOutQuad,
-        )
-        // 5. 中奖流光特效
+        .slideY(begin: 0.1, end: 0.0, duration: 400.ms, curve: Curves.easeOutQuad)
         .then(delay: 200.ms)
         .shimmer(
-          duration: 1500.ms,
-          color: isWinning
-              ? const Color(0xFFFFD700).withOpacity(0.4)
-              : Colors.transparent,
-          angle: 0.8,
-        );
+      duration: 1500.ms,
+      color: isWinning ? const Color(0xFFFFD700).withOpacity(0.4) : Colors.transparent,
+      angle: 0.8,
+    );
   }
 }
 
 /// ---------------------------------------------------------
-/// 顶部状态栏 (Status Header)
+/// 顶部状态栏 (Status Header) - 已增强退款状态显示
 /// ---------------------------------------------------------
 class _OrderItemStatusHeader extends StatelessWidget {
   final OrderItem item;
@@ -204,11 +189,30 @@ class _OrderItemStatusHeader extends StatelessWidget {
     Color statusColor = context.textBrandSecondary700;
     Color statusBg = context.textBrandSecondary700.withOpacity(0.1);
 
-    // ✅ 使用 Model 中定义的 Enum 扩展，不再手写数字判断
+    // 🔥 1. 优先判断退款状态
+    if (item.refundStatus == 1) {
+      // 审核中
+      return _buildContainer(
+        text: 'Refunding',
+        textColor: const Color(0xFFD97706), // Orange 700
+        bgColor: const Color(0xFFFFFBEB),   // Orange 50
+        context: context,
+      );
+    } else if (item.refundStatus == 3) {
+      // 被驳回
+      return _buildContainer(
+        text: 'Refund Rejected',
+        textColor: context.utilityError500, // Red
+        bgColor: context.utilityError500.withOpacity(0.1),
+        context: context,
+      );
+    }
+
+    // 2. 常规状态判断
     switch (item.orderStatusEnum) {
       case OrderStatus.won:
         statusText = 'Winner';
-        statusColor = const Color(0xFFD97706); // Amber 700
+        statusColor = const Color(0xFFD97706);
         statusBg = const Color(0xFFFFFBEB);
         break;
       case OrderStatus.refunded:
@@ -227,7 +231,7 @@ class _OrderItemStatusHeader extends StatelessWidget {
         statusBg = Colors.green.withOpacity(0.1);
         break;
       case OrderStatus.paid:
-        statusText = 'Paid'; // 或 Completed
+        statusText = 'Paid';
         statusColor = context.textBrandPrimary900;
         statusBg = context.textBrandPrimary900.withOpacity(0.05);
         break;
@@ -236,14 +240,25 @@ class _OrderItemStatusHeader extends StatelessWidget {
         statusColor = context.textBrandPrimary900;
         statusBg = context.textBrandPrimary900.withOpacity(0.05);
         break;
-      case OrderStatus.pending:
       default:
         statusText = 'Pending';
-        statusColor = context.textBrandSecondary700;
-        statusBg = context.textBrandSecondary700.withOpacity(0.1);
         break;
     }
 
+    return _buildContainer(
+        text: statusText,
+        textColor: statusColor,
+        bgColor: statusBg,
+        context: context
+    );
+  }
+
+  Widget _buildContainer({
+    required String text,
+    required Color textColor,
+    required Color bgColor,
+    required BuildContext context,
+  }) {
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 10.w),
       decoration: BoxDecoration(
@@ -269,15 +284,15 @@ class _OrderItemStatusHeader extends StatelessWidget {
           Container(
             padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 2.w),
             decoration: BoxDecoration(
-              color: statusBg,
+              color: bgColor,
               borderRadius: BorderRadius.circular(4.w),
             ),
             child: Text(
-              statusText,
+              text,
               style: TextStyle(
                 fontSize: 10.sp,
                 fontWeight: FontWeight.bold,
-                color: statusColor,
+                color: textColor,
               ),
             ),
           ),
@@ -288,7 +303,7 @@ class _OrderItemStatusHeader extends StatelessWidget {
 }
 
 /// ---------------------------------------------------------
-/// 头部商品信息 (Header)
+/// 商品头部信息
 /// ---------------------------------------------------------
 class _OrderItemHeader extends StatelessWidget {
   final OrderItem item;
@@ -307,12 +322,8 @@ class _OrderItemHeader extends StatelessWidget {
             width: 80.w,
             height: 80.w,
             fit: BoxFit.cover,
-            memCacheWidth: (80.w * MediaQuery.of(context).devicePixelRatio)
-                .round(),
-            errorWidget: (_, __, ___) => Container(
-              color: context.borderSecondary,
-              child: Icon(CupertinoIcons.photo, color: context.textTertiary600),
-            ),
+            memCacheWidth: (80.w * MediaQuery.of(context).devicePixelRatio).round(),
+            errorWidget: (_, __, ___) => Container(color: context.borderSecondary),
             placeholder: (_, __) => Skeleton.react(width: 80.w, height: 80.w),
           ),
         ),
@@ -335,15 +346,9 @@ class _OrderItemHeader extends StatelessWidget {
               SizedBox(height: 8.w),
               RichText(
                 text: TextSpan(
-                  style: TextStyle(
-                    fontSize: 12.sp,
-                    color: context.textTertiary600,
-                  ),
+                  style: TextStyle(fontSize: 12.sp, color: context.textTertiary600),
                   children: [
-                    TextSpan(
-                      text:
-                          '${FormatHelper.formatWithCommas(item.buyQuantity)}/${FormatHelper.formatWithCommas(item.treasure.seqShelvesQuantity)} ',
-                    ),
+                    TextSpan(text: '${FormatHelper.formatWithCommas(item.buyQuantity)}/${FormatHelper.formatWithCommas(item.treasure.seqShelvesQuantity)} '),
                     TextSpan(text: 'common.sold.lowercase'.tr()),
                   ],
                 ),
@@ -357,11 +362,10 @@ class _OrderItemHeader extends StatelessWidget {
 }
 
 /// ---------------------------------------------------------
-/// 订单详细数据 (Info)
+/// 订单信息
 /// ---------------------------------------------------------
 class _OrderItemInfo extends StatelessWidget {
   final OrderItem item;
-
   const _OrderItemInfo({required this.item});
 
   @override
@@ -382,14 +386,9 @@ class _OrderItemInfo extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              item.isRefunded
-                  ? 'common.refund'.tr()
-                  : 'common.total.price'.tr(),
-              style: TextStyle(
-                fontSize: 14.sp,
-                color: context.textPrimary900,
-                fontWeight: FontWeight.bold,
-              ),
+              // 如果已退款，显示 Total Refund，否则 Total Price
+              item.isRefunded ? 'Total Refund' : 'common.total.price'.tr(),
+              style: TextStyle(fontSize: 14.sp, color: context.textPrimary900, fontWeight: FontWeight.bold),
             ),
             Text(
               '₱${item.finalAmount}',
@@ -411,7 +410,6 @@ class _OrderItemInfo extends StatelessWidget {
 class _InfoRow extends StatelessWidget {
   final String label;
   final String value;
-
   const _InfoRow({required this.label, required this.value});
 
   @override
@@ -419,43 +417,26 @@ class _InfoRow extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(
-          label,
-          style: TextStyle(fontSize: 13.sp, color: context.textSecondary700),
-        ),
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: 13.sp,
-            fontWeight: FontWeight.w600,
-            color: context.textPrimary900,
-          ),
-        ),
+        Text(label, style: TextStyle(fontSize: 13.sp, color: context.textSecondary700)),
+        Text(value, style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w600, color: context.textPrimary900)),
       ],
     );
   }
 }
 
 /// ---------------------------------------------------------
-/// 中奖/拼团成功展示区 (Success Section)
+/// 中奖/拼团成功块
 /// ---------------------------------------------------------
 class _OrderItemGroupSuccess extends StatelessWidget {
   final OrderItem item;
-
   const _OrderItemGroupSuccess({required this.item});
 
   @override
   Widget build(BuildContext context) {
-    // 如果既没拼团成功也没中奖，隐藏
     if (!item.showGroupSuccessSection) return const SizedBox.shrink();
 
-    final Color bgColor = item.isWon
-        ? const Color(0xFFFFFBEB)
-        : context.bgSecondary;
-
-    final Color borderColor = item.isWon
-        ? const Color(0xFFFCD34D).withOpacity(0.5)
-        : Colors.transparent;
+    final Color bgColor = item.isWon ? const Color(0xFFFFFBEB) : context.bgSecondary;
+    final Color borderColor = item.isWon ? const Color(0xFFFCD34D).withOpacity(0.5) : Colors.transparent;
 
     return Container(
       margin: EdgeInsets.only(top: 16.w),
@@ -474,13 +455,11 @@ class _OrderItemGroupSuccess extends StatelessWidget {
               icon: Icons.group_add_rounded,
               valueColor: context.textBrandSecondary700,
             ),
-
           if (item.isGroupSuccess && item.isWon)
             Padding(
               padding: EdgeInsets.symmetric(vertical: 8.w),
               child: Divider(height: 1, color: borderColor.withOpacity(0.5)),
             ),
-
           if (item.isWon)
             _SuccessRow(
               label: 'common.winning.number'.tr(),
@@ -516,14 +495,7 @@ class _SuccessRow extends StatelessWidget {
       children: [
         Icon(icon, size: 16.w, color: valueColor),
         SizedBox(width: 8.w),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 12.sp,
-            color: context.textSecondary700,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
+        Text(label, style: TextStyle(fontSize: 12.sp, color: context.textSecondary700, fontWeight: FontWeight.w500)),
         const Spacer(),
         Text(
           value,
@@ -540,11 +512,10 @@ class _SuccessRow extends StatelessWidget {
 }
 
 /// ---------------------------------------------------------
-/// 退款详情展示 (Refund Info)
+/// 退款详情块 - 支持审核中、成功、失败状态
 /// ---------------------------------------------------------
 class _OrderItemRefundInfo extends StatefulWidget {
   final OrderItem item;
-
   const _OrderItemRefundInfo({required this.item});
 
   @override
@@ -556,6 +527,21 @@ class _OrderItemRefundInfoState extends State<_OrderItemRefundInfo> {
 
   @override
   Widget build(BuildContext context) {
+    // 🔥 动态样式逻辑
+    String title = 'Refund Details';
+    Color titleColor = context.textSecondary700;
+    Color iconColor = context.textSecondary700;
+
+    if (widget.item.refundStatus == 1) { // Refunding
+      title = 'Refund Processing';
+      titleColor = const Color(0xFFD97706); // Orange
+      iconColor = const Color(0xFFD97706);
+    } else if (widget.item.refundStatus == 3) { // Rejected
+      title = 'Refund Rejected';
+      titleColor = context.utilityError500; // Red
+      iconColor = context.utilityError500;
+    }
+
     return Container(
       decoration: BoxDecoration(
         color: context.bgSecondary.withOpacity(0.5),
@@ -574,18 +560,14 @@ class _OrderItemRefundInfoState extends State<_OrderItemRefundInfo> {
                 children: [
                   Row(
                     children: [
-                      Icon(
-                        Icons.assignment_return_outlined,
-                        size: 16.w,
-                        color: context.textSecondary700,
-                      ),
+                      Icon(Icons.assignment_return_outlined, size: 16.w, color: iconColor),
                       SizedBox(width: 8.w),
                       Text(
-                        'Refund Details',
+                        title,
                         style: TextStyle(
                           fontSize: 12.sp,
                           fontWeight: FontWeight.w700,
-                          color: context.textSecondary700,
+                          color: titleColor,
                         ),
                       ),
                     ],
@@ -604,15 +586,33 @@ class _OrderItemRefundInfoState extends State<_OrderItemRefundInfo> {
               padding: EdgeInsets.fromLTRB(12.w, 0, 12.w, 12.w),
               child: Column(
                 children: [
-                  Divider(
-                    height: 1,
-                    color: context.borderSecondary.withOpacity(0.5),
-                  ),
+                  Divider(height: 1, color: context.borderSecondary.withOpacity(0.5)),
                   SizedBox(height: 8.w),
+
+                  // 1. 申请原因
                   _InfoRow(
                     label: 'Reason',
                     value: widget.item.refundReason ?? 'Other',
                   ),
+
+                  // 2. 如果被拒绝，显示拒绝原因 (红色高亮)
+                  if (widget.item.refundStatus == 3 && widget.item.refundRejectReason != null) ...[
+                    SizedBox(height: 8.w),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text('Rejection', style: TextStyle(fontSize: 13.sp, color: context.textSecondary700)),
+                        Flexible(
+                          child: Text(
+                            widget.item.refundRejectReason!,
+                            style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.bold, color: context.utilityError500),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    )
+                  ],
+
                   SizedBox(height: 8.w),
                   _InfoRow(
                     label: 'Amount',
@@ -628,7 +628,7 @@ class _OrderItemRefundInfoState extends State<_OrderItemRefundInfo> {
 }
 
 /// ---------------------------------------------------------
-/// 底部操作栏 (Actions)
+/// 底部按钮操作栏
 /// ---------------------------------------------------------
 class _OrderItemActions extends StatelessWidget {
   final OrderItem item;
@@ -649,10 +649,14 @@ class _OrderItemActions extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final showRewardDetails = item.orderStatus != 1 && item.orderStatus != 4;
-
-    //  使用 Model 里的 canRequestRefund 智能判断
+    // 智能判断能否退款 (使用 model extension)
+    // 如果已经申请了(状态=1或2)，canRequestRefund 会自动变 false，按钮消失
     final canRefund = item.canRequestRefund;
+
+    // 如果失败了 (状态=3)，canRequestRefund 会变 true (逻辑里允许重试)
+    // 所以“退款被拒”时，按钮会重新出现，允许再次申请，逻辑闭环完美。
+
+    final showRewardDetails = item.orderStatus != 1 && item.orderStatus != 4;
 
     List<Widget> buttons = [
       if (canRefund)
@@ -660,8 +664,9 @@ class _OrderItemActions extends StatelessWidget {
           height: 36.h,
           onPressed: onRequestRefund,
           variant: ButtonVariant.outline,
+          // 如果是被拒状态，按钮文案可以改成 "Re-Apply"
           child: Text(
-            'Refund',
+            item.refundStatus == 3 ? 'Re-Apply Refund' : 'Refund',
             style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12.sp),
           ),
         ),
@@ -675,7 +680,6 @@ class _OrderItemActions extends StatelessWidget {
           style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12.sp),
         ),
       ),
-
       if (showRewardDetails)
         Button(
           variant: ButtonVariant.outline,
@@ -698,7 +702,6 @@ class _OrderItemActions extends StatelessWidget {
           onPressed: onTeamUp,
           child: Text('common.team.up'.tr()),
         ),
-
       if (item.isWon)
         Button(
           height: 36.h,
@@ -709,7 +712,7 @@ class _OrderItemActions extends StatelessWidget {
             height: 16.h,
             colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
           ),
-          onPressed: onTeamUp,
+          onPressed: onClaimPrize, // 注意这里应该是 onClaimPrize
           child: null,
         ),
     ];
@@ -764,7 +767,7 @@ class _DashedSeparator extends StatelessWidget {
 }
 
 /// ---------------------------------------------------------
-/// 骨架屏 (Skeleton)
+/// 骨架屏 (Skeleton) - 模拟订单卡片加载状态
 /// ---------------------------------------------------------
 class OrderItemContainerSkeleton extends StatelessWidget {
   final bool isLast;
@@ -777,50 +780,111 @@ class OrderItemContainerSkeleton extends StatelessWidget {
       padding: EdgeInsets.only(
         left: 16.w,
         right: 16.w,
-        bottom: isLast ? 32.w : 16.w,
+        // 保持和真实 Item 一样的底部间距逻辑，避免加载完跳动
+        bottom: isLast ? 32.h : 12.h,
       ),
       child: Container(
         padding: EdgeInsets.all(16.w),
         decoration: BoxDecoration(
           color: context.bgPrimary,
           borderRadius: BorderRadius.circular(16.w),
+          border: Border.all(color: context.borderSecondary, width: 0.5),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // 1. 顶部：日期占位
             Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
+                Skeleton.react(width: 100.w, height: 12.w),
+                Skeleton.react(width: 60.w, height: 18.w, borderRadius: BorderRadius.circular(4.w)),
+              ],
+            ),
+            SizedBox(height: 12.w),
+
+            // 2. 中部：图片 + 标题
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // 图片占位 (80x80)
                 Skeleton.react(
                   width: 80.w,
                   height: 80.w,
                   borderRadius: BorderRadius.circular(8.w),
                 ),
                 SizedBox(width: 12.w),
+                // 文字占位
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // 模拟两行标题
                       Skeleton.react(width: double.infinity, height: 14.h),
                       SizedBox(height: 8.w),
-                      Skeleton.react(width: 100.w, height: 12.h),
+                      Skeleton.react(width: 150.w, height: 14.h),
+                      SizedBox(height: 8.w),
+                      // 模拟销量文字
+                      Skeleton.react(width: 80.w, height: 12.h),
                     ],
                   ),
                 ),
               ],
             ),
+
             SizedBox(height: 16.h),
-            Skeleton.react(width: double.infinity, height: 12.w),
-            SizedBox(height: 12.w),
-            Skeleton.react(width: double.infinity, height: 12.w),
+
+            // 3. 信息行占位 (价格、数量)
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Skeleton.react(width: 60.w, height: 12.w),
+                Skeleton.react(width: 40.w, height: 12.w),
+              ],
+            ),
             SizedBox(height: 12.w),
             Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Spacer(),
-                Skeleton.react(
-                  width: 100.w,
-                  height: 36.h,
-                  borderRadius: BorderRadius.circular(18.w),
+                Skeleton.react(width: 60.w, height: 12.w),
+                Skeleton.react(width: 30.w, height: 12.w),
+              ],
+            ),
+
+            SizedBox(height: 16.w),
+            // 分割线
+            Container(height: 1, color: context.borderSecondary.withOpacity(0.3)),
+            SizedBox(height: 16.w),
+
+            // 4. 底部：总价 + 按钮
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                // 左侧总价
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Skeleton.react(width: 40.w, height: 10.w),
+                    SizedBox(height: 4.w),
+                    Skeleton.react(width: 80.w, height: 18.w),
+                  ],
                 ),
+                // 右侧按钮组
+                Row(
+                  children: [
+                    Skeleton.react(
+                      width: 80.w,
+                      height: 36.h,
+                      borderRadius: BorderRadius.circular(18.h),
+                    ),
+                    SizedBox(width: 8.w),
+                    Skeleton.react(
+                      width: 80.w,
+                      height: 36.h,
+                      borderRadius: BorderRadius.circular(18.h),
+                    ),
+                  ],
+                )
               ],
             ),
           ],

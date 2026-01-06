@@ -8,7 +8,6 @@ import 'package:flutter_app/app/page/payment_components/payment_success_sheet.da
 import 'package:flutter_app/app/routes/app_router.dart';
 import 'package:flutter_app/common.dart';
 import 'package:flutter_app/components/base_scaffold.dart';
-import 'package:flutter_app/components/kyc_modal.dart';
 
 import 'package:flutter_app/core/models/payment.dart';
 import 'package:flutter_app/core/providers/address_provider.dart';

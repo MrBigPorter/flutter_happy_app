@@ -74,12 +74,27 @@ class _OrderListState extends ConsumerState<OrderList> with AutomaticKeepAliveCl
               sliverMode: true,
               separatorSpace: 16,
               padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 16.w),
-              skeletonPadding: const EdgeInsets.all(0),
               itemBuilder: (context, item, index, isLast) {
-                return OrderItemContainer(item: item, isLast: isLast);
+                return OrderItemContainer(
+                    item: item,
+                    isLast: isLast,
+                    onRefresh: (){
+                      // 这会触发 initState 里定义的 request 方法，重新请求接口
+                      _ctl.refresh();
+                      // 你希望“退款”操作同时刷新“全部”或“售后”Tab，
+                      // 在这里触发 orderRefreshProvider，让其他页面监听到并刷新
+                      final tabs = ref.read(tabOrderStateProvider);
+                      ref.read(activeOrderTabProvider.notifier).state = tabs[index];
+                    },
+                );
               },
               skeletonBuilder: (context, {bool isLast = false}) {
-                return  OrderItemContainerSkeleton(isLast: isLast);
+                return  Padding(
+                  padding: EdgeInsets.only(
+                    top: 16.h
+                  ),
+                  child: OrderItemContainerSkeleton(isLast: isLast),
+                );
               },
             ),
           ],

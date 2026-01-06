@@ -12,7 +12,6 @@ import 'package:flutter_app/utils/format_helper.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:reactive_forms/reactive_forms.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/models/balance.dart';
 import '../../core/store/lucky_store.dart';
@@ -200,7 +199,7 @@ class _DepositPageState extends ConsumerState<DepositPage> {
                     hintStyle: TextStyle(
                       fontSize: 36.sp,
                       fontWeight: FontWeight.bold,
-                      color: context.utilityGray300 ?? Colors.grey[300],
+                      color: context.utilityGray300,
                     ),
                     border: InputBorder.none,
                   ),
@@ -319,7 +318,7 @@ class _DepositPageState extends ConsumerState<DepositPage> {
                   style: TextStyle(
                     fontSize: 12.sp,
                     // 绿色强调无手续费
-                    color: context.utilitySuccess500 ?? Colors.green,
+                    color: context.utilitySuccess500,
                     fontWeight: FontWeight.w500,
                   ),
                 ),

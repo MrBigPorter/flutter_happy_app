@@ -7,12 +7,8 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:easy_localization/easy_localization.dart';
 
-// 你的组件引用
 import 'package:flutter_app/ui/button/button.dart';
 import 'package:flutter_app/ui/button/variant.dart';
-import '../../../core/providers/wallet_provider.dart';
-// 如果有 API，请解开下行注释
-// import 'package:flutter_app/api/lucky_api.dart';
 
 class DepositResultPage extends ConsumerStatefulWidget {
   final String orderNo;

@@ -188,7 +188,7 @@ class AddressSection extends ConsumerWidget {
                   ),
                   SizedBox(width: 8.w),
                   Text(
-                    address.phone ?? '',
+                    address.phone,
                     style: TextStyle(
                       color: context.textSecondary700,
                       fontSize: context.textSm,
@@ -199,7 +199,7 @@ class AddressSection extends ConsumerWidget {
               ),
               SizedBox(height: 4.w),
               Text(
-                address.fullAddress ?? '',
+                address.fullAddress,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
