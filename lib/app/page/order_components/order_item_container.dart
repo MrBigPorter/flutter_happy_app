@@ -801,7 +801,7 @@ class OrderItemContainerSkeleton extends StatelessWidget {
                 Skeleton.react(width: 60.w, height: 18.w, borderRadius: BorderRadius.circular(4.w)),
               ],
             ),
-            SizedBox(height: 12.w),
+            SizedBox(height: 12.h),
 
             // 2. 中部：图片 + 标题
             Row(
@@ -842,7 +842,7 @@ class OrderItemContainerSkeleton extends StatelessWidget {
                 Skeleton.react(width: 40.w, height: 12.w),
               ],
             ),
-            SizedBox(height: 12.w),
+            SizedBox(height: 12.h),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -851,10 +851,10 @@ class OrderItemContainerSkeleton extends StatelessWidget {
               ],
             ),
 
-            SizedBox(height: 16.w),
+            SizedBox(height: 16.h),
             // 分割线
             Container(height: 1, color: context.borderSecondary.withOpacity(0.3)),
-            SizedBox(height: 16.w),
+            SizedBox(height: 16.h),
 
             // 4. 底部：总价 + 按钮
             Row(
@@ -864,27 +864,26 @@ class OrderItemContainerSkeleton extends StatelessWidget {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Skeleton.react(width: 40.w, height: 10.w),
+                    Skeleton.react(width: 35.w, height: 10.h),
                     SizedBox(height: 4.w),
-                    Skeleton.react(width: 80.w, height: 18.w),
+                    Skeleton.react(width: 60.w, height: 18.h),
                   ],
                 ),
                 // 右侧按钮组
-                Row(
+                Flexible(child:Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Skeleton.react(
-                      width: 80.w,
+                      width: 60.w,
                       height: 36.h,
-                      borderRadius: BorderRadius.circular(18.h),
                     ),
                     SizedBox(width: 8.w),
                     Skeleton.react(
-                      width: 80.w,
+                      width: 65.w,
                       height: 36.h,
-                      borderRadius: BorderRadius.circular(18.h),
                     ),
                   ],
-                )
+                ))
               ],
             ),
           ],

@@ -241,6 +241,9 @@ class _BottomNavigationBarState extends ConsumerState<_BottomNavigationBar>
         return PaymentSuccessSheet(
           title: widget.title,
           purchaseResponse: result.data!,
+          onClose: () {
+            close();
+          },
         );
       },
     );

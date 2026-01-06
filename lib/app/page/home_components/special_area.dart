@@ -165,6 +165,7 @@ class SpecialArea extends StatelessWidget {
 
         /// 下半部分：价格 + 倒计时 + 按钮
         Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween, // 使用对齐方式替代 Spacer
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             // 价格列
@@ -191,32 +192,19 @@ class SpecialArea extends StatelessWidget {
                 ),
               ],
             ),
-            Spacer(),
 
-            // 倒计时列
-            RenderCountdown(
-              lotteryTime: item.lotteryTime,
-              renderSoldOut: () => _buildStatusColumn(
-                context,
-                'common.draw_once'.tr(),
-                'common.sold'.tr(),
-                isError: true,
-              ),
-              renderEnd: (days) => _buildStatusColumn(
-                context,
-                'common.refile_end'.tr(),
-                'common.days'.tr(namedArgs: {'days': days.toString()}),
-                isError: true,
-              ),
-              renderCountdown: (time) => _buildStatusColumn(
-                context,
-                'common.countdown'.tr(),
-                time,
-                isError: true,
+            // 2. 倒计时列 (建议包裹 Flexible 并在内部处理挤压)
+            Flexible(
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: 4.w),
+                child: RenderCountdown(
+                  lotteryTime: item.lotteryTime,
+                  renderSoldOut: () => _buildStatusColumn(context, 'common.draw_once'.tr(), 'common.sold'.tr(), isError: true),
+                  renderEnd: (days) => _buildStatusColumn(context, 'common.refile_end'.tr(), 'common.days'.tr(namedArgs: {'days': days.toString()}), isError: true),
+                  renderCountdown: (time) => _buildStatusColumn(context, 'common.countdown'.tr(), time, isError: true),
+                ),
               ),
             ),
-
-            Spacer(),
 
             // 按钮 (仅作视觉展示，点击事件由父级 GestureDetector 接管)
             IgnorePointer(
