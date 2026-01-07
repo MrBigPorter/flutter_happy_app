@@ -79,6 +79,18 @@ class Api {
     return Balance.fromJson(res);
   }
 
+  /// 支付渠道列表 payment channels
+  static Future<List<PaymentChannelConfigItem>> clientPaymentChannelsRecharge() async {
+    final res = await Http.get('/api/v1/client/payment/channels/recharge');
+    return parseList<PaymentChannelConfigItem>(res, (e) => PaymentChannelConfigItem.fromJson(e));
+  }
+
+  // 取款支付渠道列表 payment channels
+  static Future<List<PaymentChannelConfigItem>> clientPaymentChannelsWithdraw() async {
+    final res = await Http.get('/api/v1/client/payment/channels/withdraw');
+    return parseList<PaymentChannelConfigItem>(res, (e) => PaymentChannelConfigItem.fromJson(e));
+  }
+
   /// 创建充值订单 create recharge order
   static Future<RechargeResponse> walletRechargeCreateApi(CreateRechargeDto data) async {
     final res = await Http.post('/api/v1/wallet/recharge/create', data: data.toJson());

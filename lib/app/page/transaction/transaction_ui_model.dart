@@ -9,9 +9,17 @@ class TransactionUiModel {
   final double amount;
   final DateTime time;
   final String statusText;
-  /// UI 状态映射: 1:Pending/Processing, 2:Success, 3:Failed/Rejected
+
+  /// UI 状态映射:
+  /// 1: Pending/Processing (进行中 - 黄色/蓝色)
+  /// 2: Success (成功 - 绿色)
+  /// 3: Failed/Rejected (失败 - 红色)
   final int statusCode;
+
   final UiTransactionType type;
+
+  /// 用于 UI 层决定加载哪个本地图标资源
+  final String? iconCode;
 
   TransactionUiModel({
     required this.id,
@@ -21,70 +29,79 @@ class TransactionUiModel {
     required this.statusText,
     required this.statusCode,
     required this.type,
+    this.iconCode,
   });
 }
 
+/// ==================================================
 /// 适配器：充值订单 -> UI模型
-/// 修改点：针对 WalletRechargeHistoryItem 进行适配
+/// ==================================================
 extension WalletRechargeHistoryItemExt on WalletRechargeHistoryItem {
   TransactionUiModel toUiModel() {
     String text;
     int code;
 
+    // 1. 状态映射
     // rechargeStatus: 1-Pending, 2-Processing, 3-Success, 4-Failed, 5-Canceled
     switch (rechargeStatus) {
       case 1: // Pending
       case 2: // Processing
         text = "Processing";
-        code = 1; // 对应 UI 的进行中颜色
+        code = 1;
         break;
       case 3: // Success
         text = "Success";
-        code = 2; // 对应 UI 的成功颜色
+        code = 2;
         break;
       case 4: // Failed
       case 5: // Canceled
         text = "Failed";
-        code = 3; // 对应 UI 的失败颜色
+        code = 3;
         break;
       default:
         text = "Unknown";
         code = 1;
     }
 
-    // 根据 paymentMethod 生成标题
-    // 1-GCash, 2-PayMaya, 3-Bank Transfer, 4-Card
-    String methodTitle;
-    switch (paymentMethod) {
-      case 1:
-        methodTitle = "GCash";
-        break;
-      case 2:
-        methodTitle = "PayMaya";
-        break;
-      case 3:
-        methodTitle = "Bank Transfer";
-        break;
-      case 4:
-        methodTitle = "Credit/Debit Card";
-        break;
-      default:
-        methodTitle = "Deposit";
+    // 2. 标题逻辑 (核心修改)
+    String methodTitle = paymentChannel ?? '';
+
+    // 兜底逻辑：如果历史数据没有 channelName，则根据 paymentMethod 泛指
+    if (methodTitle.isEmpty) {
+      switch (paymentMethod) {
+        case 1:
+          methodTitle = "E-Wallet";
+          break;
+        case 2:
+          methodTitle = "Online Banking";
+          break;
+        case 3:
+          methodTitle = "Bank Transfer";
+          break;
+        case 4:
+          methodTitle = "Credit/Debit Card";
+          break;
+        default:
+          methodTitle = "Deposit";
+      }
     }
 
     return TransactionUiModel(
-      id: rechargeNo, // 修正：使用 rechargeNo
-      title: methodTitle, // 修正：使用支付方式作为标题
-      amount: double.tryParse(rechargeAmount) ?? 0.0, // 修正：后端返回的是 String
+      id: rechargeNo,
+      title: methodTitle, // 显示具体渠道名
+      amount: double.tryParse(rechargeAmount) ?? 0.0,
       time: DateTime.fromMillisecondsSinceEpoch(createdAt.toInt()),
       statusText: text,
       statusCode: code,
       type: UiTransactionType.deposit,
+      iconCode: channelCode,
     );
   }
 }
 
-/// 适配器：提现记录 -> UI模型 (保持不变)
+/// ==================================================
+/// 适配器：提现记录 -> UI模型
+/// ==================================================
 extension WalletWithdrawHistoryItemExt on WalletWithdrawHistoryItem {
   TransactionUiModel toUiModel() {
     String text;
@@ -129,6 +146,8 @@ extension WalletWithdrawHistoryItemExt on WalletWithdrawHistoryItem {
       statusText: text,
       statusCode: code,
       type: UiTransactionType.withdraw,
+      // 提现暂时不指定特定渠道图标，传 null
+      iconCode: null,
     );
   }
 }

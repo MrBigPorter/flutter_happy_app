@@ -30,14 +30,7 @@ CreateRechargeDto _$CreateRechargeDtoFromJson(Map<String, dynamic> json) =>
     $checkedCreate('CreateRechargeDto', json, ($checkedConvert) {
       final val = CreateRechargeDto(
         amount: $checkedConvert('amount', (v) => v as num),
-        channelCode: $checkedConvert(
-          'channelCode',
-          (v) => (v as num?)?.toInt(),
-        ),
-        paymentMethod: $checkedConvert(
-          'paymentMethod',
-          (v) => (v as num?)?.toInt(),
-        ),
+        channelId: $checkedConvert('channelId', (v) => (v as num).toInt()),
       );
       return val;
     });
@@ -45,8 +38,7 @@ CreateRechargeDto _$CreateRechargeDtoFromJson(Map<String, dynamic> json) =>
 Map<String, dynamic> _$CreateRechargeDtoToJson(CreateRechargeDto instance) =>
     <String, dynamic>{
       'amount': instance.amount,
-      'channelCode': instance.channelCode,
-      'paymentMethod': instance.paymentMethod,
+      'channelId': instance.channelId,
     };
 
 RechargeResponse _$RechargeResponseFromJson(Map<String, dynamic> json) =>
@@ -210,6 +202,8 @@ WalletWithdrawHistoryItem _$WalletWithdrawHistoryItemFromJson(
     rejectReason: $checkedConvert('rejectReason', (v) => v as String?),
     accountName: $checkedConvert('accountName', (v) => v as String),
     withdrawAccount: $checkedConvert('withdrawAccount', (v) => v as String),
+    channelName: $checkedConvert('channelName', (v) => v as String?),
+    channelCode: $checkedConvert('channelCode', (v) => v as String?),
   );
   return val;
 });
@@ -229,6 +223,8 @@ Map<String, dynamic> _$WalletWithdrawHistoryItemToJson(
   'rejectReason': instance.rejectReason,
   'accountName': instance.accountName,
   'withdrawAccount': instance.withdrawAccount,
+  'channelName': instance.channelName,
+  'channelCode': instance.channelCode,
 };
 
 WalletRechargeHistoryDto _$WalletRechargeHistoryDtoFromJson(
@@ -264,6 +260,9 @@ WalletRechargeHistoryItem _$WalletRechargeHistoryItemFromJson(
     paymentMethod: $checkedConvert('paymentMethod', (v) => (v as num).toInt()),
     createdAt: $checkedConvert('createdAt', (v) => v as num),
     paidAt: $checkedConvert('paidAt', (v) => v as num?),
+    channelName: $checkedConvert('channelName', (v) => v as String?),
+    channelCode: $checkedConvert('channelCode', (v) => v as String?),
+    paymentChannel: $checkedConvert('paymentChannel', (v) => v as String?),
   );
   return val;
 });
@@ -276,6 +275,49 @@ Map<String, dynamic> _$WalletRechargeHistoryItemToJson(
   'actualAmount': instance.actualAmount,
   'rechargeStatus': instance.rechargeStatus,
   'paymentMethod': instance.paymentMethod,
+  'paymentChannel': instance.paymentChannel,
   'createdAt': instance.createdAt,
   'paidAt': instance.paidAt,
+  'channelName': instance.channelName,
+  'channelCode': instance.channelCode,
+};
+
+PaymentChannelConfigItem _$PaymentChannelConfigItemFromJson(
+  Map<String, dynamic> json,
+) => $checkedCreate('PaymentChannelConfigItem', json, ($checkedConvert) {
+  final val = PaymentChannelConfigItem(
+    id: $checkedConvert('id', (v) => (v as num).toInt()),
+    code: $checkedConvert('code', (v) => v as String),
+    name: $checkedConvert('name', (v) => v as String),
+    icon: $checkedConvert('icon', (v) => v as String?),
+    minAmount: $checkedConvert(
+      'minAmount',
+      (v) => JsonNumConverter.toDouble(v),
+    ),
+    maxAmount: $checkedConvert(
+      'maxAmount',
+      (v) => JsonNumConverter.toDouble(v),
+    ),
+    fixedAmounts: $checkedConvert(
+      'fixedAmounts',
+      (v) => (v as List<dynamic>?)?.map((e) => e as num).toList(),
+    ),
+    fee: $checkedConvert('fee', (v) => v as num?),
+    isCustom: $checkedConvert('isCustom', (v) => v as bool),
+  );
+  return val;
+});
+
+Map<String, dynamic> _$PaymentChannelConfigItemToJson(
+  PaymentChannelConfigItem instance,
+) => <String, dynamic>{
+  'id': instance.id,
+  'code': instance.code,
+  'name': instance.name,
+  'icon': instance.icon,
+  'minAmount': instance.minAmount,
+  'maxAmount': instance.maxAmount,
+  'fixedAmounts': instance.fixedAmounts,
+  'fee': instance.fee,
+  'isCustom': instance.isCustom,
 };

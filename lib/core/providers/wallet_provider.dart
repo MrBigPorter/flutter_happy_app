@@ -1,4 +1,5 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:flutter_app/utils/cache/cache_for_extension.dart';
 
 import '../api/lucky_api.dart';
 import '../models/balance.dart';
@@ -6,6 +7,18 @@ import '../models/balance.dart';
 part 'wallet_provider.g.dart';
 
 
+@riverpod
+Future<List<PaymentChannelConfigItem>> clientPaymentChannelsRecharge(ClientPaymentChannelsRechargeRef ref) async {
+  ref.cacheFor(const Duration(minutes: 1));
+
+  return await Api.clientPaymentChannelsRecharge();
+}
+
+@riverpod
+Future<List<PaymentChannelConfigItem>> clientPaymentChannelsWithdraw(ClientPaymentChannelsWithdrawRef ref) async {
+  ref.cacheFor(const Duration(minutes: 1));
+  return await Api.clientPaymentChannelsWithdraw();
+}
 
 @riverpod
 Future<Balance> walletBalance(WalletBalanceRef ref) async {

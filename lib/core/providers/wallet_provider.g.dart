@@ -6,6 +6,46 @@ part of 'wallet_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
+String _$clientPaymentChannelsRechargeHash() =>
+    r'6487566d8e54c844d9e4c55ede2b493f4dd4be22';
+
+/// See also [clientPaymentChannelsRecharge].
+@ProviderFor(clientPaymentChannelsRecharge)
+final clientPaymentChannelsRechargeProvider =
+    AutoDisposeFutureProvider<List<PaymentChannelConfigItem>>.internal(
+      clientPaymentChannelsRecharge,
+      name: r'clientPaymentChannelsRechargeProvider',
+      debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+          ? null
+          : _$clientPaymentChannelsRechargeHash,
+      dependencies: null,
+      allTransitiveDependencies: null,
+    );
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef ClientPaymentChannelsRechargeRef =
+    AutoDisposeFutureProviderRef<List<PaymentChannelConfigItem>>;
+String _$clientPaymentChannelsWithdrawHash() =>
+    r'38ac04adc03360f72e4f33aca0ed9d170309bce7';
+
+/// See also [clientPaymentChannelsWithdraw].
+@ProviderFor(clientPaymentChannelsWithdraw)
+final clientPaymentChannelsWithdrawProvider =
+    AutoDisposeFutureProvider<List<PaymentChannelConfigItem>>.internal(
+      clientPaymentChannelsWithdraw,
+      name: r'clientPaymentChannelsWithdrawProvider',
+      debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+          ? null
+          : _$clientPaymentChannelsWithdrawHash,
+      dependencies: null,
+      allTransitiveDependencies: null,
+    );
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef ClientPaymentChannelsWithdrawRef =
+    AutoDisposeFutureProviderRef<List<PaymentChannelConfigItem>>;
 String _$walletBalanceHash() => r'47f3319f0a079a5247d1e27809c475199b2ba1d4';
 
 /// See also [walletBalance].

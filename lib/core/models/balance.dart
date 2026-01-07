@@ -33,13 +33,11 @@ class Balance {
 @JsonSerializable(checked: true)
 class CreateRechargeDto {
   final num amount;
-  final int? channelCode;
-  final int? paymentMethod;
+  final int channelId;
 
   CreateRechargeDto({
     required this.amount,
-    this.channelCode,
-    this.paymentMethod,
+    required this.channelId,
   });
 
   factory CreateRechargeDto.fromJson(Map<String, dynamic> json) =>
@@ -217,6 +215,9 @@ class WalletWithdrawHistoryItem {
   final String accountName;
   final String withdrawAccount;
 
+  final String? channelName;
+  final String? channelCode;
+
   WalletWithdrawHistoryItem({
     required this.withdrawNo,
     required this.amount,
@@ -230,6 +231,8 @@ class WalletWithdrawHistoryItem {
     this.rejectReason,
     required this.accountName,
     required this.withdrawAccount,
+    this.channelName,
+    this.channelCode,
   });
 
   factory WalletWithdrawHistoryItem.fromJson(Map<String, dynamic> json) =>
@@ -284,9 +287,13 @@ class WalletRechargeHistoryItem {
 
   /// 支付方式: 1-GCash 2-PayMaya...
   final int paymentMethod;
+  final String? paymentChannel;
 
   final num createdAt;
   final num? paidAt;
+  final String? channelName;
+  final String? channelCode;
+
 
   WalletRechargeHistoryItem({
     required this.rechargeNo,
@@ -296,12 +303,73 @@ class WalletRechargeHistoryItem {
     required this.paymentMethod,
     required this.createdAt,
     this.paidAt,
+    this.channelName,
+    this.channelCode,
+    this.paymentChannel,
   });
 
   factory WalletRechargeHistoryItem.fromJson(Map<String, dynamic> json) =>
       _$WalletRechargeHistoryItemFromJson(json);
 
   Map<String, dynamic> toJson() => _$WalletRechargeHistoryItemToJson(this);
+
+  @override
+  String toString() {
+    return toJson().toString();
+  }
+}
+
+// ==========================================
+//  Payment Channel Config (收银台配置) - 新增
+// ==========================================
+
+@JsonSerializable(checked: true)
+class PaymentChannelConfigItem {
+  /// 渠道ID (下单传此ID)
+  final int id;
+
+  /// 渠道编码 (e.g. PH_GCASH, PH_BDO)
+  final String code;
+
+  /// 渠道名称 (e.g. GCash)
+  final String name;
+
+  /// 图标 URL
+  final String? icon;
+
+  /// 单笔最小限额
+  @JsonKey(fromJson: JsonNumConverter.toDouble)
+  final double minAmount;
+
+  /// 单笔最大限额
+  @JsonKey(fromJson: JsonNumConverter.toDouble)
+  final double maxAmount;
+
+  /// 快捷金额卡片 (仅充值有效, e.g. [100, 200, 500])
+  final List<num>? fixedAmounts;
+
+  /// 用户需要支付的手续费 (仅提现有效)
+  final num? fee;
+
+  /// 是否允许输入自定义金额
+  final bool isCustom;
+
+  PaymentChannelConfigItem({
+    required this.id,
+    required this.code,
+    required this.name,
+     this.icon,
+    required this.minAmount,
+    required this.maxAmount,
+    this.fixedAmounts,
+    this.fee,
+    required this.isCustom,
+  });
+
+  factory PaymentChannelConfigItem.fromJson(Map<String, dynamic> json) =>
+      _$PaymentChannelConfigItemFromJson(json);
+
+  Map<String, dynamic> toJson() => _$PaymentChannelConfigItemToJson(this);
 
   @override
   String toString() {
