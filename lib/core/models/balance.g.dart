@@ -122,9 +122,9 @@ WalletWithdrawApplyDto _$WalletWithdrawApplyDtoFromJson(
 ) => $checkedCreate('WalletWithdrawApplyDto', json, ($checkedConvert) {
   final val = WalletWithdrawApplyDto(
     amount: $checkedConvert('amount', (v) => v as num),
-    withdrawMethod: $checkedConvert('withdrawMethod', (v) => v as num),
     account: $checkedConvert('account', (v) => v as String),
     accountName: $checkedConvert('accountName', (v) => v as String),
+    channelId: $checkedConvert('channelId', (v) => (v as num).toInt()),
     bankName: $checkedConvert('bankName', (v) => v as String?),
   );
   return val;
@@ -134,7 +134,7 @@ Map<String, dynamic> _$WalletWithdrawApplyDtoToJson(
   WalletWithdrawApplyDto instance,
 ) => <String, dynamic>{
   'amount': instance.amount,
-  'withdrawMethod': instance.withdrawMethod,
+  'channelId': instance.channelId,
   'account': instance.account,
   'accountName': instance.accountName,
   'bankName': instance.bankName,
@@ -298,11 +298,12 @@ PaymentChannelConfigItem _$PaymentChannelConfigItemFromJson(
       'maxAmount',
       (v) => JsonNumConverter.toDouble(v),
     ),
+    feeRate: $checkedConvert('feeRate', (v) => JsonNumConverter.toDouble(v)),
+    feeFixed: $checkedConvert('feeFixed', (v) => JsonNumConverter.toDouble(v)),
     fixedAmounts: $checkedConvert(
       'fixedAmounts',
       (v) => (v as List<dynamic>?)?.map((e) => e as num).toList(),
     ),
-    fee: $checkedConvert('fee', (v) => v as num?),
     isCustom: $checkedConvert('isCustom', (v) => v as bool),
   );
   return val;
@@ -318,6 +319,7 @@ Map<String, dynamic> _$PaymentChannelConfigItemToJson(
   'minAmount': instance.minAmount,
   'maxAmount': instance.maxAmount,
   'fixedAmounts': instance.fixedAmounts,
-  'fee': instance.fee,
+  'feeRate': instance.feeRate,
+  'feeFixed': instance.feeFixed,
   'isCustom': instance.isCustom,
 };

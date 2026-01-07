@@ -35,39 +35,20 @@ final Map<String, ValidationMessageFunction> kWithdrawValidationMessages = {
     }
   },
 
- /* // === 3. 账户与渠道 (Account & Channel) ===
-  'withdrawMethod': (_) => 'Please select a withdrawal method.',
 
   // 银行卡/电子钱包格式校验
-  'accountNo': (error) {
+  'accountNumber': (error) {
     final err = error as Map<String, dynamic>;
     if (err['reason'] == 'format') return 'Invalid account number format.';
     return 'Please enter a valid account number.';
   },
 
-  // 姓名匹配校验 (防洗钱核心)
-  'accountNameMatch': (_) => 'Account name must match your verified identity name.',
-
-  // 银行/分行信息
-  'bankName': (_) => 'Please select your bank.',
-  'branchName': (_) => 'Please enter the branch information.',
-
-  // === 4. 安全验证 (Security) ===
-  // 交易密码
-  'transactionPassword': (error) {
+  // 姓名格式校验
+  'accountName': (error) {
     final err = error as Map<String, dynamic>;
-    if (err['reason'] == 'wrong') return 'Incorrect transaction password.';
-    if (err['reason'] == 'length') return 'Password must be 6 digits.';
-    return 'Security verification failed.';
+    if (err['reason'] == 'format') return 'Invalid name format.';
+    return 'Please enter a valid name.';
   },
 
-  // 提现频率限制
-  'frequencyLimit': (_) => 'Please wait a few minutes before the next withdrawal.',
 
-  // === 5. 合规状态 (Compliance) ===
-  'kycRequired': (_) => 'Identity verification (KYC) is required for withdrawal.',
-  'turnoverNotMet': (error) {
-    final remaining = (error as Map)['remaining'];
-    return 'Remaining betting turnover required: ₱$remaining';
-  },*/
 };

@@ -102,12 +102,15 @@ extension WalletRechargeHistoryItemExt on WalletRechargeHistoryItem {
 /// ==================================================
 /// 适配器：提现记录 -> UI模型
 /// ==================================================
+/// ==================================================
+/// 适配器：提现记录 -> UI模型
+/// ==================================================
 extension WalletWithdrawHistoryItemExt on WalletWithdrawHistoryItem {
   TransactionUiModel toUiModel() {
     String text;
     int code;
 
-    // withdrawStatus: 1-Pending Audit, 2-Approved, 3-Processing, 4-Success, 5-Rejected, 6-Failed
+    // 1. 状态映射 (保持不变)
     switch (withdrawStatus) {
       case 1:
         text = "Pending Audit";
@@ -138,16 +141,24 @@ extension WalletWithdrawHistoryItemExt on WalletWithdrawHistoryItem {
         code = 1;
     }
 
+    String methodTitle = channelName ?? '';
+
+    if (methodTitle.isEmpty) {
+      methodTitle = "Withdraw to $accountName"; // 最后的兜底
+    }
+
     return TransactionUiModel(
       id: withdrawNo,
-      title: "Withdraw to $accountName",
+      title: methodTitle,
       amount: double.tryParse(actualAmount) ?? 0.0,
       time: DateTime.fromMillisecondsSinceEpoch(createdAt.toInt()),
       statusText: text,
       statusCode: code,
       type: UiTransactionType.withdraw,
-      // 提现暂时不指定特定渠道图标，传 null
-      iconCode: null,
+
+      //  核心修改：传入 channelCode
+      // 虽然目前的 UI 可能只是显示通用图标，但把数据传过去是好的实践
+      iconCode: channelCode,
     );
   }
 }

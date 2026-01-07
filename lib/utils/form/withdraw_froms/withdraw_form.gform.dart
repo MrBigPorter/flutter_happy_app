@@ -233,6 +233,10 @@ class WithdrawFormModelForm
 
   static const String amountControlName = "amount";
 
+  static const String accountNameControlName = "accountName";
+
+  static const String accountNumberControlName = "accountNumber";
+
   final FormGroup form;
 
   final String? path;
@@ -241,9 +245,21 @@ class WithdrawFormModelForm
 
   String amountControlPath() => pathBuilder(amountControlName);
 
+  String accountNameControlPath() => pathBuilder(accountNameControlName);
+
+  String accountNumberControlPath() => pathBuilder(accountNumberControlName);
+
   String get _amountValue => amountControl.value ?? '';
 
+  String get _accountNameValue => accountNameControl.value ?? '';
+
+  String get _accountNumberValue => accountNumberControl.value ?? '';
+
   String get _amountRawValue => amountControl.value ?? '';
+
+  String get _accountNameRawValue => accountNameControl.value ?? '';
+
+  String get _accountNumberRawValue => accountNumberControl.value ?? '';
 
   @Deprecated(
       'Generator completely wraps the form and ensures at startup that all controls are present inside the form so we do not need this additional step')
@@ -256,9 +272,39 @@ class WithdrawFormModelForm
     }
   }
 
+  @Deprecated(
+      'Generator completely wraps the form and ensures at startup that all controls are present inside the form so we do not need this additional step')
+  bool get containsAccountName {
+    try {
+      form.control(accountNameControlPath());
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  @Deprecated(
+      'Generator completely wraps the form and ensures at startup that all controls are present inside the form so we do not need this additional step')
+  bool get containsAccountNumber {
+    try {
+      form.control(accountNumberControlPath());
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
   Map<String, Object> get amountErrors => amountControl.errors;
 
+  Map<String, Object> get accountNameErrors => accountNameControl.errors;
+
+  Map<String, Object> get accountNumberErrors => accountNumberControl.errors;
+
   void get amountFocus => form.focus(amountControlPath());
+
+  void get accountNameFocus => form.focus(accountNameControlPath());
+
+  void get accountNumberFocus => form.focus(accountNumberControlPath());
 
   void amountValueUpdate(
     String value, {
@@ -269,12 +315,48 @@ class WithdrawFormModelForm
         updateParent: updateParent, emitEvent: emitEvent);
   }
 
+  void accountNameValueUpdate(
+    String value, {
+    bool updateParent = true,
+    bool emitEvent = true,
+  }) {
+    accountNameControl.updateValue(value,
+        updateParent: updateParent, emitEvent: emitEvent);
+  }
+
+  void accountNumberValueUpdate(
+    String value, {
+    bool updateParent = true,
+    bool emitEvent = true,
+  }) {
+    accountNumberControl.updateValue(value,
+        updateParent: updateParent, emitEvent: emitEvent);
+  }
+
   void amountValuePatch(
     String value, {
     bool updateParent = true,
     bool emitEvent = true,
   }) {
     amountControl.patchValue(value,
+        updateParent: updateParent, emitEvent: emitEvent);
+  }
+
+  void accountNameValuePatch(
+    String value, {
+    bool updateParent = true,
+    bool emitEvent = true,
+  }) {
+    accountNameControl.patchValue(value,
+        updateParent: updateParent, emitEvent: emitEvent);
+  }
+
+  void accountNumberValuePatch(
+    String value, {
+    bool updateParent = true,
+    bool emitEvent = true,
+  }) {
+    accountNumberControl.patchValue(value,
         updateParent: updateParent, emitEvent: emitEvent);
   }
 
@@ -293,8 +375,44 @@ class WithdrawFormModelForm
         disabled: disabled,
       );
 
+  void accountNameValueReset(
+    String value, {
+    bool updateParent = true,
+    bool emitEvent = true,
+    bool removeFocus = false,
+    bool? disabled,
+  }) =>
+      accountNameControl.reset(
+        value: value,
+        updateParent: updateParent,
+        emitEvent: emitEvent,
+        removeFocus: removeFocus,
+        disabled: disabled,
+      );
+
+  void accountNumberValueReset(
+    String value, {
+    bool updateParent = true,
+    bool emitEvent = true,
+    bool removeFocus = false,
+    bool? disabled,
+  }) =>
+      accountNumberControl.reset(
+        value: value,
+        updateParent: updateParent,
+        emitEvent: emitEvent,
+        removeFocus: removeFocus,
+        disabled: disabled,
+      );
+
   FormControl<String> get amountControl =>
       form.control(amountControlPath()) as FormControl<String>;
+
+  FormControl<String> get accountNameControl =>
+      form.control(accountNameControlPath()) as FormControl<String>;
+
+  FormControl<String> get accountNumberControl =>
+      form.control(accountNumberControlPath()) as FormControl<String>;
 
   void amountSetDisabled(
     bool disabled, {
@@ -314,6 +432,42 @@ class WithdrawFormModelForm
     }
   }
 
+  void accountNameSetDisabled(
+    bool disabled, {
+    bool updateParent = true,
+    bool emitEvent = true,
+  }) {
+    if (disabled) {
+      accountNameControl.markAsDisabled(
+        updateParent: updateParent,
+        emitEvent: emitEvent,
+      );
+    } else {
+      accountNameControl.markAsEnabled(
+        updateParent: updateParent,
+        emitEvent: emitEvent,
+      );
+    }
+  }
+
+  void accountNumberSetDisabled(
+    bool disabled, {
+    bool updateParent = true,
+    bool emitEvent = true,
+  }) {
+    if (disabled) {
+      accountNumberControl.markAsDisabled(
+        updateParent: updateParent,
+        emitEvent: emitEvent,
+      );
+    } else {
+      accountNumberControl.markAsEnabled(
+        updateParent: updateParent,
+        emitEvent: emitEvent,
+      );
+    }
+  }
+
   @override
   WithdrawFormModel get model {
     final isValid = !currentForm.hasErrors && currentForm.errors.isEmpty;
@@ -325,12 +479,18 @@ class WithdrawFormModelForm
         StackTrace.current,
       );
     }
-    return WithdrawFormModel(amount: _amountValue);
+    return WithdrawFormModel(
+        amount: _amountValue,
+        accountName: _accountNameValue,
+        accountNumber: _accountNumberValue);
   }
 
   @override
   WithdrawFormModel get rawModel {
-    return WithdrawFormModel(amount: _amountRawValue);
+    return WithdrawFormModel(
+        amount: _amountRawValue,
+        accountName: _accountNameRawValue,
+        accountNumber: _accountNumberRawValue);
   }
 
   @override
@@ -424,6 +584,20 @@ class WithdrawFormModelForm
         amountControlName: FormControl<String>(
             value: withdrawFormModel?.amount,
             validators: [NonEmpty(), WithdrawAmount()],
+            asyncValidators: [],
+            asyncValidatorsDebounceTime: 250,
+            disabled: false,
+            touched: false),
+        accountNameControlName: FormControl<String>(
+            value: withdrawFormModel?.accountName,
+            validators: [NonEmpty(), MinLengthValidator(2)],
+            asyncValidators: [],
+            asyncValidatorsDebounceTime: 250,
+            disabled: false,
+            touched: false),
+        accountNumberControlName: FormControl<String>(
+            value: withdrawFormModel?.accountNumber,
+            validators: [NonEmpty(), MinLengthValidator(5)],
             asyncValidators: [],
             asyncValidatorsDebounceTime: 250,
             disabled: false,

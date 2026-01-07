@@ -1,28 +1,30 @@
 import 'package:easy_localization/easy_localization.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:flutter_app/app/page/withdraw/withdraw_success_modal.dart';
-import 'package:flutter_app/core/models/kyc.dart';
-import 'package:flutter_app/core/providers/wallet_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:reactive_forms/reactive_forms.dart';
 
-// 基础组件
+// --- Base & UI Components ---
 import 'package:flutter_app/common.dart';
 import 'package:flutter_app/components/base_scaffold.dart';
 import 'package:flutter_app/ui/index.dart';
-import 'package:flutter_app/core/store/lucky_store.dart';
 import 'package:flutter_app/utils/format_helper.dart';
 
-// 你的表单生成文件
-import 'package:flutter_app/utils/form/withdraw_froms/withdraw_form.dart';
-import 'package:flutter_app/utils/form/validation/k_withdraw_validation_messages.dart';
+// --- Models, Store & Providers ---
+import 'package:flutter_app/core/store/lucky_store.dart';
+import 'package:flutter_app/core/models/balance.dart';
+import 'package:flutter_app/core/models/kyc.dart';
+import 'package:flutter_app/core/providers/wallet_provider.dart';
 
-import '../../core/models/balance.dart';
-import '../../utils/form/validators.dart';
+// --- Forms & Validation ---
+import 'package:flutter_app/utils/form/validators.dart';
+import 'package:flutter_app/utils/form/withdraw_froms/withdraw_form.dart';
+import '../../utils/form/validation/k_withdraw_validation_messages.dart';
+
+// --- Modals ---
+import 'package:flutter_app/app/page/withdraw/withdraw_success_modal.dart';
 
 class WithdrawPage extends ConsumerStatefulWidget {
   const WithdrawPage({super.key});
@@ -32,77 +34,85 @@ class WithdrawPage extends ConsumerStatefulWidget {
 }
 
 class _WithdrawPageState extends ConsumerState<WithdrawPage> {
-  // 使用你生成的 FormModel
+  // 当前选中的渠道
+  PaymentChannelConfigItem? _selectedChannel;
+
+  // 表单实例
   late final WithdrawFormModelForm _form = WithdrawFormModelForm(
     WithdrawFormModelForm.formElements(const WithdrawFormModel()),
     null,
   );
 
-  // 模拟系统配置
-  final double _minWithdraw = 100.0; // 最小提现
-  final double _maxWithdraw = 5000.0; // 单笔最大提现
-  final double _feeRate = 0.02; // 2% 费率
-  final double _fixedFee = 5.0; // 固定 5 披索手续费
-
-  bool get _isKycVerified {
-    final kycStatus = ref.read(
-      luckyProvider.select((s) => s.userInfo?.kycStatus),
-    );
-    return KycStatusEnum.fromStatus(kycStatus ?? 0) == KycStatusEnum.approved;
-  }
-
   @override
   void initState() {
     super.initState();
-
-    // 1. 触发异步更新请求
+    // 初始化数据
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(luckyProvider.notifier).refreshAll();
+      ref.refresh(clientPaymentChannelsWithdrawProvider);
     });
-
-    // 2. 先用当前缓存的余额初始化一次（防止页面刚进来看不到东西或报错）
-    final currentBalance = ref.read(luckyProvider).balance.realBalance;
-    final kycStatus = ref.read(
-      luckyProvider.select((s) => s.userInfo?.kycStatus),
-    );
-
-    _updateAmountValidator(currentBalance);
   }
 
-  ///  核心方法：更新校验器
-  /// 每次余额变化或 KYC 状态变化时调用
-  void _updateAmountValidator(double currentBalance) {
-    _form.amountControl.setValidators([
+  /// 核心逻辑：动态更新金额校验器
+  void _updateValidators(double currentBalance) {
+    if (_selectedChannel == null) return;
+
+    // 1. 获取 KYC 状态
+    final kycStatus = ref.read(luckyProvider).userInfo?.kycStatus ?? 0;
+    final isVerified = KycStatusEnum.fromStatus(kycStatus) == KycStatusEnum.approved;
+
+    // 2. 获取金额控制器
+    final amountControl = _form.amountControl;
+
+    // 3. 设置动态校验规则
+    amountControl.setValidators([
       Validators.required,
       WithdrawAmount(
-        minAmount: _minWithdraw,
-        maxAmount: _maxWithdraw,
+        // 渠道限额
+        minAmount: _selectedChannel!.minAmount,
+        maxAmount: _selectedChannel!.maxAmount,
+        // 实时余额
         withdrawableBalance: currentBalance,
-        // 注入最新的余额
-        feeRate: _feeRate,
-        fixedFee: _fixedFee,
-        isAccountVerified: _isKycVerified,
-      ),
+        // 费率信息
+        feeRate: _selectedChannel!.feeRate,
+        fixedFee: _selectedChannel!.feeFixed,
+        // 用户状态
+        isAccountVerified: isVerified,
+      )
     ]);
-    // 强制刷新校验状态，让 UI 立即响应（比如去红字或亮按钮）
-    _form.amountControl.updateValueAndValidity();
+
+    // 4. 强制刷新校验状态 (让UI立即响应)
+    amountControl.updateValueAndValidity();
   }
 
   @override
   Widget build(BuildContext context) {
-    // 监听实时余额
+    // 监听数据
     final wallet = ref.watch(luckyProvider.select((s) => s.balance));
     final withdrawable = wallet.realBalance;
+    final channelsAsync = ref.watch(clientPaymentChannelsWithdrawProvider);
 
-    // 关键步骤：监听余额异步更新 (逻辑校验用)
-    // 当 updateWalletBalance 接口返回新数据时，这里会执行
-    ref.listen(luckyProvider.select((s) => s.balance.realBalance), (
-      previous,
-      next,
-    ) {
-      if (previous == next) return;
-      _updateAmountValidator(next);
+    // 逻辑：数据加载完成后，自动选中第一个渠道
+    ref.listen<AsyncValue<List<PaymentChannelConfigItem>>>(
+      clientPaymentChannelsWithdrawProvider,
+          (prev, next) {
+        next.whenData((channels) {
+          if (channels.isNotEmpty && _selectedChannel == null) {
+            setState(() {
+              _selectedChannel = channels.first;
+              _updateValidators(withdrawable);
+            });
+          }
+        });
+      },
+    );
+
+    // 逻辑：余额变化时，重新运行校验逻辑
+    ref.listen(luckyProvider.select((s) => s.balance.realBalance), (prev, next) {
+      if (prev != next) _updateValidators(next);
     });
+
+    final isPageLoading = channelsAsync.isLoading && !channelsAsync.hasValue;
 
     return ReactiveFormConfig(
       validationMessages: kWithdrawValidationMessages,
@@ -110,64 +120,61 @@ class _WithdrawPageState extends ConsumerState<WithdrawPage> {
         formGroup: _form.form,
         child: BaseScaffold(
           title: 'Withdraw'.tr(),
+          resizeToAvoidBottomInset: true,
           body: GestureDetector(
             onTap: () => FocusScope.of(context).unfocus(),
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                return SingleChildScrollView(
-                  keyboardDismissBehavior:
-                      ScrollViewKeyboardDismissBehavior.onDrag,
-                  padding: EdgeInsets.all(16.w),
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(
-                      minHeight: constraints.maxHeight,
-                    ),
-                    child: IntrinsicHeight(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          // 1. 顶部余额卡片
-                          _buildBalanceCard(withdrawable),
-                          SizedBox(height: 20.h),
+            child: SingleChildScrollView(
+              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+              padding: EdgeInsets.all(16.w),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // 1. 余额卡片
+                  _buildBalanceCard(withdrawable),
+                  SizedBox(height: 20.h),
 
-                          // 2. 金额输入区
-                          _buildInputSection(withdrawable),
-                          SizedBox(height: 20.h),
+                  if (isPageLoading)
+                    _buildSkeletonLoader()
+                  else if (channelsAsync.hasError)
+                    _buildErrorState()
+                  else ...[
+                      // 2. 金额输入区 (传入余额用于计算最大值)
+                      _buildAmountInputSection(withdrawable),
+                      SizedBox(height: 20.h),
 
-                          // 3. 提现方式选择
-                          _buildMethodSelector(),
-                          SizedBox(height: 16.h),
+                      // 3. 渠道选择
+                      Text('Withdraw Method', style: _headerStyle),
+                      SizedBox(height: 12.h),
+                      _buildChannelList(channelsAsync.value ?? []),
+                      SizedBox(height: 20.h),
 
-                          // 4. 安全提示
-                          _buildSafetyNotice(),
+                      // 4. 账号信息表单
+                      Text('Account Details', style: _headerStyle),
+                      SizedBox(height: 12.h),
+                      _buildAccountForm(),
+                    ],
 
-                          const Spacer(),
-                        ],
-                      ),
-                    ),
-                  ),
-                );
-              },
+                  SizedBox(height: 20.h),
+                  _buildSafetyNotice(),
+                  SizedBox(height: 40.h),
+                ],
+              ),
             ),
           ),
-          bottomNavigationBar: _buildBottomAction(withdrawable),
-          resizeToAvoidBottomInset: true,
+          bottomNavigationBar: _buildBottomAction(isPageLoading),
         ),
       ),
     );
   }
 
-  // 1. 顶部余额卡片
+  // --- UI Components ---
+
   Widget _buildBalanceCard(double balance) {
     return Container(
-      width: double.infinity,
       padding: EdgeInsets.all(20.w),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [
-            context.bgBrandPrimary,
-            context.bgBrandPrimary.withOpacity(0.8),
-          ],
+          colors: [context.bgBrandPrimary, context.bgBrandPrimary.withOpacity(0.8)],
         ),
         borderRadius: BorderRadius.circular(20.r),
         boxShadow: [
@@ -175,7 +182,7 @@ class _WithdrawPageState extends ConsumerState<WithdrawPage> {
             color: context.bgBrandPrimary.withOpacity(0.3),
             blurRadius: 10,
             offset: const Offset(0, 5),
-          ),
+          )
         ],
       ),
       child: Column(
@@ -199,8 +206,7 @@ class _WithdrawPageState extends ConsumerState<WithdrawPage> {
     ).animate().fadeIn();
   }
 
-  // 2. 金额输入区
-  Widget _buildInputSection(double maxAmount) {
+  Widget _buildAmountInputSection(double currentBalance) {
     return Container(
       padding: EdgeInsets.all(20.w),
       decoration: BoxDecoration(
@@ -213,16 +219,16 @@ class _WithdrawPageState extends ConsumerState<WithdrawPage> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'Withdraw Amount'.tr(),
-                style: const TextStyle(fontWeight: FontWeight.bold),
-              ),
-              // 全部提现功能
+              Text('Withdraw Amount'.tr(), style: const TextStyle(fontWeight: FontWeight.bold)),
               GestureDetector(
                 onTap: () {
                   HapticFeedback.lightImpact();
-                  // 因为是 String 类型，需转成字符串
-                  _form.amountControl.updateValue(maxAmount.toStringAsFixed(2));
+                  // 逻辑：取 余额 和 渠道限额 中较小的一个
+                  final channelMax = _selectedChannel?.maxAmount ?? double.infinity;
+                  final smartMax = (currentBalance < channelMax) ? currentBalance : channelMax;
+
+                  // 必须转为字符串
+                  _form.amountControl.value = smartMax.toStringAsFixed(2);
                 },
                 child: Text(
                   'Withdraw All'.tr(),
@@ -237,6 +243,7 @@ class _WithdrawPageState extends ConsumerState<WithdrawPage> {
           SizedBox(height: 16.h),
           ReactiveTextField<String>(
             formControlName: WithdrawFormModelForm.amountControlName,
+            showErrors: (control) => control.invalid && control.touched,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
             style: TextStyle(
               fontSize: 32.sp,
@@ -252,50 +259,28 @@ class _WithdrawPageState extends ConsumerState<WithdrawPage> {
               ),
               hintText: '0.00',
               border: InputBorder.none,
-              errorStyle: TextStyle(
-                color: context.textErrorPrimary600,
-                fontSize: 12.sp,
-              ),
-              // 清除按钮
-              suffixIcon: ReactiveValueListenableBuilder<String>(
-                formControlName: WithdrawFormModelForm.amountControlName,
-                builder: (context, control, child) {
-                  final val = control.value ?? '';
-                  if (val.isEmpty) return const SizedBox.shrink();
-                  return IconButton(
-                    icon: Icon(Icons.cancel_outlined),
-                    color: context.textPrimary900,
-                    onPressed: () => control.reset(),
-                  );
-                },
-              ),
             ),
-            showErrors: (control) => control.invalid && control.touched,
+            // 注意：这里删除了 validationMessages，因为已经在全局 ReactiveFormConfig 中配置了
           ),
           const Divider(),
           SizedBox(height: 8.h),
-          // 动态计算手续费
+          // 动态费用显示
           ReactiveValueListenableBuilder<String>(
             formControlName: WithdrawFormModelForm.amountControlName,
             builder: (context, control, child) {
-              final amountStr = control.value ?? '0';
-              final amount = double.tryParse(amountStr) ?? 0.0;
+              final amount = double.tryParse(control.value ?? '0') ?? 0.0;
+              final feeRate = _selectedChannel?.feeRate ?? 0.0;
+              final fixedFee = _selectedChannel?.feeFixed ?? 0.0;
 
-              // 计算逻辑：百分比费率 + 固定费用
               double fee = 0.0;
               if (amount > 0) {
-                fee = (amount * _feeRate) + _fixedFee;
+                fee = (amount * feeRate) + fixedFee;
               }
-
-              final actual = amount - fee > 0 ? amount - fee : 0.0;
+              final actual = (amount - fee > 0) ? amount - fee : 0.0;
 
               return Column(
                 children: [
-                  // 显示费率描述，比如 "2% + ₱5"
-                  _buildDetailRow(
-                    'Fee (2% + ₱5)',
-                    '- ${FormatHelper.formatCurrency(fee)}',
-                  ),
+                  _buildDetailRow('Fee', '- ${FormatHelper.formatCurrency(fee)}'),
                   SizedBox(height: 4.h),
                   _buildDetailRow(
                     'Actual Received',
@@ -311,87 +296,178 @@ class _WithdrawPageState extends ConsumerState<WithdrawPage> {
     );
   }
 
-  Widget _buildDetailRow(String label, String value, {bool isBold = false}) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-          label,
-          style: TextStyle(fontSize: 12.sp, color: context.textTertiary600),
-        ),
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: 13.sp,
-            fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
-            color: isBold ? context.utilitySuccess600 : context.textPrimary900,
+  Widget _buildChannelList(List<PaymentChannelConfigItem> channels) {
+    if (channels.isEmpty) return const Text("No withdrawal methods available");
+
+    return ListView.separated(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: channels.length,
+      separatorBuilder: (_, __) => SizedBox(height: 12.h),
+      itemBuilder: (context, index) {
+        final channel = channels[index];
+        final isSelected = _selectedChannel?.id == channel.id;
+
+        return GestureDetector(
+          onTap: () {
+            setState(() {
+              _selectedChannel = channel;
+              final currentBalance = ref.read(luckyProvider).balance.realBalance;
+              _updateValidators(currentBalance);
+            });
+          },
+          child: AnimatedContainer(
+            duration: 200.ms,
+            padding: EdgeInsets.all(16.w),
+            decoration: BoxDecoration(
+              color: context.bgPrimary,
+              borderRadius: BorderRadius.circular(16.r),
+              border: Border.all(
+                color: isSelected ? context.textBrandPrimary900 : context.borderSecondary,
+                width: isSelected ? 1.5 : 1,
+              ),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 32.w,
+                  height: 32.w,
+                  decoration: BoxDecoration(color: context.bgSecondary, shape: BoxShape.circle),
+                  child: ClipOval(
+                    child: Image.network(
+                      channel.icon ?? '',
+                      errorBuilder: (_, __, ___) => Icon(Icons.account_balance_wallet, size: 20.w),
+                    ),
+                  ),
+                ),
+                SizedBox(width: 12.w),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(channel.name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                ),
+                if (isSelected)
+                  Icon(Icons.check_circle, color: context.textBrandPrimary900),
+              ],
+            ),
           ),
-        ),
-      ],
+        );
+      },
     );
   }
 
-  // 3. 提现方式
-  Widget _buildMethodSelector() {
+  Widget _buildAccountForm() {
     return Container(
-      padding: EdgeInsets.all(16.w),
+      padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 8.h),
       decoration: BoxDecoration(
-        color: context.bgPrimary,
-        borderRadius: BorderRadius.circular(16.r),
-        border: Border.all(color: context.textBrandPrimary900, width: 1.5),
+        color: context.bgPrimary, // 与金额卡片背景一致
+        borderRadius: BorderRadius.circular(20.r), // 与金额卡片圆角一致
+        border: Border.all(color: context.borderSecondary), // 统一边框颜色
       ),
-      child: Row(
+      child: Column(
         children: [
-           Icon(Icons.wallet, color: Colors.green, size: 32.w),
-          SizedBox(width: 12.w),
-          const Expanded(
-            child: Text(
-              'GCash (0917 **** 888)',
-              style: TextStyle(fontWeight: FontWeight.bold),
+          // --- 1. 户名输入 ---
+          ReactiveTextField(
+            formControlName: WithdrawFormModelForm.accountNameControlName,
+            textInputAction: TextInputAction.next,
+            showErrors: (control) => control.invalid && control.touched,
+            style: TextStyle(
+              fontSize: 16.sp,
+              fontWeight: FontWeight.w600,
+              color: context.textPrimary900,
             ),
+            decoration: InputDecoration(
+              labelText: 'Account Name'.tr(),
+              labelStyle: TextStyle(
+                color: context.textTertiary600,
+                fontSize: 14.sp,
+              ),
+              hintText: 'e.g. Juan Dela Cruz',
+              hintStyle: TextStyle(color: context.utilityGray300),
+              // 🔥 核心修改：去掉边框，加入图标
+              border: InputBorder.none,
+              enabledBorder: InputBorder.none,
+              focusedBorder: InputBorder.none,
+              errorBorder: InputBorder.none,
+              focusedErrorBorder: InputBorder.none,
+              prefixIcon: Icon(
+                Icons.person_outline_rounded,
+                color: context.textTertiary600,
+                size: 22.w,
+              ),
+              prefixIconConstraints: BoxConstraints(minWidth: 40.w),
+              contentPadding: EdgeInsets.symmetric(vertical: 12.h),
+            ),
+            validationMessages: {
+              ValidationMessage.required: (_) => 'Account name is required',
+            },
           ),
-          Icon(Icons.check_circle, color: context.textBrandPrimary900),
+
+          // --- 分割线 ---
+          Divider(height: 1, color: context.utilityGray200),
+
+          // --- 2. 账号输入 ---
+          ReactiveTextField(
+            formControlName: WithdrawFormModelForm.accountNumberControlName,
+            keyboardType: TextInputType.number,
+            textInputAction: TextInputAction.done,
+            showErrors: (control) => control.invalid && control.touched,
+            style: TextStyle(
+              fontSize: 16.sp,
+              fontWeight: FontWeight.w600,
+              color: context.textPrimary900,
+              fontFamily: 'Monospace', // 账号建议用等宽字体，看起来更像银行卡号
+            ),
+            decoration: InputDecoration(
+              labelText: 'Account Number'.tr(),
+              labelStyle: TextStyle(
+                color: context.textTertiary600,
+                fontSize: 14.sp,
+              ),
+              hintText: 'e.g. 09171234567',
+              hintStyle: TextStyle(color: context.utilityGray300),
+              // 🔥 核心修改：去掉边框，加入图标
+              border: InputBorder.none,
+              enabledBorder: InputBorder.none,
+              focusedBorder: InputBorder.none,
+              errorBorder: InputBorder.none,
+              focusedErrorBorder: InputBorder.none,
+              prefixIcon: Icon(
+                Icons.credit_card_outlined,
+                color: context.textTertiary600,
+                size: 22.w,
+              ),
+              prefixIconConstraints: BoxConstraints(minWidth: 40.w),
+              contentPadding: EdgeInsets.symmetric(vertical: 12.h),
+            ),
+            validationMessages: {
+              ValidationMessage.required: (_) => 'Account number is required',
+            },
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildSafetyNotice() {
-    return Container(
-      padding: EdgeInsets.all(12.w),
-      decoration: BoxDecoration(
-        color: context.bgSecondary,
-        borderRadius: BorderRadius.circular(12.r),
-      ),
-      child: Text(
-        'withdraw.safety.notice'.tr(),
-        style: TextStyle(fontSize: 11.sp, color: context.textSecondary700),
-      ),
-    );
-  }
-
-  // 4. 底部确认按钮
-  Widget _buildBottomAction(double maxBalance) {
-    final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
-
-    final paddingBottom = keyboardHeight > 0
-        ? keyboardHeight
-        : MediaQuery.of(context).padding.bottom;
-
+  Widget _buildBottomAction(bool isPageLoading) {
     final createWithdrawState = ref.watch(createWithdrawProvider);
+    final isSubmitting = createWithdrawState.isLoading;
+    final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
+    final height = keyboardHeight > 0 ? keyboardHeight : MediaQuery.of(context).padding.bottom + 12.h;
 
     return Container(
-      padding: EdgeInsets.fromLTRB(16.w, 12.h, 16.w, paddingBottom + 12.h),
+      padding: EdgeInsets.fromLTRB(16.w, 12.h, 16.w, height),
+      color: context.bgPrimary,
       child: ReactiveFormConsumer(
         builder: (context, form, child) {
-          final amountStr =
-              form.control(WithdrawFormModelForm.amountControlName).value
-                  as String? ??
-              '0';
-          final amount = double.tryParse(amountStr) ?? 0.0;
+          // 按钮禁用条件：页面加载中 OR 正在提交 OR 表单无效 OR 未选渠道
+          final isDisabled = isPageLoading || isSubmitting  || _selectedChannel == null;
 
           return Button(
-            loading: createWithdrawState.isLoading,
+            loading: isSubmitting,
             width: double.infinity,
             height: 52.h,
             onPressed: _handleWithdraw,
@@ -402,23 +478,24 @@ class _WithdrawPageState extends ConsumerState<WithdrawPage> {
     );
   }
 
+  // --- Handlers ---
+
   void _handleWithdraw() {
+    FocusScope.of(context).unfocus();
+
     _form.form.markAllAsTouched();
 
-    if (!_form.form.valid) {
+    if (_form.form.invalid || _selectedChannel == null) {
       return;
     }
 
-    // 收起键盘
-    FocusScope.of(context).unfocus();
+    final amount = _form.amountControl.value;
 
     RadixModal.show(
       title: 'Confirm Withdrawal?'.tr(),
-      builder: (context, close) => Text(
-        'Are you sure you want to withdraw ₱${_form.amountControl.value}?',
-      ),
-      confirmText: 'common.confirm'.tr(),
-      cancelText: 'common.cancel'.tr(),
+      builder: (context, close) => Text('Are you sure you want to withdraw ₱$amount via ${_selectedChannel?.name}?'),
+      confirmText: 'Confirm',
+      cancelText: 'Cancel',
       onConfirm: (finish) {
         finish();
         _processWithdraw();
@@ -426,44 +503,76 @@ class _WithdrawPageState extends ConsumerState<WithdrawPage> {
     );
   }
 
-  // 真正的提现处理逻辑
   Future<void> _processWithdraw() async {
-    final amountStr = _form.amountControl.value ?? '0';
-    final amount = double.tryParse(amountStr) ?? 0.0;
+    final amountVal = _form.amountControl.value;
+    final amount = double.tryParse(amountVal ?? '0') ?? 0.0;
 
-    // 2. 提前计算好展示数据
-    final fee = (amount * _feeRate) + _fixedFee;
-    final actualReceived = amount - fee;
+    // 费用计算用于展示
+    final feeRate = _selectedChannel?.feeRate ?? 0.0;
+    final fixedFee = _selectedChannel?.feeFixed ?? 0.0;
+    final fee = (amount * feeRate) + fixedFee;
+    final actual = amount - fee;
 
-    final result = await ref
-        .read(createWithdrawProvider.notifier)
-        .create(
-          WalletWithdrawApplyDto(
-            amount: amount,
-            withdrawMethod: 1,
-            account: '10011111112222',
-            // 模拟账号
-            accountName: 'Juan Dela Cruz',
-            // 模拟户名
-            bankName: 'GCash',
-          ),
-        );
+    final result = await ref.read(createWithdrawProvider.notifier).create(
+      WalletWithdrawApplyDto(
+        amount: amount,
+        channelId: _selectedChannel!.id,
+        account: _form.accountNumberControl.value ?? '',
+        accountName: _form.accountNameControl.value ?? '',
+        bankName: _selectedChannel!.name,
+      ),
+    );
 
     if (result != null) {
-      // 可以在这里刷新一下余额，因为钱扣了
       ref.read(luckyProvider.notifier).updateWalletBalance();
-      // 重置表单，防止重复提交
+      final channelName = _selectedChannel?.name ?? 'Wallet';
+      final account = _form.accountNumberControl.value ?? '';
+      // 重置表单
       _form.form.reset();
+
       if (mounted) {
         RadixSheet.show(
           builder: (context, close) => WithdrawSuccessModal(
             amount: amount,
             fee: fee,
-            actual: actualReceived,
+            actual: actual,
+            channelName: channelName,
+            account: account,
             close: close,
           ),
         );
       }
     }
   }
+
+  // --- Helpers ---
+  Widget _buildSafetyNotice() {
+    return Container(
+      padding: EdgeInsets.all(12.w),
+      decoration: BoxDecoration(color: context.bgSecondary, borderRadius: BorderRadius.circular(12.r)),
+      child: Row(
+        children: [
+          Icon(Icons.info_outline, size: 16.sp, color: context.textSecondary700),
+          SizedBox(width: 8.w),
+          Expanded(child: Text('withdraw.safety.notice'.tr(), style: TextStyle(fontSize: 11.sp, color: context.textSecondary700))),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDetailRow(String label, String value, {bool isBold = false}) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(label, style: TextStyle(fontSize: 12.sp, color: context.textTertiary600)),
+        Text(value, style: TextStyle(fontSize: 13.sp, fontWeight: isBold ? FontWeight.bold : FontWeight.normal, color: isBold ? context.utilitySuccess600 : context.textPrimary900)),
+      ],
+    );
+  }
+
+  Widget _buildSkeletonLoader() => SizedBox(height: 200.h, child: const Center(child: CircularProgressIndicator()));
+
+  Widget _buildErrorState() => SizedBox(height: 100.h, child: const Center(child: Text("Failed to load methods")));
+
+  TextStyle get _headerStyle => TextStyle(fontSize: 16.sp, fontWeight: FontWeight.bold, color: context.textSecondary700);
 }

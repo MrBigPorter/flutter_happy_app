@@ -15,7 +15,7 @@ class DemoPage extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // ✅ 从翻译文件里读取文案
+            // ✅从翻译文件里读取文案
             Text(
               "common.hello".tr(),
               style: const TextStyle(fontSize: 18),

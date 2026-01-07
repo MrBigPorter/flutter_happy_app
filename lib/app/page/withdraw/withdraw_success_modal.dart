@@ -4,6 +4,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_app/app/routes/app_router.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
+// 假设你的路径
 import '../../../theme/design_tokens.g.dart';
 import '../../../ui/button/button.dart';
 import '../../../ui/button/variant.dart';
@@ -13,6 +14,11 @@ class WithdrawSuccessModal extends StatelessWidget {
   final double amount;
   final double fee;
   final double actual;
+
+  //  新增：渠道名称 (如 GCash) 和 账号 (如 0917***123)
+  final String channelName;
+  final String account;
+
   final VoidCallback close;
 
   const WithdrawSuccessModal({
@@ -20,12 +26,13 @@ class WithdrawSuccessModal extends StatelessWidget {
     required this.amount,
     required this.fee,
     required this.actual,
+    required this.channelName, // 必传
+    required this.account,     // 必传
     required this.close,
   });
 
   @override
   Widget build(BuildContext context) {
-    // 定义基础动画时长
     const baseDelay = Duration(milliseconds: 100);
 
     return Container(
@@ -33,9 +40,9 @@ class WithdrawSuccessModal extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // 1. 成功图标 (弹性弹出 + 旋转微调)
+          // 1. 成功图标
           Container(
-            width: 72.w, // 稍微加大一点
+            width: 72.w,
             height: 72.w,
             decoration: BoxDecoration(
               color: context.utilitySuccess50,
@@ -53,22 +60,22 @@ class WithdrawSuccessModal extends StatelessWidget {
 
           SizedBox(height: 20.h),
 
-          // 2. 标题和状态 (淡入 + 上浮)
+          // 2. 标题和状态
           Column(
             children: [
               Text(
-                'withdraw.success.title'.tr(),
+                'withdraw.success.title'.tr(), // "Submission Successful"
                 style: TextStyle(
-                  fontSize: 20.sp, // 字体稍微加大显眼
+                  fontSize: 20.sp,
                   fontWeight: FontWeight.w800,
                   color: context.textPrimary900,
                 ),
               ),
               SizedBox(height: 8.h),
               Text(
-                'withdraw.success.processing_desc'.tr(),
-                style: TextStyle(
-                    fontSize: 13.sp, color: context.textSecondary700),
+                'withdraw.success.processing_desc'.tr(), // "Your request is being processed..."
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 13.sp, color: context.textSecondary700),
               ),
             ],
           )
@@ -78,49 +85,55 @@ class WithdrawSuccessModal extends StatelessWidget {
 
           SizedBox(height: 24.h),
 
-          // 3. 票据详情容器 (淡入 + 展开效果)
+          // 3. 票据详情容器
           Container(
             padding: EdgeInsets.all(16.w),
             decoration: BoxDecoration(
               color: context.bgSecondary,
-              borderRadius: BorderRadius.circular(16.r), // 圆角加大一点
+              borderRadius: BorderRadius.circular(16.r),
               border: Border.all(color: context.borderSecondary.withOpacity(0.5)),
             ),
             child: Column(
               children: [
                 _buildReceiptRow(
                   context,
-                  'withdraw.success.amount_label',
+                  'withdraw.success.amount_label', // "Withdraw Amount"
                   FormatHelper.formatCurrency(amount),
                   delay: baseDelay * 2,
                 ),
                 SizedBox(height: 12.h),
+
                 _buildReceiptRow(
                   context,
-                  'withdraw.success.fee_label',
+                  'withdraw.success.fee_label', // "Service Fee"
                   '- ${FormatHelper.formatCurrency(fee)}',
                   valueColor: context.utilityError600,
                   delay: baseDelay * 3,
                 ),
+
                 Padding(
                   padding: EdgeInsets.symmetric(vertical: 16.h),
                   child: Divider(height: 1, color: context.borderSecondary),
                 ),
+
+                // 实际到账
                 _buildReceiptRow(
                   context,
-                  'withdraw.success.est_arrival_label',
+                  'withdraw.success.actual_label', // "Actual Arrival"
                   FormatHelper.formatCurrency(actual),
                   isBold: true,
                   valueColor: context.utilitySuccess600,
                   delay: baseDelay * 4,
-                  // 给金额加个高光流光效果，强调钱
                   highlight: true,
                 ),
+
                 SizedBox(height: 12.h),
+
+                //  动态显示渠道
                 _buildReceiptRow(
                   context,
-                  'withdraw.success.method_label',
-                  'GCash', // 品牌词通常不翻译，如果需要也可以改成 key
+                  'withdraw.success.method_label', // "To Account"
+                  "$channelName ($_maskedAccount)", // 显示 "GCash (**** 6789)"
                   delay: baseDelay * 5,
                 ),
               ],
@@ -132,15 +145,19 @@ class WithdrawSuccessModal extends StatelessWidget {
 
           SizedBox(height: 32.h),
 
-          // 4. 操作按钮组 (底部上浮)
+          // 4. 操作按钮组
           Row(
             children: [
               Expanded(
                 child: Button(
                   variant: ButtonVariant.outline,
                   onPressed: () {
-                    close();
-                    // 确保路由栈正确
+                    close(); // 关闭弹窗
+                    // 关闭提现页面 (返回上一页)，防止回退
+                    if (Navigator.canPop(context)) {
+                      Navigator.pop(context);
+                    }
+                    // 跳转到记录页
                     appRouter.push('/me/wallet/transaction/record?tab=withdraw');
                   },
                   child: Text('withdraw.success.check_history_btn'.tr()),
@@ -149,7 +166,12 @@ class WithdrawSuccessModal extends StatelessWidget {
               SizedBox(width: 12.w),
               Expanded(
                 child: Button(
-                  onPressed: close,
+                  onPressed: () {
+                    close(); // 关闭弹窗
+                    if (Navigator.canPop(context)) {
+                      Navigator.pop(context); // 关闭提现页面，回首页
+                    }
+                  },
                   child: Text('withdraw.success.done_btn'.tr()),
                 ),
               ),
@@ -163,10 +185,15 @@ class WithdrawSuccessModal extends StatelessWidget {
     );
   }
 
-  // 辅助构建行：label 会在内部调用 .tr()
+  // 简单的脱敏逻辑：只显示后4位
+  String get _maskedAccount {
+    if (account.length <= 4) return account;
+    return "**** ${account.substring(account.length - 4)}";
+  }
+
   Widget _buildReceiptRow(
       BuildContext context,
-      String labelKey, // 这里传入的是 Key
+      String labelKey,
       String value, {
         bool isBold = false,
         Color? valueColor,
@@ -179,10 +206,10 @@ class WithdrawSuccessModal extends StatelessWidget {
         fontSize: 13.sp,
         fontWeight: isBold ? FontWeight.w800 : FontWeight.w600,
         color: valueColor ?? context.textPrimary900,
+        fontFamily: isBold ? 'Monospace' : null, // 数字用等宽字体更好看
       ),
     );
 
-    // 如果需要高光效果（流光）
     if (highlight) {
       valueText = valueText
           .animate(onPlay: (controller) => controller.repeat(period: 2.seconds))
@@ -193,13 +220,12 @@ class WithdrawSuccessModal extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(
-          labelKey.tr(), // 在这里统一调用 tr()
+          labelKey.tr(),
           style: TextStyle(fontSize: 13.sp, color: context.textTertiary600),
         ),
         valueText,
       ],
     )
-    // 给每一行加单独的入场动画
         .animate()
         .fadeIn(delay: delay, duration: 400.ms)
         .slideX(begin: 0.1, end: 0, curve: Curves.easeOutQuad);

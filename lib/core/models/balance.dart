@@ -133,16 +133,17 @@ class WalletTransactionItem {
 @JsonSerializable(checked: true)
 class WalletWithdrawApplyDto {
   final num amount;
-  final num withdrawMethod;
+  final int channelId;
+
   final String account;
   final String accountName;
   final String? bankName;
 
   WalletWithdrawApplyDto({
     required this.amount,
-    required this.withdrawMethod,
     required this.account,
     required this.accountName,
+    required this.channelId,
     this.bankName,
   });
 
@@ -348,8 +349,11 @@ class PaymentChannelConfigItem {
   /// 快捷金额卡片 (仅充值有效, e.g. [100, 200, 500])
   final List<num>? fixedAmounts;
 
-  /// 用户需要支付的手续费 (仅提现有效)
-  final num? fee;
+  @JsonKey(fromJson: JsonNumConverter.toDouble)
+  final double feeRate;
+
+  @JsonKey(fromJson: JsonNumConverter.toDouble)
+  final double feeFixed;
 
   /// 是否允许输入自定义金额
   final bool isCustom;
@@ -361,8 +365,9 @@ class PaymentChannelConfigItem {
      this.icon,
     required this.minAmount,
     required this.maxAmount,
+    required this.feeRate,
+    required this.feeFixed,
     this.fixedAmounts,
-    this.fee,
     required this.isCustom,
   });
 
