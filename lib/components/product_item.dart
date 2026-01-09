@@ -34,10 +34,10 @@ class ProductItem extends StatelessWidget {
 
     final bool isWaitingSale = salesStart > now;
     final bool isExpired = salesEnd != 0 && now >= salesEnd;
-    final bool isSoldOut = data.buyQuantityRate >= 100;
+    final bool isSoldOut = data.buyQuantityRate! >= 100;
 
     // 获取购买比率
-    final double rate = data.buyQuantityRate.toDouble();
+    final double? rate = data.buyQuantityRate?.toDouble();
 
     return Container(
       key: ValueKey(data.treasureId),
@@ -94,7 +94,7 @@ class ProductItem extends StatelessWidget {
                 SizedBox(
                   height: 36.w,
                   child: Text(
-                    data.treasureName,
+                    data.treasureName??'',
                     textAlign: TextAlign.center,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
@@ -130,7 +130,7 @@ class ProductItem extends StatelessWidget {
                 Padding(
                   padding: EdgeInsets.symmetric(vertical: 4.w),
                   child: Text(
-                    'common.sold.upperCase'.tr(namedArgs: {'number': rate.toStringAsFixed(0)}),
+                    'common.sold.upperCase'.tr(namedArgs: {'number': ?rate?.toStringAsFixed(0)}),
                     style: TextStyle(fontSize: 10.w, color: context.textPrimary900),
                   ),
                 ),

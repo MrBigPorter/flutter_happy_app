@@ -99,7 +99,7 @@ class _ProductDetailPageState extends ConsumerState<ProductDetailPage>
                       duration: const Duration(milliseconds: 200),
                       opacity: isCollapsed ? 1.0 : 0.0,
                       child: Text(
-                        detail.treasureName,
+                        detail.treasureName ?? '',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
@@ -153,8 +153,8 @@ class _ProductDetailPageState extends ConsumerState<ProductDetailPage>
               child: SlideTransition(
                 position: _offsetBarAnimation,
                 child: JoinTreasureBar(
-                  treasureId: detail.treasureId,
                   groupId: widget.queryParams['groupId'],
+                  item: detail,
                 ),
               ),
             ),

@@ -150,10 +150,15 @@ class AppRouter {
 
             final  queryParams = state.uri.queryParameters;
             final PagePaymentParams params = (
-              entries: queryParams['entries'] ?? '',
-              treasureId: queryParams['treasureId']?? '',
-              paymentMethod: queryParams['paymentMethod'] ?? '1',
-              groupId: queryParams['groupId'] ?? '',
+            entries: queryParams['entries'],
+            treasureId: queryParams['treasureId'],
+            paymentMethod: queryParams['paymentMethod'] ?? '1',
+
+            // groupId 如果是 null，代表"开团"；如果是字符串，代表"参团"
+            groupId: queryParams['groupId'],
+
+            // 只有接收到这个参数，PaymentPage 才知道这是"开团"行为
+            isGroupBuy: queryParams['isGroupBuy'],
             );
             return fxPage(
                 child: PaymentPage(params: params),

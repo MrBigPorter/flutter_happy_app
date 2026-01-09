@@ -247,7 +247,7 @@ class ProductInfoCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  item.treasureName,
+                  item.treasureName??'',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
@@ -300,7 +300,7 @@ class _ProductInfoCardBottomState extends State<ProductInfoCardBottom> {
     final salesEnd = widget.item.salesEndAt ?? 0;
 
     // 状态判定逻辑
-    final bool isSoldOut = widget.item.buyQuantityRate >= 100;
+    final bool isSoldOut = widget.item.buyQuantityRate! >= 100;
     final bool isWaitingSale = salesStart > now;
     final bool isExpired = salesEnd != 0 && now >= salesEnd;
 

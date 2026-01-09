@@ -11,14 +11,27 @@ ProductListItem _$ProductListItemFromJson(
 ) => $checkedCreate('ProductListItem', json, ($checkedConvert) {
   final val = ProductListItem(
     treasureId: $checkedConvert('treasureId', (v) => v as String),
-    treasureName: $checkedConvert('treasureName', (v) => v as String),
+    treasureName: $checkedConvert('treasureName', (v) => v as String?),
     buyQuantityRate: $checkedConvert(
       'buyQuantityRate',
-      (v) => (v as num).toDouble(),
+      (v) => (v as num?)?.toDouble(),
     ),
     unitAmount: $checkedConvert(
       'unitAmount',
       (v) => JsonNumConverter.toDouble(v),
+    ),
+    marketAmount: $checkedConvert(
+      'marketAmount',
+      (v) => JsonNumConverter.toDouble(v),
+    ),
+    soloAmount: $checkedConvert(
+      'soloAmount',
+      (v) => JsonNumConverter.toDouble(v),
+    ),
+    enableRobot: $checkedConvert('enableRobot', (v) => v as bool?),
+    leaderBonusType: $checkedConvert(
+      'leaderBonusType',
+      (v) => (v as num?)?.toInt(),
     ),
     state: $checkedConvert('state', (v) => (v as num?)?.toInt() ?? 1),
     statusTag: $checkedConvert('statusTag', (v) => v as String?),
@@ -95,6 +108,10 @@ Map<String, dynamic> _$ProductListItemToJson(ProductListItem instance) =>
       'treasureName': instance.treasureName,
       'buyQuantityRate': instance.buyQuantityRate,
       'unitAmount': JsonNumConverter.doubleToString(instance.unitAmount),
+      'marketAmount': JsonNumConverter.doubleToString(instance.marketAmount),
+      'soloAmount': JsonNumConverter.doubleToString(instance.soloAmount),
+      'enableRobot': instance.enableRobot,
+      'leaderBonusType': instance.leaderBonusType,
       'state': instance.state,
       'statusTag': instance.statusTag,
       'shippingType': instance.shippingType,
@@ -135,6 +152,40 @@ CategoryItem _$CategoryItemFromJson(Map<String, dynamic> json) =>
 
 Map<String, dynamic> _$CategoryItemToJson(CategoryItem instance) =>
     <String, dynamic>{'id': instance.id, 'name': instance.name};
+
+TreasureStatusModel _$TreasureStatusModelFromJson(Map<String, dynamic> json) =>
+    $checkedCreate('TreasureStatusModel', json, ($checkedConvert) {
+      final val = TreasureStatusModel(
+        id: $checkedConvert('id', (v) => v as String),
+        stock: $checkedConvert('stock', (v) => (v as num).toInt()),
+        price: $checkedConvert('price', (v) => JsonNumConverter.toDouble(v)),
+        soloPrice: $checkedConvert(
+          'soloPrice',
+          (v) => JsonNumConverter.toDouble(v),
+        ),
+        isSoldOut: $checkedConvert('isSoldOut', (v) => v as bool),
+        state: $checkedConvert('state', (v) => (v as num).toInt()),
+        isExpired: $checkedConvert('isExpired', (v) => v as bool),
+        seqBuyQuantity: $checkedConvert(
+          'seqBuyQuantity',
+          (v) => (v as num?)?.toInt(),
+        ),
+      );
+      return val;
+    });
+
+Map<String, dynamic> _$TreasureStatusModelToJson(
+  TreasureStatusModel instance,
+) => <String, dynamic>{
+  'id': instance.id,
+  'stock': instance.stock,
+  'price': JsonNumConverter.doubleToString(instance.price),
+  'soloPrice': JsonNumConverter.doubleToString(instance.soloPrice),
+  'isSoldOut': instance.isSoldOut,
+  'state': instance.state,
+  'isExpired': instance.isExpired,
+  'seqBuyQuantity': instance.seqBuyQuantity,
+};
 
 GroupItem _$GroupItemFromJson(Map<String, dynamic> json) =>
     $checkedCreate('GroupItem', json, ($checkedConvert) {
@@ -191,28 +242,4 @@ Map<String, dynamic> _$GroupUserToJson(GroupUser instance) => <String, dynamic>{
   'createdAt': instance.createdAt,
   'leaderUserId': instance.leaderUserId,
   'leaderUsername': instance.leaderUsername,
-};
-
-TreasureStatusModel _$TreasureStatusModelFromJson(Map<String, dynamic> json) =>
-    $checkedCreate('TreasureStatusModel', json, ($checkedConvert) {
-      final val = TreasureStatusModel(
-        id: $checkedConvert('id', (v) => v as String),
-        stock: $checkedConvert('stock', (v) => (v as num).toInt()),
-        price: $checkedConvert('price', (v) => JsonNumConverter.toDouble(v)),
-        isSoldOut: $checkedConvert('isSoldOut', (v) => v as bool),
-        state: $checkedConvert('state', (v) => (v as num).toInt()),
-        isExpired: $checkedConvert('isExpired', (v) => v as bool),
-      );
-      return val;
-    });
-
-Map<String, dynamic> _$TreasureStatusModelToJson(
-  TreasureStatusModel instance,
-) => <String, dynamic>{
-  'id': instance.id,
-  'stock': instance.stock,
-  'price': JsonNumConverter.doubleToString(instance.price),
-  'isSoldOut': instance.isSoldOut,
-  'state': instance.state,
-  'isExpired': instance.isExpired,
 };

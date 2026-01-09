@@ -141,7 +141,7 @@ class SpecialArea extends StatelessWidget {
                 children: [
                   /// 标题
                   Text(
-                    item.treasureName,
+                    item.treasureName??'',
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(

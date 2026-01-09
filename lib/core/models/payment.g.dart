@@ -16,6 +16,7 @@ OrdersCheckoutParams _$OrdersCheckoutParamsFromJson(
     couponId: $checkedConvert('couponId', (v) => v as String?),
     paymentMethod: $checkedConvert('paymentMethod', (v) => (v as num).toInt()),
     addressId: $checkedConvert('addressId', (v) => v as String?),
+    isGroup: $checkedConvert('isGroup', (v) => v as bool?),
   );
   return val;
 });
@@ -29,6 +30,7 @@ Map<String, dynamic> _$OrdersCheckoutParamsToJson(
   'couponId': instance.couponId,
   'paymentMethod': instance.paymentMethod,
   'addressId': instance.addressId,
+  'isGroup': instance.isGroup,
 };
 
 OrderCheckoutResponse _$OrderCheckoutResponseFromJson(

@@ -262,7 +262,7 @@ class ProductSection extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          detail.treasureName,
+                          detail.treasureName ?? '',
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(

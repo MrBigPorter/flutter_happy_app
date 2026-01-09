@@ -2,7 +2,7 @@ import 'dart:math' as math;
 import 'package:flutter_app/core/models/kyc.dart';
 import 'package:flutter_app/core/models/payment.dart';
 import 'package:flutter_app/core/providers/address_provider.dart';
-import 'package:flutter_app/core/providers/index.dart'; // productDetailProvider
+import 'package:flutter_app/core/providers/index.dart';
 import 'package:flutter_app/core/providers/order_provider.dart';
 import 'package:flutter_app/core/store/auth/auth_provider.dart';
 import 'package:flutter_app/utils/helper.dart';
@@ -10,24 +10,38 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../utils/time/server_time_helper.dart';
 import '../store/lucky_store.dart';
 
+// ==========================================
+// 1. State 改造：增加价格缓存和模式标记
+// ==========================================
 class PurchaseState {
-  final int entries; // 用户当前选择的份数
-  final double unitAmount; // 单价 (可能是秒杀价)
-  final double maxUnitCoins; // 单份最大可用金币
-  final int maxPerBuyQuantity; // 限购
-  final int minBuyQuantity; // 起购
-  final int stockLeft; // 剩余库存
-  final bool useDiscountCoins; // 是否使用金币抵扣
-  final bool isSubmitting; // 提交中状态
+  final int entries;
 
-  // 时间控制字段，用于提交时校验
+  // 🔥 unitAmount 现在表示“当前生效的单价” (可能是拼团价，也可能是单买价)
+  // 用于计算 subtotal
+  final double unitAmount;
+
+  // 🔥 新增：分别缓存两种价格，以便切换
+  final double baseGroupPrice;
+  final double baseSoloPrice;
+  final bool isGroupBuy; // 当前是否为拼团模式
+
+  final double maxUnitCoins;
+  final int maxPerBuyQuantity;
+  final int minBuyQuantity;
+  final int stockLeft;
+  final bool useDiscountCoins;
+  final bool isSubmitting;
+
   final int? salesStartAt;
   final int? salesEndAt;
-  final int productState; // 1=上架
+  final int productState;
 
   PurchaseState({
     required this.entries,
     required this.unitAmount,
+    required this.baseGroupPrice, // New
+    required this.baseSoloPrice,  // New
+    required this.isGroupBuy,     // New
     required this.maxUnitCoins,
     required this.maxPerBuyQuantity,
     required this.minBuyQuantity,
@@ -39,25 +53,20 @@ class PurchaseState {
     this.productState = 1,
   });
 
-  /// 最大可买份数
   int get _maxEntriesAllowed {
     if (stockLeft <= 0) return 0;
-    // 如果限购为0或空，则以库存为准
     final maxByLimit = maxPerBuyQuantity <= 0 ? stockLeft : maxPerBuyQuantity;
     return math.max(1, math.min(stockLeft, maxByLimit));
   }
 
-  /// 最小可买份数
   int get _minEntriesAllowed {
     if (stockLeft <= 0) return 0;
     final minByConfig = minBuyQuantity <= 0 ? 1 : minBuyQuantity;
     return math.min(minByConfig, stockLeft);
   }
 
-  /// 小计金额（PHP）
   double get subtotal => unitAmount * entries;
 
-  /// 理论最大可用金币
   double get theoreticalMaxCoins {
     if (!useDiscountCoins) return 0;
     return maxUnitCoins * entries;
@@ -67,9 +76,11 @@ class PurchaseState {
     int? entries,
     int? stockLeft,
     double? unitAmount,
+    double? baseGroupPrice, // New
+    double? baseSoloPrice,  // New
+    bool? isGroupBuy,       // New
     bool? useDiscountCoins,
     bool? isSubmitting,
-    // 允许更新配置
     int? maxPerBuyQuantity,
     int? minBuyQuantity,
     int? productState,
@@ -77,15 +88,16 @@ class PurchaseState {
     return PurchaseState(
       entries: entries ?? this.entries,
       unitAmount: unitAmount ?? this.unitAmount,
+      baseGroupPrice: baseGroupPrice ?? this.baseGroupPrice,
+      baseSoloPrice: baseSoloPrice ?? this.baseSoloPrice,
+      isGroupBuy: isGroupBuy ?? this.isGroupBuy,
       maxUnitCoins: maxUnitCoins,
-      // 通常不变
       maxPerBuyQuantity: maxPerBuyQuantity ?? this.maxPerBuyQuantity,
       minBuyQuantity: minBuyQuantity ?? this.minBuyQuantity,
       stockLeft: stockLeft ?? this.stockLeft,
       useDiscountCoins: useDiscountCoins ?? this.useDiscountCoins,
       isSubmitting: isSubmitting ?? this.isSubmitting,
       salesStartAt: salesStartAt,
-      // 这种字段通常初始化后很少变，暂不开放 copyWith
       salesEndAt: salesEndAt,
       productState: productState ?? this.productState,
     );
@@ -100,14 +112,11 @@ enum PurchaseSubmitError {
   purchaseLimitExceeded,
   soldOut,
   unknown,
-  //  新增错误类型
   preSaleNotStarted,
   salesEnded,
   productOffline,
-
-  //  补回这两个业务错误
-  needKyc, // 需要 KYC 认证
-  noAddress, // 需要收货地址 (之前你的注释里也有这个，建议一起补上)
+  needKyc,
+  noAddress,
 }
 
 class PurchaseSubmitResult {
@@ -122,9 +131,9 @@ class PurchaseSubmitResult {
       PurchaseSubmitResult._(true, PurchaseSubmitError.none, null, data);
 
   factory PurchaseSubmitResult.error(
-    PurchaseSubmitError error, {
-    String? message,
-  }) => PurchaseSubmitResult._(false, error, message);
+      PurchaseSubmitError error, {
+        String? message,
+      }) => PurchaseSubmitResult._(false, error, message);
 }
 
 class PurchaseNotifier extends StateNotifier<PurchaseState> {
@@ -139,21 +148,52 @@ class PurchaseNotifier extends StateNotifier<PurchaseState> {
     _listenToProductUpdates();
   }
 
-  /// 场景：用户停留在详情页，此时库存变动，或者商品下架
+  // ==========================================
+  // 2. Notifier 改造：增加模式切换
+  // ==========================================
+
+  /// 设置购买模式 (下单页初始化时调用)
+  void setGroupMode(bool isGroup) {
+    // 根据模式选择基础价格
+    // 如果单买价未配置(<=0)，兜底使用拼团价 (虽然业务上不应该发生)
+    double targetPrice = isGroup ? state.baseGroupPrice : state.baseSoloPrice;
+    if (targetPrice <= 0) targetPrice = state.baseGroupPrice;
+
+    state = state.copyWith(
+      isGroupBuy: isGroup,
+      unitAmount: targetPrice,
+    );
+  }
+
   void _listenToProductUpdates() {
+    // 1. 监听【实时状态】(Socket/轮询)
     ref.listen(productRealtimeStatusProvider(treasureId), (prev, next) {
       next.whenData((status) {
-        // 转换价格 String -> double
         final newStock = status.stock;
-        final newPrice = status.price;
         final newState = status.state;
 
-        // 只有数据真的变了才更新
+        // 获取最新的两种价格
+        final newGroupPrice = status.price;
+        // 如果实时流里没有 soloPrice (null)，就保留旧的
+        final newSoloPrice = status.soloPrice ?? state.baseSoloPrice;
+
+        // 计算当前应该使用的价格
+        double newActivePrice = state.unitAmount;
+        if (state.isGroupBuy) {
+          newActivePrice = newGroupPrice;
+        } else {
+          // 如果当前是单买模式，且实时流里有有效的单买价，则更新
+          // 否则保持当前价格 (避免变成 0)
+          if (status.soloPrice != null && status.soloPrice! > 0) {
+            newActivePrice = status.soloPrice!;
+          }
+        }
+
         if (newStock != state.stockLeft ||
             newState != state.productState ||
-            newPrice != state.unitAmount) {
-          // 智能处理 entries：如果当前选的份数超过了新库存，才强制调小
-          // 否则保持用户输入的份数不变
+            newActivePrice != state.unitAmount ||
+            newSoloPrice != state.baseSoloPrice) { // 只要有一个变了就更新
+
           final currentEntries = state.entries;
           final maxAllowed = math.min(
             newStock,
@@ -164,23 +204,43 @@ class PurchaseNotifier extends StateNotifier<PurchaseState> {
           state = state.copyWith(
             stockLeft: newStock,
             entries: safeEntries,
-            unitAmount: newPrice,
+            unitAmount: newActivePrice,
+            baseGroupPrice: newGroupPrice,
+            baseSoloPrice: newSoloPrice,
             productState: newState,
           );
         }
       });
     });
 
-    // 2. 监听【静态详情】：主要为了防备运营后台改了限购配置 (maxPerBuyQuantity)
+    // 2. 监听【静态详情】(API 详情接口)
+    //  关键修复：详情加载完成后，必须补充 baseSoloPrice 和 baseGroupPrice
     ref.listen(productDetailProvider(treasureId), (prev, next) {
       next.whenData((detail) {
-        final newMaxLimit = JsonNumConverter.toInt(
-          detail.maxPerBuyQuantity ?? 0,
-        );
+        bool shouldUpdate = false;
+
+        // 1. 更新限购配置
+        final newMaxLimit = JsonNumConverter.toInt(detail.maxPerBuyQuantity ?? 0);
         final newMinLimit = detail.minBuyQuantity ?? 1;
+
+        // 2.  更新基础价格 (防止初始化时 detail 还没回来导致价格为 0)
+        double newBaseGroup = state.baseGroupPrice;
+        double newBaseSolo = state.baseSoloPrice;
+
+        // 如果当前缓存的价格是 0，且详情里有价格，则更新
+        if (newBaseGroup <= 0 && (detail.unitAmount ?? 0) > 0) {
+          newBaseGroup = detail.unitAmount!;
+          shouldUpdate = true;
+        }
+        if (newBaseSolo <= 0 && (detail.soloAmount ?? 0) > 0) {
+          newBaseSolo = detail.soloAmount!;
+          shouldUpdate = true;
+        }
+
         if (newMaxLimit != state.maxPerBuyQuantity ||
-            newMinLimit != state.minBuyQuantity) {
-          // 智能处理 entries：如果当前选的份数超过了新库存，才强制调小
+            newMinLimit != state.minBuyQuantity ||
+            shouldUpdate) {
+
           final currentEntries = state.entries;
           final currentAuthoritativeStock = state.stockLeft;
           final maxAllowed = math.min(
@@ -189,37 +249,38 @@ class PurchaseNotifier extends StateNotifier<PurchaseState> {
           );
           final safeEntries = math.min(currentEntries, math.max(1, maxAllowed));
 
+          // 重新计算当前生效价格 (以防之前因为价格为0导致显示错误)
+          double newActivePrice = state.unitAmount;
+          if (state.isGroupBuy) {
+            if (newBaseGroup > 0) newActivePrice = newBaseGroup;
+          } else {
+            if (newBaseSolo > 0) newActivePrice = newBaseSolo;
+          }
+
           state = state.copyWith(
             entries: safeEntries,
             maxPerBuyQuantity: newMaxLimit,
             minBuyQuantity: newMinLimit,
-            //坚决不更新 stockLeft 和 unitAmount
+            baseGroupPrice: newBaseGroup, // 更新缓存
+            baseSoloPrice: newBaseSolo,   // 更新缓存
+            unitAmount: newActivePrice,   // 修正当前价格
           );
         }
       });
     });
   }
 
-  /// 手动重置份数
   void resetEntries(int targetEntries) {
-    // 1. 获取当前允许的最小和最大值
     final min = state._minEntriesAllowed;
     final max = state._maxEntriesAllowed;
-
-    // 2. 确保目标值在合法范围内 (clamp)
     final next = targetEntries.clamp(min, max);
-
-    // 3. 更新状态
     state = state.copyWith(entries: next);
   }
 
-  // Getters 保持不变
+  // Getters
   double get _balanceCoins => ref.read(luckyProvider).balance.coinBalance;
-
   double get _realBalance => ref.read(luckyProvider).balance.realBalance;
-
   double get _exchangeRate => ref.read(luckyProvider).sysConfig.exChangeRate;
-
   bool get _isAuthenticated => ref.read(authProvider).isAuthenticated;
 
   double get coinsCanUse {
@@ -236,132 +297,78 @@ class PurchaseNotifier extends StateNotifier<PurchaseState> {
   }
 
   double get payableAmount {
+    // 这里的 unitAmount 已经是根据 isGroupBuy 选对的价格了
     if (!state.useDiscountCoins) return state.subtotal;
     final raw = state.subtotal - coinAmount;
     return raw <= 0 ? 0.0 : raw;
   }
 
   Future<PurchaseSubmitResult> submitOrder({String? groupId}) async {
-    if (!mounted) {
-      return PurchaseSubmitResult.error(PurchaseSubmitError.unknown);
-    }
+    if (!mounted) return PurchaseSubmitResult.error(PurchaseSubmitError.unknown);
+    if (state.isSubmitting) return PurchaseSubmitResult.error(PurchaseSubmitError.unknown);
 
-    // 0 防御：防止重复提交
-    if (state.isSubmitting) {
-      return PurchaseSubmitResult.error(PurchaseSubmitError.unknown);
-    }
+    // 校验逻辑
+    if (!_isAuthenticated) return PurchaseSubmitResult.error(PurchaseSubmitError.needLogin);
+    if (state.stockLeft <= 0) return PurchaseSubmitResult.error(PurchaseSubmitError.soldOut);
+    if (state.productState != 1) return PurchaseSubmitResult.error(PurchaseSubmitError.productOffline);
 
-    // 1. 基础校验
-    if (!_isAuthenticated) {
-      return PurchaseSubmitResult.error(PurchaseSubmitError.needLogin);
-    }
-    if (state.stockLeft <= 0) {
-      return PurchaseSubmitResult.error(PurchaseSubmitError.soldOut);
-    }
-    if (state.productState != 1) {
-      return PurchaseSubmitResult.error(PurchaseSubmitError.productOffline);
-    }
-
-    // 2.  时间/状态校验 (核心防御)
     final now = ServerTimeHelper.nowMilliseconds;
-
-    // 预售拦截
     if (state.salesStartAt != null && state.salesStartAt! > now) {
-      return PurchaseSubmitResult.error(
-        PurchaseSubmitError.preSaleNotStarted,
-        message: 'Pre-sale has not started yet.',
-      );
+      return PurchaseSubmitResult.error(PurchaseSubmitError.preSaleNotStarted, message: 'Pre-sale has not started yet.');
     }
-
-    // 过期拦截
     if (state.salesEndAt != null && state.salesEndAt! < now) {
-      return PurchaseSubmitResult.error(
-        PurchaseSubmitError.salesEnded,
-        message: 'Sales have ended.',
-      );
+      return PurchaseSubmitResult.error(PurchaseSubmitError.salesEnded, message: 'Sales have ended.');
     }
 
-    // ---------------------------------------------------------
-    //  4. 补回 KYC 和 地址 校验 (关键业务风控)
-    // ---------------------------------------------------------
-    final kycStatus = ref.read(
-      luckyProvider.select((s) => s.userInfo?.kycStatus),
-    );
-
-   final user =  ref.read(
-      luckyProvider.select((s) => s.userInfo),
-    );
-
-    // 根据你的 Prisma Schema，4 代表已认证 (0-未认证, 1-审核中, 2-失败, 3-补充, 4-已通过)
-
+    // KYC 校验
+    final kycStatus = ref.read(luckyProvider.select((s) => s.userInfo?.kycStatus));
     if (KycStatusEnum.fromStatus(kycStatus ?? 0) != KycStatusEnum.approved) {
       return PurchaseSubmitResult.error(PurchaseSubmitError.needKyc);
     }
-
-    // (可选) 检查是否需要收货地址 - 如果你的业务要求下单前必须有地址
-    // 这里可能需要去 addressProvider 查一下列表，或者 userInfo 里有 defaultAddressId
+    // 地址校验
     final address = await ref.read(selectedAddressProvider);
-    if (address == null) {
-      return PurchaseSubmitResult.error(PurchaseSubmitError.noAddress);
-    }
+    if (address == null) return PurchaseSubmitResult.error(PurchaseSubmitError.noAddress);
 
-    // 3. 限购校验
     if (state.entries > state._maxEntriesAllowed) {
-      return PurchaseSubmitResult.error(
-        PurchaseSubmitError.purchaseLimitExceeded,
-      );
+      return PurchaseSubmitResult.error(PurchaseSubmitError.purchaseLimitExceeded);
     }
-
-    // 4. 余额校验
     if (_realBalance < payableAmount) {
-      return PurchaseSubmitResult.error(
-        PurchaseSubmitError.insufficientBalance,
-      );
+      return PurchaseSubmitResult.error(PurchaseSubmitError.insufficientBalance);
     }
 
     try {
       state = state.copyWith(isSubmitting: true);
 
+      //  3. 下单改造：传递 isGroup 参数
       final orderCheckoutResult = await ref.read(
         orderCheckoutProvider(
           OrdersCheckoutParams(
             treasureId: treasureId,
             entries: state.entries,
             paymentMethod: state.useDiscountCoins ? 2 : 1,
-            // 1=Cash, 2=Hybrid/Coin
             groupId: groupId,
+            //  新增：告诉后端当前是拼团还是单买 (后端据此扣减不同金额)
+            isGroup: state.isGroupBuy,
           ),
         ).future,
       );
 
-      if (!mounted) {
-        return PurchaseSubmitResult.error(PurchaseSubmitError.unknown);
-      }
+      if (!mounted) return PurchaseSubmitResult.error(PurchaseSubmitError.unknown);
 
-      // 成功后刷新余额
       ref.read(luckyProvider.notifier).updateWalletBalance();
-      //  关键优化：下单成功后，强制刷新【实时状态】，而不是详情
-      // 因为库存变了，我们需要最新的 Realtime Status
       ref.invalidate(productRealtimeStatusProvider(treasureId));
 
       return PurchaseSubmitResult.ok(orderCheckoutResult);
     } catch (e) {
-      // 可以在这里解析 e，如果 e 包含 "Stock not enough"，
-      // 返回 PurchaseSubmitError.insufficientStock 会比 unknown 体验更好
-      return PurchaseSubmitResult.error(
-        PurchaseSubmitError.unknown,
-        message: e.toString(),
-      );
+      return PurchaseSubmitResult.error(PurchaseSubmitError.unknown, message: e.toString());
     } finally {
       if (mounted) state = state.copyWith(isSubmitting: false);
     }
   }
 
-  // 步进器逻辑保持不变
   void inc(Function(int)? onChanged) {
     final max = state._maxEntriesAllowed;
     if (state.entries >= max) return;
-
     final next = state.entries + 1;
     state = state.copyWith(entries: next);
     onChanged?.call(next);
@@ -370,22 +377,16 @@ class PurchaseNotifier extends StateNotifier<PurchaseState> {
   void dec(Function(int)? onChanged) {
     final min = state._minEntriesAllowed;
     if (state.entries <= min) return;
-
     final next = state.entries - 1;
     state = state.copyWith(entries: next);
     onChanged?.call(next);
   }
 
   void setEntriesFromText(String v) {
-    // 过滤非数字
     final clean = v.replaceAll(RegExp(r'[^0-9]'), '');
     if (clean.isEmpty) return;
-
     int n = int.tryParse(clean) ?? state.minBuyQuantity;
-
-    // 限制范围
     n = n.clamp(state._minEntriesAllowed, state._maxEntriesAllowed);
-
     state = state.copyWith(entries: n);
   }
 
@@ -394,47 +395,45 @@ class PurchaseNotifier extends StateNotifier<PurchaseState> {
   }
 }
 
-//  优化 Provider 定义：使用 autoDispose 并在初始化时处理异步数据
+// ==========================================
+// 4. Provider 初始化改造
+// ==========================================
 final purchaseProvider = StateNotifierProvider.family
     .autoDispose<PurchaseNotifier, PurchaseState, String>((ref, id) {
-      // 1. 获取【静态详情】(大概率有缓存)
-      final detail = ref.watch(productDetailProvider(id)).valueOrNull;
-      // 2. 获取【实时状态】(可能正在加载，也可能有了)
-      final status = ref.watch(productRealtimeStatusProvider(id)).valueOrNull;
-      //  3. 数据融合策略
-      // - 库存/价格/状态：优先用 status，没有则用 detail 兜底
-      // - 配置/限购：只能用 detail
 
-      final stockLeft =
-          status?.stock ??
-          ((detail?.seqShelvesQuantity ?? 0) - (detail?.seqBuyQuantity ?? 0));
-      final price = status?.price ?? (detail?.unitAmount ?? 0.0);
-      final productState = status?.state ?? (detail?.state ?? 1);
+  //  [关键修复] 把 ref.watch 改为 ref.read
+  // 我们不希望当 detail 更新时，Notifier 被销毁重建（那样会丢失用户选的单买模式）
+  // 数据的实时更新由 Notifier 内部的 ref.listen 负责
+  final detail = ref.read(productDetailProvider(id)).valueOrNull;
+  final status = ref.read(productRealtimeStatusProvider(id)).valueOrNull;
 
-      final minBuy = detail?.minBuyQuantity ?? 1;
+  final stockLeft = status?.stock ?? ((detail?.seqShelvesQuantity ?? 0) - (detail?.seqBuyQuantity ?? 0));
+  final productState = status?.state ?? (detail?.state ?? 1);
+  final minBuy = detail?.minBuyQuantity ?? 1;
 
-      // 2. 初始化状态
-      final initialState = PurchaseState(
-        entries: stockLeft > 0 ? minBuy : 0,
-        unitAmount: price,
-        // 价格优先用实时的
-        maxUnitCoins: JsonNumConverter.toDouble(detail?.maxUnitCoins),
-        maxPerBuyQuantity: JsonNumConverter.toInt(
-          detail?.maxPerBuyQuantity ?? 0,
-        ),
-        // 0代表不限
-        minBuyQuantity: minBuy,
-        stockLeft: stockLeft,
-        // 库存优先用实时的
-        useDiscountCoins: true,
-        isSubmitting: false,
-        // 注入时间字段
-        salesStartAt: detail?.salesStartAt,
-        salesEndAt: detail?.salesEndAt,
-        productState: productState,
-      );
+  // 提取两种价格
+  final groupPrice = status?.price ?? (detail?.unitAmount ?? 0.0);
+  final soloPrice = status?.soloPrice ?? (detail?.soloAmount ?? 0.0);
 
-      return PurchaseNotifier(ref: ref, treasureId: id, state: initialState);
-    });
+  final initialState = PurchaseState(
+    entries: stockLeft > 0 ? minBuy : 0,
 
+    // 默认为拼团价 (因为 isGroupBuy 默认为 true)
+    unitAmount: groupPrice,
+    baseGroupPrice: groupPrice,
+    baseSoloPrice: soloPrice,
+    isGroupBuy: true, // 默认模式
 
+    maxUnitCoins: JsonNumConverter.toDouble(detail?.maxUnitCoins),
+    maxPerBuyQuantity: JsonNumConverter.toInt(detail?.maxPerBuyQuantity ?? 0),
+    minBuyQuantity: minBuy,
+    stockLeft: stockLeft,
+    useDiscountCoins: true,
+    isSubmitting: false,
+    salesStartAt: detail?.salesStartAt,
+    salesEndAt: detail?.salesEndAt,
+    productState: productState,
+  );
+
+  return PurchaseNotifier(ref: ref, treasureId: id, state: initialState);
+});

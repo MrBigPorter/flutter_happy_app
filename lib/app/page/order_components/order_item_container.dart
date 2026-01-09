@@ -19,7 +19,6 @@ import 'package:flutter_app/ui/button/index.dart';
 import 'package:flutter_app/ui/modal/sheet/radix_sheet.dart';
 import 'package:flutter_app/utils/date_helper.dart';
 import 'package:flutter_app/utils/format_helper.dart';
-import '../../../core/providers/me_provider.dart';
 import '../../../core/providers/order_provider.dart';
 import 'refund_request_sheet.dart'; // 刚才写的弹窗组件
 

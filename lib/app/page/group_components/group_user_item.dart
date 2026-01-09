@@ -41,7 +41,7 @@ class GroupUserItemState extends State<GroupUserItem> {
                  const SizedBox(height: 8,),
                  _Header(nickname: item.user?.nickname ?? 'Guest', rightText: DateFormatHelper.formatMonthDayTime(DateTime.now()),),
                   SizedBox(height: 8),
-                  _TicketGrid(shareAmount: item.shareAmount, shareCoin: item.shareCoin),
+                //  _TicketGrid(shareAmount: item.shareAmount, shareCoin: item.shareCoin),
               ],
             ),
           )

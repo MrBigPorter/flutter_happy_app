@@ -1,27 +1,35 @@
-
 import 'package:json_annotation/json_annotation.dart';
 import '../json/json_num_converters.dart';
 
 part 'product_list_item.g.dart';
 
-
 @JsonSerializable(checked: true)
 class ProductListItem {
   // --- 核心字段 ---
   final String treasureId;
-  final String treasureName;
+  final String? treasureName; // 改为可空更稳妥
 
-  // ✨ 后端返回的是 0~100 的保留两位小数的 double
-  final double buyQuantityRate;
+  // 0~100 保留两位小数
+  final double? buyQuantityRate;
 
   @JsonKey(name: 'unitAmount', fromJson: JsonNumConverter.toDouble, toJson: JsonNumConverter.doubleToString)
-  final double unitAmount;
+  final double? unitAmount; // 拼团价
 
-  // 🚨 必须补上这个！详情页 JoinTreasureBar 用它判断是否下架
+  // 🔥 [新增] 价格体系字段
+  @JsonKey(name: 'marketAmount', fromJson: JsonNumConverter.toDouble, toJson: JsonNumConverter.doubleToString)
+  final double? marketAmount; // 划线价
+
+  @JsonKey(name: 'soloAmount', fromJson: JsonNumConverter.toDouble, toJson: JsonNumConverter.doubleToString)
+  final double? soloAmount;   // 单买价
+
+  // 🔥 [新增] 自动化与奖励
+  final bool? enableRobot;
+  final int? leaderBonusType;
+
+  // 🚨 详情页用它判断是否下架
   @JsonKey(defaultValue: 1)
   final int state;
 
-  // ✨ 建议补上这个，虽然前端能算，但拿后端的标记更准
   final String? statusTag;
 
   // --- 业务字段 ---
@@ -35,7 +43,6 @@ class ProductListItem {
   final Map<String, dynamic>? bonusConfig;
 
   // --- 详情/可选字段 ---
-  // 🚨 建议：金额类字段最好都加上转换器，防止后端传 number 前端崩
   @JsonKey(fromJson: JsonNumConverter.toStringOrNull)
   final String? costAmount;
 
@@ -67,10 +74,16 @@ class ProductListItem {
 
   ProductListItem({
     required this.treasureId,
-    required this.treasureName,
-    required this.buyQuantityRate,
-    required this.unitAmount,
-    this.state = 1, // 默认为 1
+    this.treasureName,
+    this.buyQuantityRate,
+    this.unitAmount,
+
+    this.marketAmount, // New
+    this.soloAmount,   // New
+    this.enableRobot,  // New
+    this.leaderBonusType, // New
+
+    this.state = 1,
     this.statusTag,
     this.categories,
     this.shippingType,
@@ -110,7 +123,7 @@ class ProductListItem {
   }
 }
 
-// ✨ 新增：分类简单模型
+// 分类模型
 @JsonSerializable(checked: true)
 class CategoryItem {
   final int id;
@@ -124,7 +137,7 @@ class CategoryItem {
   Map<String, dynamic> toJson() => _$CategoryItemToJson(this);
 }
 
-// --- 分页包装类 (建议加上，方便接口解析) ---
+// 分页包装类
 class TreasureListResponse {
   final int page;
   final int pageSize;
@@ -149,16 +162,13 @@ class TreasureListResponse {
     );
   }
 }
+
+// 查询参数
 class ProductListParams {
-  // 🚨 修改：categoryId 改为可空，因为选“全部”时可能传 null
   final int? categoryId;
   final int page;
   final int pageSize;
-
-  // 🚨 新增：搜索关键词
   final String? q;
-
-  // 🚨 新增：筛选类型 (ALL, PRE_SALE, ON_SALE)
   final String? filterType;
 
   ProductListParams({
@@ -181,6 +191,44 @@ class ProductListParams {
   }
 }
 
+// 实时状态模型 (下单页轮询用)
+@JsonSerializable(checked: true)
+class TreasureStatusModel {
+  final String id;
+  final int stock;
+
+  @JsonKey(fromJson: JsonNumConverter.toDouble, toJson: JsonNumConverter.doubleToString)
+  final double price; // 拼团价
+
+  @JsonKey(fromJson: JsonNumConverter.toDouble, toJson: JsonNumConverter.doubleToString)
+  final double? soloPrice;
+
+  final bool isSoldOut;
+  final int state;
+  final bool isExpired;
+  final int? seqBuyQuantity;
+
+  TreasureStatusModel({
+    required this.id,
+    required this.stock,
+    required this.price,
+    this.soloPrice, // New
+    required this.isSoldOut,
+    required this.state,
+    required this.isExpired,
+    this.seqBuyQuantity,
+  });
+
+  factory TreasureStatusModel.fromJson(Map<String, dynamic> json) =>
+      _$TreasureStatusModelFromJson(json);
+
+  Map<String, dynamic> toJson() => _$TreasureStatusModelToJson(this);
+
+  @override
+  String toString() => toJson().toString();
+}
+
+// GroupItem 和 GroupUser 保持不变
 @JsonSerializable(checked: true)
 class GroupItem {
   final String groupId;
@@ -212,10 +260,8 @@ class GroupUser {
   final String userId;
   final String username;
   final String avatar;
-
   final int? createdAt;
-
-  final String? leaderUserId; // 增加可空标识，防止非团员查询时报错
+  final String? leaderUserId;
   final String? leaderUsername;
 
   GroupUser({
@@ -231,37 +277,4 @@ class GroupUser {
       _$GroupUserFromJson(json);
 
   Map<String, dynamic> toJson() => _$GroupUserToJson(this);
-
-  @override
-  String toString() => toJson().toString();
-}
-
-@JsonSerializable(checked: true)
-class TreasureStatusModel{
-  final String id;
-  final int stock;
-  @JsonKey(fromJson:JsonNumConverter.toDouble,toJson: JsonNumConverter.doubleToString)
-  final double price;
-  final bool isSoldOut;
-  final int state;
-  final bool isExpired;
-
-  TreasureStatusModel({
-    required this.id,
-    required this.stock,
-    required this.price,
-    required this.isSoldOut,
-    required this.state,
-    required this.isExpired,
-  });
-
-  factory TreasureStatusModel.fromJson(Map<String, dynamic> json) =>
-      _$TreasureStatusModelFromJson(json);
-
-
-  Map<String, dynamic> toJson() => _$TreasureStatusModelToJson(this);
-
-  @override
-  String toString() => toJson().toString();
-
 }
