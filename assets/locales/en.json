@@ -585,6 +585,7 @@
   "order.refund.wallet": "Refunded Funds",
   "order.refund.coins": "Refund Lucky Coins",
   "order.refund.success": "Refund Success",
+  "please.add.delivery.address": "Please add a delivery address.",
   "share.invite.friend": "\"Join me and give me a boost!\"",
   "invite.voucher.received": "Total Voucher Received",
   "invite.record.title2": "Invited {{number1}} friends: earned {{number2}} Lucky Coins\n{{number3}} friend completed first order: Earned {{number4}} Lucky Coins + {{number5}} Voucher",

@@ -369,6 +369,7 @@
   "deposit_process_step_2": "Verifying transaction securely...",
   "deposit_process_step_3": "Waiting for bank confirmation...",
   "deposit_process_step_4": "Finalizing deposit...",
+  "please.add.delivery.address": "Pakilagay ang delivery address.",
   "transaction.title": "Detalye ng Transaksyon",
   "transaction.status_processing": "Pinoproseso",
   "transaction.status_failed": "Nabigo",

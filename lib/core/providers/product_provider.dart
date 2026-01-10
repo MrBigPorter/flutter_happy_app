@@ -127,11 +127,16 @@ final productRealtimeStatusProvider = FutureProvider.family<TreasureStatusModel,
 
 
 // autoDispose: 离开页面自动销毁
-final groupDetailProvider = FutureProvider.autoDispose.family<GroupForTreasureItem, String>((ref, groupId) async {
+final groupDetailProvider = FutureProvider.autoDispose.family<GroupDetailModel, String>((ref, groupId) async {
   // 这里调用你的 API 获取单个团详情
   // 假设你的 API 是 Api.getGroupDetail(groupId)
   // 如果没有专门的详情接口，也可以复用列表接口传 groupId 过滤，或者让后端加一个
   // 模拟调用 (请替换为真实 API)
-  final res = await Http.get('/groups/$groupId');
-  return GroupForTreasureItem.fromJson(res['data']);
+  return Api.getGroupDetailApi(groupId);
+});
+
+final homeGroupBuyingProvider = FutureProvider<List<ProductListItem>>((ref) async {
+  final hotList = await Api.getTreasureHotGroups(10);
+  print("Fetched hot group buying list: ${hotList.toString()}");
+  return hotList.map((e) =>e.toProductListItem()).toList();
 });

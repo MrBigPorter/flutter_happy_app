@@ -8,7 +8,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_app/common.dart';
 import 'package:flutter_app/core/providers/index.dart';
 import 'package:flutter_app/core/store/lucky_store.dart';
-
+import 'package:go_router/go_router.dart';
 
 class ProductDetailPage extends ConsumerStatefulWidget {
   final String productId;
@@ -37,7 +37,9 @@ class _ProductDetailPageState extends ConsumerState<ProductDetailPage>
   @override
   void initState() {
     super.initState();
-    _bannerStorageKey = PageStorageKey('product_detail_banner_${widget.productId}');
+    _bannerStorageKey = PageStorageKey(
+      'product_detail_banner_${widget.productId}',
+    );
     _pageStorageKey = PageStorageKey('product_detail_page_${widget.productId}');
 
     _bottomBarController = AnimationController(
@@ -49,9 +51,13 @@ class _ProductDetailPageState extends ConsumerState<ProductDetailPage>
       CurvedAnimation(parent: _bottomBarController, curve: Curves.easeOut),
     );
 
-    _offsetBarAnimation = Tween<Offset>(begin: const Offset(0, 1), end: Offset.zero).animate(
-      CurvedAnimation(parent: _bottomBarController, curve: Curves.easeOutCubic),
-    );
+    _offsetBarAnimation =
+        Tween<Offset>(begin: const Offset(0, 1), end: Offset.zero).animate(
+          CurvedAnimation(
+            parent: _bottomBarController,
+            curve: Curves.easeOutCubic,
+          ),
+        );
 
     _bottomBarController.forward();
   }
@@ -67,11 +73,17 @@ class _ProductDetailPageState extends ConsumerState<ProductDetailPage>
     //监听【静态详情】(带缓存，瞬间返回)
     final detailAsync = ref.watch(productDetailProvider(widget.productId));
     //监听【实时状态】(不缓存，每次进都会请求，慢几百毫秒)
-    final statusAsync = ref.watch(productRealtimeStatusProvider(widget.productId));
-    final webBaseUrl = ref.watch(luckyProvider.select((s) => s.sysConfig.webBaseUrl));
+    final statusAsync = ref.watch(
+      productRealtimeStatusProvider(widget.productId),
+    );
+    final webBaseUrl = ref.watch(
+      luckyProvider.select((s) => s.sysConfig.webBaseUrl),
+    );
 
     final expandedHeight = 250.w;
-    final bottomPadding = MediaQuery.viewInsetsOf(context).bottom.clamp(0.0, 9999.0);
+    final bottomPadding = MediaQuery.viewInsetsOf(
+      context,
+    ).bottom.clamp(0.0, 9999.0);
 
     return detailAsync.when(
       data: (detail) {
@@ -85,31 +97,58 @@ class _ProductDetailPageState extends ConsumerState<ProductDetailPage>
                 expandedHeight: expandedHeight,
                 backgroundColor: context.bgPrimary,
                 leading: IconButton(
-                  onPressed: () => Navigator.of(context).maybePop(),
-                  icon: Icon(CupertinoIcons.back, color: context.fgPrimary900, size: 24.w),
+                  onPressed: () => {
+                    // 1. 检查路由栈里是否有上一页
+                    if (context.canPop())
+                      {
+                        // 如果有，正常返回
+                        context.pop(),
+                      }
+                    else
+                      {
+                        // 2. 如果没有（说明是从 DeepLink 直接空降进来的）
+                        // 手动跳转回首页
+                        context.go('/home'),
+                      },
+                  },
+                  icon: Icon(
+                    CupertinoIcons.back,
+                    color: context.fgPrimary900,
+                    size: 24.w,
+                  ),
                 ),
                 // 优化：使用 FlexibleSpaceBar 避免手动计算 Opacity 带来的复杂性
                 flexibleSpace: FlexibleSpaceBar(
                   expandedTitleScale: 1.0, // 禁止标题缩放
-                  titlePadding: EdgeInsets.only(left: 56.w, right: 16.w, bottom: 14.w),
-                  title: LayoutBuilder(builder: (ctx, constraints) {
-                    // 简单的判断：当折叠到一定程度显示标题
-                    final isCollapsed = constraints.maxHeight <= kToolbarHeight + MediaQuery.of(context).padding.top + 10;
-                    return AnimatedOpacity(
-                      duration: const Duration(milliseconds: 200),
-                      opacity: isCollapsed ? 1.0 : 0.0,
-                      child: Text(
-                        detail.treasureName ?? '',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: context.textMd,
-                          fontWeight: FontWeight.w700,
-                          color: context.fgPrimary900,
+                  titlePadding: EdgeInsets.only(
+                    left: 56.w,
+                    right: 16.w,
+                    bottom: 14.w,
+                  ),
+                  title: LayoutBuilder(
+                    builder: (ctx, constraints) {
+                      // 简单的判断：当折叠到一定程度显示标题
+                      final isCollapsed =
+                          constraints.maxHeight <=
+                          kToolbarHeight +
+                              MediaQuery.of(context).padding.top +
+                              10;
+                      return AnimatedOpacity(
+                        duration: const Duration(milliseconds: 200),
+                        opacity: isCollapsed ? 1.0 : 0.0,
+                        child: Text(
+                          detail.treasureName ?? '',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: context.textMd,
+                            fontWeight: FontWeight.w700,
+                            color: context.fgPrimary900,
+                          ),
                         ),
-                      ),
-                    );
-                  }),
+                      );
+                    },
+                  ),
                   background: BannerSection(
                     banners: [detail.treasureCoverImg ?? ''],
                     storageKey: _bannerStorageKey,
@@ -122,7 +161,11 @@ class _ProductDetailPageState extends ConsumerState<ProductDetailPage>
               SliverToBoxAdapter(child: const CouponSection()),
 
               SliverToBoxAdapter(
-                child: TopTreasureSection(item: detail, realTimeItem: statusAsync.value ,url: webBaseUrl),
+                child: TopTreasureSection(
+                  item: detail,
+                  realTimeItem: statusAsync.value,
+                  url: webBaseUrl,
+                ),
               ),
 
               // 使用 RepaintBoundary 优化长列表滚动的性能
@@ -135,7 +178,10 @@ class _ProductDetailPageState extends ConsumerState<ProductDetailPage>
               SliverToBoxAdapter(child: SizedBox(height: 8.w)),
 
               SliverToBoxAdapter(
-                child: DetailContentSection(ruleContent: detail.ruleContent, desc: detail.desc),
+                child: DetailContentSection(
+                  ruleContent: detail.ruleContent,
+                  desc: detail.desc,
+                ),
               ),
 
               // 底部留白，防止内容被 Bar 遮挡
@@ -153,7 +199,7 @@ class _ProductDetailPageState extends ConsumerState<ProductDetailPage>
               child: SlideTransition(
                 position: _offsetBarAnimation,
                 child: JoinTreasureBar(
-                  groupId: widget.queryParams['groupId'],
+                  groupId: widget.queryParams?['groupId'],
                   item: detail,
                 ),
               ),
@@ -161,7 +207,8 @@ class _ProductDetailPageState extends ConsumerState<ProductDetailPage>
           ),
         );
       },
-      error: (err, stack) => const ProductDetailSkeleton(), // 简单处理，实际可加 ErrorWidget
+      error: (err, stack) => const ProductDetailSkeleton(),
+      // 简单处理，实际可加 ErrorWidget
       loading: () => const ProductDetailSkeleton(),
     );
   }

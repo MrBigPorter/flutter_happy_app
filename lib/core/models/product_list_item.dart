@@ -15,14 +15,14 @@ class ProductListItem {
   @JsonKey(name: 'unitAmount', fromJson: JsonNumConverter.toDouble, toJson: JsonNumConverter.doubleToString)
   final double? unitAmount; // 拼团价
 
-  // 🔥 [新增] 价格体系字段
+  //  [新增] 价格体系字段
   @JsonKey(name: 'marketAmount', fromJson: JsonNumConverter.toDouble, toJson: JsonNumConverter.doubleToString)
   final double? marketAmount; // 划线价
 
   @JsonKey(name: 'soloAmount', fromJson: JsonNumConverter.toDouble, toJson: JsonNumConverter.doubleToString)
   final double? soloAmount;   // 单买价
 
-  // 🔥 [新增] 自动化与奖励
+  //  [新增] 自动化与奖励
   final bool? enableRobot;
   final int? leaderBonusType;
 
@@ -57,6 +57,7 @@ class ProductListItem {
   final String? treasureCoverImg;
   final String? ruleContent;
   final String? desc;
+  final List<String>? recentJoinAvatars;
 
   @JsonKey(fromJson: JsonNumConverter.toStringOrNull)
   final String? maxUnitCoins;
@@ -110,6 +111,7 @@ class ProductListItem {
     this.charityAmount,
     this.treasureSeq,
     this.cashState,
+    this.recentJoinAvatars,
   });
 
   factory ProductListItem.fromJson(Map<String, dynamic> json) =>

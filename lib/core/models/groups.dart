@@ -1,5 +1,8 @@
 import 'package:equatable/equatable.dart';
+import 'package:flutter_app/core/models/product_list_item.dart';
 import 'package:json_annotation/json_annotation.dart';
+
+import '../../utils/helper.dart';
 
 part 'groups.g.dart';
 
@@ -26,7 +29,8 @@ class GroupForTreasureItem {
   final GroupUser creator;
 
   // 预览成员列表 (后端只返回前几个)
-  final List<GroupMemberItem>? members;
+  @JsonKey(defaultValue: [])
+  final List<GroupMemberItem> members;
 
   GroupForTreasureItem({
     required this.groupId,
@@ -38,7 +42,7 @@ class GroupForTreasureItem {
     required this.updatedAt,
     required this.createdAt,
     required this.creator,
-    this.members,
+    required this.members,
   });
 
   factory GroupForTreasureItem.fromJson(Map<String, dynamic> json) => _$GroupForTreasureItemFromJson(json);
@@ -65,7 +69,6 @@ class GroupForTreasureItem {
 // ==========================================
 @JsonSerializable(checked: true)
 class GroupUser {
-  // 🔥 映射修正：Prisma 返回的是 id，这里映射给 userId
   @JsonKey(name: 'id')
   final String? userId;
 
@@ -87,6 +90,7 @@ class GroupUser {
 // ==========================================
 @JsonSerializable(checked: true)
 class GroupMemberItem {
+  @JsonKey(defaultValue: '')
   final String id; // 成员记录ID
   final num joinedAt;
 
@@ -96,6 +100,7 @@ class GroupMemberItem {
   final String? orderId;
 
   // 1=是团长, 0=不是
+  @JsonKey(defaultValue: 0)
   final int isOwner;
 
   // 后端 Decimal 转成了 String
@@ -105,7 +110,7 @@ class GroupMemberItem {
   final GroupUser? user;
 
   GroupMemberItem({
-    required this.id,
+     required this.id,
     required this.joinedAt,
     this.groupId,
     this.userId,
@@ -171,4 +176,128 @@ class GroupMemberListRequestParams extends Equatable {
 
   @override
   List<Object?> get props => [groupId, page, pageSize];
+}
+
+
+// ==========================================
+// 5. 团详情 (用于 GroupRoomPage 轮询)
+// 对应后端接口: GET /groups/:id
+// ==========================================
+@JsonSerializable(checked: true)
+class GroupDetailModel {
+  final String groupId;
+
+  // 1-进行中 2-成功 3-失败
+  final int groupStatus;
+
+  final int currentMembers;
+  final int maxMembers;
+
+  // 后端如果是 Date 对象，Json通常是 ISO String，这里用 DateTime 自动转换
+  // 如果后端发的是毫秒时间戳，这里改回 int 即可
+  final int? expireAt;
+
+  final GroupTreasure? treasure;
+
+  // 复用上面的 GroupMemberItem，不需要重新定义 GroupMember
+  @JsonKey(defaultValue: [])
+  final List<GroupMemberItem> members;
+
+  GroupDetailModel({
+    required this.groupId,
+    required this.groupStatus,
+    required this.currentMembers,
+    required this.maxMembers,
+    this.expireAt,
+    required this.treasure,
+    required this.members,
+  });
+
+  factory GroupDetailModel.fromJson(Map<String, dynamic> json) => _$GroupDetailModelFromJson(json);
+  Map<String, dynamic> toJson() => _$GroupDetailModelToJson(this);
+}
+
+// ==========================================
+// 6. 团详情里的简略商品信息
+// ==========================================
+@JsonSerializable(checked: true)
+class GroupTreasure {
+  final String treasureId;
+  final String treasureName;
+  final String treasureCoverImg;
+
+  GroupTreasure({
+    required this.treasureId,
+    required this.treasureName,
+    required this.treasureCoverImg,
+  });
+
+  factory GroupTreasure.fromJson(Map<String, dynamic> json) => _$GroupTreasureFromJson(json);
+  Map<String, dynamic> toJson() => _$GroupTreasureToJson(this);
+}
+
+@JsonSerializable()
+class HotGroupItem {
+  final String treasureId;
+  final String treasureName;
+  final String treasureCoverImg;
+
+  // 价格相关
+  @JsonKey(fromJson: JsonNumConverter.toDouble)
+  final double unitAmount;
+  @JsonKey(fromJson: JsonNumConverter.toDouble)
+  final double? marketAmount;
+
+  // 进度 & 库存
+  final double buyQuantityRate; // 0.0 ~ 1.0
+  final int stockLeft;
+  final int joinCount;
+
+  // 头像列表，默认为空数组防崩
+  @JsonKey(defaultValue: [])
+  final List<String> recentJoinAvatars;
+
+  // 倒计时用
+  final int? salesEndAt;
+
+  HotGroupItem({
+    required this.treasureId,
+    required this.treasureName,
+    required this.treasureCoverImg,
+    required this.unitAmount,
+    this.marketAmount,
+    required this.buyQuantityRate,
+    required this.stockLeft,
+    required this.joinCount,
+    required this.recentJoinAvatars,
+    this.salesEndAt,
+  });
+
+  factory HotGroupItem.fromJson(Map<String, dynamic> json) =>
+      _$HotGroupItemFromJson(json);
+
+  Map<String, dynamic> toJson() => _$HotGroupItemToJson(this);
+
+  ///  核心适配方法：转成 ProductListItem
+  /// 这样你的 GroupBuyingSection 组件就可以直接用了，不用改类型
+  ProductListItem toProductListItem() {
+    return ProductListItem(
+      treasureId: treasureId,
+      treasureName: treasureName,
+      treasureCoverImg: treasureCoverImg,
+      unitAmount: unitAmount,
+      marketAmount: marketAmount,
+
+      // 这里的字段名需要根据 ProductListItem 的实际定义来
+      // 如果 ProductListItem 里叫 buyQuantityRate 就直接赋值
+      buyQuantityRate: buyQuantityRate,
+
+      // 用 stockLeft 和 joinCount 去填充相关字段
+      // 如果 ProductListItem 没有 stockLeft，可以用 seqShelvesQuantity 模拟
+      seqBuyQuantity: joinCount,
+
+      // 倒计时
+      salesEndAt: salesEndAt,
+    );
+  }
 }

@@ -25,7 +25,6 @@ class HomeTreasures extends StatelessWidget {
             2 => SpecialArea(list: item.treasureResp, title: item.title),
             3 => HomeFuture(list: item.treasureResp, title: item.title),
             4 => Recommendation(list: item.treasureResp, title: item.title),
-            //1 => GroupBuyingSection(list: item.treasureResp, title: item.title),
             _ => const SizedBox.shrink(),
           };
         }, childCount: treasures?.length ?? 0),

@@ -33,6 +33,12 @@ class Api {
     return parseList<Banners>(res, (e) => Banners.fromJson(e));
   }
 
+  // treasure hot groups
+  static Future<List<HotGroupItem>> getTreasureHotGroups(int limit) async {
+    final res = await Http.get('/api/v1/treasure/hot-groups', query: {'limit': limit});
+    return parseList<HotGroupItem>(res, (e) => HotGroupItem.fromJson(e));
+  }
+
   /// 首页宝藏推荐  home treasures
   static Future<List<IndexTreasureItem>> indexTreasuresApi() async {
     try{
@@ -163,6 +169,8 @@ class Api {
     final res = await Http.get('/api/v1/treasure/$productId');
     return ProductListItem.fromJson(res);
   }
+
+
 
 
   // 获取实时价格
@@ -317,6 +325,14 @@ class Api {
     });
      return parsePageResponse(res, (e) => GroupForTreasureItem.fromJson(e));
   }
+
+  // group detail
+  static Future<GroupDetailModel> getGroupDetailApi(String groupId) async {
+    final res = await Http.get('/api/v1/groups/$groupId');
+    return GroupDetailModel.fromJson(res);
+  }
+
+
 
   // group member list
   static Future<PageResult<GroupMemberItem>> groupMemberListApi(GroupMemberListRequestParams params) async {

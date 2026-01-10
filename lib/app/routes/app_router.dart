@@ -2,6 +2,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_app/app/page/deposit_page.dart';
 import 'package:flutter_app/app/page/group_member_page.dart';
+import 'package:flutter_app/app/page/group_room_page.dart';
 import 'package:flutter_app/app/page/kyc_verify_page.dart';
 import 'package:flutter_app/app/page/order_list_page.dart';
 import 'package:flutter_app/app/page/page_404.dart';
@@ -65,6 +66,22 @@ class AppRouter {
             builder: (context, state) =>   LoginPage()
         ),
 
+        // 这样 /product/123 会先被这里匹配，而不会被误认为是 ShellRoute 里的 /product
+        GoRoute(
+            name: 'productDetail',
+            path: '/product/:id',
+            parentNavigatorKey: NavHub.key,
+            pageBuilder: (ctx, state) {
+              final id = state.pathParameters['id']!;
+              final  queryParams = state.uri.queryParameters;
+              return fxPage(
+                key: state.pageKey,
+                child: ProductDetailPage(productId: id,queryParams:queryParams),
+                fx: RouteFx.zoomIn,
+              );
+            }
+        ),
+
         ShellRoute(
           navigatorKey: _shellKey,
           observers: [
@@ -107,19 +124,6 @@ class AppRouter {
             }
         ),
         GoRoute(
-            name: 'productDetail',
-            path: '/product/:id',
-            pageBuilder: (ctx, state) {
-              final id = state.pathParameters['id']!;
-              final  queryParams = state.uri.queryParameters;
-              return fxPage(
-                key: state.pageKey,
-                child: ProductDetailPage(productId: id,queryParams:queryParams),
-                fx: RouteFx.zoomIn,
-              );
-            }
-        ),
-        GoRoute(
             name: 'productGroup',
             path: '/product/:id/group',
             pageBuilder: (ctx, state) {
@@ -127,6 +131,18 @@ class AppRouter {
               return fxPage(
                 key: state.pageKey,
                 child: ProductGroupPage(treasureId: id),
+                fx: RouteFx.slideUp,
+              );
+            }
+        ),
+        GoRoute(
+            name: 'groupRoom',
+            path: '/group-room',
+            pageBuilder: (ctx, state) {
+              final  id = state.uri.queryParameters['groupId'];
+              return fxPage(
+                key: state.pageKey,
+                child: GroupRoomPage(groupId: id ?? ''),
                 fx: RouteFx.slideUp,
               );
             }
@@ -210,11 +226,23 @@ class AppRouter {
             builder: (context, state) => WithdrawPage()
         ),
 
+
       ],
       redirect: (context,state){
+        // 1. 获取当前尝试访问的完整路径
+        final String path = state.uri.toString();
 
-        // get the current path
-        final path = state.uri.path;
+        //  核心修复：拦截 luckyapp:// 开头的分享链接
+        // 只要是 luckyapp://product/ 开头，马上把它修正成内部路由 /product-detail/
+        if (path.startsWith('luckyapp://product/')) {
+          // 比如: luckyapp://product/123?groupId=abc
+          // 变成: /product/123?groupId=abc
+          final newPath = path.replaceFirst('luckyapp://product/', '/product/');
+
+          print("🔀 自动修正分享链接: $path -> $newPath");
+          return newPath;
+        }
+
 
         // check if the user is authenticated
         final isAuthenticated = ref.read(authProvider.select( (auth) => auth.isAuthenticated ));
@@ -238,6 +266,8 @@ class AppRouter {
         return null;
       },
       errorPageBuilder: (context, state) {
+        // 重置全局进度条
+        print("🚨 404 Error: ${state.uri.toString()}");
         Future.microtask(() {
           ref.read(overlayProgressProvider.notifier).state = 0.0;
         });
@@ -255,3 +285,4 @@ class AppRouter {
     return router;
   }
 }
+

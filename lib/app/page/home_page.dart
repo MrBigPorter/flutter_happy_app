@@ -7,11 +7,14 @@ import 'package:flutter_app/utils/helper.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_app/core/providers/index.dart';
+import 'package:flutter_app/core/models/product_list_item.dart';
 
+
+import 'home_components/group_buying_section.dart';
 import 'home_components/home_skeleton.dart';
 
-/// 首页 Home Page
-/// 包含轮播图、宝贝列表、广告位、数据统计等模块 including carousel, treasure list, ad space, data statistics, etc.
+
+
 class HomePage extends ConsumerWidget {
   const HomePage({super.key});
 
@@ -20,14 +23,17 @@ class HomePage extends ConsumerWidget {
     final banners = ref.watch(homeBannerProvider);
     final treasures = ref.watch(homeTreasuresProvider);
 
-    /// 下拉刷新 refresh handler
+    //  监听拼团数据
+    final hotGroups = ref.watch(homeGroupBuyingProvider);
+
+    /// 下拉刷新
     Future<void> onRefresh() async {
-      /// only delete cache, not re-fetch data
+      // 同时刷新所有数据源
       ref.invalidate(homeBannerProvider);
       ref.invalidate(homeTreasuresProvider);
       ref.invalidate(homeStatisticsProvider);
+      ref.invalidate(homeGroupBuyingProvider);
 
-      /// wait for a while to show the refresh effect
       await Future.delayed(const Duration(milliseconds: 600));
     }
 
@@ -37,9 +43,11 @@ class HomePage extends ConsumerWidget {
         onRefresh: onRefresh,
         child: CustomScrollView(
           physics: platformScrollPhysics(),
-          cacheExtent: 1000,// 提前缓存区域，提升滚动流畅度 pre-cache area to improve scrolling smoothness
+          cacheExtent: 1000,
           slivers: [
-            // 轮播图 Banner
+            // ------------------------------------------------------
+            // 1. Banner 轮播图
+            // ------------------------------------------------------
             banners.when(
               data: (list) => SliverToBoxAdapter(
                 child: Padding(
@@ -51,11 +59,37 @@ class HomePage extends ConsumerWidget {
               loading: () => HomeBannerSkeleton(),
             ),
 
-            /// 宝贝列表 Treasure List
+            // ------------------------------------------------------
+            // 2.  热门拼团区 (真实接口驱动)
+            // ------------------------------------------------------
+            hotGroups.when(
+              data: (data) {
+                print("Hot group buying data: $data");
+                // 如果后端返回空数组，直接隐藏区域
+                if (data.isEmpty) return const SliverToBoxAdapter(child: SizedBox.shrink());
+
+                return SliverToBoxAdapter(
+                  child: GroupBuyingSection(
+                    title: "🔥 Hot Group Buy",
+                    list: data,
+                  ),
+                );
+              },
+              // 加载中或出错时不显示，保持页面整洁，等待数据回来自动弹入
+              error: (err, stack) {
+                print("🛑 拼团数据解析失败: $err"); //看控制台
+                return const SliverToBoxAdapter(child: SizedBox.shrink());
+              },
+              loading: () => const SliverToBoxAdapter(child: SizedBox.shrink()),
+            ),
+
+            // ------------------------------------------------------
+            // 3. 宝贝列表 (瀑布流)
+            // ------------------------------------------------------
             treasures.when(
-              data: (data){
-                if(data.isNotEmpty){
-                 return HomeTreasures(treasures: data);
+              data: (data) {
+                if (data.isNotEmpty) {
+                  return HomeTreasures(treasures: data);
                 }
                 return HomeTreasureSkeleton();
               },
@@ -63,11 +97,10 @@ class HomePage extends ConsumerWidget {
               loading: () => HomeTreasureSkeleton(),
             ),
 
-            /// bottom padding 底部留白
             SliverToBoxAdapter(child: SizedBox(height: 20.h)),
 
             const SliverFillRemaining(
-              hasScrollBody: false, // prevent scrolling 当内容不足时防止滚动,只是填充剩余空间
+              hasScrollBody: false,
               fillOverscroll: false,
               child: SizedBox.shrink(),
             )
@@ -77,6 +110,3 @@ class HomePage extends ConsumerWidget {
     );
   }
 }
-
-
-

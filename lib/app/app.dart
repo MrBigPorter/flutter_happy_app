@@ -12,18 +12,35 @@ import 'package:easy_localization/easy_localization.dart';
 
 import '../../theme/theme_provider.dart';
 
-class MyApp extends ConsumerWidget {
+class MyApp extends ConsumerStatefulWidget {
   const MyApp({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    // 全局处理 Token 失效：登出并跳转到登录页 - Global handling of token invalidation: logout and redirect to login page
+  ConsumerState<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends ConsumerState<MyApp> {
+
+
+  @override
+  void initState() {
+    super.initState();
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
+  }
+
+
+  @override
+  Widget build(BuildContext context) {
+    // Token 失效处理保持不变
     Http.onTokenInvalid ??= () async {
       final authNotifier = ref.read(authProvider.notifier);
       await authNotifier.logout();
     };
 
-    // 全局处理 Token 刷新：更新存储的 Token - Global handling of token refresh: update stored tokens
     Http.onTokenRefresh ??= (String newAccess, String? newRefresh) async {
       final authNotifier = ref.read(authProvider.notifier);
       authNotifier.updateTokens(newAccess, newRefresh);
@@ -32,9 +49,9 @@ class MyApp extends ConsumerWidget {
     final router = ref.watch(appRouterProvider);
     final themeMode = ref.watch(themeModeProvider);
 
+
     return MaterialApp.router(
       title: 'Lucky App',
-
       routerConfig: router,
       themeMode: themeMode,
       theme: _buildTheme(false),
@@ -53,7 +70,6 @@ class MyApp extends ConsumerWidget {
           ),
           child: child!,
         );
-
         return GlobalHandler(child: content);
       },
     );
