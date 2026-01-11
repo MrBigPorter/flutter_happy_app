@@ -8,6 +8,7 @@ class ProductListItem {
   // --- 核心字段 ---
   final String treasureId;
   final String? treasureName; // 改为可空更稳妥
+  final bool? isJoined; // 新增字段：当前用户是否已参与
 
   // 0~100 保留两位小数
   final double? buyQuantityRate;
@@ -112,6 +113,7 @@ class ProductListItem {
     this.treasureSeq,
     this.cashState,
     this.recentJoinAvatars,
+    this.isJoined,
   });
 
   factory ProductListItem.fromJson(Map<String, dynamic> json) =>

@@ -134,7 +134,10 @@ class GroupBuyingCard extends StatelessWidget {
     // 3. 参与人数 (优先用 seqBuyQuantity，没有则用 betCount，再没有就是 0)
     final int totalJoins = item.seqBuyQuantity ?? 0;
 
-    // 4. 头像列表 (如果有真实数据就用，没有就用假数据兜底，或者显示空列表)
+    // 4. 用户是否已加入 (需确保 Model 里有 isJoined 字段)
+    final bool isJoined = item.isJoined ?? false;
+
+    // 5. 头像列表 (如果有真实数据就用，没有就用假数据兜底，或者显示空列表)
     final List<String> displayAvatars = (item.recentJoinAvatars != null && item.recentJoinAvatars!.isNotEmpty)
         ? item.recentJoinAvatars!
         : [
@@ -146,12 +149,13 @@ class GroupBuyingCard extends StatelessWidget {
 
     return GestureDetector(
       onTap: () {
-        //  点击跳转详情页，并携带参数 autoOpenGroup=true
+        //  点击跳转详情页
         if (item.treasureId != null) {
           context.pushNamed(
             'productDetail',
             pathParameters: {'id': item.treasureId!},
-            queryParameters: {'autoOpenGroup': 'true'},
+            // 如果已经加入了，就不自动打开拼团弹窗了
+            queryParameters: {'autoOpenGroup': isJoined ? 'false' : 'true'},
           );
         }
       },
@@ -212,7 +216,8 @@ class GroupBuyingCard extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
                             AvatarStack(avatars: displayAvatars, total: totalJoins),
-                            _buildJoinButton(context),
+                            // 🔥 传入加入状态
+                            _buildJoinButton(context, isJoined),
                           ],
                         ),
                       ],
@@ -352,32 +357,47 @@ class GroupBuyingCard extends StatelessWidget {
     );
   }
 
-  Widget _buildJoinButton(BuildContext context) {
+  Widget _buildJoinButton(BuildContext context, bool isJoined) {
     return Container(
       height: 32.h,
       padding: EdgeInsets.symmetric(horizontal: 16.w),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
+        // 如果已加入，移除渐变，使用纯色（绿色）；未加入则显示紫色渐变
+        gradient: isJoined
+            ? null
+            : const LinearGradient(
           colors: [Color(0xFF722ED1), Color(0xFF9254DE)],
         ),
+        color: isJoined ? const Color(0xFF52C41A) : null, // 绿色代表已加入
         borderRadius: BorderRadius.circular(16.r),
         boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF722ED1).withOpacity(0.3),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-          ),
+          // 未加入时才显示阴影
+          if (!isJoined)
+            BoxShadow(
+              color: const Color(0xFF722ED1).withOpacity(0.3),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
+            ),
         ],
       ),
       alignment: Alignment.center,
-      child: Text(
-        // 🌐 国际化：Join
-        'home_group.btn_join'.tr(),
-        style: TextStyle(
-          color: Colors.white,
-          fontSize: 12.sp,
-          fontWeight: FontWeight.bold,
-        ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (isJoined) ...[
+            Icon(Icons.check, size: 12.sp, color: Colors.white),
+            SizedBox(width: 4.w),
+          ],
+          Text(
+            // 🌐 国际化：根据状态切换文案 (Joined vs Join)
+            isJoined ? 'home_group.btn_joined'.tr() : 'home_group.btn_join'.tr(),
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 12.sp,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
       ),
     );
   }

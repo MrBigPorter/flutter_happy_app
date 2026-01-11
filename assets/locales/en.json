@@ -594,6 +594,7 @@
   "home_group.progress_prefix": "Only ",
   "home_group.progress_suffix": " left",
   "home_group.btn_join": "Join",
+  "home_group.btn_joined": "Joined",
   "product_detail.title": "Product Details",
   "product_detail.tab_desc": "Description",
   "product_detail.tab_rules": "Rules",
