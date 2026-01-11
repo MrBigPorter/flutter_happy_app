@@ -96,6 +96,7 @@ class _ProductDetailPageState extends ConsumerState<ProductDetailPage>
                 pinned: true,
                 expandedHeight: expandedHeight,
                 backgroundColor: context.bgPrimary,
+                surfaceTintColor: Colors.transparent,
                 leading: IconButton(
                   onPressed: () => {
                     // 1. 检查路由栈里是否有上一页
@@ -130,13 +131,14 @@ class _ProductDetailPageState extends ConsumerState<ProductDetailPage>
                       // 简单的判断：当折叠到一定程度显示标题
                       final isCollapsed =
                           constraints.maxHeight <=
-                          kToolbarHeight +
-                              MediaQuery.of(context).padding.top +
-                              10;
+                              kToolbarHeight +
+                                  MediaQuery.of(context).padding.top +
+                                  10;
                       return AnimatedOpacity(
                         duration: const Duration(milliseconds: 200),
                         opacity: isCollapsed ? 1.0 : 0.0,
                         child: Text(
+                          // 这里是商品名，来自 API，无需翻译
                           detail.treasureName ?? '',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -158,6 +160,7 @@ class _ProductDetailPageState extends ConsumerState<ProductDetailPage>
               ),
 
               // 2. Sections
+              // 💡 提示：在 CouponSection 内部请使用 'product_detail.section_coupon'.tr()
               SliverToBoxAdapter(child: const CouponSection()),
 
               SliverToBoxAdapter(
@@ -169,6 +172,7 @@ class _ProductDetailPageState extends ConsumerState<ProductDetailPage>
               ),
 
               // 使用 RepaintBoundary 优化长列表滚动的性能
+              // 💡 提示：在 GroupSection 内部请使用 'product_detail.section_group'.tr()
               SliverToBoxAdapter(
                 child: RepaintBoundary(
                   child: GroupSection(treasureId: detail.treasureId),
@@ -177,6 +181,8 @@ class _ProductDetailPageState extends ConsumerState<ProductDetailPage>
 
               SliverToBoxAdapter(child: SizedBox(height: 8.w)),
 
+              // 💡 提示：在 DetailContentSection 内部的 Tab 标题请使用 
+              // 'product_detail.tab_desc'.tr() 和 'product_detail.tab_rules'.tr()
               SliverToBoxAdapter(
                 child: DetailContentSection(
                   ruleContent: detail.ruleContent,
@@ -190,6 +196,8 @@ class _ProductDetailPageState extends ConsumerState<ProductDetailPage>
           ),
 
           // 3. Bottom Bar (Join / Pre-sale)
+          // 💡 提示：在 JoinTreasureBar 内部请使用 
+          // 'product_detail.btn_buy_single'.tr() 和 'product_detail.btn_buy_group'.tr()
           bottomNavigationBar: AnimatedPadding(
             padding: EdgeInsets.only(bottom: bottomPadding),
             duration: const Duration(milliseconds: 200),

@@ -21,6 +21,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../components/lucky_tab_bar.dart';
 import '../page/deposit_detail_page.dart';
+import '../page/group_lobby_page.dart';
 import '../page/guide_page.dart';
 import '../page/home_page.dart';
 import '../page/product_page.dart';
@@ -100,9 +101,9 @@ class AppRouter {
               builder: (context, state) => ProductPage(),
             ),
             GoRoute(
-              name: 'winners',
-              path: '/winners',
-              builder: (context, state) =>const WinnersPage(),
+              name: 'groups',
+              path: '/groups',
+              builder: (context, state) => GroupLobbyPage(),
             ),
             GoRoute(
               name: 'me',
@@ -225,8 +226,18 @@ class AppRouter {
             path: '/me/wallet/withdraw',
             builder: (context, state) => WithdrawPage()
         ),
-
-
+        GoRoute(
+          name: 'product-groups-detail',
+          path: '/product-groups',
+          pageBuilder: (ctx, state) {
+            String? id = state.uri.queryParameters['treasureId'];
+            return fxPage(
+              key: state.pageKey,
+              child: GroupLobbyPage(treasureId: id,),
+              fx: RouteFx.slideUp,
+            );
+          },
+        ),
       ],
       redirect: (context,state){
         // 1. 获取当前尝试访问的完整路径

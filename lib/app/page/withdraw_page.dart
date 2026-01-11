@@ -9,6 +9,7 @@ import 'package:reactive_forms/reactive_forms.dart';
 // --- Base & UI Components ---
 import 'package:flutter_app/common.dart';
 import 'package:flutter_app/components/base_scaffold.dart';
+import 'package:flutter_app/components/skeleton.dart'; // 确保引入 Skeleton 组件
 import 'package:flutter_app/ui/index.dart';
 import 'package:flutter_app/utils/format_helper.dart';
 
@@ -119,7 +120,8 @@ class _WithdrawPageState extends ConsumerState<WithdrawPage> {
       child: ReactiveForm(
         formGroup: _form.form,
         child: BaseScaffold(
-          title: 'Withdraw'.tr(),
+          // 🌐 国际化
+          title: 'withdraw.title'.tr(),
           resizeToAvoidBottomInset: true,
           body: GestureDetector(
             onTap: () => FocusScope.of(context).unfocus(),
@@ -134,28 +136,31 @@ class _WithdrawPageState extends ConsumerState<WithdrawPage> {
                   SizedBox(height: 20.h),
 
                   if (isPageLoading)
+                  // 🔥 使用全新的骨架屏加载器
                     _buildSkeletonLoader()
                   else if (channelsAsync.hasError)
                     _buildErrorState()
                   else ...[
-                      // 2. 金额输入区 (传入余额用于计算最大值)
+                      // 2. 金额输入区
                       _buildAmountInputSection(withdrawable),
                       SizedBox(height: 20.h),
 
                       // 3. 渠道选择
-                      Text('Withdraw Method', style: _headerStyle),
+                      // 🌐 国际化
+                      Text('withdraw.method_title'.tr(), style: _headerStyle),
                       SizedBox(height: 12.h),
                       _buildChannelList(channelsAsync.value ?? []),
                       SizedBox(height: 20.h),
 
                       // 4. 账号信息表单
-                      Text('Account Details', style: _headerStyle),
+                      // 🌐 国际化
+                      Text('withdraw.account_details_title'.tr(), style: _headerStyle),
                       SizedBox(height: 12.h),
                       _buildAccountForm(),
                     ],
 
                   SizedBox(height: 20.h),
-                  _buildSafetyNotice(),
+                  if (!isPageLoading) _buildSafetyNotice(),
                   SizedBox(height: 40.h),
                 ],
               ),
@@ -168,6 +173,101 @@ class _WithdrawPageState extends ConsumerState<WithdrawPage> {
   }
 
   // --- UI Components ---
+
+  // 🔥 优化后的骨架屏加载器
+  Widget _buildSkeletonLoader() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // 1. 模拟金额输入区域
+        Skeleton.react(
+          width: double.infinity,
+          height: 180.h,
+          borderRadius: BorderRadius.circular(20.r),
+        ),
+        SizedBox(height: 20.h),
+
+        // 2. 模拟渠道标题
+        Skeleton.react(width: 120.w, height: 16.h, borderRadius: BorderRadius.circular(4.r)),
+        SizedBox(height: 12.h),
+
+        // 3. 模拟渠道列表 (3个 item)
+        ListView.separated(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: 3,
+          separatorBuilder: (_, __) => SizedBox(height: 12.h),
+          itemBuilder: (_, __) => Container(
+            padding: EdgeInsets.all(16.w),
+            decoration: BoxDecoration(
+              color: context.bgPrimary,
+              borderRadius: BorderRadius.circular(16.r),
+              border: Border.all(color: Colors.grey.withOpacity(0.1)),
+            ),
+            child: Row(
+              children: [
+                Skeleton.react(width: 32.w, height: 32.w, borderRadius: BorderRadius.circular(16.r)),
+                SizedBox(width: 12.w),
+                Skeleton.react(width: 150.w, height: 14.h, borderRadius: BorderRadius.circular(4.r)),
+              ],
+            ),
+          ),
+        ),
+        SizedBox(height: 20.h),
+
+        // 4. 模拟账号表单标题
+        Skeleton.react(width: 120.w, height: 16.h, borderRadius: BorderRadius.circular(4.r)),
+        SizedBox(height: 12.h),
+
+        // 5. 模拟账号表单 (包含两行输入框)
+        Container(
+          padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 24.h),
+          decoration: BoxDecoration(
+            color: context.bgPrimary,
+            borderRadius: BorderRadius.circular(20.r),
+            border: Border.all(color: Colors.grey.withOpacity(0.1)),
+          ),
+          child: Column(
+            children: [
+              // Row 1
+              Row(
+                children: [
+                  Skeleton.react(width: 24.w, height: 24.w, borderRadius: BorderRadius.circular(12.r)),
+                  SizedBox(width: 12.w),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Skeleton.react(width: 80.w, height: 10.h, borderRadius: BorderRadius.circular(2.r)),
+                      SizedBox(height: 8.h),
+                      Skeleton.react(width: 180.w, height: 14.h, borderRadius: BorderRadius.circular(2.r)),
+                    ],
+                  )
+                ],
+              ),
+              SizedBox(height: 24.h),
+              Divider(height: 1, color: Colors.grey.withOpacity(0.1)),
+              SizedBox(height: 24.h),
+              // Row 2
+              Row(
+                children: [
+                  Skeleton.react(width: 24.w, height: 24.w, borderRadius: BorderRadius.circular(12.r)),
+                  SizedBox(width: 12.w),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Skeleton.react(width: 80.w, height: 10.h, borderRadius: BorderRadius.circular(2.r)),
+                      SizedBox(height: 8.h),
+                      Skeleton.react(width: 180.w, height: 14.h, borderRadius: BorderRadius.circular(2.r)),
+                    ],
+                  )
+                ],
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
 
   Widget _buildBalanceCard(double balance) {
     return Container(
@@ -188,8 +288,9 @@ class _WithdrawPageState extends ConsumerState<WithdrawPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // 🌐 国际化
           Text(
-            'Withdrawable Balance'.tr(),
+            'withdraw.balance_label'.tr(),
             style: TextStyle(color: Colors.white70, fontSize: 13.sp),
           ),
           SizedBox(height: 8.h),
@@ -219,19 +320,18 @@ class _WithdrawPageState extends ConsumerState<WithdrawPage> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('Withdraw Amount'.tr(), style: const TextStyle(fontWeight: FontWeight.bold)),
+              // 🌐 国际化
+              Text('withdraw.amount_label'.tr(), style: const TextStyle(fontWeight: FontWeight.bold)),
               GestureDetector(
                 onTap: () {
                   HapticFeedback.lightImpact();
-                  // 逻辑：取 余额 和 渠道限额 中较小的一个
                   final channelMax = _selectedChannel?.maxAmount ?? double.infinity;
                   final smartMax = (currentBalance < channelMax) ? currentBalance : channelMax;
-
-                  // 必须转为字符串
                   _form.amountControl.value = smartMax.toStringAsFixed(2);
                 },
                 child: Text(
-                  'Withdraw All'.tr(),
+                  // 🌐 国际化
+                  'withdraw.withdraw_all'.tr(),
                   style: TextStyle(
                     color: context.textBrandPrimary900,
                     fontWeight: FontWeight.bold,
@@ -260,11 +360,9 @@ class _WithdrawPageState extends ConsumerState<WithdrawPage> {
               hintText: '0.00',
               border: InputBorder.none,
             ),
-            // 注意：这里删除了 validationMessages，因为已经在全局 ReactiveFormConfig 中配置了
           ),
           const Divider(),
           SizedBox(height: 8.h),
-          // 动态费用显示
           ReactiveValueListenableBuilder<String>(
             formControlName: WithdrawFormModelForm.amountControlName,
             builder: (context, control, child) {
@@ -280,10 +378,12 @@ class _WithdrawPageState extends ConsumerState<WithdrawPage> {
 
               return Column(
                 children: [
-                  _buildDetailRow('Fee', '- ${FormatHelper.formatCurrency(fee)}'),
+                  // 🌐 国际化
+                  _buildDetailRow('withdraw.fee_label'.tr(), '- ${FormatHelper.formatCurrency(fee)}'),
                   SizedBox(height: 4.h),
+                  // 🌐 国际化
                   _buildDetailRow(
-                    'Actual Received',
+                    'withdraw.actual_received_label'.tr(),
                     FormatHelper.formatCurrency(actual),
                     isBold: true,
                   ),
@@ -297,7 +397,8 @@ class _WithdrawPageState extends ConsumerState<WithdrawPage> {
   }
 
   Widget _buildChannelList(List<PaymentChannelConfigItem> channels) {
-    if (channels.isEmpty) return const Text("No withdrawal methods available");
+    // 🌐 国际化
+    if (channels.isEmpty) return Text("withdraw.no_methods".tr());
 
     return ListView.separated(
       shrinkWrap: true,
@@ -363,13 +464,12 @@ class _WithdrawPageState extends ConsumerState<WithdrawPage> {
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 8.h),
       decoration: BoxDecoration(
-        color: context.bgPrimary, // 与金额卡片背景一致
-        borderRadius: BorderRadius.circular(20.r), // 与金额卡片圆角一致
-        border: Border.all(color: context.borderSecondary), // 统一边框颜色
+        color: context.bgPrimary,
+        borderRadius: BorderRadius.circular(20.r),
+        border: Border.all(color: context.borderSecondary),
       ),
       child: Column(
         children: [
-          // --- 1. 户名输入 ---
           ReactiveTextField(
             formControlName: WithdrawFormModelForm.accountNameControlName,
             textInputAction: TextInputAction.next,
@@ -380,14 +480,15 @@ class _WithdrawPageState extends ConsumerState<WithdrawPage> {
               color: context.textPrimary900,
             ),
             decoration: InputDecoration(
-              labelText: 'Account Name'.tr(),
+              // 🌐 国际化
+              labelText: 'withdraw.label_account_name'.tr(),
               labelStyle: TextStyle(
                 color: context.textTertiary600,
                 fontSize: 14.sp,
               ),
-              hintText: 'e.g. Juan Dela Cruz',
+              // 🌐 国际化
+              hintText: 'withdraw.hint_account_name'.tr(),
               hintStyle: TextStyle(color: context.utilityGray300),
-              // 🔥 核心修改：去掉边框，加入图标
               border: InputBorder.none,
               enabledBorder: InputBorder.none,
               focusedBorder: InputBorder.none,
@@ -402,14 +503,11 @@ class _WithdrawPageState extends ConsumerState<WithdrawPage> {
               contentPadding: EdgeInsets.symmetric(vertical: 12.h),
             ),
             validationMessages: {
-              ValidationMessage.required: (_) => 'Account name is required',
+              // 🌐 国际化
+              ValidationMessage.required: (_) => 'withdraw.error_account_name_required'.tr(),
             },
           ),
-
-          // --- 分割线 ---
           Divider(height: 1, color: context.utilityGray200),
-
-          // --- 2. 账号输入 ---
           ReactiveTextField(
             formControlName: WithdrawFormModelForm.accountNumberControlName,
             keyboardType: TextInputType.number,
@@ -419,17 +517,18 @@ class _WithdrawPageState extends ConsumerState<WithdrawPage> {
               fontSize: 16.sp,
               fontWeight: FontWeight.w600,
               color: context.textPrimary900,
-              fontFamily: 'Monospace', // 账号建议用等宽字体，看起来更像银行卡号
+              fontFamily: 'Monospace',
             ),
             decoration: InputDecoration(
-              labelText: 'Account Number'.tr(),
+              // 🌐 国际化
+              labelText: 'withdraw.label_account_number'.tr(),
               labelStyle: TextStyle(
                 color: context.textTertiary600,
                 fontSize: 14.sp,
               ),
-              hintText: 'e.g. 09171234567',
+              // 🌐 国际化
+              hintText: 'withdraw.hint_account_number'.tr(),
               hintStyle: TextStyle(color: context.utilityGray300),
-              // 🔥 核心修改：去掉边框，加入图标
               border: InputBorder.none,
               enabledBorder: InputBorder.none,
               focusedBorder: InputBorder.none,
@@ -444,7 +543,8 @@ class _WithdrawPageState extends ConsumerState<WithdrawPage> {
               contentPadding: EdgeInsets.symmetric(vertical: 12.h),
             ),
             validationMessages: {
-              ValidationMessage.required: (_) => 'Account number is required',
+              // 🌐 国际化
+              ValidationMessage.required: (_) => 'withdraw.error_account_number_required'.tr(),
             },
           ),
         ],
@@ -463,15 +563,15 @@ class _WithdrawPageState extends ConsumerState<WithdrawPage> {
       color: context.bgPrimary,
       child: ReactiveFormConsumer(
         builder: (context, form, child) {
-          // 按钮禁用条件：页面加载中 OR 正在提交 OR 表单无效 OR 未选渠道
-          final isDisabled = isPageLoading || isSubmitting  || _selectedChannel == null;
+          final isDisabled = isPageLoading || isSubmitting || _selectedChannel == null;
 
           return Button(
             loading: isSubmitting,
             width: double.infinity,
             height: 52.h,
-            onPressed: _handleWithdraw,
-            child: Text('Confirm Withdrawal'.tr()),
+            onPressed: isDisabled ? null : _handleWithdraw,
+            // 🌐 国际化
+            child: Text('withdraw.btn_confirm_withdrawal'.tr()),
           );
         },
       ),
@@ -482,7 +582,6 @@ class _WithdrawPageState extends ConsumerState<WithdrawPage> {
 
   void _handleWithdraw() {
     FocusScope.of(context).unfocus();
-
     _form.form.markAllAsTouched();
 
     if (_form.form.invalid || _selectedChannel == null) {
@@ -492,10 +591,20 @@ class _WithdrawPageState extends ConsumerState<WithdrawPage> {
     final amount = _form.amountControl.value;
 
     RadixModal.show(
-      title: 'Confirm Withdrawal?'.tr(),
-      builder: (context, close) => Text('Are you sure you want to withdraw ₱$amount via ${_selectedChannel?.name}?'),
-      confirmText: 'Confirm',
-      cancelText: 'Cancel',
+      // 🌐 国际化
+      title: 'withdraw.dialog_confirm_title'.tr(),
+      // 🌐 国际化 (使用命名参数动态替换)
+      builder: (context, close) => Text(
+        'withdraw.dialog_confirm_content'.tr(
+          namedArgs: {
+            'amount': amount.toString(),
+            'channel': _selectedChannel?.name ?? '',
+          },
+        ),
+      ),
+      // 🌐 国际化
+      confirmText: 'common.confirm'.tr(),
+      cancelText: 'common.cancel'.tr(),
       onConfirm: (finish) {
         finish();
         _processWithdraw();
@@ -507,7 +616,6 @@ class _WithdrawPageState extends ConsumerState<WithdrawPage> {
     final amountVal = _form.amountControl.value;
     final amount = double.tryParse(amountVal ?? '0') ?? 0.0;
 
-    // 费用计算用于展示
     final feeRate = _selectedChannel?.feeRate ?? 0.0;
     final fixedFee = _selectedChannel?.feeFixed ?? 0.0;
     final fee = (amount * feeRate) + fixedFee;
@@ -527,7 +635,6 @@ class _WithdrawPageState extends ConsumerState<WithdrawPage> {
       ref.read(luckyProvider.notifier).updateWalletBalance();
       final channelName = _selectedChannel?.name ?? 'Wallet';
       final account = _form.accountNumberControl.value ?? '';
-      // 重置表单
       _form.form.reset();
 
       if (mounted) {
@@ -554,7 +661,8 @@ class _WithdrawPageState extends ConsumerState<WithdrawPage> {
         children: [
           Icon(Icons.info_outline, size: 16.sp, color: context.textSecondary700),
           SizedBox(width: 8.w),
-          Expanded(child: Text('withdraw.safety.notice'.tr(), style: TextStyle(fontSize: 11.sp, color: context.textSecondary700))),
+          // 🌐 国际化
+          Expanded(child: Text('withdraw.safety_notice'.tr(), style: TextStyle(fontSize: 11.sp, color: context.textSecondary700))),
         ],
       ),
     );
@@ -570,9 +678,8 @@ class _WithdrawPageState extends ConsumerState<WithdrawPage> {
     );
   }
 
-  Widget _buildSkeletonLoader() => SizedBox(height: 200.h, child: const Center(child: CircularProgressIndicator()));
-
-  Widget _buildErrorState() => SizedBox(height: 100.h, child: const Center(child: Text("Failed to load methods")));
+  // 🌐 国际化
+  Widget _buildErrorState() => SizedBox(height: 100.h, child: Center(child: Text("withdraw.error_load_methods".tr())));
 
   TextStyle get _headerStyle => TextStyle(fontSize: 16.sp, fontWeight: FontWeight.bold, color: context.textSecondary700);
 }

@@ -1,3 +1,5 @@
+// 🔥 必须引入
+import 'package:easy_localization/easy_localization.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -8,9 +10,8 @@ import 'package:visibility_detector/visibility_detector.dart';
 import 'package:flutter_app/core/models/product_list_item.dart';
 
 import '../../../theme/design_tokens.g.dart';
+import '../../routes/app_router.dart';
 
-// ==============================================================================
-// ==============================================================================
 // ==============================================================================
 // 1. 主组件: GroupBuyingSection (首页调用的入口)
 // ==============================================================================
@@ -46,7 +47,7 @@ class GroupBuyingSection extends StatelessWidget {
                 ),
               ),
               SizedBox(width: 8.w),
-              // 标题文字
+              // 标题文字 (title 通常由外部传入，如果外部传的是 key，记得在外部 .tr()，或者在这里 .tr())
               Text(
                 title,
                 style: TextStyle(
@@ -60,12 +61,13 @@ class GroupBuyingSection extends StatelessWidget {
               // "更多"按钮
               GestureDetector(
                 onTap: () {
-                  // context.pushNamed('groupBuyingList');
+                  appRouter.pushNamed('groups');
                 },
                 child: Row(
                   children: [
                     Text(
-                      'More',
+                      // 🌐 国际化：More
+                      'home_group.btn_more'.tr(),
                       style: TextStyle(
                         fontSize: 12.sp,
                         color: context.textQuaternary500,
@@ -130,7 +132,7 @@ class GroupBuyingCard extends StatelessWidget {
     final int remainingPercent = ((1.0 - progress) * 100).toInt().clamp(1, 100);
 
     // 3. 参与人数 (优先用 seqBuyQuantity，没有则用 betCount，再没有就是 0)
-    final int totalJoins = item.seqBuyQuantity ??  0;
+    final int totalJoins = item.seqBuyQuantity ?? 0;
 
     // 4. 头像列表 (如果有真实数据就用，没有就用假数据兜底，或者显示空列表)
     final List<String> displayAvatars = (item.recentJoinAvatars != null && item.recentJoinAvatars!.isNotEmpty)
@@ -188,7 +190,8 @@ class GroupBuyingCard extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              item.treasureName ?? 'Unknown Product',
+                              // 🌐 国际化：商品名 fallback
+                              item.treasureName ?? 'home_group.fallback_product_name'.tr(),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
@@ -238,7 +241,8 @@ class GroupBuyingCard extends StatelessWidget {
                     Icon(Icons.local_fire_department, color: Colors.white, size: 10.sp),
                     SizedBox(width: 2.w),
                     Text(
-                      'HOT',
+                      // 🌐 国际化：HOT / Sikat
+                      'home_group.label_hot'.tr(),
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 10.sp,
@@ -323,10 +327,12 @@ class GroupBuyingCard extends StatelessWidget {
           text: TextSpan(
             style: TextStyle(fontSize: 10.sp, fontFamily: 'Roboto'),
             children: [
+              // 🌐 国际化：前缀 "Only "
               TextSpan(
-                text: 'Only ',
+                text: 'home_group.progress_prefix'.tr(),
                 style: TextStyle(color: context.textQuaternary500),
               ),
+              // 数字 (保持红色高亮)
               TextSpan(
                 text: '$remaining%',
                 style: TextStyle(
@@ -334,8 +340,9 @@ class GroupBuyingCard extends StatelessWidget {
                   fontWeight: FontWeight.bold,
                 ),
               ),
+              // 🌐 国际化：后缀 " left"
               TextSpan(
-                text: ' left',
+                text: 'home_group.progress_suffix'.tr(),
                 style: TextStyle(color: context.textQuaternary500),
               ),
             ],
@@ -364,7 +371,8 @@ class GroupBuyingCard extends StatelessWidget {
       ),
       alignment: Alignment.center,
       child: Text(
-        'Join',
+        // 🌐 国际化：Join
+        'home_group.btn_join'.tr(),
         style: TextStyle(
           color: Colors.white,
           fontSize: 12.sp,
@@ -516,4 +524,3 @@ class _GroupBuyingItemWrapperState extends State<GroupBuyingItemWrapper>
     );
   }
 }
-

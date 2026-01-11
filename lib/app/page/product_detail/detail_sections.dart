@@ -1,4 +1,6 @@
-import 'package:easy_localization/easy_localization.dart';
+import 'dart:async';
+
+import 'package:easy_localization/easy_localization.dart'; // 🔥 必须引入
 import 'package:flutter/material.dart';
 import 'package:flutter_app/ui/img/app_image.dart';
 import 'package:flutter_countdown_timer/flutter_countdown_timer.dart';
@@ -12,8 +14,8 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:flutter_app/common.dart';
 import 'package:flutter_app/components/skeleton.dart';
 import 'package:flutter_app/components/swiper_banner.dart';
-import 'package:flutter_app/core/models/index.dart'; // 必须包含 ProductListItem
-import 'package:flutter_app/core/providers/index.dart'; // 必须包含 groupsPreviewProvider
+import 'package:flutter_app/core/models/index.dart';
+import 'package:flutter_app/core/providers/index.dart';
 import 'package:flutter_app/ui/bubble_progress.dart';
 import 'package:flutter_app/app/routes/app_router.dart';
 import 'package:flutter_app/utils/format_helper.dart';
@@ -77,7 +79,8 @@ class CouponSection extends StatelessWidget {
                 color: Colors.red.withOpacity(0.05),
               ),
               child: Text(
-                'New User Gift',
+                // 🌐 国际化：新人礼
+                'product_detail.label_new_user_gift'.tr(),
                 style: TextStyle(
                   fontSize: 10.sp,
                   color: Colors.red,
@@ -111,18 +114,15 @@ class TopTreasureSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // 1. 划线价逻辑 (优先用 marketAmount，没有则尝试解析 costAmount，再没有显示 0)
+    // 1. 划线价逻辑
     final double marketPrice = item.marketAmount ?? double.tryParse(item.costAmount ?? '0') ?? 0;
 
-    // 2. 当前售价 (优先用实时 socket 数据，没有则用静态数据)
+    // 2. 当前售价
     final double currentPrice = realTimeItem?.price ?? item.unitAmount ?? 0;
 
-    // 3. [关键修复] 库存逻辑
-    // TreasureStatusModel (realTimeItem) 没有 seqBuyQuantity，所以这里只能用 item.seqBuyQuantity
+    // 3. 库存逻辑
     final int sold = item.seqBuyQuantity ?? 0;
     final int totalStock = item.seqShelvesQuantity ?? 0;
-
-    // 实时剩余库存：优先用 socket 推送的 stock，否则用 (总库存 - 已售)
     final int left = realTimeItem?.stock ?? (totalStock - sold);
 
     return Padding(
@@ -150,7 +150,8 @@ class TopTreasureSection extends StatelessWidget {
               children: [
                 Expanded(
                   child: Text(
-                    item.treasureName ?? 'Unknown Product',
+                    // 🌐 国际化：商品名 Fallback
+                    item.treasureName ?? 'home_group.fallback_product_name'.tr(),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
@@ -188,7 +189,7 @@ class TopTreasureSection extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 24.sp,
                     fontWeight: FontWeight.w900,
-                    color: const Color(0xFFFF4D4F), // 品牌红
+                    color: const Color(0xFFFF4D4F),
                     height: 1.0,
                     letterSpacing: -0.5,
                   ),
@@ -203,7 +204,8 @@ class TopTreasureSection extends StatelessWidget {
                     borderRadius: BorderRadius.circular(4.r),
                   ),
                   child: Text(
-                    '${item.groupSize ?? 5}人团',
+                    // 🌐 国际化：5人团 (5p Group)
+                    '${item.groupSize ?? 5}${'product_detail.group_size_suffix'.tr()}',
                     style: TextStyle(
                         fontSize: 10.sp,
                         color: const Color(0xFFFF4D4F),
@@ -214,7 +216,7 @@ class TopTreasureSection extends StatelessWidget {
 
                 const Spacer(),
 
-                // 划线价 (只有当划线价 > 现价时才显示)
+                // 划线价
                 if (marketPrice > currentPrice)
                   Text(
                     FormatHelper.formatCurrency(marketPrice),
@@ -238,12 +240,14 @@ class TopTreasureSection extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
+                // 🌐 国际化：100 sold
                 Text(
-                  '$sold sold',
+                  '$sold${'product_detail.suffix_sold'.tr()}',
                   style: TextStyle(fontSize: 11.sp, color: context.textSecondary700),
                 ),
+                // 🌐 国际化：Only 10 left / 10 na lang
                 Text(
-                  'Only $left left',
+                  '${'product_detail.prefix_only'.tr()}$left${'product_detail.suffix_left'.tr()}',
                   style: TextStyle(fontSize: 11.sp, color: const Color(0xFFFF4D4F), fontWeight: FontWeight.w700),
                 ),
               ],
@@ -256,18 +260,37 @@ class TopTreasureSection extends StatelessWidget {
 }
 
 // ==========================================
-// 4. Group Section (拼团列表区)
+// 4. Group Section (拼团列表区) - 带自动刷新
 // ==========================================
-class GroupSection extends ConsumerWidget {
+class GroupSection extends ConsumerStatefulWidget {
   final String treasureId;
 
   const GroupSection({super.key, required this.treasureId});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    // 监听 Provider
-    final groupsAsync = ref.watch(groupsPreviewProvider(treasureId));
-    
+  ConsumerState<GroupSection> createState() => _GroupSectionState();
+}
+
+class _GroupSectionState extends ConsumerState<GroupSection> {
+  Timer? _refreshTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _refreshTimer = Timer.periodic(const Duration(seconds: 15), (timer) {
+      ref.invalidate(groupsPreviewProvider(widget.treasureId));
+    });
+  }
+
+  @override
+  void dispose() {
+    _refreshTimer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final groupsAsync = ref.watch(groupsPreviewProvider(widget.treasureId));
 
     return groupsAsync.when(
       data: (groups) {
@@ -277,7 +300,7 @@ class GroupSection extends ConsumerWidget {
           padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
           child: Container(
             decoration: BoxDecoration(
-              color: context.bgPrimary, // 淡橙色背景
+              color: context.bgPrimary,
               borderRadius: BorderRadius.circular(12.r),
             ),
             child: Column(
@@ -286,15 +309,20 @@ class GroupSection extends ConsumerWidget {
                 GestureDetector(
                   behavior: HitTestBehavior.opaque,
                   onTap: () {
-                    appRouter.push('/product-group?treasureId=$treasureId');
+                    if (widget.treasureId.isNotEmpty) {
+                      appRouter.pushNamed('product-groups-detail', queryParameters: {'treasureId': widget.treasureId});
+                    } else {
+                      appRouter.pushNamed('groups');
+                    }
                   },
                   child: Padding(
                     padding: EdgeInsets.all(12.w),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
+                        // 🌐 国际化：5 people joining
                         Text(
-                          '${groups.length} people joining',
+                          '${groups.length}${'product_detail.suffix_people_joining'.tr()}',
                           style: TextStyle(
                               fontWeight: FontWeight.w800,
                               fontSize: 13.sp,
@@ -303,8 +331,12 @@ class GroupSection extends ConsumerWidget {
                         ),
                         Row(
                           children: [
-                            Text('View all', style: TextStyle(fontSize: 11.sp, color: context.textSecondary700)),
-                            Icon(Icons.chevron_right, size: 16.w, color:  context.textSecondary700),
+                            // 🌐 国际化：View all
+                            Text(
+                                'product_detail.btn_view_all'.tr(),
+                                style: TextStyle(fontSize: 11.sp, color: context.textSecondary700)
+                            ),
+                            Icon(Icons.chevron_right, size: 16.w, color: context.textSecondary700),
                           ],
                         ),
                       ],
@@ -312,7 +344,6 @@ class GroupSection extends ConsumerWidget {
                   ),
                 ),
 
-                // 列表内容 (只展示前2个)
                 ...groups.take(2).map((item) => _buildActiveGroupItem(context, item)),
                 SizedBox(height: 8.h),
               ],
@@ -321,7 +352,9 @@ class GroupSection extends ConsumerWidget {
         );
       },
       error: (_, __) => const SizedBox.shrink(),
-      loading: () => const SizedBox.shrink(),
+      loading: () {
+        return const SizedBox.shrink();
+      },
     );
   }
 
@@ -329,6 +362,7 @@ class GroupSection extends ConsumerWidget {
     final int endTime = item.expireAt;
 
     return Container(
+      key: ValueKey(item.groupId),
       margin: EdgeInsets.symmetric(horizontal: 12.w, vertical: 4.h),
       padding: EdgeInsets.all(8.w),
       decoration: BoxDecoration(
@@ -339,7 +373,7 @@ class GroupSection extends ConsumerWidget {
         children: [
           // 头像
           AppCachedImage(
-             item.creator.avatar ?? '',
+            item.creator.avatar ?? '',
             width: 32.w,
             height: 32.w,
             radius: BorderRadius.circular(16.r),
@@ -355,13 +389,15 @@ class GroupSection extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  item.creator.nickname ?? 'User',
+                  // 🌐 国际化：用户名 fallback
+                  item.creator.nickname ?? 'group_lobby.default_user'.tr(),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w700),
                 ),
+                // 🌐 国际化：Short of X people
                 Text(
-                  'Short of ${item.maxMembers - item.currentMembers} people',
+                  '${'product_detail.short_of_prefix'.tr()}${item.maxMembers - item.currentMembers}${'product_detail.short_of_suffix'.tr()}',
                   style: TextStyle(fontSize: 10.sp, color: const Color(0xFFFF4D4F)),
                 ),
               ],
@@ -369,44 +405,55 @@ class GroupSection extends ConsumerWidget {
           ),
 
           // 倒计时 + 按钮
-         Padding(
-           padding: EdgeInsets.only(right: 10.w),
-           child:  Column(
-             crossAxisAlignment: CrossAxisAlignment.center,
-             children: [
-               CountdownTimer(
-                 endTime: endTime,
-                 widgetBuilder: (_, time) {
-                   if (time == null) return Text('Ended', style: TextStyle(fontSize: 10.sp,color: context.textSecondary700),);
-                   return Text(
-                     '${time.hours ?? 0}:${time.min ?? 0}:${time.sec ?? 0}',
-                     style: TextStyle(fontSize: 10.sp, color: Colors.grey),
-                   );
-                 },
-               ),
-               SizedBox(height: 2.h),
+          Padding(
+            padding: EdgeInsets.only(right: 10.w),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                CountdownTimer(
+                  endTime: endTime,
+                  widgetBuilder: (_, time) {
+                    // 🌐 国际化：Ended
+                    if (time == null) return Text('product_detail.status_ended'.tr(), style: TextStyle(fontSize: 10.sp, color: context.textSecondary700));
+                    String pad(int? n) => (n ?? 0).toString().padLeft(2, '0');
+                    return Text(
+                      '${pad(time.hours)}:${pad(time.min)}:${pad(time.sec)}',
+                      style: TextStyle(
+                          fontSize: 10.sp,
+                          color: Colors.grey,
+                          fontFeatures: const [FontFeature.tabularFigures()]
+                      ),
+                    );
+                  },
+                ),
+                SizedBox(height: 2.h),
 
-               //  Join 按钮：必须带 isGroupBuy=true
-               GestureDetector(
-                 behavior: HitTestBehavior.opaque,
-                 onTap: () {
-                   appRouter.push('/payment?treasureId=${item.treasureId}&groupId=${item.groupId}&isGroupBuy=true');
-                 },
-                 child: Container(
-                   padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 4.h),
-                   decoration: BoxDecoration(
-                     color: const Color(0xFFFF4D4F),
-                     borderRadius: BorderRadius.circular(14.r),
-                   ),
-                   child: Text(
-                     'Join',
-                     style: TextStyle(color: Colors.white, fontSize: 11.sp, fontWeight: FontWeight.bold),
-                   ),
-                 ),
-               )
-             ],
-           ),
-         )
+                // Join 按钮
+                GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () {
+                    if (DateTime.now().millisecondsSinceEpoch > item.expireAt) {
+                      ref.invalidate(groupsPreviewProvider(widget.treasureId));
+                      return;
+                    }
+                    appRouter.push('/payment?treasureId=${item.treasureId}&groupId=${item.groupId}&isGroupBuy=true');
+                  },
+                  child: Container(
+                    padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 4.h),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFF4D4F),
+                      borderRadius: BorderRadius.circular(14.r),
+                    ),
+                    child: Text(
+                      // 🌐 国际化：Join
+                      'product_detail.btn_join'.tr(),
+                      style: TextStyle(color: Colors.white, fontSize: 11.sp, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                )
+              ],
+            ),
+          )
         ],
       ),
     );
@@ -453,7 +500,12 @@ class _DetailContentSectionState extends State<DetailContentSection> with Single
               unselectedLabelColor: Colors.grey,
               indicatorColor: const Color(0xFFFF4D4F),
               labelStyle: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.bold),
-              tabs: [Tab(text: 'Details'.tr()), Tab(text: 'Rules'.tr())],
+              tabs: [
+                // 🌐 国际化：Details
+                Tab(text: 'product_detail.tab_desc'.tr()),
+                // 🌐 国际化：Rules
+                Tab(text: 'product_detail.tab_rules'.tr())
+              ],
             ),
             SizedBox(height: 16.h),
             SizedBox(
@@ -462,16 +514,18 @@ class _DetailContentSectionState extends State<DetailContentSection> with Single
                 controller: _tabController,
                 children: [
                   SingleChildScrollView(
-                     physics: const NeverScrollableScrollPhysics(),
+                      physics: const NeverScrollableScrollPhysics(),
                       child: HtmlWidget(
-                          widget.desc ?? 'No details available.',
+                        // 🌐 国际化：No data
+                          widget.desc ?? 'common.no_data'.tr(),
                           textStyle: TextStyle(fontSize: 13.sp)
                       )
                   ),
                   SingleChildScrollView(
                       physics: const NeverScrollableScrollPhysics(),
                       child: HtmlWidget(
-                          widget.ruleContent ?? 'No rules available.',
+                        // 🌐 国际化：No data
+                          widget.ruleContent ?? 'common.no_data'.tr(),
                           textStyle: TextStyle(fontSize: 13.sp)
                       )
                   ),

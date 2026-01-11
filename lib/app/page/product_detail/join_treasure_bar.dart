@@ -18,7 +18,7 @@ class JoinTreasureBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // 🔥 [关键修复] 价格展示逻辑
+    //  [关键修复] 价格展示逻辑
     // 1. 单买价：优先用后端返回的 soloAmount，如果没有，则用拼团价 * 1.5 兜底
     //    千万不能用 costAmount (进货价)！
     final double soloVal = item.soloAmount ?? ((item.unitAmount ?? 0) * 1.5);

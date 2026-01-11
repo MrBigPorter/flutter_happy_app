@@ -28,7 +28,7 @@ class LuckyTabBar extends StatelessWidget {
       label: "common.tabbar.winners",
       icon: "assets/images/tab_bar/winners.svg",
       activeIcon: "assets/images/tab_bar/winners_active.svg",
-      location: "/winners",
+      location: "/groups",
     ),
     _TabItem(
       label: "common.tabbar.me",

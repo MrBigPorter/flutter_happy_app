@@ -34,7 +34,7 @@ class LuckyAppBar extends StatelessWidget implements PreferredSizeWidget {
   Widget build(BuildContext context) {
     return Material(
       color: context.bgPrimary,
-      elevation: elevation ?? 0.1,
+      elevation: elevation ?? 0.0,
       child: SafeArea(
         bottom: false,
         child: Container(

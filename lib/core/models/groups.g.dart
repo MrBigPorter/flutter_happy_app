@@ -33,6 +33,11 @@ GroupForTreasureItem _$GroupForTreasureItemFromJson(
               .toList() ??
           [],
     ),
+    treasure: $checkedConvert(
+      'treasure',
+      (v) =>
+          v == null ? null : GroupTreasure.fromJson(v as Map<String, dynamic>),
+    ),
   );
   return val;
 });
@@ -49,6 +54,7 @@ Map<String, dynamic> _$GroupForTreasureItemToJson(
   'updatedAt': instance.updatedAt,
   'createdAt': instance.createdAt,
   'creator': instance.creator,
+  'treasure': instance.treasure,
   'members': instance.members,
 };
 
@@ -150,6 +156,10 @@ GroupTreasure _$GroupTreasureFromJson(Map<String, dynamic> json) =>
           'treasureCoverImg',
           (v) => v as String,
         ),
+        unitAmount: $checkedConvert(
+          'unitAmount',
+          (v) => v == null ? 0.0 : JsonNumConverter.toDouble(v),
+        ),
       );
       return val;
     });
@@ -159,6 +169,7 @@ Map<String, dynamic> _$GroupTreasureToJson(GroupTreasure instance) =>
       'treasureId': instance.treasureId,
       'treasureName': instance.treasureName,
       'treasureCoverImg': instance.treasureCoverImg,
+      'unitAmount': instance.unitAmount,
     };
 
 HotGroupItem _$HotGroupItemFromJson(Map<String, dynamic> json) => HotGroupItem(

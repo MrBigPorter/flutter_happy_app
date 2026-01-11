@@ -95,7 +95,7 @@ final groupsPreviewProvider = FutureProvider.autoDispose.family<List<GroupForTre
 });
 
 /// group list provider for treasure detail page
-final groupsPageListProvider = Provider.family<PageRequest, String> ((ref, treasureId) {
+final groupsPageListProvider = Provider.family<PageRequest<GroupForTreasureItem>, String> ((ref, treasureId) {
   return ({required int pageSize, required int page}) {
     return Api.groupsListApi(
         GroupsListRequestParams(
@@ -137,6 +137,5 @@ final groupDetailProvider = FutureProvider.autoDispose.family<GroupDetailModel, 
 
 final homeGroupBuyingProvider = FutureProvider<List<ProductListItem>>((ref) async {
   final hotList = await Api.getTreasureHotGroups(10);
-  print("Fetched hot group buying list: ${hotList.toString()}");
   return hotList.map((e) =>e.toProductListItem()).toList();
 });

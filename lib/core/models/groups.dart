@@ -31,6 +31,8 @@ class GroupForTreasureItem {
 
   final GroupUser creator;
 
+  final GroupTreasure? treasure;
+
   // 预览成员列表 (后端只返回前几个)
   @JsonKey(defaultValue: [])
   final List<GroupMemberItem> members;
@@ -46,6 +48,7 @@ class GroupForTreasureItem {
     required this.createdAt,
     required this.creator,
     required this.members,
+    this.treasure,
   });
 
   factory GroupForTreasureItem.fromJson(Map<String, dynamic> json) => _$GroupForTreasureItemFromJson(json);
@@ -228,11 +231,14 @@ class GroupTreasure {
   final String treasureId;
   final String treasureName;
   final String treasureCoverImg;
+  @JsonKey(defaultValue: 0.0, fromJson: JsonNumConverter.toDouble)
+  final double unitAmount;
 
   GroupTreasure({
     required this.treasureId,
     required this.treasureName,
     required this.treasureCoverImg,
+    required this.unitAmount, // 必填或默认0
   });
 
   factory GroupTreasure.fromJson(Map<String, dynamic> json) => _$GroupTreasureFromJson(json);
@@ -304,3 +310,4 @@ class HotGroupItem {
     );
   }
 }
+
