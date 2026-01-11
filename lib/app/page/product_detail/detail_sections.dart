@@ -1,6 +1,6 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_app/ui/img/app_image.dart';
 import 'package:flutter_countdown_timer/flutter_countdown_timer.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -156,7 +156,7 @@ class TopTreasureSection extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 16.sp,
                       fontWeight: FontWeight.w800,
-                      color: Colors.black,
+                      color: context.textPrimary900,
                       height: 1.3,
                     ),
                   ),
@@ -169,7 +169,7 @@ class TopTreasureSection extends StatelessWidget {
                     child: SvgPicture.asset(
                       'assets/images/product_detail/share.svg',
                       width: 20.w,
-                      colorFilter: const ColorFilter.mode(Colors.black, BlendMode.srcIn),
+                      colorFilter:  ColorFilter.mode(context.textPrimary900, BlendMode.srcIn),
                     ),
                   ),
                 ),
@@ -220,7 +220,7 @@ class TopTreasureSection extends StatelessWidget {
                     FormatHelper.formatCurrency(marketPrice),
                     style: TextStyle(
                       fontSize: 12.sp,
-                      color: Colors.grey,
+                      color: context.textErrorPrimary600,
                       decoration: TextDecoration.lineThrough,
                     ),
                   ),
@@ -240,7 +240,7 @@ class TopTreasureSection extends StatelessWidget {
               children: [
                 Text(
                   '$sold sold',
-                  style: TextStyle(fontSize: 11.sp, color: Colors.grey[600]),
+                  style: TextStyle(fontSize: 11.sp, color: context.textSecondary700),
                 ),
                 Text(
                   'Only $left left',
@@ -267,6 +267,7 @@ class GroupSection extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     // 监听 Provider
     final groupsAsync = ref.watch(groupsPreviewProvider(treasureId));
+    
 
     return groupsAsync.when(
       data: (groups) {
@@ -276,8 +277,7 @@ class GroupSection extends ConsumerWidget {
           padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
           child: Container(
             decoration: BoxDecoration(
-              color: const Color(0xFFFFF7E6), // 淡橙色背景
-              border: Border.all(color: const Color(0xFFFFD591)), // 金色边框
+              color: context.bgPrimary, // 淡橙色背景
               borderRadius: BorderRadius.circular(12.r),
             ),
             child: Column(
@@ -298,13 +298,13 @@ class GroupSection extends ConsumerWidget {
                           style: TextStyle(
                               fontWeight: FontWeight.w800,
                               fontSize: 13.sp,
-                              color: Colors.black87
+                              color: context.textPrimary900
                           ),
                         ),
                         Row(
                           children: [
-                            Text('View all', style: TextStyle(fontSize: 11.sp, color: Colors.grey[600])),
-                            Icon(Icons.chevron_right, size: 16.w, color: Colors.grey[600]),
+                            Text('View all', style: TextStyle(fontSize: 11.sp, color: context.textSecondary700)),
+                            Icon(Icons.chevron_right, size: 16.w, color:  context.textSecondary700),
                           ],
                         ),
                       ],
@@ -332,16 +332,20 @@ class GroupSection extends ConsumerWidget {
       margin: EdgeInsets.symmetric(horizontal: 12.w, vertical: 4.h),
       padding: EdgeInsets.all(8.w),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.bgSecondary,
         borderRadius: BorderRadius.circular(30.r),
       ),
       child: Row(
         children: [
           // 头像
-          CircleAvatar(
-            radius: 16.r,
-            backgroundImage: CachedNetworkImageProvider(item.creator.avatar ?? ''),
-            backgroundColor: Colors.grey[200],
+          AppCachedImage(
+             item.creator.avatar ?? '',
+            width: 32.w,
+            height: 32.w,
+            radius: BorderRadius.circular(16.r),
+            fit: BoxFit.cover,
+            error: Icon(FontAwesomeIcons.user, size: 16.w, color: Colors.white),
+            placeholder: Icon(FontAwesomeIcons.user, size: 16.w, color: Colors.white),
           ),
           SizedBox(width: 8.w),
 
@@ -365,41 +369,44 @@ class GroupSection extends ConsumerWidget {
           ),
 
           // 倒计时 + 按钮
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              CountdownTimer(
-                endTime: endTime,
-                widgetBuilder: (_, time) {
-                  if (time == null) return Text('Ended', style: TextStyle(fontSize: 10.sp));
-                  return Text(
-                    '${time.hours ?? 0}:${time.min ?? 0}:${time.sec ?? 0}',
-                    style: TextStyle(fontSize: 10.sp, color: Colors.grey),
-                  );
-                },
-              ),
-              SizedBox(height: 2.h),
+         Padding(
+           padding: EdgeInsets.only(right: 10.w),
+           child:  Column(
+             crossAxisAlignment: CrossAxisAlignment.center,
+             children: [
+               CountdownTimer(
+                 endTime: endTime,
+                 widgetBuilder: (_, time) {
+                   if (time == null) return Text('Ended', style: TextStyle(fontSize: 10.sp,color: context.textSecondary700),);
+                   return Text(
+                     '${time.hours ?? 0}:${time.min ?? 0}:${time.sec ?? 0}',
+                     style: TextStyle(fontSize: 10.sp, color: Colors.grey),
+                   );
+                 },
+               ),
+               SizedBox(height: 2.h),
 
-              // 🔥 Join 按钮：必须带 isGroupBuy=true
-              GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTap: () {
-                  appRouter.push('/payment?treasureId=${item.treasureId}&groupId=${item.groupId}&isGroupBuy=true');
-                },
-                child: Container(
-                  padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 4.h),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFF4D4F),
-                    borderRadius: BorderRadius.circular(14.r),
-                  ),
-                  child: Text(
-                    'Join',
-                    style: TextStyle(color: Colors.white, fontSize: 11.sp, fontWeight: FontWeight.bold),
-                  ),
-                ),
-              )
-            ],
-          ),
+               //  Join 按钮：必须带 isGroupBuy=true
+               GestureDetector(
+                 behavior: HitTestBehavior.opaque,
+                 onTap: () {
+                   appRouter.push('/payment?treasureId=${item.treasureId}&groupId=${item.groupId}&isGroupBuy=true');
+                 },
+                 child: Container(
+                   padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 4.h),
+                   decoration: BoxDecoration(
+                     color: const Color(0xFFFF4D4F),
+                     borderRadius: BorderRadius.circular(14.r),
+                   ),
+                   child: Text(
+                     'Join',
+                     style: TextStyle(color: Colors.white, fontSize: 11.sp, fontWeight: FontWeight.bold),
+                   ),
+                 ),
+               )
+             ],
+           ),
+         )
         ],
       ),
     );
@@ -455,12 +462,14 @@ class _DetailContentSectionState extends State<DetailContentSection> with Single
                 controller: _tabController,
                 children: [
                   SingleChildScrollView(
+                     physics: const NeverScrollableScrollPhysics(),
                       child: HtmlWidget(
                           widget.desc ?? 'No details available.',
                           textStyle: TextStyle(fontSize: 13.sp)
                       )
                   ),
                   SingleChildScrollView(
+                      physics: const NeverScrollableScrollPhysics(),
                       child: HtmlWidget(
                           widget.ruleContent ?? 'No rules available.',
                           textStyle: TextStyle(fontSize: 13.sp)

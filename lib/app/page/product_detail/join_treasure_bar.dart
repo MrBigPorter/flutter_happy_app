@@ -44,7 +44,9 @@ class JoinTreasureBar extends StatelessWidget {
             // 首页按钮
             GestureDetector(
               behavior: HitTestBehavior.opaque,
-              onTap: () => Navigator.of(context).popUntil((r) => r.isFirst),
+              onTap: () => {
+                appRouter.go('/home'),
+              },
               child: Container(
                 padding: EdgeInsets.symmetric(horizontal: 12.w),
                 child: Column(

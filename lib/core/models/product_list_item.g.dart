@@ -98,6 +98,10 @@ ProductListItem _$ProductListItemFromJson(
     ),
     treasureSeq: $checkedConvert('treasureSeq', (v) => v as String?),
     cashState: $checkedConvert('cashState', (v) => (v as num?)?.toInt()),
+    recentJoinAvatars: $checkedConvert(
+      'recentJoinAvatars',
+      (v) => (v as List<dynamic>?)?.map((e) => e as String).toList(),
+    ),
   );
   return val;
 });
@@ -133,6 +137,7 @@ Map<String, dynamic> _$ProductListItemToJson(ProductListItem instance) =>
       'treasureCoverImg': instance.treasureCoverImg,
       'ruleContent': instance.ruleContent,
       'desc': instance.desc,
+      'recentJoinAvatars': instance.recentJoinAvatars,
       'maxUnitCoins': instance.maxUnitCoins,
       'maxUnitAmount': instance.maxUnitAmount,
       'maxPerBuyQuantity': instance.maxPerBuyQuantity,

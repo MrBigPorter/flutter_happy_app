@@ -80,7 +80,7 @@ final groupsListProvider = FutureProvider.family<
 /// 作用：只取前 2 条数据，用于 DetailPage 的 GroupSection
 /// 特点：UI 只需要传 treasureId 字符串，不需要传分页参数
 final groupsPreviewProvider = FutureProvider.autoDispose.family<List<GroupForTreasureItem>, String>((ref, treasureId) async {
-  ref.cacheFor(Duration(seconds: 10));
+  ref.cacheFor(Duration(seconds: 5));
   // 2. 调用 API，固定取第1页，2条数据
   final res = await Api.groupsListApi(
       GroupsListRequestParams(

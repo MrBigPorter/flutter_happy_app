@@ -318,7 +318,7 @@ class Api {
 
   // group list
   static Future<PageResult<GroupForTreasureItem>> groupsListApi(GroupsListRequestParams params) async {
-    final res = await Http.get('/api/v1/groups/list',query: {
+    final res = await Http.get('/api/v1/client/groups/list',query: {
       'page': params.page,
       'pageSize': params.pageSize,
       'treasureId': params.treasureId,
@@ -328,7 +328,7 @@ class Api {
 
   // group detail
   static Future<GroupDetailModel> getGroupDetailApi(String groupId) async {
-    final res = await Http.get('/api/v1/groups/$groupId');
+    final res = await Http.get('/api/v1/client/groups/$groupId');
     return GroupDetailModel.fromJson(res);
   }
 

@@ -21,9 +21,12 @@ class GroupForTreasureItem {
   final int maxMembers;
 
   // 新增：过期时间戳 (毫秒)，倒计时全靠它
+  @JsonKey(defaultValue: 0)
   final int expireAt;
 
+  @JsonKey(defaultValue: 0)
   final num updatedAt;
+  @JsonKey(defaultValue: 0)
   final num createdAt;
 
   final GroupUser creator;

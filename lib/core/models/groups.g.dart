@@ -18,9 +18,9 @@ GroupForTreasureItem _$GroupForTreasureItemFromJson(
       (v) => (v as num).toInt(),
     ),
     maxMembers: $checkedConvert('maxMembers', (v) => (v as num).toInt()),
-    expireAt: $checkedConvert('expireAt', (v) => (v as num).toInt()),
-    updatedAt: $checkedConvert('updatedAt', (v) => v as num),
-    createdAt: $checkedConvert('createdAt', (v) => v as num),
+    expireAt: $checkedConvert('expireAt', (v) => (v as num?)?.toInt() ?? 0),
+    updatedAt: $checkedConvert('updatedAt', (v) => v as num? ?? 0),
+    createdAt: $checkedConvert('createdAt', (v) => v as num? ?? 0),
     creator: $checkedConvert(
       'creator',
       (v) => GroupUser.fromJson(v as Map<String, dynamic>),
