@@ -11,6 +11,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:easy_localization/easy_localization.dart';
 
 import '../../theme/theme_provider.dart';
+import '../core/providers/socket_provider.dart';
 
 class MyApp extends ConsumerStatefulWidget {
   const MyApp({super.key});
@@ -48,6 +49,12 @@ class _MyAppState extends ConsumerState<MyApp> {
 
     final router = ref.watch(appRouterProvider);
     final themeMode = ref.watch(themeModeProvider);
+
+    //watch 它，让 SocketService 实例保持存活，并开始监听 Auth 变化。
+    // 我们不需要用它的返回值，只需要它活着。
+    ref.watch(socketServiceProvider);
+
+
 
 
     return MaterialApp.router(

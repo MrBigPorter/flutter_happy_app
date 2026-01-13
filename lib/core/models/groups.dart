@@ -51,7 +51,29 @@ class GroupForTreasureItem {
     this.treasure,
   });
 
-  factory GroupForTreasureItem.fromJson(Map<String, dynamic> json) => _$GroupForTreasureItemFromJson(json);
+  GroupForTreasureItem copyWith({
+    int? currentMembers,
+    int? groupStatus,
+    num? updatedAt,
+  }) {
+    return GroupForTreasureItem(
+      groupId: groupId,
+      treasureId: treasureId,
+      groupStatus: groupStatus ?? this.groupStatus,
+      currentMembers: currentMembers ?? this.currentMembers,
+      maxMembers: maxMembers,
+      expireAt: expireAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      createdAt: createdAt,
+      creator: creator,
+      members: members,
+      treasure: treasure,
+    );
+  }
+
+  factory GroupForTreasureItem.fromJson(Map<String, dynamic> json) =>
+      _$GroupForTreasureItemFromJson(json);
+
   Map<String, dynamic> toJson() => _$GroupForTreasureItemToJson(this);
 
   // --- UI 辅助方法 ---
@@ -81,13 +103,11 @@ class GroupUser {
   final String? nickname;
   final String? avatar;
 
-  GroupUser({
-    this.userId,
-    this.nickname,
-    this.avatar,
-  });
+  GroupUser({this.userId, this.nickname, this.avatar});
 
-  factory GroupUser.fromJson(Map<String, dynamic> json) => _$GroupUserFromJson(json);
+  factory GroupUser.fromJson(Map<String, dynamic> json) =>
+      _$GroupUserFromJson(json);
+
   Map<String, dynamic> toJson() => _$GroupUserToJson(this);
 }
 
@@ -116,7 +136,7 @@ class GroupMemberItem {
   final GroupUser? user;
 
   GroupMemberItem({
-     required this.id,
+    required this.id,
     required this.joinedAt,
     this.groupId,
     this.userId,
@@ -127,7 +147,9 @@ class GroupMemberItem {
     this.user,
   });
 
-  factory GroupMemberItem.fromJson(Map<String, dynamic> json) => _$GroupMemberItemFromJson(json);
+  factory GroupMemberItem.fromJson(Map<String, dynamic> json) =>
+      _$GroupMemberItemFromJson(json);
+
   Map<String, dynamic> toJson() => _$GroupMemberItemToJson(this);
 
   // --- UI 辅助 ---
@@ -184,7 +206,6 @@ class GroupMemberListRequestParams extends Equatable {
   List<Object?> get props => [groupId, page, pageSize];
 }
 
-
 // ==========================================
 // 5. 团详情 (用于 GroupRoomPage 轮询)
 // 对应后端接口: GET /groups/:id
@@ -219,7 +240,9 @@ class GroupDetailModel {
     required this.members,
   });
 
-  factory GroupDetailModel.fromJson(Map<String, dynamic> json) => _$GroupDetailModelFromJson(json);
+  factory GroupDetailModel.fromJson(Map<String, dynamic> json) =>
+      _$GroupDetailModelFromJson(json);
+
   Map<String, dynamic> toJson() => _$GroupDetailModelToJson(this);
 }
 
@@ -241,7 +264,9 @@ class GroupTreasure {
     required this.unitAmount, // 必填或默认0
   });
 
-  factory GroupTreasure.fromJson(Map<String, dynamic> json) => _$GroupTreasureFromJson(json);
+  factory GroupTreasure.fromJson(Map<String, dynamic> json) =>
+      _$GroupTreasureFromJson(json);
+
   Map<String, dynamic> toJson() => _$GroupTreasureToJson(this);
 }
 
@@ -310,4 +335,3 @@ class HotGroupItem {
     );
   }
 }
-
