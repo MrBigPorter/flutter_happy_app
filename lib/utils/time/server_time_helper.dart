@@ -42,4 +42,11 @@ class ServerTimeHelper {
          print("ServerTimeHelper: 无法解析服务器时间: $serverTimeStr");
        }
     }
+
+    // 核心方法：将服务器过期时间转换为本地时间轴上的时间
+    // 传给 CountdownTimer 组件前，必须裹一层这个方法
+    static int getLocalEndTime(int serverExpireTimestamp) {
+      // 原理：ServerExpire - Offset = LocalExpire
+      return serverExpireTimestamp - _offset;
+    }
 }

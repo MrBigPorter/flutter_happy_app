@@ -5,6 +5,7 @@ import 'package:extended_nested_scroll_view/extended_nested_scroll_view.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_app/components/skeleton.dart';
+import 'package:flutter_app/core/services/socket_service.dart';
 import 'package:flutter_app/ui/img/app_image.dart';
 import 'package:flutter_countdown_timer/flutter_countdown_timer.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -20,7 +21,6 @@ import 'package:flutter_app/app/routes/app_router.dart';
 import 'package:flutter_app/utils/format_helper.dart';
 
 import '../../core/providers/socket_provider.dart';
-import '../../core/services/socket_service.dart';
 import '../../ui/button/button.dart';
 
 // 2. 页面主体
@@ -39,6 +39,8 @@ class _GroupLobbyPageState extends ConsumerState<GroupLobbyPage>
   late PageListController<GroupForTreasureItem> _ctl;
 
   StreamSubscription? _syncSubscription;
+  StreamSubscription? _updateSubscription; // 监听数据更新
+   late final SocketService _socketService;
 
   // 辅助 getter：是否是全品类广场模式
   bool get isGlobalMode => widget.treasureId == null;
@@ -62,15 +64,17 @@ class _GroupLobbyPageState extends ConsumerState<GroupLobbyPage>
     );
 
     // 获取 socket service 实例，保持连接
-    final socketService = ref.read(socketServiceProvider);
+    _socketService = ref.read(socketServiceProvider);
     // 进入房间
-    socketService.joinLobby();
+    _socketService.joinLobby();
 
     // 3. 监听数据更新 (前提是 socket 不为空)
-    socketService.socket?.on('group_update', _handleUpdate);
+    _updateSubscription = _socketService.groupUpdateStream.listen((data) {
+      _handleUpdate(data);
+    });
 
     // 4. 监听重连刷新 (⚡修正：使用 listen 而不是赋值)
-    _syncSubscription = socketService.onSyncNeeded.listen((_) {
+    _syncSubscription = _socketService.onSyncNeeded.listen((_) {
       if (mounted) {
         debugPrint('🔄 [UI] 网络重连，正在校准数据...');
         _ctl.refresh();
@@ -139,18 +143,11 @@ class _GroupLobbyPageState extends ConsumerState<GroupLobbyPage>
 
   @override
   void dispose() {
-    // 1. 取消流订阅 (非常重要，否则重连会导致多次刷新)
+    _socketService.leaveLobby();
+
+    //  新增代码：取消订阅
+    _updateSubscription?.cancel();
     _syncSubscription?.cancel();
-    // 2. 安全地获取 Service 并移除监听
-    // 使用 try-catch 防止 Provider 已经被销毁时抛出异常
-    try {
-      final socketService = ref.read(socketServiceProvider);
-      // 退出房间
-      socketService.leaveLobby();
-      socketService.socket?.off('group_update', _handleUpdate);
-    } catch (e) {
-      debugPrint('❌ [Socket] Error during dispose: $e');
-    }
     // 3. 销毁分页控制器
     _ctl.dispose();
     super.dispose();
@@ -329,10 +326,14 @@ class GroupLobbyCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final int endTime = item.expireAt < 10000000000
-        ? item.expireAt * 1000
-        : item.expireAt;
+    // 1. 使用校准后的服务器时间 (必须在 Model 里定义好 adjustedEndTime getter)
+    final int endTime = item.adjustedEndTime;
+
     final treasure = item.treasure;
+
+    // 2. 核心状态判断：满员 或者 状态为成功
+    // 即使状态没变，只要人数满了，UI 也要立刻变身
+    final bool isCompleted = item.isCompleted;
 
     return Container(
       padding: EdgeInsets.all(12.w),
@@ -349,21 +350,17 @@ class GroupLobbyCard extends StatelessWidget {
       ),
       child: Column(
         children: [
-          //  1. 商品信息区
+          // 商品信息区 (保持不变)
           if (showProductInfo && treasure != null) ...[
             GestureDetector(
-              onTap: () {
-                appRouter.push('/product/${treasure.treasureId}');
-              },
+              onTap: () => appRouter.push('/product/${treasure.treasureId}'),
               child: Row(
                 children: [
                   ClipRRect(
                     borderRadius: BorderRadius.circular(4.r),
                     child: AppCachedImage(
                       treasure.treasureCoverImg,
-                      width: 48.w,
-                      height: 48.w,
-                      fit: BoxFit.cover,
+                      width: 48.w, height: 48.w, fit: BoxFit.cover,
                     ),
                   ),
                   SizedBox(width: 10.w),
@@ -373,22 +370,13 @@ class GroupLobbyCard extends StatelessWidget {
                       children: [
                         Text(
                           treasure.treasureName,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 13.sp,
-                            fontWeight: FontWeight.bold,
-                            color: context.textPrimary900,
-                          ),
+                          maxLines: 1, overflow: TextOverflow.ellipsis,
+                          style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.bold, color: context.textPrimary900),
                         ),
                         SizedBox(height: 2.h),
                         Text(
                           FormatHelper.formatCurrency(treasure.unitAmount),
-                          style: TextStyle(
-                            fontSize: 14.sp,
-                            color: context.textBrandPrimary900,
-                            fontWeight: FontWeight.w900,
-                          ),
+                          style: TextStyle(fontSize: 14.sp, color: context.textBrandPrimary900, fontWeight: FontWeight.w900),
                         ),
                       ],
                     ),
@@ -399,80 +387,44 @@ class GroupLobbyCard extends StatelessWidget {
             Divider(height: 16.h, color: context.borderPrimary),
           ],
 
-          //  2. 拼团核心信息
+          // 拼团核心信息
           Row(
             children: [
+              // 头像
               AppCachedImage(
                 item.creator.avatar,
-                width: 40.w,
-                height: 40.h,
-                fit: BoxFit.cover,
+                width: 40.w, height: 40.h, fit: BoxFit.cover,
                 radius: BorderRadius.circular(20.r),
-                error: Container(
-                  width: 40.w,
-                  height: 40.h,
-                  decoration: BoxDecoration(
-                    color: context.bgSecondary,
-                    borderRadius: BorderRadius.circular(20.r),
-                  ),
-                  child: Icon(
-                    Icons.person,
-                    size: 24.sp,
-                    color: context.textSecondary700,
-                  ),
-                ),
-                placeholder: Container(
-                  width: 40.w,
-                  height: 40.h,
-                  decoration: BoxDecoration(
-                    color: context.textSecondary700,
-                    borderRadius: BorderRadius.circular(20.r),
-                  ),
-                  child: Icon(
-                    Icons.person,
-                    size: 24.sp,
-                    color: context.bgPrimary,
-                  ),
-                ),
               ),
               SizedBox(width: 12.w),
 
-              // 中间信息
+              // 中间信息：还差多少人 vs 拼团成功
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      // 🌐 国际化：用户名 fallback
                       item.creator.nickname ?? 'group_lobby.default_user'.tr(),
-                      style: TextStyle(
-                        fontSize: 14.sp,
-                        fontWeight: FontWeight.bold,
-                        color: context.textPrimary900,
-                      ),
+                      style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.bold, color: context.textPrimary900),
                     ),
                     SizedBox(height: 4.h),
-                    // 🌐 国际化：差几人 (RichText)
-                    RichText(
+
+                    //  修改点 A: 如果完成了，显示绿色成功文案；否则显示红色差几人
+                    isCompleted
+                        ? Text(
+                      'group_lobby.status_success'.tr(), // "拼团成功"
+                      style: TextStyle(fontSize: 12.sp, color: const Color(0xFF52C41A), fontWeight: FontWeight.bold),
+                    )
+                        : RichText(
                       text: TextSpan(
-                        style: TextStyle(
-                          fontSize: 12.sp,
-                          color: context.textSecondary700,
-                        ),
+                        style: TextStyle(fontSize: 12.sp, color: context.textSecondary700),
                         children: [
                           TextSpan(text: 'group_lobby.short_of'.tr()),
-                          // "Short of "
                           TextSpan(
                             text: '${item.maxMembers - item.currentMembers}',
-                            style: const TextStyle(
-                              color: Color(0xFFFF4D4F),
-                              fontWeight: FontWeight.bold,
-                            ),
+                            style: const TextStyle(color: Color(0xFFFF4D4F), fontWeight: FontWeight.bold),
                           ),
-                          TextSpan(
-                            text: 'group_lobby.people_count_suffix'.tr(),
-                          ),
-                          // " people"
+                          TextSpan(text: 'group_lobby.people_count_suffix'.tr()),
                         ],
                       ),
                     ),
@@ -480,57 +432,62 @@ class GroupLobbyCard extends StatelessWidget {
                 ),
               ),
 
-              // 右侧倒计时 + 按钮
+              // 右侧：倒计时/完成图标 + 按钮
               Column(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  CountdownTimer(
-                    endTime: endTime,
+                  //  修改点 B: 完成显示图标，未完成显示倒计时
+                  isCompleted
+                      ? Padding(
+                    padding: EdgeInsets.only(bottom: 4.h),
+                    child: Row(
+                      children: [
+                        Icon(Icons.check_circle, size: 14.sp, color: const Color(0xFF52C41A)),
+                        SizedBox(width: 2.w),
+                        Text(
+                          'group_lobby.status_done'.tr(), // "已结束"
+                          style: TextStyle(fontSize: 12.sp, color: const Color(0xFF52C41A)),
+                        ),
+                      ],
+                    ),
+                  )
+                      : CountdownTimer(
+                    endTime: endTime, // 这里用的 adjustedEndTime
                     widgetBuilder: (_, time) {
-                      // 🌐 国际化：倒计时结束
-                      if (time == null)
-                        return Text(
-                          'group_lobby.status_ended'.tr(),
-                          style: TextStyle(
-                            fontSize: 11.sp,
-                            color: context.textDisabled,
-                          ),
-                        );
+                      if (time == null) {
+                        return Text('group_lobby.status_ended'.tr(), style: TextStyle(fontSize: 11.sp, color: context.textDisabled));
+                      }
                       String pad(int? n) => (n ?? 0).toString().padLeft(2, '0');
                       return Row(
                         children: [
-                          Icon(
-                            Icons.access_time,
-                            size: 12.sp,
-                            color: context.textSecondary700,
-                          ),
+                          Icon(Icons.access_time, size: 12.sp, color: context.textSecondary700),
                           SizedBox(width: 4.w),
                           Text(
                             '${pad(time.hours)}:${pad(time.min)}:${pad(time.sec)}',
-                            style: TextStyle(
-                              fontSize: 12.sp,
-                              color: context.textSecondary700,
-                              fontWeight: FontWeight.w500,
-                            ),
+                            style: TextStyle(fontSize: 12.sp, color: context.textSecondary700, fontWeight: FontWeight.w500),
                           ),
                         ],
                       );
                     },
                   ),
+
                   SizedBox(height: 8.h),
+
+                  //  修改点 C: 按钮禁用 + 变色
                   SizedBox(
                     height: 30.h,
                     child: Button(
                       width: 80.w,
-                      onPressed: () {
-                        appRouter.push(
-                          '/payment?treasureId=$treasureId&groupId=${item.groupId}&isGroupBuy=true',
-                        );
-                      },
                       radius: 15.r,
+                      // 满员禁止点击
+                      onPressed: isCompleted
+                          ? null
+                          : () {
+                        appRouter.push('/payment?treasureId=$treasureId&groupId=${item.groupId}&isGroupBuy=true');
+                      },
+                      // 满员背景灰色 (假设 Button 组件支持 null onPressed 自动变灰，如果不支持，需手动传 color)
                       child: Text(
-                        // 🌐 国际化：加入按钮
-                        'group_lobby.btn_join_now'.tr(),
+                        isCompleted ? 'group_lobby.btn_full'.tr() : 'group_lobby.btn_join_now'.tr(),
                         style: TextStyle(fontSize: 12.sp),
                       ),
                     ),

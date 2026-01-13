@@ -1,4 +1,5 @@
 
+import 'package:bot_toast/bot_toast.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_app/app/page/deposit_page.dart';
 import 'package:flutter_app/app/page/group_member_page.dart';
@@ -57,7 +58,8 @@ class AppRouter {
       // observe route changes to close modals:
       observers: [
         ModalManager.instance,
-        ModalAutoCloseObserver()
+        ModalAutoCloseObserver(),
+        BotToastNavigatorObserver()
       ],
       initialLocation: '/home',
       routes: [

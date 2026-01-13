@@ -1,41 +1,40 @@
-import 'package:flutter_app/core/store/auth/auth_provider.dart';
-import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_app/core/services/socket_service.dart';
+import 'package:flutter_app/core/store/auth/auth_provider.dart';
 
-part 'socket_provider.g.dart';
-
-@Riverpod(keepAlive: true)
-SocketService socketService(SocketServiceRef ref) {
-  // 创建 SocketService 实例
+final socketServiceProvider = Provider<SocketService>((ref) {
+  // 1. 获取 SocketService 单例
   final service = SocketService();
 
-  // 2. 核心：监听 AuthProvider 的变化
-  // 只要 Auth 状态一变，这里马上执行
-  ref.listen(authProvider, (previous, next) {
-    // 情况 A: 从未登录变成已登录 (Login)
-    if (next.isAuthenticated && next.accessToken != null) {
-      // 只有当之前没登录，或者 Token 变了的时候才重连
-      if (previous?.accessToken != next.accessToken) {
-        // 用户登录后，连接 WebSocket
-        service.init(token: next.accessToken!);
-      }
-    } else if (!next.isAuthenticated) {
-      // 情况 B: 从已登录变成未登录 (Logout)
-      service.disconnect();
-    }
-  });
+  // 2. 监听 Auth 状态
+  final authState = ref.watch(authProvider);
 
-  //  2. 处理 Provider 初始化时的状态 (App 刚启动时)
-  // 因为 listen 只有状态变化才触发，所以第一次要手动检查
-  final currentAuth = ref.read(authProvider);
-  if (currentAuth.isAuthenticated && currentAuth.accessToken != null) {
-    service.init(token: currentAuth.accessToken!);
+  // 3. 解析 Token (根据刚才调试的结果，字段名是 accessToken)
+  String token = '';
+
+  // 使用 dynamic 访问，兼容不同 State 写法，只取 accessToken
+  try {
+    final dynamic state = authState;
+    if (state.accessToken != null && state.accessToken is String) {
+      token = state.accessToken;
+    }
+  } catch (_) {
+    // 忽略错误，默认为空
   }
 
-  // 3. 清理资源
+  // 4. 根据 Token 决定 Socket 行为
+  if (token.isNotEmpty) {
+    // 已登录：强制带 Token 重连
+    service.init(token: token);
+  } else {
+    // 未登录：断开连接 (防止游客接收旧用户的私信)
+    service.disconnect();
+  }
+
+  // 5. 生命周期管理
   ref.onDispose(() {
     service.dispose();
   });
 
   return service;
-}
+});

@@ -3,6 +3,7 @@ import 'package:flutter_app/core/models/product_list_item.dart';
 import 'package:json_annotation/json_annotation.dart';
 
 import '../../utils/helper.dart';
+import '../../utils/time/server_time_helper.dart';
 
 part 'groups.g.dart';
 
@@ -84,11 +85,26 @@ class GroupForTreasureItem {
   // 是否拼团成功
   bool get isSuccess => groupStatus == 2;
 
+  // 已经完成
+  bool get isCompleted => isSuccess || isFull;
+
   // 剩余毫秒数 (用于倒计时组件初始化)
   int get remainingMillis {
     final now = DateTime.now().millisecondsSinceEpoch;
     final left = expireAt - now;
     return left > 0 ? left : 0;
+  }
+
+  // 获取校准后的本地倒计时结束时间戳
+  int get adjustedEndTime {
+    // 1. 先确保转成毫秒 (如果后端给的是秒)
+    final int serverMillis = expireAt < 10000000000
+        ? expireAt * 1000
+        : expireAt;
+
+    // 2. 减去偏移量，转换成本地时间
+    // 2. 减去偏移量，转换成本地时间
+    return ServerTimeHelper.getLocalEndTime(serverMillis);
   }
 }
 

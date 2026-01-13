@@ -1,5 +1,6 @@
 import 'dart:ui';
 
+import 'package:bot_toast/bot_toast.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_app/common.dart';
@@ -77,7 +78,13 @@ class _MyAppState extends ConsumerState<MyApp> {
           ),
           child: child!,
         );
-        return GlobalHandler(child: content);
+
+        // 2. 包裹你的全局逻辑处理 (Socket监听等)
+        child = GlobalHandler(child: child);
+
+        // 3. 最外层包裹 BotToastInit
+        // 这样 BotToast 才能覆盖在所有页面(包括 GlobalHandler)之上
+        return BotToastInit()(context, child);
       },
     );
   }
