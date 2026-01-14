@@ -79,6 +79,7 @@ class Http {
   // =========================================================
 
   static Dio get dio => _dio;
+  static Dio get rawDio => _rawDio;
 
   static Future<T> get<T>(
       String path, {

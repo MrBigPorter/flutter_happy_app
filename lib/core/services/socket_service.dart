@@ -1,19 +1,19 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
+import 'package:jwt_decoder/jwt_decoder.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
 import '../api/env.dart';
-// 如果需要 ServerTimeHelper 校准时间，请引入
-// import 'package:flutter_app/core/services/server_time_helper.dart';
+import '../api/http_client.dart';
 
 // ==========================================
 // 1. 枚举与模型定义
 // ==========================================
 
 enum PushEventType {
-  groupUpdate('group_update'),   // 大厅列表更新
-  groupSuccess('group_success'), // 个人通知：成功
-  groupFailed('group_failed'),   // 个人通知：失败
-  walletChange('wallet_change'), // 个人通知：余额变动
+  groupUpdate('group_update'),
+  groupSuccess('group_success'),
+  groupFailed('group_failed'),
+  walletChange('wallet_change'),
   unknown('unknown');
 
   final String value;
@@ -31,7 +31,7 @@ class GlobalNotification {
   final bool isSuccess;
   final String title;
   final String message;
-  final dynamic originalData; // 包含 groupId 等原始数据，用于点击跳转
+  final dynamic originalData;
 
   GlobalNotification({
     required this.isSuccess,
@@ -46,52 +46,98 @@ class GlobalNotification {
 // ==========================================
 
 class SocketService {
+  // 单例模式
   static final SocketService _instance = SocketService._internal();
   factory SocketService() => _instance;
   SocketService._internal();
 
   IO.Socket? _socket;
-
-  // 安全获取 socket
   IO.Socket? get socket => _socket;
 
+  // 定义回调：当 Token 过期时，向外部请求新 Token
+  // 返回值: Future<String?>，如果刷新成功返回新 Token，失败返回 null
+  Future<String?> Function()? onTokenRefreshRequest;
+
   // ----------------------------------------------------------------
-  // 📡 Streams (对外暴露的“天线”，UI 通过监听这些流来响应)
+  // 📡 Streams (全部为 final，永不关闭，解决 Bad state 问题)
   // ----------------------------------------------------------------
 
-  // 1. 连接重连信号 (用于触发全量刷新)
+  // 1. 连接重连信号
   final _syncController = StreamController<void>.broadcast();
   Stream<void> get onSyncNeeded => _syncController.stream;
 
-  // 2. 大厅列表更新流 (GroupLobbyPage 监听)
+  // 2. 大厅列表更新流
   final _groupUpdateController = StreamController<dynamic>.broadcast();
   Stream<dynamic> get groupUpdateStream => _groupUpdateController.stream;
 
-  // 3. 全局弹窗通知流 (MainPage/HomePage 监听)
+  // 3. 全局弹窗通知流
   final _notificationController = StreamController<GlobalNotification>.broadcast();
   Stream<GlobalNotification> get notificationStream => _notificationController.stream;
 
-  // 4. 钱包刷新信号 (用于通知 Provider 刷新余额)
+  // 4. 钱包刷新信号
   final _walletRefreshController = StreamController<void>.broadcast();
   Stream<void> get onWalletRefreshNeeded => _walletRefreshController.stream;
-
 
   // ----------------------------------------------------------------
   // 🔌 初始化与连接
   // ----------------------------------------------------------------
 
-  void init({required String token}) {
-    // 不要直接 return！如果 socket 已经存在，说明可能是游客连接，或者旧账号连接。
-    // 必须断开，用新的 Token 重新握手！
+  void init({required String token}) async{
+    // 🛑 1. 主动安检：检查 Token 是否过期
+    // 如果 Token 已过期，或者剩余有效期不足 60 秒
+
+    // 🚑🚑🚑【急救包】核心修复：防止 Auth 初始化太早导致回调为 null
+    if (onTokenRefreshRequest == null) {
+      debugPrint("⚠️ [Socket] 回调未绑定(Auth启动过早)，正在自动绑定 Http 刷新逻辑...");
+
+      onTokenRefreshRequest = () async {
+        debugPrint("🔄 [Socket-Fallback] 执行紧急刷新...");
+        // 调用 Http 的静态刷新方法
+        // 注意：这里传入刚才公开的 Http.rawDio
+        final success = await Http.tryRefreshToken(Http.rawDio);
+
+        if (success) {
+          return await Http.getToken();
+        } else {
+          await Http.performLogout();
+          return null;
+        }
+      };
+    }
+
+    bool isExpired = false;
+
+    // 1. 如果有旧连接，只断开 Socket
+    try{
+      isExpired = JwtDecoder.isExpired(token) || JwtDecoder.getRemainingTime(token).inSeconds < 60;
+    }catch(e){
+      // 如果 Token 格式不对，也视为无效
+      isExpired = true;
+    }
+
+    if(isExpired){
+      debugPrint('🛑 [Socket] 启动拦截：Token 已过期或即将过期，请求刷新...');
+      if(onTokenRefreshRequest != null) {
+        // 呼叫上层刷新
+        final newToken = await onTokenRefreshRequest!();
+        if (newToken != null) {
+          // 递归调用自己，使用新 Token
+          init(token: newToken);
+          return; // 结束当前的旧调用
+        } else {
+          debugPrint('❌ [Socket] 刷新失败，放弃连接');
+          return; // 彻底放弃，等待用户重新登录
+        }
+      }
+      return;
+    }
 
     if (_socket != null) {
-      debugPrint('🔄 [Socket] 检测到 Token 初始化，正在断开旧连接并重连...');
+      debugPrint('🔄 [Socket] 切换 Token，断开旧连接...');
       _socket!.disconnect();
       _socket!.dispose();
       _socket = null;
     }
-
-
 
     String baseUrl = Env.apiBaseEffective;
     String socketUrl = '$baseUrl/events';
@@ -103,7 +149,7 @@ class SocketService {
       IO.OptionBuilder()
           .setTransports(['websocket'])
           .disableAutoConnect()
-          .setQuery({'token': token}) // 注入 Token
+          .setQuery({'token': token})
           .setReconnectionAttempts(5)
           .setReconnectionDelay(2000)
           .enableForceNew()
@@ -124,15 +170,12 @@ class SocketService {
       debugPrint('❌ [Global Socket] Disconnected. Reason: $data');
     });
 
-    // 【新增】万能调试监听器 (用来抓鬼)
-    // 只要服务器发了任何东西，这行日志一定会打印！
     _socket!.onAny((event, data) {
-      debugPrint('🕵️‍♂️ [Socket 抓包] Event: "$event" | Data: $data');
+      // debugPrint('🕵️‍♂️ [Socket 抓包] Event: "$event" | Data: $data');
     });
 
-    //  核心修改：只监听 'server_push' 一个入口
     _socket!.on('server_push', (data) {
-      debugPrint('📦 [Socket] 收到 server_push, 准备分发...');
+      debugPrint('📦 [Socket] 收到 server_push: $data');
       if (data == null) return;
       try {
         _dispatchMessage(data);
@@ -143,72 +186,75 @@ class SocketService {
   }
 
   // ----------------------------------------------------------------
-  // 🔀 分发中心 (Dispatcher)
+  // 🔀 分发中心
   // ----------------------------------------------------------------
 
   void _dispatchMessage(dynamic data) {
     final String typeStr = data['type'] ?? '';
     final dynamic payload = data['payload'];
 
-    // 如果后端传了时间戳，可以在这里校准时间
-    // final int? timestamp = data['timestamp'];
-    // if (timestamp != null) ServerTimeHelper.updateOffset(timestamp);
-
     final PushEventType type = PushEventType.fromValue(typeStr);
-
-    debugPrint('📩 [Socket] Recv: $typeStr');
+    debugPrint('📩 [Socket] Recv Type: $typeStr');
 
     switch (type) {
-    // A. 列表更新 (高频)
       case PushEventType.groupUpdate:
-        _groupUpdateController.add(payload);
+        if (!_groupUpdateController.isClosed) {
+          _groupUpdateController.add(payload);
+        }
         break;
 
-    // B. 拼团成功 (低频，重要)
       case PushEventType.groupSuccess:
-      // 1. 弹窗
-        _notificationController.add(GlobalNotification(
-          isSuccess: true,
-          title: payload['title'] ?? 'Success',
-          message: payload['message'] ?? 'Group is full!',
-          originalData: payload,
-        ));
-        // 2. 如果用户正盯着列表，顺便把那个卡片状态改成成功
-        // 我们构造一个伪造的 update 包，把 status 设为 2
-        _groupUpdateController.add({
-          'groupId': payload['groupId'],
-          'status': 2,
-          'currentMembers': 9999, // 确保显示满员
-          'updatedAt': DateTime.now().millisecondsSinceEpoch,
-        });
+        if (!_notificationController.isClosed) {
+          _notificationController.add(
+            GlobalNotification(
+              isSuccess: true,
+              title: payload['title'] ?? 'Success',
+              message: payload['message'] ?? 'Group is full!',
+              originalData: payload,
+            ),
+          );
+        }
+        // 顺便更新列表状态
+        if (!_groupUpdateController.isClosed) {
+          _groupUpdateController.add({
+            'groupId': payload['groupId'],
+            'status': 2,
+            'isFull': true,
+            'currentMembers': 9999,
+            'updatedAt': DateTime.now().millisecondsSinceEpoch,
+          });
+        }
         break;
 
-    // C. 拼团失败/退款 (低频，重要)
       case PushEventType.groupFailed:
-      // 1. 弹窗
-        _notificationController.add(GlobalNotification(
-          isSuccess: false,
-          title: payload['title'] ?? 'Failed',
-          message: payload['message'] ?? 'Refund processed.',
-          originalData: payload,
-        ));
-        // 2. 刷新余额
-        _walletRefreshController.add(null);
+        if (!_notificationController.isClosed) {
+          _notificationController.add(
+            GlobalNotification(
+              isSuccess: false,
+              title: payload['title'] ?? 'Failed',
+              message: payload['message'] ?? 'Refund processed.',
+              originalData: payload,
+            ),
+          );
+        }
+        if (!_walletRefreshController.isClosed) {
+          _walletRefreshController.add(null);
+        }
         break;
 
-    // D. 纯余额变动
       case PushEventType.walletChange:
-        _walletRefreshController.add(null);
+        if (!_walletRefreshController.isClosed) {
+          _walletRefreshController.add(null);
+        }
         break;
 
       case PushEventType.unknown:
-      // 忽略未知消息
         break;
     }
   }
 
   // ----------------------------------------------------------------
-  // 🚪 房间管理 & 销毁
+  // 🚪 房间管理 (🔥 补回了这两个方法！)
   // ----------------------------------------------------------------
 
   void joinLobby() {
@@ -223,18 +269,21 @@ class SocketService {
     }
   }
 
+  // ----------------------------------------------------------------
+  // 🗑 资源管理
+  // ----------------------------------------------------------------
+
   void disconnect() {
-    _socket?.disconnect();
-    _socket?.dispose();
-    _socket = null;
-    debugPrint('👋 [Global Socket] Destroyed');
+    if (_socket != null) {
+      _socket!.disconnect();
+      _socket!.dispose();
+      _socket = null;
+      debugPrint('👋 [Global Socket] Disconnected & Disposed');
+    }
   }
 
   void dispose() {
-    _syncController.close();
-    _groupUpdateController.close();
-    _notificationController.close();
-    _walletRefreshController.close();
     disconnect();
+    // 再次强调：不要 close Controllers
   }
 }

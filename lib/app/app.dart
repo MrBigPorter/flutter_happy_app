@@ -53,7 +53,7 @@ class _MyAppState extends ConsumerState<MyApp> {
 
     //watch 它，让 SocketService 实例保持存活，并开始监听 Auth 变化。
     // 我们不需要用它的返回值，只需要它活着。
-    ref.watch(socketServiceProvider);
+     ref.watch(socketServiceProvider);
 
 
 
