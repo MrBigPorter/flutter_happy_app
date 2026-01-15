@@ -64,7 +64,6 @@ class HomePage extends ConsumerWidget {
             // ------------------------------------------------------
             hotGroups.when(
               data: (data) {
-                print("Hot group buying data: $data");
                 // 如果后端返回空数组，直接隐藏区域
                 if (data.isEmpty) return const SliverToBoxAdapter(child: SizedBox.shrink());
 

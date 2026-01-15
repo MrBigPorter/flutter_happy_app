@@ -8,7 +8,7 @@ import '../../../app/page/id_scan_page.dart';
 import '../camera_helper.dart';
 
 class LivenessService {
-  static const MethodChannel _channel = MethodChannel('com.joyminis.flutter_app/liveness');
+  static const MethodChannel _channel = MethodChannel('com.porter.joyminis/liveness');
 
   /// 👤 活体检测
   static Future<bool?> start(BuildContext context, String sessionId) async {

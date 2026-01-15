@@ -1,4 +1,4 @@
-package com.joyminis.flutter_app
+package com.porter.joyminis
 
 import android.app.Activity
 import android.content.Intent

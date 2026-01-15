@@ -28,7 +28,7 @@
 			<key>CFBundleTypeRole</key>
 			<string>Editor</string>
 			<key>CFBundleURLName</key>
-			<string>com.porter.lucky</string>
+			<string>com.porter.joyminis</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>luckyapp</string>

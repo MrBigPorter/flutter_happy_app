@@ -8,7 +8,7 @@ import VisionKit
 @main
 @objc class AppDelegate: FlutterAppDelegate {
 
-    private let CHANNEL = "com.joyminis.flutter_app/liveness"
+    private let CHANNEL = "com.porter.joyminis/liveness"
     private let scannerHandler = DocumentScannerHandler()
 
     override func application(

@@ -1,4 +1,4 @@
-package com.joyminis.flutter_app
+package com.porter.joyminis
 
 import android.app.Activity
 import android.content.Intent
@@ -8,7 +8,7 @@ import io.flutter.plugin.common.MethodChannel
 import androidx.activity.result.contract.ActivityResultContracts
 
 class MainActivity: FlutterFragmentActivity() {
-    private val CHANNEL = "com.joyminis.flutter_app/liveness"
+    private val CHANNEL = "com.porter.joyminis/liveness"
     private var pendingResult: MethodChannel.Result? = null
 
     // 1️⃣ 声明你的扫描 Handler

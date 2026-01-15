@@ -10,6 +10,7 @@ import 'package:flutter_app/utils/helper.dart';
 import 'package:flutter_app/core/models/index.dart';
 
 import '../../utils/upload/global_upload_service.dart';
+import '../models/fcm_notification.dart';
 import '../models/kyc.dart';
 
 class Api {
@@ -431,6 +432,10 @@ class Api {
   static Future<AddressRes> addressDetailApi (String addressId) async {
     final res = await Http.get('/api/v1/client/address/address/$addressId');
     return AddressRes.fromJson(res);
+  }
+
+  static Future<void> fcmNotificationDeviceRegisterApi (FcmNotificationDeviceRegisterDto data) async {
+    return await Http.post('/api/v1/client/notifications/device/register',data:data.toJson());
   }
 
 }

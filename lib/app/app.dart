@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_app/common.dart';
 import 'package:flutter_app/core/events/global_handler.dart';
 import 'package:flutter_app/core/providers/app_router_provider.dart';
+import 'package:flutter_app/core/providers/fcm_service_provider.dart';
 import 'package:flutter_app/core/store/auth/auth_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -54,6 +55,8 @@ class _MyAppState extends ConsumerState<MyApp> {
     //watch 它，让 SocketService 实例保持存活，并开始监听 Auth 变化。
     // 我们不需要用它的返回值，只需要它活着。
      ref.watch(socketServiceProvider);
+    // 初始化 FCM 服务
+     ref.watch(fcmInitProvider);
 
 
 

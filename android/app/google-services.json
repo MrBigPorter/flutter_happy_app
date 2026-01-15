@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1065683669109",
+    "project_id": "adroit-outlet-444914-m0",
+    "storage_bucket": "adroit-outlet-444914-m0.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1065683669109:android:ba55a01b8fda9a087a283c",
+        "android_client_info": {
+          "package_name": "com.porter.joyminis"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCkyzwpOShd1Fb-tuX6OB3wshg6KBs3bQ8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

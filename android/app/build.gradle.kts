@@ -3,10 +3,12 @@ plugins {
     id("kotlin-android")
     id("dev.flutter.flutter-gradle-plugin")
     id("org.jetbrains.kotlin.plugin.compose")
+    // 【新增】直接加在这里，不需要版本号（因为根目录已经定义了）
+    id("com.google.gms.google-services")
 }
 
 android {
-    namespace = "com.joyminis.flutter_app"
+    namespace = "com.porter.joyminis"
     compileSdk = 36  // ✅ 满足 webview 等插件的要求
     ndkVersion = flutter.ndkVersion
 
@@ -21,7 +23,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.joyminis.flutter_app"
+        applicationId = "com.porter.joyminis"
         minSdk = 24
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
@@ -73,4 +75,13 @@ dependencies {
     implementation("com.google.android.gms:play-services-mlkit-text-recognition:19.0.0")
     implementation("com.google.mlkit:text-recognition-chinese:16.0.0")
     implementation("com.google.android.gms:play-services-mlkit-face-detection:17.1.0")
+
+    // 👇 【精华】引入 Firebase BOM (Bill of Materials)
+    // 它的好处是：以后添加具体的 Firebase 库（如 Analytics, Messaging）不需要写版本号了！
+    implementation(platform("com.google.firebase:firebase-bom:33.7.0")) // 版本号可以用最新的
+
+    // 👇 添加具体功能，不用写版本号，BOM 会自动配对
+    implementation("com.google.firebase:firebase-analytics")
+    implementation("com.google.firebase:firebase-messaging") // 如果你要做推送，就把这个加上
+
 }

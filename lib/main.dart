@@ -1,6 +1,8 @@
 // main.dart
 import 'dart:ui';
 
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_app/common.dart';
@@ -28,6 +30,18 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await EasyLocalization.ensureInitialized();
   await Http.init();
+
+  //  [新增] 2. 初始化 Firebase
+  try {
+    await Firebase.initializeApp();
+
+    // 🔥 [新增] 3. 获取并打印 FCM Token
+    final fcmToken = await FirebaseMessaging.instance.getToken();
+    print("🔥 [FCM] Device Token: $fcmToken");
+
+  } catch (e) {
+    print("❌ Firebase 初始化失败: $e");
+  }
 
   FlutterError.onError = (details) {
     FlutterError.dumpErrorToConsole(details);
