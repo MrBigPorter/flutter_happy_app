@@ -1,7 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_app/core/services/socket_service.dart';
-import 'package:flutter_app/core/store/auth/auth_provider.dart';
 
 import '../api/http_client.dart';
 
