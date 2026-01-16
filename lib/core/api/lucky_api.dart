@@ -5,6 +5,7 @@ import 'package:flutter_app/core/models/coupon_threshold_data.dart';
 import 'package:flutter_app/core/models/groups.dart';
 import 'package:flutter_app/core/models/payment.dart';
 import 'package:flutter_app/core/models/region.dart';
+import 'package:flutter_app/ui/chat/models/conversation.dart';
 
 import 'package:flutter_app/utils/helper.dart';
 import 'package:flutter_app/core/models/index.dart';
@@ -437,6 +438,48 @@ class Api {
   static Future<void> fcmNotificationDeviceRegisterApi (FcmNotificationDeviceRegisterDto data) async {
     return await Http.post('/api/v1/client/notifications/device/register',data:data.toJson());
   }
+
+  // 获取聊天列表
+  static Future<List<Conversation>> chatListApi ({int page = 1}) async {
+    final res =  await Http.get('/api/v1/chat/list', query: {
+      'page': page,
+    });
+    return parseList( res, (e) => Conversation.fromJson(e));
+  }
+
+  // 创建商户聊天
+  static Future<ConversationIdResponse> chatBusinessApi (String businessId) async {
+    final res =  await Http.get('/api/v1/chat/business', query: {
+      'businessId': businessId,
+    });
+    return ConversationIdResponse.fromJson(res);
+  }
+
+  // 创建私聊
+  static Future<ConversationIdResponse> chatDirectApi (String targetUserId) async {
+    final res = await Http.post('/api/v1/chat/direct', data: {
+      'targetUserId': targetUserId,
+    });
+    return ConversationIdResponse.fromJson(res);
+  }
+
+  // 创建群聊
+  static Future<ConversationIdResponse> chatGroupApi (String name, List<String> memberIds) async {
+    final res = await Http.post('/api/v1/chat/group', data: {
+      'name': name,
+      'members': memberIds, // 注意这里是复数，且是数组
+    });
+    return ConversationIdResponse.fromJson(res);
+  }
+
+
+  // 5. 获取详情 (进入 ChatPage 时调用)
+  // 后端返回: ConversationDetailResponseDto
+  static Future<ConversationDetail> chatDetailApi(String conversationId) async {
+    final res = await Http.get('/api/v1/chat/detail/$conversationId');
+    return ConversationDetail.fromJson(res);
+  }
+
 
 }
 

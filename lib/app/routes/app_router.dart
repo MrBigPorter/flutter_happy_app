@@ -21,6 +21,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../components/lucky_tab_bar.dart';
+import '../../ui/chat/chat_page.dart';
 import '../page/deposit_detail_page.dart';
 import '../page/group_lobby_page.dart';
 import '../page/guide_page.dart';
@@ -63,6 +64,15 @@ class AppRouter {
       ],
       initialLocation: '/home',
       routes: [
+        // 不带底部导航栏的页面 (全屏页)
+        // 把 ChatPage 放在这里，和 ShellRoute 平级！
+        GoRoute(
+          path: '/chat/:conversationId',
+          parentNavigatorKey: NavHub.key,
+          builder: (context, state) {
+            return ChatPage(conversationId: state.pathParameters['conversationId']!);
+          },
+        ),
         GoRoute(
             name:"login",
             path: '/login',

@@ -462,6 +462,37 @@ class _Avatar extends StatelessWidget {
             ],
           ),
           const Spacer(),
+          // [新增] 3. 消息入口 (Chat Icon)
+          GestureDetector(
+            onTap: () {
+              // 临时测试：直接跳转到测试聊天室
+              // 等做好了“会话列表页”，这里改成 appRouter.push('/conversations');
+              const testId = "test_conversation_001";
+              appRouter.push('/chat/$testId');
+            },
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                // 使用图标
+                Icon(
+                    CupertinoIcons.chat_bubble_2, // 类似于微信的气泡图标
+                    size: 26.w,
+                    color: context.fgPrimary900
+                ),
+                // 模拟未读红点 (后期对接 Provider)
+                Positioned(
+                  right: 0,
+                  top: 0,
+                  child: Container(
+                    width: 8.w,
+                    height: 8.w,
+                    decoration: BoxDecoration(color: Colors.red.shade600, shape: BoxShape.circle),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          SizedBox(width: 20.w), // 给两个图标之间留点空隙
           GestureDetector(
             child: Stack(
               clipBehavior: Clip.none,
