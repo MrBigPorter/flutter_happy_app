@@ -116,6 +116,7 @@ ConversationDetail _$ConversationDetailFromJson(Map<String, dynamic> json) =>
       final val = ConversationDetail(
         id: $checkedConvert('id', (v) => v as String),
         name: $checkedConvert('name', (v) => v as String),
+        avatar: $checkedConvert('avatar', (v) => v as String?),
         type: $checkedConvert(
           'type',
           (v) => $enumDecode(
@@ -140,6 +141,7 @@ Map<String, dynamic> _$ConversationDetailToJson(ConversationDetail instance) =>
     <String, dynamic>{
       'id': instance.id,
       'name': instance.name,
+      'avatar': instance.avatar,
       'type': _$ConversationTypeEnumMap[instance.type]!,
       'members': instance.members,
     };

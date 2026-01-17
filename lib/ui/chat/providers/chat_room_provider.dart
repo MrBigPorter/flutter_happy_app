@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_app/utils/cache/cache_for_extension.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
@@ -269,6 +270,10 @@ final chatRoomProvider = StateNotifierProvider.family
     ref,
     conversationId,
     ) {
+
+  // 新增：设置一个保活时间 (比如 5 分钟)
+  // 这样用户在聊天列表和详情页反复横跳时，不会每次都重新加载
+   ref.cacheFor(const Duration(minutes: 5));
   final socketService = ref.watch(socketServiceProvider);
 
   // 从 Store 获取当前用户信息

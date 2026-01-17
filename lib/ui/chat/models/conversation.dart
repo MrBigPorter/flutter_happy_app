@@ -141,6 +141,9 @@ class ConversationDetail {
   final String id;
   final String name;
 
+  // 新增：头像字段 (允许为空)
+  final String? avatar;
+
   @JsonKey(unknownEnumValue: ConversationType.group)
   final ConversationType type;
 
@@ -150,6 +153,7 @@ class ConversationDetail {
   ConversationDetail({
     required this.id,
     required this.name,
+    this.avatar, //  记得加到构造函数里
     required this.type,
     required this.members,
   });
@@ -159,6 +163,7 @@ class ConversationDetail {
 
   Map<String, dynamic> toJson() => _$ConversationDetailToJson(this);
 
+  // 你的 getter 保持不变，继续用成员列表长度即可
   int get memberCount => members.length;
 
   @override
