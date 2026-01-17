@@ -158,7 +158,7 @@ mixin SocketLobbyMixin on _SocketBase {
 abstract class _SocketBase {
   IO.Socket? _socket;
   IO.Socket? get socket => _socket;
-  bool get isConnected => _socket?.connected ?? false;
+  bool get isConnected => _socket != null && _socket!.connected;
 
   //  [修复] 重连信号流
   final _syncController = StreamController<void>.broadcast();
@@ -187,41 +187,72 @@ class SocketService extends _SocketBase
   TokenRefreshCallback? onTokenRefreshRequest;
   TokenRefreshCallback? _tokenRefresher;
 
+  // 1. 新增：初始化互斥锁
+  bool _isInitializing = false;
+
   Future<void> init({required String token, TokenRefreshCallback? onTokenRefresh}) async {
+
+    // 2. 新增：第一道防线：如果正在初始化，直接打回！
+    if (_isInitializing) {
+      debugPrint(
+          '⏳ [Socket] Initialization already in progress, skipping duplicate call.');
+      return;
+    }
+
     _tokenRefresher = onTokenRefresh ?? onTokenRefreshRequest ?? _defaultTokenRefresher;
 
-    final validToken = await _ensureValidToken(token);
-    if (validToken == null) return;
+    // 3. 新增：第二道防线：加锁
+    _isInitializing = true;
 
-    disconnect();
+   try{
+     final validToken = await _ensureValidToken(token);
+     if (validToken == null) return;
 
-    final socketUrl = '${Env.apiBaseEffective}/events';
-    debugPrint('🔌 [Socket] Connecting to $socketUrl');
+     // 新增：如果 Token 没变且已连接，直接返回，不折腾
+     if(_socket != null && _socket!.connected){
+       final currentToken = _socket!.io.options?['query']?['token'];
+       if(currentToken == validToken){
+         debugPrint('🔒 [Socket] Token 未变，保持现有连接');
+         return;
+       }
+     }
 
-    _socket = IO.io(
-      socketUrl,
-      IO.OptionBuilder()
-          .setTransports(['websocket'])
-          .disableAutoConnect()
-          .setQuery({'token': validToken})
-          .setReconnectionAttempts(5)
-          .setReconnectionDelay(2000)
-          .setAuth({'token': validToken})
-          .build(),
-    );
+     // 只有 Token 变了，或者断开了，才执行下面的 disconnect 和重连
+     disconnect();
 
-    // 挂载监听器
-    _setupCommonListeners();
-    _setupChatListeners(_socket!);
-    _setupNotificationListeners(_socket!);
+     final socketUrl = '${Env.apiBaseEffective}/events';
+     debugPrint('🔌 [Socket] Connecting to $socketUrl');
 
-    _socket!.connect();
+     _socket = IO.io(
+       socketUrl,
+       IO.OptionBuilder()
+           .setTransports(['websocket'])
+           .disableAutoConnect()
+           .setQuery({'token': validToken})
+           .setReconnectionAttempts(5)
+           .setReconnectionDelay(2000)
+           .setAuth({'token': validToken})
+           .build(),
+     );
+
+     // 挂载监听器
+     _setupCommonListeners();
+     _setupChatListeners(_socket!);
+     _setupNotificationListeners(_socket!);
+
+     _socket!.connect();
+   }catch(e){
+      debugPrint('❌ [Socket] Initialization error: $e');
+   } finally {
+      // 4. 解锁
+      _isInitializing = false;
+   }
   }
 
   void _setupCommonListeners() {
     _socket!.onConnect((_) {
       debugPrint('✅ [Socket] Connected: ${_socket!.id}');
-      // 🔥 连接成功时，触发 Sync 信号
+      //  连接成功时，触发 Sync 信号
       triggerSync();
     });
 
@@ -230,12 +261,27 @@ class SocketService extends _SocketBase
 
   Future<String?> _ensureValidToken(String token) async {
     try {
+      // 1. 简单判空
+      if(token.isEmpty){
+        debugPrint("❌ [Socket] Token 为空，取消连接！");
+        return null;
+      }
+
       if (JwtDecoder.isExpired(token) ||
           JwtDecoder.getRemainingTime(token).inSeconds < 60) {
-        return await _tokenRefresher?.call();
+        debugPrint("⚠️ [Socket] Token 已过期，尝试刷新...");
+        final newToken = await _tokenRefresher?.call();
+        if (newToken == null) {
+          debugPrint("❌ [Socket] Token 刷新失败，无法建立连接！");
+        } else {
+          debugPrint("✅ [Socket] Token 刷新成功！");
+        }
+        return newToken;
       }
       return token;
     } catch (e) {
+      //  之前这里可能吞掉了报错
+      debugPrint("❌ [Socket] Token 校验异常: $e");
       return null;
     }
   }

@@ -37,22 +37,25 @@ class Api {
 
   // treasure hot groups
   static Future<List<HotGroupItem>> getTreasureHotGroups(int limit) async {
-    final res = await Http.get('/api/v1/treasure/hot-groups', query: {'limit': limit});
+    final res = await Http.get(
+      '/api/v1/treasure/hot-groups',
+      query: {'limit': limit},
+    );
     return parseList<HotGroupItem>(res, (e) => HotGroupItem.fromJson(e));
   }
 
   /// 首页宝藏推荐  home treasures
   static Future<List<IndexTreasureItem>> indexTreasuresApi() async {
-    try{
+    try {
       final res = await Http.get("/api/v1/home/sections", query: {'limit': 10});
 
       final data = parseList<IndexTreasureItem>(
         res,
-            (e) => IndexTreasureItem.fromJson(e),
+        (e) => IndexTreasureItem.fromJson(e),
       );
 
       return data;
-    }catch (e){
+    } catch (e) {
       return [];
     }
   }
@@ -88,48 +91,79 @@ class Api {
   }
 
   /// 支付渠道列表 payment channels
-  static Future<List<PaymentChannelConfigItem>> clientPaymentChannelsRecharge() async {
+  static Future<List<PaymentChannelConfigItem>>
+  clientPaymentChannelsRecharge() async {
     final res = await Http.get('/api/v1/client/payment/channels/recharge');
-    return parseList<PaymentChannelConfigItem>(res, (e) => PaymentChannelConfigItem.fromJson(e));
+    return parseList<PaymentChannelConfigItem>(
+      res,
+      (e) => PaymentChannelConfigItem.fromJson(e),
+    );
   }
 
   // 取款支付渠道列表 payment channels
-  static Future<List<PaymentChannelConfigItem>> clientPaymentChannelsWithdraw() async {
+  static Future<List<PaymentChannelConfigItem>>
+  clientPaymentChannelsWithdraw() async {
     final res = await Http.get('/api/v1/client/payment/channels/withdraw');
-    return parseList<PaymentChannelConfigItem>(res, (e) => PaymentChannelConfigItem.fromJson(e));
+    return parseList<PaymentChannelConfigItem>(
+      res,
+      (e) => PaymentChannelConfigItem.fromJson(e),
+    );
   }
 
   /// 创建充值订单 create recharge order
-  static Future<RechargeResponse> walletRechargeCreateApi(CreateRechargeDto data) async {
-    final res = await Http.post('/api/v1/wallet/recharge/create', data: data.toJson());
+  static Future<RechargeResponse> walletRechargeCreateApi(
+    CreateRechargeDto data,
+  ) async {
+    final res = await Http.post(
+      '/api/v1/wallet/recharge/create',
+      data: data.toJson(),
+    );
     return RechargeResponse.fromJson(res);
   }
 
   /// 钱包交易记录 wallet transactions
-  static Future<PageResult<WalletRechargeHistoryItem>> walletRechargeHistoryApi(WalletRechargeHistoryDto data) async {
-    final res = await Http.get('/api/v1/wallet/recharge/history', query: data.toJson());
+  static Future<PageResult<WalletRechargeHistoryItem>> walletRechargeHistoryApi(
+    WalletRechargeHistoryDto data,
+  ) async {
+    final res = await Http.get(
+      '/api/v1/wallet/recharge/history',
+      query: data.toJson(),
+    );
 
     return parsePageResponse(res, (e) => WalletRechargeHistoryItem.fromJson(e));
   }
 
   /// 提现记录 withdraw history
-  static Future<PageResult<WalletWithdrawHistoryItem>> walletWithdrawHistory(WalletWithdrawHistoryDto data) async {
-    final res = await Http.get('/api/v1/wallet/withdraw/history', query: data.toJson());
+  static Future<PageResult<WalletWithdrawHistoryItem>> walletWithdrawHistory(
+    WalletWithdrawHistoryDto data,
+  ) async {
+    final res = await Http.get(
+      '/api/v1/wallet/withdraw/history',
+      query: data.toJson(),
+    );
 
     return parsePageResponse(res, (e) => WalletWithdrawHistoryItem.fromJson(e));
   }
 
   /// apply withdraw
-  static Future<WalletWithdrawResponse> walletWithdrawApply(WalletWithdrawApplyDto data) async {
-    final res = await Http.post('/api/v1/wallet/withdraw/apply', data: data.toJson());
+  static Future<WalletWithdrawResponse> walletWithdrawApply(
+    WalletWithdrawApplyDto data,
+  ) async {
+    final res = await Http.post(
+      '/api/v1/wallet/withdraw/apply',
+      data: data.toJson(),
+    );
     return WalletWithdrawResponse.fromJson(res);
   }
 
-
-
   /// checkout order
-  static Future<OrderCheckoutResponse> ordersCheckOutApi(OrdersCheckoutParams params) async{
-    final res = await Http.post('/api/v1/orders/checkout', data: params.toJson());
+  static Future<OrderCheckoutResponse> ordersCheckOutApi(
+    OrdersCheckoutParams params,
+  ) async {
+    final res = await Http.post(
+      '/api/v1/orders/checkout',
+      data: params.toJson(),
+    );
     return OrderCheckoutResponse.fromJson(res);
   }
 
@@ -172,11 +206,10 @@ class Api {
     return ProductListItem.fromJson(res);
   }
 
-
-
-
   // 获取实时价格
-  static Future<TreasureStatusModel> getRealTimePriceApi(String treasureId) async {
+  static Future<TreasureStatusModel> getRealTimePriceApi(
+    String treasureId,
+  ) async {
     final res = await Http.get('/api/v1/treasure/status/$treasureId');
     return TreasureStatusModel.fromJson(res);
   }
@@ -273,12 +306,18 @@ class Api {
 
   /// order detail
   static Future<OrderDetailItem> orderDetailApi(String orderId) async {
-    final res = await Http.post('/api/v1/orders/detail',data: {'orderId':orderId});
+    final res = await Http.post(
+      '/api/v1/orders/detail',
+      data: {'orderId': orderId},
+    );
     return OrderDetailItem.fromJson(res);
   }
 
   static Future<RefundOrderResp> orderRefundApply(RefundApplyReq params) async {
-    final res = await Http.post('/api/v1/orders/refund/apply',data: params.toJson());
+    final res = await Http.post(
+      '/api/v1/orders/refund/apply',
+      data: params.toJson(),
+    );
     return RefundOrderResp.fromJson(res);
   }
 
@@ -300,14 +339,10 @@ class Api {
   }
 
   // login with otp
-  static Future<AuthLoginOtp> loginWithOtpApi({
-    required phone,
-  }) async {
+  static Future<AuthLoginOtp> loginWithOtpApi({required phone}) async {
     final res = await Http.post(
       '/api/v1/auth/login/otp',
-      data: {
-        'phone': phone,
-      },
+      data: {'phone': phone},
     );
     return AuthLoginOtp.fromJson(res);
   }
@@ -319,13 +354,18 @@ class Api {
   }
 
   // group list
-  static Future<PageResult<GroupForTreasureItem>> groupsListApi(GroupsListRequestParams params) async {
-    final res = await Http.get('/api/v1/client/groups/list',query: {
-      'page': params.page,
-      'pageSize': params.pageSize,
-      'treasureId': params.treasureId,
-    });
-     return parsePageResponse(res, (e) => GroupForTreasureItem.fromJson(e));
+  static Future<PageResult<GroupForTreasureItem>> groupsListApi(
+    GroupsListRequestParams params,
+  ) async {
+    final res = await Http.get(
+      '/api/v1/client/groups/list',
+      query: {
+        'page': params.page,
+        'pageSize': params.pageSize,
+        'treasureId': params.treasureId,
+      },
+    );
+    return parsePageResponse(res, (e) => GroupForTreasureItem.fromJson(e));
   }
 
   // group detail
@@ -334,16 +374,16 @@ class Api {
     return GroupDetailModel.fromJson(res);
   }
 
-
-
   // group member list
-  static Future<PageResult<GroupMemberItem>> groupMemberListApi(GroupMemberListRequestParams params) async {
-    final res = await Http.get('/api/v1/groups/${params.groupId}/members',query: {
-      'page': params.page,
-      'pageSize': params.pageSize,
-    });
+  static Future<PageResult<GroupMemberItem>> groupMemberListApi(
+    GroupMemberListRequestParams params,
+  ) async {
+    final res = await Http.get(
+      '/api/v1/groups/${params.groupId}/members',
+      query: {'page': params.page, 'pageSize': params.pageSize},
+    );
 
-     return parsePageResponse(res, (e) => GroupMemberItem.fromJson(e));
+    return parsePageResponse(res, (e) => GroupMemberItem.fromJson(e));
   }
 
   //kyc session
@@ -363,11 +403,10 @@ class Api {
     final res = await Http.get('/api/v1/kyc/id-types');
     return parseList<KycIdTypes>(res, (e) => KycIdTypes.fromJson(e));
   }
-  
+
   // kyc submit
   /// 这里的 dto 包含的是图片路径 String，我们在内部把它转成 File
   static Future<KycResponse> kycSubmitApi(SubmitKycDto dto) async {
-
     // 1. 把 DTO 转成 Map (获取纯文本数据)
     final Map<String, dynamic> bodyData = dto.toJson();
 
@@ -391,7 +430,6 @@ class Api {
     return KycResponse.fromJson(responseData);
   }
 
-
   static Future<List<Province>> provincesApi() async {
     final res = await Http.get('/api/v1/client/region/provinces');
     return parseList<Province>(res, (e) => Province.fromJson(e));
@@ -409,69 +447,89 @@ class Api {
 
   // address list
   static Future<PageResult<AddressRes>> addressListApi() async {
-    final res = await Http.get('/api/v1/client/address/list',query:{
-      'page':1,
-      'pageSize':100,
-    });
+    final res = await Http.get(
+      '/api/v1/client/address/list',
+      query: {'page': 1, 'pageSize': 100},
+    );
     return parsePageResponse(res, (e) => AddressRes.fromJson(e));
   }
 
-  static Future<AddressRes> addressCreateApi (AddressCreateDto data) async {
-    final res = await Http.post('/api/v1/client/address/create',data:data);
+  static Future<AddressRes> addressCreateApi(AddressCreateDto data) async {
+    final res = await Http.post('/api/v1/client/address/create', data: data);
     return AddressRes.fromJson(res);
   }
 
-  static Future<AddressRes> addressUpdateApi (String addressId, AddressCreateDto data) async {
-    final res = await Http.post('/api/v1/client/address/update/$addressId',data:data);
+  static Future<AddressRes> addressUpdateApi(
+    String addressId,
+    AddressCreateDto data,
+  ) async {
+    final res = await Http.post(
+      '/api/v1/client/address/update/$addressId',
+      data: data,
+    );
     return AddressRes.fromJson(res);
   }
 
-  static Future<dynamic> addressDeleteApi (String addressId) async {
+  static Future<dynamic> addressDeleteApi(String addressId) async {
     return await Http.delete('/api/v1/client/address/delete/$addressId');
   }
 
-  static Future<AddressRes> addressDetailApi (String addressId) async {
+  static Future<AddressRes> addressDetailApi(String addressId) async {
     final res = await Http.get('/api/v1/client/address/address/$addressId');
     return AddressRes.fromJson(res);
   }
 
-  static Future<void> fcmNotificationDeviceRegisterApi (FcmNotificationDeviceRegisterDto data) async {
-    return await Http.post('/api/v1/client/notifications/device/register',data:data.toJson());
+  static Future<void> fcmNotificationDeviceRegisterApi(
+    FcmNotificationDeviceRegisterDto data,
+  ) async {
+    return await Http.post(
+      '/api/v1/client/notifications/device/register',
+      data: data.toJson(),
+    );
   }
 
   // 获取聊天列表
-  static Future<List<Conversation>> chatListApi ({int page = 1}) async {
-    final res =  await Http.get('/api/v1/chat/list', query: {
-      'page': page,
-    });
-    return parseList( res, (e) => Conversation.fromJson(e));
+  static Future<List<Conversation>> chatListApi({int page = 1}) async {
+    final res = await Http.get('/api/v1/chat/list', query: {'page': page});
+    return parseList(res, (e) => Conversation.fromJson(e));
   }
 
   // 创建商户聊天
-  static Future<ConversationIdResponse> chatBusinessApi (String businessId) async {
-    final res =  await Http.get('/api/v1/chat/business', query: {
-      'businessId': businessId,
-    });
+  static Future<ConversationIdResponse> chatBusinessApi(
+    String businessId,
+  ) async {
+    final res = await Http.get(
+      '/api/v1/chat/business',
+      query: {'businessId': businessId},
+    );
     return ConversationIdResponse.fromJson(res);
   }
 
   // 创建私聊
-  static Future<ConversationIdResponse> chatDirectApi (String targetUserId) async {
-    final res = await Http.post('/api/v1/chat/direct', data: {
-      'targetUserId': targetUserId,
-    });
+  static Future<ConversationIdResponse> chatDirectApi(
+    String targetUserId,
+  ) async {
+    final res = await Http.post(
+      '/api/v1/chat/direct',
+      data: {'targetUserId': targetUserId},
+    );
     return ConversationIdResponse.fromJson(res);
   }
 
   // 创建群聊
-  static Future<ConversationIdResponse> chatGroupApi (String name, List<String> memberIds) async {
-    final res = await Http.post('/api/v1/chat/group', data: {
-      'name': name,
-      'members': memberIds, // 注意这里是复数，且是数组
-    });
+  static Future<ConversationIdResponse> chatGroupApi(
+    String name,
+    List<String> memberIds,
+  ) async {
+    final res = await Http.post(
+      '/api/v1/chat/group',
+      data: {
+        'name': name,
+        'members': memberIds, // 注意这里是复数，且是数组
+      },
+    );
     return ConversationIdResponse.fromJson(res);
   }
-
 
   // 5. 获取详情 (进入 ChatPage 时调用)
   // 后端返回: ConversationDetailResponseDto
@@ -480,7 +538,27 @@ class Api {
     return ConversationDetail.fromJson(res);
   }
 
+  static Future<MessageListResponse> chatMessagesApi(MessageHistoryRequest data) async {
+    final res = await Http.get('/api/v1/chat/messages', query: data.toJson());
+    return MessageListResponse.fromJson(res);
+  }
 
+  static Future<ChatMessage> sendMessage(String conversationId, String content) async {
+    final res = await Http.post('/api/v1/chat/message', data: {
+      'conversationId': conversationId,
+      'content': content,
+      'type': 0,
+    });
+
+    return ChatMessage.fromJson(res);
+  }
+
+  // 6. 用户搜索
+  static Future<List<ChatSender>> chatUsersSearchApi(String keyword) async {
+    final res = await Http.get(
+      '/api/v1/chat/users/search',
+      query: {'keyword': keyword},
+    );
+    return parseList(res, (e) => ChatSender.fromJson(e));
+  }
 }
-
-

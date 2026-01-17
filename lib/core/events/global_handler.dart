@@ -17,7 +17,7 @@ import '../../theme/design_tokens.g.dart';
 import '../providers/socket_provider.dart';
 import '../services/session_manager.dart';
 import '../services/socket_service.dart';
-import '../store/auth/auth_provider.dart'; // 必须引入这个以识别类型
+// 必须引入这个以识别类型
 
 class GlobalHandler extends ConsumerStatefulWidget {
   final Widget child;
@@ -66,23 +66,6 @@ class _GlobalHandlerState extends ConsumerState<GlobalHandler> {
       _subscribeToSocket(next);
     });
 
-    ref.listen(authProvider, (previous, next){
-      String newToken = '';
-      try {
-        final dynamic state = next;
-        if (state.accessToken != null && state.accessToken is String) {
-          newToken = state.accessToken;
-        }
-      } catch (_) {}
-
-      final service = ref.read(socketServiceProvider);
-      if(newToken.isNotEmpty){
-        debugPrint('🔑 [GlobalHandler] Auth 状态更新，使用新 Token 重新连接 Socket...');
-        service.init(token: newToken);
-      }else{
-        service.disconnect();
-      }
-    });
     return widget.child;
   }
 

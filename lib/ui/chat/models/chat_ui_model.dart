@@ -26,16 +26,25 @@ class ChatUiModel {
   });
 
   // 用于更新状态 (例如 sending -> success)
-  ChatUiModel copyWith({MessageStatus? status, String? id}) {
+  ChatUiModel copyWith({
+    String? id,
+    String? content,
+    MessageType? type,
+    bool? isMe,
+    MessageStatus? status,
+    int? createdAt,
+    String? senderAvatar,
+    String? senderName,
+  }) {
     return ChatUiModel(
       id: id ?? this.id,
-      content: content,
-      type: type,
-      isMe: isMe,
+      content: content ?? this.content,
+      type: type ?? this.type,
+      isMe: isMe ?? this.isMe,
       status: status ?? this.status,
-      createdAt: createdAt,
-      senderAvatar: senderAvatar,
-      senderName: senderName,
+      createdAt: createdAt ?? this.createdAt,
+      senderAvatar: senderAvatar ?? this.senderAvatar,
+      senderName: senderName ?? this.senderName,
     );
   }
 

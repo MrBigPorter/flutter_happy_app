@@ -1,12 +1,14 @@
 import 'package:json_annotation/json_annotation.dart';
+import 'package:uuid/uuid.dart';
 
 part 'conversation.g.dart';
 
+// 1. 优化：统一枚举命名风格 (Dart 推荐小驼峰)
 enum ConversationType {
   @JsonValue('DIRECT') direct,
   @JsonValue('GROUP') group,
   @JsonValue('BUSINESS') business,
-  @JsonValue('SUPPORT') SUPPORT,
+  @JsonValue('SUPPORT') support,
 }
 
 @JsonSerializable(checked: true)
@@ -33,13 +35,28 @@ class Conversation {
     this.isMuted = false,
   });
 
-  static ConversationType _parseType(String? typeStr) {
-    switch (typeStr) {
-      case 'DIRECT': return ConversationType.direct;
-      case 'GROUP': return ConversationType.group;
-      case 'BUSINESS': return ConversationType.business;
-      default: return ConversationType.group;
-    }
+  Conversation copyWith({
+    String? id,
+    ConversationType? type,
+    String? name,
+    String? avatar,
+    String? lastMsgContent,
+    int? lastMsgTime,
+    int? unreadCount,
+    bool? isPinned,
+    bool? isMuted,
+  }) {
+    return Conversation(
+      id: id ?? this.id,
+      type: type ?? this.type,
+      name: name ?? this.name,
+      avatar: avatar ?? this.avatar,
+      lastMsgContent: lastMsgContent ?? this.lastMsgContent,
+      lastMsgTime: lastMsgTime ?? this.lastMsgTime,
+      unreadCount: unreadCount ?? this.unreadCount,
+      isPinned: isPinned ?? this.isPinned,
+      isMuted: isMuted ?? this.isMuted,
+    );
   }
 
   factory Conversation.fromJson(Map<String, dynamic> json) =>
@@ -47,10 +64,7 @@ class Conversation {
   Map<String, dynamic> toJson() => _$ConversationToJson(this);
 
   @override
-  String toString() {
-    return toJson().toString();
-  }
-
+  String toString() => toJson().toString();
 }
 
 @JsonSerializable(checked: true)
@@ -62,23 +76,23 @@ class ChatSender {
   ChatSender({required this.id, required this.nickname, this.avatar});
 
   factory ChatSender.fromJson(Map<String, dynamic> json) => _$ChatSenderFromJson(json);
-
   Map<String, dynamic> toJson() => _$ChatSenderToJson(this);
 
   @override
-  String toString() {
-    return toJson().toString();
-  }
-
+  String toString() => toJson().toString();
 }
 
 @JsonSerializable(checked: true)
 class ChatMessage {
   final String id;
-  final int type; // 0:Text, 1:Image, etc.
+  final int type; // 0:Text, 1:Image
   final String content;
-  final int createdAt; // 时间戳
+  final int createdAt;
   final ChatSender? sender;
+
+  // 接收后端的 isSelf 字段
+  @JsonKey(defaultValue: false)
+  final bool isSelf;
 
   ChatMessage({
     required this.id,
@@ -86,45 +100,69 @@ class ChatMessage {
     required this.content,
     required this.createdAt,
     this.sender,
+    this.isSelf = false,
   });
 
   factory ChatMessage.fromJson(Map<String, dynamic> json) => _$ChatMessageFromJson(json);
   Map<String, dynamic> toJson() => _$ChatMessageToJson(this);
 
   @override
-  String toString() {
-    return toJson().toString();
-  }
+  String toString() => toJson().toString();
 }
 
+// ==========================================
+// 成员模型
+// ==========================================
+@JsonSerializable(checked: true)
+class ChatMember {
+  final String userId;
+  final String nickname;
+  final String? avatar;
+  final String role;
 
+  ChatMember({
+    required this.userId,
+    required this.nickname,
+    this.avatar,
+    required this.role,
+  });
+
+  factory ChatMember.fromJson(Map<String, dynamic> json) =>
+      _$ChatMemberFromJson(json);
+
+  Map<String, dynamic> toJson() => _$ChatMemberToJson(this);
+}
+
+// ==========================================
+// 详情模型
+// ==========================================
 @JsonSerializable(checked: true)
 class ConversationDetail {
   final String id;
   final String name;
+
+  @JsonKey(unknownEnumValue: ConversationType.group)
   final ConversationType type;
-  @JsonKey(name: 'history', defaultValue: [])
-  final List<ChatMessage> history;
+
+  @JsonKey(defaultValue: [])
+  final List<ChatMember> members;
 
   ConversationDetail({
     required this.id,
     required this.name,
     required this.type,
-    required this.history,
+    required this.members,
   });
-
 
   factory ConversationDetail.fromJson(Map<String, dynamic> json) =>
       _$ConversationDetailFromJson(json);
 
-  static ConversationType _parseType(String? typeStr) {
-    switch (typeStr) {
-      case 'DIRECT': return ConversationType.direct;
-      case 'GROUP': return ConversationType.group;
-      case 'BUSINESS': return ConversationType.business;
-      default: return ConversationType.group;
-    }
-  }
+  Map<String, dynamic> toJson() => _$ConversationDetailToJson(this);
+
+  int get memberCount => members.length;
+
+  @override
+  String toString() => toJson().toString();
 }
 
 @JsonSerializable(checked: true)
@@ -139,7 +177,102 @@ class ConversationIdResponse {
   Map<String, dynamic> toJson() => _$ConversationIdResponseToJson(this);
 
   @override
-  String toString() {
-    return toJson().toString();
-  }
+  String toString() => toJson().toString();
+}
+
+// ==========================================
+//  新增：历史消息请求参数 Request
+// ==========================================
+@JsonSerializable(createFactory: false) // 我们只需要 toJson 发送给后端
+class MessageHistoryRequest {
+  final String conversationId;
+
+  // 后端接收的是 'cursor'，所以这里把 Dart 的 beforeMessageId 映射过去
+  // 当然你也可以直接改名叫 cursor
+  final String? cursor;
+
+  final int pageSize; // 你可以用 pageSize, 映射为后端的 limit
+
+  MessageHistoryRequest({
+    required this.conversationId,
+    this.pageSize = 20,
+    this.cursor,
+  });
+
+  Map<String, dynamic> toJson() => _$MessageHistoryRequestToJson(this);
+}
+
+// ==========================================
+//  新增：历史消息响应 Wrapper Response
+// 对应后端的 { list: [], nextCursor: "..." }
+// ==========================================
+@JsonSerializable(checked: true)
+class MessageListResponse {
+  @JsonKey(defaultValue: [])
+  final List<ChatMessage> list;
+
+  // 下一页游标，如果为 null 说明没有更多数据了
+  final String? nextCursor;
+
+  MessageListResponse({
+    required this.list,
+    this.nextCursor,
+  });
+
+  factory MessageListResponse.fromJson(Map<String, dynamic> json) =>
+      _$MessageListResponseFromJson(json);
+
+  Map<String, dynamic> toJson() => _$MessageListResponseToJson(this);
+
+  @override
+  String toString() => toJson().toString();
+}
+
+
+@JsonSerializable(checked: true)
+class SocketMessage {
+  final String id;
+  final String conversationId;
+  final String senderId;
+  final String content;
+  final int type;
+  final int createdAt;
+  final SocketSender? sender;
+
+  SocketMessage({
+    required this.id,
+    required this.conversationId,
+    required this.senderId,
+    required this.content,
+    required this.type,
+    required this.createdAt,
+    this.sender,
+  });
+
+  factory SocketMessage.fromJson(Map<String, dynamic> json) => _$SocketMessageFromJson(json);
+  Map<String, dynamic> toJson() => _$SocketMessageToJson(this);
+
+  @override
+  String toString() => toJson().toString();
+
+}
+
+@JsonSerializable(checked: true)
+class SocketSender {
+  final String id;
+  final String nickname;
+  final String? avatar;
+
+  SocketSender({
+    required this.id,
+    this.nickname = 'Unknown',
+    this.avatar
+  });
+
+  factory SocketSender.fromJson(Map<String, dynamic> json) => _$SocketSenderFromJson(json);
+  Map<String, dynamic> toJson() => _$SocketSenderToJson(this);
+
+  @override
+  String toString() => toJson().toString();
+
 }

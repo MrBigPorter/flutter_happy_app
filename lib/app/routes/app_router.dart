@@ -14,6 +14,7 @@ import 'package:flutter_app/app/routes/route_auth_config.dart';
 import 'package:flutter_app/app/routes/transitions.dart';
 import 'package:flutter_app/core/models/payment.dart';
 import 'package:flutter_app/core/store/auth/auth_provider.dart';
+import 'package:flutter_app/ui/chat/conversation_list_page.dart';
 import 'package:flutter_app/ui/modal/base/modal_auto_close_observer.dart';
 import 'package:flutter_app/ui/modal/base/nav_hub.dart';
 import 'package:flutter_app/ui/modal/progress/overlay_progress_provider.dart';
@@ -113,9 +114,9 @@ class AppRouter {
               builder: (context, state) => ProductPage(),
             ),
             GoRoute(
-              name: 'groups',
-              path: '/groups',
-              builder: (context, state) => GroupLobbyPage(),
+              name: 'conversations',
+              path: '/conversations',
+              builder: (context, state) => ConversationListPage(),
             ),
             GoRoute(
               name: 'me',
