@@ -148,11 +148,11 @@ class _ChatPageState extends ConsumerState<ChatPage> {
           // 3. 右侧功能键 (电话、视频、信息)
           actions: [
             IconButton(
-              icon: Icon(Icons.call, color: Colors.blueAccent, size: 24),
+              icon: Icon(Icons.call, color: context.textBrandPrimary900, size: 24.sp),
               onPressed: () {},
             ),
             IconButton(
-              icon: Icon(Icons.videocam, color: Colors.blueAccent, size: 26),
+              icon: Icon(Icons.videocam, color: context.textBrandPrimary900, size: 26.sp),
               onPressed: () {},
             ),
             const SizedBox(width: 5),
@@ -237,9 +237,6 @@ class _ChatPageState extends ConsumerState<ChatPage> {
   }
 }
 
-// ==========================================
-//  优化 3: 现代化 iOS/微信风格输入框
-// ==========================================
 class ModernChatInputBar extends StatefulWidget {
   final Function(String) onSend;
 
@@ -251,15 +248,18 @@ class ModernChatInputBar extends StatefulWidget {
 
 class _ModernChatInputBarState extends State<ModernChatInputBar> {
   final TextEditingController _controller = TextEditingController();
-  bool _hasText = false; // 用于控制发送按钮颜色
+  bool _hasText = false;
 
   @override
   void initState() {
     super.initState();
     _controller.addListener(() {
-      setState(() {
-        _hasText = _controller.text.trim().isNotEmpty;
-      });
+      final hasText = _controller.text.trim().isNotEmpty;
+      if (_hasText != hasText) {
+        setState(() {
+          _hasText = hasText;
+        });
+      }
     });
   }
 
@@ -270,92 +270,134 @@ class _ModernChatInputBarState extends State<ModernChatInputBar> {
     _controller.clear();
   }
 
+  void _handleLike() {
+    widget.onSend("👍");
+  }
+
   @override
   Widget build(BuildContext context) {
-    // 🛠️ 关键修改：
-    // 1. 最外层是 Container，负责提供背景色 (延伸到安全区底部)
-    // 2. 内部用 SafeArea 包裹内容 (top: false, bottom: true)
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
-        color: context.bgSecondary, // 背景色
+        color: context.bgSecondary,
         border: Border(
-          top: BorderSide(color: Colors.grey.withOpacity(0.2)),
-        ), // 顶部细线
+          top: BorderSide(color: Colors.grey.withOpacity(0.1)),
+        ),
       ),
       child: SafeArea(
-        top: false,// 不需要考虑顶部安全区
-        bottom: true, // 考虑底部安全区
+        top: false,
+        bottom: true,
         child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: 10.w,vertical: 8.h),
-            child: Row(
-              children: [
-                // 左侧：加号按钮 (模拟附件)
-                IconButton(
-                  onPressed: () {},
+          // 左右间距稍微小一点，给图标腾位置
+          padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 8.h),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.end, // 底部对齐
+            children: [
+              // ===========================================
+              // 🛠️ 左侧功能区 (加号、相机、相册、语音)
+              // ===========================================
+              _buildActionBtn(Icons.add_circle, isSolid: true), // 实心加号
+              _buildActionBtn(Icons.camera_alt),
+              _buildActionBtn(Icons.image), // 相册
+              _buildActionBtn(Icons.mic),   // 语音
+
+              SizedBox(width: 4.w), // 图标和输入框的间距
+
+              // ===========================================
+              // 📝 中间输入框 (Aa)
+              // ===========================================
+              Expanded(
+                child: Container(
+                  constraints: const BoxConstraints(maxHeight: 100),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.withOpacity(0.1), // 浅灰背景
+                    borderRadius: BorderRadius.circular(20), // 胶囊
+                  ),
+                  child: TextField(
+                    controller: _controller,
+                    maxLines: null,
+                    keyboardType: TextInputType.multiline,
+                    textInputAction: TextInputAction.newline,
+                    style: TextStyle(
+                        color: context.textPrimary900,
+                        fontSize: 16.sp
+                    ),
+                    cursorColor: context.textBrandPrimary900,
+                    decoration: InputDecoration(
+                      hintText: "Aa",
+                      hintStyle: TextStyle(
+                        color: context.textSecondary700,
+                        fontSize: 16.sp,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      border: InputBorder.none,
+                      contentPadding: EdgeInsets.symmetric(
+                          horizontal: 14.w,
+                          vertical: 9.h
+                      ),
+                      isDense: true,
+                    ),
+                  ),
+                ),
+              ),
+
+              SizedBox(width: 8.w),
+
+              // ===========================================
+              // 👍 右侧：发送 / 点赞
+              // ===========================================
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 200),
+                transitionBuilder: (child, anim) =>
+                    ScaleTransition(scale: anim, child: child),
+                child: _hasText
+                    ? IconButton(
+                  key: const ValueKey('send'),
+                  onPressed: _handleSend,
                   icon: Icon(
-                    Icons.add_circle_outline,
-                    color: context.textPrimary900,
-                    size: 28,
+                    Icons.send,
+                    color: context.textBrandPrimary900,
+                    size: 24.sp,
                   ),
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),
-                  style: const ButtonStyle(
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                )
+                    : IconButton(
+                  key: const ValueKey('like'),
+                  onPressed: _handleLike,
+                  icon: Icon(
+                    Icons.thumb_up_rounded,
+                    color: context.textBrandPrimary900,
+                    size: 26.sp,
                   ),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
                 ),
-                const SizedBox(width: 8),
-
-                // 中间：输入框 (胶囊形状)
-                Expanded(
-                  child: Container(
-                    constraints: const BoxConstraints(maxHeight: 100), // 限制最大高度
-                    decoration: BoxDecoration(
-                      color: context.bgPrimary,
-                      borderRadius: BorderRadius.circular(20), // 圆角胶囊
-                    ),
-                    child: TextField(
-                      controller: _controller,
-                      maxLines: null,
-                      // 支持多行
-                      keyboardType: TextInputType.multiline,
-                      textInputAction: TextInputAction.newline,
-                      style: TextStyle(color: context.textPrimary900, fontSize: 15.sp),
-                      decoration:  InputDecoration(
-                        hintText: "Type a message...",
-                        hintStyle: TextStyle(color: context.textSecondary700, fontSize: 15.sp),
-                        border: InputBorder.none,
-                        contentPadding: EdgeInsets.symmetric(
-                          horizontal: 16.w,
-                          vertical: 10.h,
-                        ),
-                        isDense: true,
-                      ),
-                    ),
-                  ),
-                ),
-
-                 SizedBox(width: 8.w),
-
-                // 右侧：发送按钮
-                AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  margin:  EdgeInsets.only(bottom: 2.h), // 微调对齐
-                  child: IconButton(
-                    onPressed: _hasText ? _handleSend : null,
-                    icon: Icon(
-                      Icons.send_rounded,
-                      color: _hasText ? context.textBrandPrimary900 : context.textDisabled,
-                      size: 28.sp,
-                    ),
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                  ),
-                ),
-              ],
-            ),
+              ),
+            ],
+          ),
         ),
-      )
+      ),
+    );
+  }
+
+  // 🛠️ 封装一个小组件，减少重复代码
+  Widget _buildActionBtn(IconData icon, {bool isSolid = false}) {
+    // 如果是实心加号，通常颜色更深一点，或者一样
+    final color = context.textBrandPrimary900;
+
+    return Container(
+      margin: EdgeInsets.only(right: 2.w), // 按钮之间的微小间距
+      child: IconButton(
+        onPressed: () {},
+        icon: Icon(icon, color: color, size: 25.sp), // 25sp 大小比较适中
+
+        // 关键：收紧按钮的点击区域，防止一行放不下
+        padding: EdgeInsets.all(6.w),
+        constraints: const BoxConstraints(),
+        style: const ButtonStyle(
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap, // 去除多余的点击边距
+        ),
+      ),
     );
   }
 }
