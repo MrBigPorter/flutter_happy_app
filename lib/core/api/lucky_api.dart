@@ -538,19 +538,28 @@ class Api {
     return ConversationDetail.fromJson(res);
   }
 
+  // 6. 获取消息列表 (进入 ChatPage 时调用)
   static Future<MessageListResponse> chatMessagesApi(MessageHistoryRequest data) async {
     final res = await Http.get('/api/v1/chat/messages', query: data.toJson());
     return MessageListResponse.fromJson(res);
   }
 
-  static Future<ChatMessage> sendMessage(String conversationId, String content) async {
+  // 发送消息
+  static Future<ChatMessage> sendMessage(String conversationId, String content, String tempId) async {
     final res = await Http.post('/api/v1/chat/message', data: {
       'conversationId': conversationId,
       'content': content,
       'type': 0,
+      'tempId': tempId,
     });
 
     return ChatMessage.fromJson(res);
+  }
+
+  // 标记消息已读
+  static Future<MessageMarkReadResponse> messageMarkAsReadApi(MessageMarkReadRequest data) async {
+    final res = await Http.post('/api/v1/chat/message/mark-as-read', data: data.toJson());
+    return MessageMarkReadResponse.fromJson(res);
   }
 
   // 6. 用户搜索

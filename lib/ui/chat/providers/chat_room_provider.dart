@@ -11,11 +11,16 @@ import 'package:flutter_app/ui/chat/models/chat_ui_model.dart';
 import 'package:flutter_app/core/store/lucky_store.dart';
 
 import '../models/conversation.dart';
+import 'conversation_provider.dart';
 
 class ChatRoomNotifier extends StateNotifier<AsyncValue<List<ChatUiModel>>> {
   final SocketService _socketService;
   final String conversationId;
   final String myUserId;
+
+  // 2. 新增：持有 Ref，以便跨 Provider 通信
+  final Ref _ref;
+
   StreamSubscription? _msgSub;
 
   //新增部分：监听连接状态
@@ -28,10 +33,11 @@ class ChatRoomNotifier extends StateNotifier<AsyncValue<List<ChatUiModel>>> {
   bool get hasMore => _nextCursor != null;
 
   ChatRoomNotifier(
-      this._socketService,
-      this.conversationId,
-      this.myUserId,
-      ) : super(const AsyncValue.loading()) {
+    this._socketService,
+    this.conversationId,
+    this.myUserId,
+    this._ref,
+  ) : super(const AsyncValue.loading()) {
     _init();
   }
 
@@ -44,8 +50,8 @@ class ChatRoomNotifier extends StateNotifier<AsyncValue<List<ChatUiModel>>> {
       // A. 订阅“连接/重连”信号
       // 这里的 onSyncNeeded 是我们在 SocketService 里新加的流
       // 无论是第一次连接成功，还是断线重连成功，这里都会触发
-      
-      _connectionSub = _socketService.onSyncNeeded.listen((_){
+
+      _connectionSub = _socketService.onSyncNeeded.listen((_) {
         debugPrint("🔄 [ChatRoom] 监听到 Socket 连接/重连，正在加入房间...");
         _joinRoom();
       });
@@ -55,7 +61,7 @@ class ChatRoomNotifier extends StateNotifier<AsyncValue<List<ChatUiModel>>> {
       // Step A: Socket 进房
       if (_socketService.isConnected) {
         _joinRoom();
-      }else{
+      } else {
         debugPrint("⏳ [ChatRoom] Socket 未连接，等待连接...");
 
         // 新增：如果 Socket 处于“死鱼”状态（既没连接，也没在尝试连接），强制连一下
@@ -90,7 +96,6 @@ class ChatRoomNotifier extends StateNotifier<AsyncValue<List<ChatUiModel>>> {
 
       // Step E: 开启监听
       _msgSub = _socketService.chatMessageStream.listen(_onSocketMessage);
-
     } catch (e, st) {
       debugPrint("❌ ChatRoom Init Error: $e");
       if (mounted) {
@@ -134,7 +139,6 @@ class ChatRoomNotifier extends StateNotifier<AsyncValue<List<ChatUiModel>>> {
       state.whenData((currentList) {
         state = AsyncValue.data([...currentList, ...moreMessages]);
       });
-
     } catch (e) {
       debugPrint("❌ Load more failed: $e");
       // 这里可以选择是否提示用户，或者仅打印日志，不破坏当前 UI
@@ -160,13 +164,11 @@ class ChatRoomNotifier extends StateNotifier<AsyncValue<List<ChatUiModel>>> {
   }
 
   void _onSocketMessage(Map<String, dynamic> data) {
-    
     //核心修复：如果页面已经销毁，直接停止，不要再去碰 state
-    if(!mounted) return;
+    if (!mounted) return;
 
-
-    try{
-     // 核心改变：第一步先转成强类型对象
+    try {
+      // 核心改变：第一步先转成强类型对象
       // 如果数据格式极其离谱，这里可能会报错，但被 try-catch 捕获，不会崩 app
 
       final message = SocketMessage.fromJson(data);
@@ -176,11 +178,11 @@ class ChatRoomNotifier extends StateNotifier<AsyncValue<List<ChatUiModel>>> {
       if (message.senderId == myUserId) return; // 自己发的消息
 
       // 再次检查mounted状态，确保安全
-      if(!mounted) return;
+      if (!mounted) return;
 
       final newMsg = ChatUiModel(
         id: message.id,
-        content:message.content,
+        content: message.content,
         type: MessageType.text,
         isMe: false,
         status: MessageStatus.success,
@@ -191,17 +193,45 @@ class ChatRoomNotifier extends StateNotifier<AsyncValue<List<ChatUiModel>>> {
 
       // 访问 state 前最后一次检查
       if (!mounted) return;
+
+      if (message.tempId != null) {
+        // 1. 在本地列表里找，有没有这个 tempId 的消息？
+        state.whenData((currentList) {
+          final isMyPendingMsg = currentList.any((m) => m.id == message.tempId);
+          // 找到了，说明这是我自己发的未完成消息的回包
+          if (isMyPendingMsg) {
+            //  找到了！说明这是我刚才发的，且服务器确认了。
+            // 动作：把 tempId 替换为 realId，状态改为 success
+            final newList = currentList.map((m) {
+              if (m.id == message.tempId) {
+                return m.copyWith(
+                  id: message.id, // 替换为真实 ID
+                  status: MessageStatus.success, // 转圈 -> 成功
+                  createdAt: message.createdAt,
+                );
+              }
+              return m;
+            }).toList();
+            state = AsyncValue.data(newList);
+            return; // 处理完毕，直接返回
+          }
+        });
+      }
+
+      // 2. 如果不是 tempId 匹配的消息（比如对方发的，或者自己在别的设备发的）
+      if (message.senderId == myUserId) return; // 依然可以过滤掉不需要处理的自己
       state.whenData((currentList) {
         if (!currentList.any((m) => m.id == newMsg.id)) {
           state = AsyncValue.data([newMsg, ...currentList]);
         }
       });
-    } catch(e){
+    } catch (e) {
       debugPrint("❌ Error in _onSocketMessage: $e");
       return;
     }
   }
 
+  // 异步函数是闭包，注意捕获 mounted 状态，tempId 就一直有效等待接口返回
   Future<void> sendMessage(String text) async {
     if (text.trim().isEmpty) return;
 
@@ -221,10 +251,27 @@ class ChatRoomNotifier extends StateNotifier<AsyncValue<List<ChatUiModel>>> {
     final currentList = state.value ?? [];
     state = AsyncValue.data([tempMsg, ...currentList]);
 
+    // 3. 自动置顶
+    _ref
+        .read(conversationListProvider.notifier)
+        .updateLocalItem(
+          conversationId: conversationId,
+          lastMsgContent: text,
+          lastMsgTime: timestamp,
+        );
+
     try {
-      final sentMsg = await Api.sendMessage(conversationId, text);
+      final sentMsg = await Api.sendMessage(conversationId, text, tempId);
+
+      // HTTP 回来后，先检查一下列表里还有没有 tempId
+      // 如果没有了，说明 Socket 已经帮我们把活干完了，我们就可以躺平了
 
       state.whenData((list) {
+        // 检查是否已经被 Socket 转正
+        final alreadyHandledBySocket = list.any((msg) => msg.id == sentMsg.id);
+        if (alreadyHandledBySocket) {
+          return; // 已经处理过了，直接返回
+        }
         final newList = list.map((msg) {
           if (msg.id == tempId) {
             return msg.copyWith(
@@ -251,6 +298,26 @@ class ChatRoomNotifier extends StateNotifier<AsyncValue<List<ChatUiModel>>> {
     }
   }
 
+  void markAsRead() {
+    //  4. 核心逻辑：一进房间，立刻清除列表的红点
+    // 使用 delay 确保 Provider 已经构建完成
+    Future.delayed(Duration.zero, () {
+      if (!mounted) return;
+
+      // 清除本地未读计数
+      _ref
+          .read(conversationListProvider.notifier)
+          .clearUnread(conversationId);
+
+        // 2. 服务端清除 (数据持久化)
+        Api.messageMarkAsReadApi(
+          MessageMarkReadRequest(conversationId: conversationId),
+        ).catchError((error) {
+          debugPrint("❌ 标记已读失败: $error");
+        });
+    });
+  }
+
   @override
   void dispose() {
     // 1. 离开房间 (告诉后端)
@@ -267,17 +334,25 @@ class ChatRoomNotifier extends StateNotifier<AsyncValue<List<ChatUiModel>>> {
 // Provider 定义
 final chatRoomProvider = StateNotifierProvider.family
     .autoDispose<ChatRoomNotifier, AsyncValue<List<ChatUiModel>>, String>((
-    ref,
-    conversationId,
+      ref,
+      conversationId,
     ) {
+      // 新增：设置一个保活时间 (比如 5 分钟)
+      // 这样用户在聊天列表和详情页反复横跳时，不会每次都重新加载
+      ref.cacheFor(const Duration(minutes: 5));
+      final socketService = ref.watch(socketServiceProvider);
 
-  // 新增：设置一个保活时间 (比如 5 分钟)
-  // 这样用户在聊天列表和详情页反复横跳时，不会每次都重新加载
-   ref.cacheFor(const Duration(minutes: 5));
-  final socketService = ref.watch(socketServiceProvider);
+      // 从 Store 获取当前用户信息
+      final myUserId = ref.watch(
+        luckyProvider.select((state) => state.userInfo?.id),
+      );
 
-  // 从 Store 获取当前用户信息
-  final myUserId = ref.watch(luckyProvider.select((state) => state.userInfo?.id));
+      return ChatRoomNotifier(
+        socketService,
+        conversationId,
+        myUserId ?? '',
+        ref,
+      );
+    });
 
-  return ChatRoomNotifier(socketService, conversationId, myUserId ?? '');
-});
+

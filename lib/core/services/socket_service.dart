@@ -4,6 +4,7 @@ import 'package:socket_io_client/socket_io_client.dart' as IO;
 import 'package:jwt_decoder/jwt_decoder.dart';
 import '../api/env.dart';
 import '../api/http_client.dart';
+import 'package:flutter_app/ui/chat/models/conversation.dart';
 
 // 定义 Token 刷新函数的签名
 typedef TokenRefreshCallback = Future<String?> Function();
@@ -23,11 +24,30 @@ mixin SocketChatMixin on _SocketBase {
   final _chatMessageController = StreamController<Map<String, dynamic>>.broadcast();
   Stream<Map<String, dynamic>> get chatMessageStream => _chatMessageController.stream;
 
+  final _conversationListUpdateController = StreamController<SocketMessage>.broadcast();
+  Stream<SocketMessage> get conversationListUpdateStream => _conversationListUpdateController.stream;
+
   void _setupChatListeners(IO.Socket socket) {
     socket.on('chat_message', (data) {
       if (data == null) return;
+
+      final mapData = Map<String, dynamic>.from(data);
+
+      // 1. 发给详情页 (详情页自己处理容错)
       if (!_chatMessageController.isClosed) {
-        _chatMessageController.add(Map<String, dynamic>.from(data));
+        _chatMessageController.add(mapData);
+      }
+
+      // 2. 发给列表页 (需要转换模型，容易报错，所以要加 try-catch)
+      if(!_conversationListUpdateController.isClosed){
+        try {
+          final message = SocketMessage.fromJson(mapData);
+          _conversationListUpdateController.add(message);
+        } catch (e) {
+          debugPrint("[Socket] 解析消息失败，跳过列表更新: $e");
+          // 这里捕获异常，保证 Socket 连接不会受影响，
+          // 仅仅是这条消息在列表里显示不出来而已，不影响大局。
+        }
       }
     });
   }
@@ -178,7 +198,7 @@ abstract class _SocketBase {
 // 🚀 主服务类 (The Service)
 // ==========================================
 class SocketService extends _SocketBase
-    with SocketChatMixin, SocketNotificationMixin, SocketLobbyMixin { // 🔥 混入 Lobby 能力
+    with SocketChatMixin, SocketNotificationMixin, SocketLobbyMixin {
 
   static final SocketService _instance = SocketService._internal();
   factory SocketService() => _instance;

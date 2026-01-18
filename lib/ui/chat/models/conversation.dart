@@ -243,6 +243,8 @@ class SocketMessage {
   final int type;
   final int createdAt;
   final SocketSender? sender;
+  final String? tempId;
+  final bool isSelf;
 
   SocketMessage({
     required this.id,
@@ -252,6 +254,8 @@ class SocketMessage {
     required this.type,
     required this.createdAt,
     this.sender,
+    this.tempId,
+    required this.isSelf,
   });
 
   factory SocketMessage.fromJson(Map<String, dynamic> json) => _$SocketMessageFromJson(json);
@@ -280,4 +284,37 @@ class SocketSender {
   @override
   String toString() => toJson().toString();
 
+}
+
+@JsonSerializable(checked: true)
+class MessageMarkReadRequest {
+  final String conversationId;
+  final int? maxSeqId;
+
+  MessageMarkReadRequest({
+    required this.conversationId,
+    this.maxSeqId,
+  });
+
+  Map<String, dynamic> toJson() => _$MessageMarkReadRequestToJson(this);
+
+}
+
+@JsonSerializable(checked: true)
+class MessageMarkReadResponse {
+  final int unreadCount;
+  final int lastReadSeqId;
+
+  MessageMarkReadResponse({
+    required this.unreadCount,
+    required this.lastReadSeqId,
+  });
+
+  factory MessageMarkReadResponse.fromJson(Map<String, dynamic> json) =>
+      _$MessageMarkReadResponseFromJson(json);
+
+  Map<String, dynamic> toJson() => _$MessageMarkReadResponseToJson(this);
+
+  @override
+  String toString() => toJson().toString();
 }

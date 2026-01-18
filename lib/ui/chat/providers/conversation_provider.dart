@@ -23,7 +23,7 @@ class ConversationListNotifier extends StateNotifier<List<Conversation>> {
     await refresh();
 
     // 2. 监听会话列表更新
-   // _conversationSub = _socketService.conversationListStream.listen(_onNewMessage);
+     _conversationSub = _socketService.conversationListUpdateStream.listen(_onNewMessage);
   }
 
   Future<void> refresh() async {
@@ -37,13 +37,13 @@ class ConversationListNotifier extends StateNotifier<List<Conversation>> {
   }
 
   // 收到新消息时的逻辑：只更新列表项，不处理具体气泡
-  void _onNewMessage(Map<String, dynamic> msg) {
-    final convId = msg['conversationId'];
+  void _onNewMessage(SocketMessage msg) {
+    final convId = msg.conversationId;
     // 简单的文本摘要处理
     String content = '[非文本消息]';
-    if (msg['type'] == 0 || msg['type'] == 'text') {
-      content = msg['content'] ?? '';
-    } else if (msg['type'] == 1 || msg['type'] == 'image') {
+    if (msg.type == 0 || msg.type == 'text') {
+      content = msg.content;
+    } else if (msg.type == 1 || msg.type == 'image') {
       content = '[图片]';
     }
     final time = DateTime.now().millisecondsSinceEpoch;
@@ -54,11 +54,13 @@ class ConversationListNotifier extends StateNotifier<List<Conversation>> {
     if (index != -1) {
       // A. 已存在：更新摘要 + 移到顶部 + 未读数+1
       final oldConv = state[index];
+      // 自己发的消息不算未读，别人的才需要加
+      final newUnreadCount = msg.isSelf ? oldConv.unreadCount : oldConv.unreadCount + 1;
       // 构造新的 Conversation 对象
       final newConv = oldConv.copyWith(
         lastMsgContent: content,
         lastMsgTime: time,
-        unreadCount: oldConv.unreadCount + 1,
+        unreadCount: newUnreadCount,
       );
 
       final newState = [...state];
@@ -67,6 +69,34 @@ class ConversationListNotifier extends StateNotifier<List<Conversation>> {
       state = newState;
     } else {
       // B. 新会话：重新刷新列表 (最简单的做法)
+      refresh();
+    }
+  }
+
+  // --------------------------------------------------------
+  //  新增方法 1：供 ChatRoom 调用，手动更新列表项 (发送消息时)
+  // --------------------------------------------------------
+  void updateLocalItem({
+    required String conversationId,
+    String? lastMsgContent,
+    int? lastMsgTime,
+  }) {
+    final index = state.indexWhere((conv) => conversationId == conv.id);
+    if (index != -1) {
+      final oldConv = state[index];
+      // 1. 更新内容和时间
+      // 2. 这里的 unreadCount 不变 (或者是 0)，因为是自己发的消息
+      final newConv = oldConv.copyWith(
+        lastMsgContent: lastMsgContent,
+        lastMsgTime: lastMsgTime,
+      );
+      // 3. 移动到顶部
+      final newState = [...state];
+      newState.removeAt(index);
+      newState.insert(0, newConv);
+      state = newState;
+    } else {
+      // 会话不存在，直接刷新列表
       refresh();
     }
   }
@@ -99,7 +129,6 @@ final conversationListProvider =
       return ConversationListNotifier(socketService);
     });
 
-
 @riverpod
 class CreateGroupController extends _$CreateGroupController {
   @override
@@ -107,14 +136,17 @@ class CreateGroupController extends _$CreateGroupController {
     return const AsyncData(null);
   }
 
-  Future<ConversationIdResponse?> createGroup(String groupName, List<String> memberIds) async {
+  Future<ConversationIdResponse?> createGroup(
+    String groupName,
+    List<String> memberIds,
+  ) async {
     state = const AsyncValue.loading();
 
     state = await AsyncValue.guard(() async {
       return await Api.chatGroupApi(groupName, memberIds);
     });
 
-    if(state.hasError){
+    if (state.hasError) {
       return null;
     }
     return state.value;
@@ -135,7 +167,7 @@ class CreateDirectChatController extends _$CreateDirectChatController {
       return await Api.chatDirectApi(userId);
     });
 
-    if(state.hasError){
+    if (state.hasError) {
       return null;
     }
     return state.value;
@@ -143,7 +175,10 @@ class CreateDirectChatController extends _$CreateDirectChatController {
 }
 
 @riverpod
-Future<ConversationDetail> chatDetail(ChatDetailRef ref, String conversationId) async {
+Future<ConversationDetail> chatDetail(
+  ChatDetailRef ref,
+  String conversationId,
+) async {
   return Api.chatDetailApi(conversationId);
 }
 
@@ -155,10 +190,9 @@ class UserSearchController extends _$UserSearchController {
   }
 
   Future<void> search(String keyword) async {
+    if (keyword.isEmpty) return;
 
-    if(keyword.isEmpty) return;
-
-    state = const AsyncValue.loading();// 设置加载状态
+    state = const AsyncValue.loading(); // 设置加载状态
 
     state = await AsyncValue.guard(() async {
       return await Api.chatUsersSearchApi(keyword);

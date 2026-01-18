@@ -26,7 +26,16 @@ class _ChatPageState extends ConsumerState<ChatPage> {
   @override
   void initState() {
     super.initState();
+
+    //  关键修改：页面初始化时，主动调用标记已读
+    // 使用 WidgetsBinding 确保在构建完成后调用
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(chatRoomProvider(widget.conversationId).notifier).markAsRead();
+    });
+
     _scrollController.addListener(_onScroll);
+
+
   }
 
   @override

@@ -205,6 +205,8 @@ SocketMessage _$SocketMessageFromJson(Map<String, dynamic> json) =>
               ? null
               : SocketSender.fromJson(v as Map<String, dynamic>),
         ),
+        tempId: $checkedConvert('tempId', (v) => v as String?),
+        isSelf: $checkedConvert('isSelf', (v) => v as bool),
       );
       return val;
     });
@@ -218,6 +220,8 @@ Map<String, dynamic> _$SocketMessageToJson(SocketMessage instance) =>
       'type': instance.type,
       'createdAt': instance.createdAt,
       'sender': instance.sender,
+      'tempId': instance.tempId,
+      'isSelf': instance.isSelf,
     };
 
 SocketSender _$SocketSenderFromJson(Map<String, dynamic> json) =>
@@ -236,3 +240,37 @@ Map<String, dynamic> _$SocketSenderToJson(SocketSender instance) =>
       'nickname': instance.nickname,
       'avatar': instance.avatar,
     };
+
+MessageMarkReadRequest _$MessageMarkReadRequestFromJson(
+  Map<String, dynamic> json,
+) => $checkedCreate('MessageMarkReadRequest', json, ($checkedConvert) {
+  final val = MessageMarkReadRequest(
+    conversationId: $checkedConvert('conversationId', (v) => v as String),
+    maxSeqId: $checkedConvert('maxSeqId', (v) => (v as num?)?.toInt()),
+  );
+  return val;
+});
+
+Map<String, dynamic> _$MessageMarkReadRequestToJson(
+  MessageMarkReadRequest instance,
+) => <String, dynamic>{
+  'conversationId': instance.conversationId,
+  'maxSeqId': instance.maxSeqId,
+};
+
+MessageMarkReadResponse _$MessageMarkReadResponseFromJson(
+  Map<String, dynamic> json,
+) => $checkedCreate('MessageMarkReadResponse', json, ($checkedConvert) {
+  final val = MessageMarkReadResponse(
+    unreadCount: $checkedConvert('unreadCount', (v) => (v as num).toInt()),
+    lastReadSeqId: $checkedConvert('lastReadSeqId', (v) => (v as num).toInt()),
+  );
+  return val;
+});
+
+Map<String, dynamic> _$MessageMarkReadResponseToJson(
+  MessageMarkReadResponse instance,
+) => <String, dynamic>{
+  'unreadCount': instance.unreadCount,
+  'lastReadSeqId': instance.lastReadSeqId,
+};
