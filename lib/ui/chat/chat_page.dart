@@ -3,6 +3,7 @@ import 'package:flutter_app/common.dart';
 import 'package:flutter_app/ui/chat/providers/conversation_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:go_router/go_router.dart';
 import 'components/chat_bubble.dart';
 import 'providers/chat_room_provider.dart';
 
@@ -27,15 +28,12 @@ class _ChatPageState extends ConsumerState<ChatPage> {
   void initState() {
     super.initState();
 
-    //  关键修改：页面初始化时，主动调用标记已读
-    // 使用 WidgetsBinding 确保在构建完成后调用
+    //  关键修改：页面初始化时
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(chatRoomProvider(widget.conversationId).notifier).markAsRead();
+      ref.read(chatRoomProvider(widget.conversationId).notifier).refresh();
     });
 
     _scrollController.addListener(_onScroll);
-
-
   }
 
   @override
@@ -84,7 +82,16 @@ class _ChatPageState extends ConsumerState<ChatPage> {
               color: context.textPrimary900,
               size: 22.sp,
             ),
-            onPressed: () => Navigator.pop(context),
+            onPressed: () {
+              //  修复 Web 刷新后报错的问题
+              if (context.canPop()) {
+                context.pop();
+              } else {
+                // 如果没有上一页（比如网页刷新进来的），强行去列表页
+                // 注意：这里请填你路由配置里列表页的 path，通常是 '/conversations' 或 '/'
+                context.go('/conversations');
+              }
+            },
           ),
           // 优化 1: 标题栏显示状态
           title: Row(
@@ -157,11 +164,19 @@ class _ChatPageState extends ConsumerState<ChatPage> {
           // 3. 右侧功能键 (电话、视频、信息)
           actions: [
             IconButton(
-              icon: Icon(Icons.call, color: context.textBrandPrimary900, size: 24.sp),
+              icon: Icon(
+                Icons.call,
+                color: context.textBrandPrimary900,
+                size: 24.sp,
+              ),
               onPressed: () {},
             ),
             IconButton(
-              icon: Icon(Icons.videocam, color: context.textBrandPrimary900, size: 26.sp),
+              icon: Icon(
+                Icons.videocam,
+                color: context.textBrandPrimary900,
+                size: 26.sp,
+              ),
               onPressed: () {},
             ),
             const SizedBox(width: 5),
@@ -240,7 +255,14 @@ class _ChatPageState extends ConsumerState<ChatPage> {
 
         // 2. 渲染气泡
         final msg = messages[index];
-        return ChatBubble(message: msg);
+        return ChatBubble(
+          message: msg,
+          onRetry: () {
+            ref
+                .read(chatRoomProvider(widget.conversationId).notifier)
+                .resendMessage(msg.id);
+          },
+        );
       },
     );
   }
@@ -288,9 +310,7 @@ class _ModernChatInputBarState extends State<ModernChatInputBar> {
     return Container(
       decoration: BoxDecoration(
         color: context.bgSecondary,
-        border: Border(
-          top: BorderSide(color: Colors.grey.withOpacity(0.1)),
-        ),
+        border: Border(top: BorderSide(color: Colors.grey.withOpacity(0.1))),
       ),
       child: SafeArea(
         top: false,
@@ -307,10 +327,9 @@ class _ModernChatInputBarState extends State<ModernChatInputBar> {
               _buildActionBtn(Icons.add_circle, isSolid: true), // 实心加号
               _buildActionBtn(Icons.camera_alt),
               _buildActionBtn(Icons.image), // 相册
-              _buildActionBtn(Icons.mic),   // 语音
+              _buildActionBtn(Icons.mic), // 语音
 
               SizedBox(width: 4.w), // 图标和输入框的间距
-
               // ===========================================
               // 📝 中间输入框 (Aa)
               // ===========================================
@@ -327,8 +346,8 @@ class _ModernChatInputBarState extends State<ModernChatInputBar> {
                     keyboardType: TextInputType.multiline,
                     textInputAction: TextInputAction.newline,
                     style: TextStyle(
-                        color: context.textPrimary900,
-                        fontSize: 16.sp
+                      color: context.textPrimary900,
+                      fontSize: 16.sp,
                     ),
                     cursorColor: context.textBrandPrimary900,
                     decoration: InputDecoration(
@@ -340,8 +359,8 @@ class _ModernChatInputBarState extends State<ModernChatInputBar> {
                       ),
                       border: InputBorder.none,
                       contentPadding: EdgeInsets.symmetric(
-                          horizontal: 14.w,
-                          vertical: 9.h
+                        horizontal: 14.w,
+                        vertical: 9.h,
                       ),
                       isDense: true,
                     ),
@@ -360,27 +379,27 @@ class _ModernChatInputBarState extends State<ModernChatInputBar> {
                     ScaleTransition(scale: anim, child: child),
                 child: _hasText
                     ? IconButton(
-                  key: const ValueKey('send'),
-                  onPressed: _handleSend,
-                  icon: Icon(
-                    Icons.send,
-                    color: context.textBrandPrimary900,
-                    size: 24.sp,
-                  ),
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
-                )
+                        key: const ValueKey('send'),
+                        onPressed: _handleSend,
+                        icon: Icon(
+                          Icons.send,
+                          color: context.textBrandPrimary900,
+                          size: 24.sp,
+                        ),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                      )
                     : IconButton(
-                  key: const ValueKey('like'),
-                  onPressed: _handleLike,
-                  icon: Icon(
-                    Icons.thumb_up_rounded,
-                    color: context.textBrandPrimary900,
-                    size: 26.sp,
-                  ),
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
-                ),
+                        key: const ValueKey('like'),
+                        onPressed: _handleLike,
+                        icon: Icon(
+                          Icons.thumb_up_rounded,
+                          color: context.textBrandPrimary900,
+                          size: 26.sp,
+                        ),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                      ),
               ),
             ],
           ),
@@ -398,7 +417,8 @@ class _ModernChatInputBarState extends State<ModernChatInputBar> {
       margin: EdgeInsets.only(right: 2.w), // 按钮之间的微小间距
       child: IconButton(
         onPressed: () {},
-        icon: Icon(icon, color: color, size: 25.sp), // 25sp 大小比较适中
+        icon: Icon(icon, color: color, size: 25.sp),
+        // 25sp 大小比较适中
 
         // 关键：收紧按钮的点击区域，防止一行放不下
         padding: EdgeInsets.all(6.w),

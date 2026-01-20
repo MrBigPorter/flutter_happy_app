@@ -78,6 +78,7 @@ ChatMessage _$ChatMessageFromJson(Map<String, dynamic> json) =>
               v == null ? null : ChatSender.fromJson(v as Map<String, dynamic>),
         ),
         isSelf: $checkedConvert('isSelf', (v) => v as bool? ?? false),
+        seqId: $checkedConvert('seqId', (v) => (v as num?)?.toInt()),
       );
       return val;
     });
@@ -89,6 +90,7 @@ Map<String, dynamic> _$ChatMessageToJson(ChatMessage instance) =>
       'content': instance.content,
       'createdAt': instance.createdAt,
       'sender': instance.sender,
+      'seqId': instance.seqId,
       'isSelf': instance.isSelf,
     };
 
@@ -178,6 +180,10 @@ MessageListResponse _$MessageListResponseFromJson(Map<String, dynamic> json) =>
                   .toList() ??
               [],
         ),
+        partnerLastReadSeqId: $checkedConvert(
+          'partnerLastReadSeqId',
+          (v) => (v as num).toInt(),
+        ),
         nextCursor: $checkedConvert('nextCursor', (v) => v as String?),
       );
       return val;
@@ -188,6 +194,7 @@ Map<String, dynamic> _$MessageListResponseToJson(
 ) => <String, dynamic>{
   'list': instance.list,
   'nextCursor': instance.nextCursor,
+  'partnerLastReadSeqId': instance.partnerLastReadSeqId,
 };
 
 SocketMessage _$SocketMessageFromJson(Map<String, dynamic> json) =>
@@ -207,6 +214,7 @@ SocketMessage _$SocketMessageFromJson(Map<String, dynamic> json) =>
         ),
         tempId: $checkedConvert('tempId', (v) => v as String?),
         isSelf: $checkedConvert('isSelf', (v) => v as bool),
+        seqId: $checkedConvert('seqId', (v) => (v as num?)?.toInt()),
       );
       return val;
     });
@@ -222,6 +230,7 @@ Map<String, dynamic> _$SocketMessageToJson(SocketMessage instance) =>
       'sender': instance.sender,
       'tempId': instance.tempId,
       'isSelf': instance.isSelf,
+      'seqId': instance.seqId,
     };
 
 SocketSender _$SocketSenderFromJson(Map<String, dynamic> json) =>
@@ -274,3 +283,23 @@ Map<String, dynamic> _$MessageMarkReadResponseToJson(
   'unreadCount': instance.unreadCount,
   'lastReadSeqId': instance.lastReadSeqId,
 };
+
+SocketReadEvent _$SocketReadEventFromJson(Map<String, dynamic> json) =>
+    $checkedCreate('SocketReadEvent', json, ($checkedConvert) {
+      final val = SocketReadEvent(
+        conversationId: $checkedConvert('conversationId', (v) => v as String),
+        readerId: $checkedConvert('readerId', (v) => v as String),
+        lastReadSeqId: $checkedConvert(
+          'lastReadSeqId',
+          (v) => (v as num?)?.toInt() ?? 0,
+        ),
+      );
+      return val;
+    });
+
+Map<String, dynamic> _$SocketReadEventToJson(SocketReadEvent instance) =>
+    <String, dynamic>{
+      'conversationId': instance.conversationId,
+      'readerId': instance.readerId,
+      'lastReadSeqId': instance.lastReadSeqId,
+    };

@@ -1,11 +1,12 @@
 
 import 'package:flutter_app/ui/chat/models/conversation.dart';
 
-enum MessageStatus { sending, success, failed }
+enum MessageStatus { sending, success, failed, read }
 enum MessageType { text, image, audio, video, system }
 
 class ChatUiModel {
   final String id;        // 消息唯一ID (前端生成 UUID 或 后端返回 ID)
+  final int? seqId;     // 可选的序列号 (用于有序消息),这是水位线比对的关键
   final String content;   // 内容
   final MessageType type; // 类型
   final bool isMe;        // 是否是我发的
@@ -23,6 +24,7 @@ class ChatUiModel {
     required this.createdAt,
     this.senderAvatar,
     this.senderName,
+    this.seqId
   });
 
   // 用于更新状态 (例如 sending -> success)
@@ -35,6 +37,7 @@ class ChatUiModel {
     int? createdAt,
     String? senderAvatar,
     String? senderName,
+    int? seqId,
   }) {
     return ChatUiModel(
       id: id ?? this.id,
@@ -45,6 +48,7 @@ class ChatUiModel {
       createdAt: createdAt ?? this.createdAt,
       senderAvatar: senderAvatar ?? this.senderAvatar,
       senderName: senderName ?? this.senderName,
+      seqId: seqId ?? this.seqId,
     );
   }
 

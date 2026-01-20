@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_app/utils/cache/cache_for_extension.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
+import 'package:rxdart/rxdart.dart'; // 引入神器
 
 import 'package:flutter_app/common.dart';
 import 'package:flutter_app/core/services/socket_service.dart';
@@ -17,141 +18,367 @@ class ChatRoomNotifier extends StateNotifier<AsyncValue<List<ChatUiModel>>> {
   final SocketService _socketService;
   final String conversationId;
   final String myUserId;
-
-  // 2. 新增：持有 Ref，以便跨 Provider 通信
   final Ref _ref;
 
   StreamSubscription? _msgSub;
-
-  //新增部分：监听连接状态
+  StreamSubscription? _readStatusSub;
   StreamSubscription? _connectionSub;
 
-  //  1. 新增：分页游标和加载状态标记
+  // 1. 定义 Rx 管道
+  final _readReceiptSubject = PublishSubject<void>();
+
   String? _nextCursor;
   bool _isLoadingMore = false;
+
+  // 记录是否有未提交的已读任务
+  bool _hasPendingRead = false;
+
+  // 对方的已读水位线
+  int _maxReadSeqId = 0;
 
   bool get hasMore => _nextCursor != null;
 
   ChatRoomNotifier(
-    this._socketService,
-    this.conversationId,
-    this.myUserId,
-    this._ref,
-  ) : super(const AsyncValue.loading()) {
-    _init();
+      this._socketService,
+      this.conversationId,
+      this.myUserId,
+      this._ref,
+      ) : super(const AsyncValue.loading()) {
+    // 1. 建立 Socket 监听
+    _setup();
+    // 2.  修复点：必须启动防抖监听，否则管道是死的！
+    _setupReadReceiptDebounce();
   }
 
-  Future<void> _init() async {
-    try {
+  // 大厂写法：声明式防抖逻辑
+  void _setupReadReceiptDebounce() {
+    _readReceiptSubject
+        .debounceTime(const Duration(milliseconds: 500)) // 500ms 内多次触发只认最后一次
+        .listen((_) {
+      if (!mounted) return;
+      debugPrint("🌊 [Rx] 防抖时间到，触发 API 上报");
+      _executeMarkRead();
+    });
+  }
 
-      // ==================================================
-      // 核心修复：解决“进房太早，连接未好”以及“断线重连”的问题
-      // ==================================================
-      // A. 订阅“连接/重连”信号
-      // 这里的 onSyncNeeded 是我们在 SocketService 里新加的流
-      // 无论是第一次连接成功，还是断线重连成功，这里都会触发
+  void _executeMarkRead() {
+    markAsRead();
+    _hasPendingRead = false; // 重置标记
+  }
 
-      _connectionSub = _socketService.onSyncNeeded.listen((_) {
-        debugPrint("🔄 [ChatRoom] 监听到 Socket 连接/重连，正在加入房间...");
-        _joinRoom();
-      });
+  // ===========================================================================
+  // 🚀 1. 基础设置 (只运行一次)
+  // ===========================================================================
+  Future<void> _setup() async {
+    // A. 监听连接/重连
+    _connectionSub = _socketService.onSyncNeeded.listen((_) {
+      debugPrint("🔄 [ChatRoom] Socket 重连，重新加入房间...");
+      _joinRoom();
+    });
 
-      // B. 立即检查当前状态 (双重保险)
-      // 如果进页面时 socket 已经是好的，直接进房，不用等回调
-      // Step A: Socket 进房
-      if (_socketService.isConnected) {
-        _joinRoom();
-      } else {
-        debugPrint("⏳ [ChatRoom] Socket 未连接，等待连接...");
-
-        // 新增：如果 Socket 处于“死鱼”状态（既没连接，也没在尝试连接），强制连一下
-        // 注意：这需要你在 SocketService 暴露 socket 实例或者 connect 方法
-        // 如果 socket 为空，说明 init 还没跑，这通常不会发生
-        final socket = _socketService.socket;
-        if (socket != null && !socket.active) {
-          debugPrint("🔌 [ChatRoom] 检测到 Socket 休眠，尝试强制连接...");
-          socket.connect();
-        }
-      }
-
-      // Step B: HTTP 拉取第一页
-      final request = MessageHistoryRequest(
-        conversationId: conversationId,
-        pageSize: 20,
-        cursor: null, // 第一页传 null
-      );
-
-      final response = await Api.chatMessagesApi(request);
-
-      //  2. 保存下一页的游标
-      _nextCursor = response.nextCursor;
-
-      // Step C: DTO 转 UI Model
-      final uiMessages = _mapToUiModels(response.list);
-
-      // Step D: 更新状态
-      if (mounted) {
-        state = AsyncValue.data(uiMessages);
-      }
-
-      // Step E: 开启监听
-      _msgSub = _socketService.chatMessageStream.listen(_onSocketMessage);
-    } catch (e, st) {
-      debugPrint("❌ ChatRoom Init Error: $e");
-      if (mounted) {
-        state = AsyncValue.error(e, st);
+    // B. 尝试进房
+    if (_socketService.isConnected) {
+      _joinRoom();
+    } else {
+      // 激进策略：如果没连上，尝试唤醒
+      final socket = _socketService.socket;
+      if (socket != null && !socket.active) {
+        socket.connect();
       }
     }
+
+    // C. 开启消息监听
+    _msgSub = _socketService.chatMessageStream.listen(_onSocketMessage);
+    _readStatusSub = _socketService.readStatusStream.listen(_onReadStatusUpdate);
   }
 
-  // 抽离出的进房逻辑
   void _joinRoom() {
-    // 只有真的连上了才发指令
     if (_socketService.isConnected) {
-      // debugPrint("🚪 [ChatRoom] 发送 join_chat: $conversationId");
       _socketService.joinChatRoom(conversationId);
     }
   }
 
-  //  3. 新增：加载更多历史消息
-  Future<void> loadMore() async {
-    // 如果没有下一页了 (cursor为null) 或者正在加载中，直接返回
-    if (_nextCursor == null || _isLoadingMore) return;
+  // ===========================================================================
+  // 🔄 2. 刷新数据 (UI initState 每次必调)
+  // ===========================================================================
+  Future<void> refresh() async {
+    try {
+      debugPrint("🚀 [ChatRoom] 正在刷新数据 (穿透缓存)...");
 
+      //  防御：把 markAsRead 包起来
+      // 就算标记已读失败（比如列表页销毁了），也不应该影响用户看消息！
+      try { markAsRead(); } catch (_) {}
+
+      // 2. 拉取最新一页消息
+      final request = MessageHistoryRequest(
+        conversationId: conversationId,
+        pageSize: 20,
+        cursor: null,
+      );
+
+      debugPrint("🚀 [ChatRoom] Step 2: 请求 API...");
+      final response = await Api.chatMessagesApi(request);
+      debugPrint("🚀 [ChatRoom] Step 3: API 返回. list长度: ${response.list.length}");
+
+      // 3. 更新水位线
+      _maxReadSeqId = response.partnerLastReadSeqId;
+      _nextCursor = response.nextCursor;
+
+      // 转换数据
+      final uiMessages = _mapToUiModels(response.list);
+      debugPrint("🚀 [ChatRoom] Step 4: 模型转换完毕. UI消息数: ${uiMessages.length}");
+
+      final processedList = _applyReadStatusStrategy(uiMessages, _maxReadSeqId);
+      debugPrint("🚀 [ChatRoom] Step 5: 策略应用完毕. 准备更新 State. mounted=$mounted");
+
+      if(mounted) {
+        state = AsyncValue.data(processedList);
+        debugPrint("🚀 [ChatRoom] Step 6: State 更新成功！UI 应该变了");
+
+      }
+
+    } catch (e, st) {
+      debugPrint("❌ Refresh Error: $e");
+      if (mounted) state = AsyncValue.error(e, st);
+    }
+  }
+
+  Future<void> loadMore() async {
+    if (_nextCursor == null || _isLoadingMore) return;
     _isLoadingMore = true;
 
     try {
       final request = MessageHistoryRequest(
         conversationId: conversationId,
         pageSize: 20,
-        cursor: _nextCursor, // 传入上一页保存的游标
+        cursor: _nextCursor,
       );
-
       final response = await Api.chatMessagesApi(request);
-
-      // 更新游标，为下一次做准备
       _nextCursor = response.nextCursor;
 
-      // 转换数据
       final moreMessages = _mapToUiModels(response.list);
 
-      // 将旧消息追加到列表末尾 (因为列表是倒序的: [新 ... 旧])
       state.whenData((currentList) {
-        state = AsyncValue.data([...currentList, ...moreMessages]);
+        final rawList = [...currentList, ...moreMessages];
+        // 重新计算已读策略 (保险起见)
+        state = AsyncValue.data(_applyReadStatusStrategy(rawList, _maxReadSeqId));
       });
     } catch (e) {
       debugPrint("❌ Load more failed: $e");
-      // 这里可以选择是否提示用户，或者仅打印日志，不破坏当前 UI
     } finally {
       _isLoadingMore = false;
     }
   }
 
-  // 💡 抽取公共的映射逻辑，避免代码重复
+  // ===========================================================================
+  // 📩 3. 发送逻辑 (Sending)
+  // ===========================================================================
+
+  Future<void> sendMessage(String text) async {
+    if (text.trim().isEmpty) return;
+
+    final tempId = const Uuid().v4();
+    final now = DateTime.now().millisecondsSinceEpoch;
+
+    // A. 乐观更新
+    final tempMsg = ChatUiModel(
+      id: tempId,
+      content: text,
+      type: MessageType.text,
+      isMe: true,
+      status: MessageStatus.sending,
+      createdAt: now,
+      seqId: null,
+    );
+
+    _updateState((list) => [tempMsg, ...list]);
+    _updateConversationList(text, now);
+
+    await _executeSend(tempId, text);
+  }
+
+  Future<void> resendMessage(String tempId) async {
+    state.whenData((list) async {
+      final targetMsg = list.firstWhere((e) => e.id == tempId, orElse: () => list.first);
+      if (targetMsg.id != tempId) return;
+
+      _updateState((current) => current.map((m) =>
+      m.id == tempId ? m.copyWith(status: MessageStatus.sending) : m
+      ).toList());
+
+      _updateConversationList(targetMsg.content, DateTime.now().millisecondsSinceEpoch);
+      await _executeSend(tempId, targetMsg.content);
+    });
+  }
+
+  Future<void> _executeSend(String tempId, String content) async {
+    try {
+      final sentMsg = await Api.sendMessage(conversationId, content, tempId);
+
+      state.whenData((list) {
+        if (!list.any((m) => m.id == tempId)) return;
+
+        final rawList = list.map((msg) {
+          if (msg.id == tempId) {
+            return msg.copyWith(
+              id: sentMsg.id,
+              seqId: sentMsg.seqId, // 回血
+              status: MessageStatus.success,
+              createdAt: sentMsg.createdAt,
+            );
+          }
+          return msg;
+        }).toList();
+
+        // 刷新策略 (因为我刚发的消息可能是最新的)
+        state = AsyncValue.data(_applyReadStatusStrategy(rawList, _maxReadSeqId));
+      });
+    } catch (e) {
+      debugPrint('❌ sendMessage error: $e');
+      _updateState((list) => list.map((m) =>
+      m.id == tempId ? m.copyWith(status: MessageStatus.failed) : m
+      ).toList());
+    }
+  }
+
+  // ===========================================================================
+  // 📡 4. 接收与事件 (Receiving)
+  // ===========================================================================
+
+  void _onSocketMessage(Map<String, dynamic> data) {
+    if (!mounted) return;
+    try {
+      final msg = SocketMessage.fromJson(data);
+      if (msg.conversationId != conversationId) return;
+      // 🚨🚨🚨 核心修复：获取当前最新的 UserID，而不是用构造函数里那个旧的
+      // 因为 luckyProvider 可能会在 Notifier 初始化之后才更新 UserInfo
+      final currentUserId = _ref.read(luckyProvider).userInfo?.id ?? "";
+
+      // A. 自己的消息回包
+      if (msg.senderId == currentUserId) {
+        if (msg.tempId != null) {
+          state.whenData((list) {
+            final rawList = list.map((m) {
+              if (m.id == msg.tempId) {
+                return m.copyWith(
+                  id: msg.id,
+                  seqId: msg.seqId, // 回血
+                  status: MessageStatus.success,
+                  createdAt: msg.createdAt,
+                );
+              }
+              return m;
+            }).toList();
+            state = AsyncValue.data(_applyReadStatusStrategy(rawList, _maxReadSeqId));
+          });
+        }
+        return;
+      }
+
+      // B. 别人的消息
+
+      // 1.  修复点：标记任务并触发管道，但绝对不要直接调 markAsRead()
+      _hasPendingRead = true;
+      //我们往里面塞什么数据根本不重要，重要的是 “往里塞”这个动作本身
+      //那么 null 就是最完美的占位符。
+      _readReceiptSubject.add(null);
+
+      final newUiMsg = ChatUiModel(
+        id: msg.id,
+        seqId: msg.seqId,
+        content: msg.content,
+        type: MessageType.text,
+        isMe: false,
+        status: MessageStatus.success,
+        createdAt: msg.createdAt,
+        senderName: msg.sender?.nickname,
+        senderAvatar: msg.sender?.avatar,
+      );
+
+      state.whenData((currentList) {
+        if (currentList.any((m) => m.id == newUiMsg.id)) return;
+        final rawList = [newUiMsg, ...currentList];
+        state = AsyncValue.data(_applyReadStatusStrategy(rawList, _maxReadSeqId));
+
+        // ❌ 删除了这里的 markAsRead(); 防止穿透防抖
+      });
+    } catch (e) {
+      debugPrint("❌ Socket Parse Error: $e");
+    }
+  }
+
+  void _onReadStatusUpdate(SocketReadEvent event) {
+    if (!mounted) return;
+    if (event.conversationId != conversationId) return;
+    if (event.readerId == myUserId) return;
+
+    if (event.lastReadSeqId > _maxReadSeqId) {
+      _maxReadSeqId = event.lastReadSeqId;
+    }
+
+    state.whenData((list) {
+      final newList = _applyReadStatusStrategy(list, _maxReadSeqId);
+      state = AsyncValue.data(newList);
+    });
+  }
+
+  // ===========================================================================
+  // 🧠 5. 策略与辅助
+  // ===========================================================================
+
+  List<ChatUiModel> _applyReadStatusStrategy(List<ChatUiModel> currentList, int waterLine) {
+    bool hasFoundLatestRead = false;
+
+    return currentList.map((msg) {
+      if (!msg.isMe || msg.status == MessageStatus.sending || msg.status == MessageStatus.failed || msg.seqId == null) {
+        return msg;
+      }
+
+      if (msg.seqId! <= waterLine) {
+        if (!hasFoundLatestRead) {
+          hasFoundLatestRead = true;
+          return msg.copyWith(status: MessageStatus.read);
+        } else {
+          return msg.copyWith(status: MessageStatus.success);
+        }
+      }
+      return msg.copyWith(status: MessageStatus.success);
+    }).toList();
+  }
+
+  void markAsRead() {
+    if (!mounted) return;
+    _ref.read(conversationListProvider.notifier).clearUnread(conversationId);
+    // API 请求是独立的 HTTP，依然可以发
+    Api.messageMarkAsReadApi(MessageMarkReadRequest(conversationId: conversationId)).catchError((e) {
+      debugPrint("❌ markAsRead API Error: $e");
+    });
+  }
+
+  void _updateConversationList(String text, int time) {
+    try {
+      //  防弹衣：同上
+      _ref.read(conversationListProvider.notifier).updateLocalItem(
+        conversationId: conversationId,
+        lastMsgContent: text,
+        lastMsgTime: time,
+      );
+    } catch (e) {
+      debugPrint("⚠️ [ChatRoom] 列表页已销毁，跳过预览更新");
+    }
+  }
+
+  void _updateState(List<ChatUiModel> Function(List<ChatUiModel>) action) {
+    state.whenData((list) {
+      state = AsyncValue.data(action(list));
+    });
+  }
+
   List<ChatUiModel> _mapToUiModels(List<dynamic> dtoList) {
     return dtoList.map((dto) {
       return ChatUiModel(
         id: dto.id,
+        seqId: dto.seqId,
         content: dto.content,
         type: MessageType.text,
         isMe: dto.isSelf,
@@ -163,170 +390,23 @@ class ChatRoomNotifier extends StateNotifier<AsyncValue<List<ChatUiModel>>> {
     }).toList();
   }
 
-  void _onSocketMessage(Map<String, dynamic> data) {
-    //核心修复：如果页面已经销毁，直接停止，不要再去碰 state
-    if (!mounted) return;
-
-    try {
-      // 核心改变：第一步先转成强类型对象
-      // 如果数据格式极其离谱，这里可能会报错，但被 try-catch 捕获，不会崩 app
-
-      final message = SocketMessage.fromJson(data);
-
-      // 2. 逻辑判断变得非常易读
-      if (message.conversationId != conversationId) return; // 非本会话消息，忽略
-      if (message.senderId == myUserId) return; // 自己发的消息
-
-      // 再次检查mounted状态，确保安全
-      if (!mounted) return;
-
-      final newMsg = ChatUiModel(
-        id: message.id,
-        content: message.content,
-        type: MessageType.text,
-        isMe: false,
-        status: MessageStatus.success,
-        createdAt: message.createdAt,
-        senderName: message.sender?.nickname,
-        senderAvatar: message.sender?.avatar,
-      );
-
-      // 访问 state 前最后一次检查
-      if (!mounted) return;
-
-      if (message.tempId != null) {
-        // 1. 在本地列表里找，有没有这个 tempId 的消息？
-        state.whenData((currentList) {
-          final isMyPendingMsg = currentList.any((m) => m.id == message.tempId);
-          // 找到了，说明这是我自己发的未完成消息的回包
-          if (isMyPendingMsg) {
-            //  找到了！说明这是我刚才发的，且服务器确认了。
-            // 动作：把 tempId 替换为 realId，状态改为 success
-            final newList = currentList.map((m) {
-              if (m.id == message.tempId) {
-                return m.copyWith(
-                  id: message.id, // 替换为真实 ID
-                  status: MessageStatus.success, // 转圈 -> 成功
-                  createdAt: message.createdAt,
-                );
-              }
-              return m;
-            }).toList();
-            state = AsyncValue.data(newList);
-            return; // 处理完毕，直接返回
-          }
-        });
-      }
-
-      // 2. 如果不是 tempId 匹配的消息（比如对方发的，或者自己在别的设备发的）
-      if (message.senderId == myUserId) return; // 依然可以过滤掉不需要处理的自己
-      state.whenData((currentList) {
-        if (!currentList.any((m) => m.id == newMsg.id)) {
-          state = AsyncValue.data([newMsg, ...currentList]);
-        }
-      });
-    } catch (e) {
-      debugPrint("❌ Error in _onSocketMessage: $e");
-      return;
-    }
-  }
-
-  // 异步函数是闭包，注意捕获 mounted 状态，tempId 就一直有效等待接口返回
-  Future<void> sendMessage(String text) async {
-    if (text.trim().isEmpty) return;
-
-    final tempId = const Uuid().v4();
-    final timestamp = DateTime.now().millisecondsSinceEpoch;
-
-    final tempMsg = ChatUiModel(
-      id: tempId,
-      content: text,
-      type: MessageType.text,
-      isMe: true,
-      status: MessageStatus.sending,
-      createdAt: timestamp,
-      senderName: "Me",
-    );
-
-    final currentList = state.value ?? [];
-    state = AsyncValue.data([tempMsg, ...currentList]);
-
-    // 3. 自动置顶
-    _ref
-        .read(conversationListProvider.notifier)
-        .updateLocalItem(
-          conversationId: conversationId,
-          lastMsgContent: text,
-          lastMsgTime: timestamp,
-        );
-
-    try {
-      final sentMsg = await Api.sendMessage(conversationId, text, tempId);
-
-      // HTTP 回来后，先检查一下列表里还有没有 tempId
-      // 如果没有了，说明 Socket 已经帮我们把活干完了，我们就可以躺平了
-
-      state.whenData((list) {
-        // 检查是否已经被 Socket 转正
-        final alreadyHandledBySocket = list.any((msg) => msg.id == sentMsg.id);
-        if (alreadyHandledBySocket) {
-          return; // 已经处理过了，直接返回
-        }
-        final newList = list.map((msg) {
-          if (msg.id == tempId) {
-            return msg.copyWith(
-              id: sentMsg.id,
-              status: MessageStatus.success,
-              createdAt: sentMsg.createdAt,
-            );
-          }
-          return msg;
-        }).toList();
-        state = AsyncValue.data(newList);
-      });
-    } catch (e) {
-      debugPrint('❌ sendMessage error: $e');
-      state.whenData((list) {
-        final newList = list.map((msg) {
-          if (msg.id == tempId) {
-            return msg.copyWith(status: MessageStatus.failed);
-          }
-          return msg;
-        }).toList();
-        state = AsyncValue.data(newList);
-      });
-    }
-  }
-
-  void markAsRead() {
-    //  4. 核心逻辑：一进房间，立刻清除列表的红点
-    // 使用 delay 确保 Provider 已经构建完成
-    Future.delayed(Duration.zero, () {
-      if (!mounted) return;
-
-      // 清除本地未读计数
-      _ref
-          .read(conversationListProvider.notifier)
-          .clearUnread(conversationId);
-
-        // 2. 服务端清除 (数据持久化)
-        Api.messageMarkAsReadApi(
-          MessageMarkReadRequest(conversationId: conversationId),
-        ).catchError((error) {
-          debugPrint("❌ 标记已读失败: $error");
-        });
-    });
-  }
-
   @override
   void dispose() {
-    // 1. 离开房间 (告诉后端)
     _socketService.leaveChatRoom(conversationId);
-
-    // 2. 取消消息监听
-    _connectionSub?.cancel();
-    //  3. 取消连接状态监听 (防止内存泄漏)
     _msgSub?.cancel();
+    _readStatusSub?.cancel();
+    _connectionSub?.cancel();
+
+    // 1. 临终遗言：Flush
+    if (_hasPendingRead) {
+      debugPrint("🧟‍♂️ [Rx] 页面关闭，强制发送最后一次已读");
+      //  修复点：直接调用 API，不要调 markAsRead()，因为它检查 mounted
+      Api.messageMarkAsReadApi(MessageMarkReadRequest(conversationId: conversationId));
+    }
+
+    // 2. 关闭管道
+    _readReceiptSubject.close();
+
     super.dispose();
   }
 }
@@ -334,25 +414,34 @@ class ChatRoomNotifier extends StateNotifier<AsyncValue<List<ChatUiModel>>> {
 // Provider 定义
 final chatRoomProvider = StateNotifierProvider.family
     .autoDispose<ChatRoomNotifier, AsyncValue<List<ChatUiModel>>, String>((
-      ref,
-      conversationId,
+    ref,
+    conversationId,
     ) {
-      // 新增：设置一个保活时间 (比如 5 分钟)
-      // 这样用户在聊天列表和详情页反复横跳时，不会每次都重新加载
-      ref.cacheFor(const Duration(minutes: 5));
-      final socketService = ref.watch(socketServiceProvider);
+  //  缓存 5 分钟
+  ref.cacheFor(const Duration(minutes: 5));
 
-      // 从 Store 获取当前用户信息
-      final myUserId = ref.watch(
-        luckyProvider.select((state) => state.userInfo?.id),
-      );
+  // 2. 🛑 必须用 read！Socket 变了不重置
+  final socketService = ref.read(socketServiceProvider);
 
-      return ChatRoomNotifier(
-        socketService,
-        conversationId,
-        myUserId ?? '',
-        ref,
-      );
-    });
+  //Socket 连接 -> 触发 ServerTimeHelper -> 更新 LuckyStore (校准时间)
+  //ChatRoomProvider 里写了 ref.watch(luckyProvider)。
+  //连锁崩盘：
 
+  //Store 一变 -> Provider 认为依赖变了 -> 销毁旧的 ChatRoomNotifier -> 创建新的。
 
+  //此时旧的 Notifier 还在 await API，等它回来想更新 UI 时，发现自己已经“死”了 (mounted=false)。
+
+  //新的 Notifier 虽然出生了，但因为 UI 的 initState 只跑一次，没人喊它 refresh，所以 UI 就一直 Loading。
+  // 3. 🛑🛑🛑 核心修复：必须用 read！
+  // 你的 ServerTimeHelper 可能会频繁更新 luckyProvider，
+  // 如果用 watch，会导致 ChatRoomNotifier 在刷新数据的过程中被杀掉！
+  // 这里的 id 只要取一次就行了。
+  final myUserId = ref.read(luckyProvider.select((state) => state.userInfo?.id));
+
+  return ChatRoomNotifier(
+    socketService,
+    conversationId,
+    myUserId ?? '',
+    ref,
+  );
+});

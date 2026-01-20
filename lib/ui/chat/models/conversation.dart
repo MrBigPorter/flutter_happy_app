@@ -89,6 +89,7 @@ class ChatMessage {
   final String content;
   final int createdAt;
   final ChatSender? sender;
+  final int? seqId;
 
   // 接收后端的 isSelf 字段
   @JsonKey(defaultValue: false)
@@ -101,6 +102,7 @@ class ChatMessage {
     required this.createdAt,
     this.sender,
     this.isSelf = false,
+    this.seqId,
   });
 
   factory ChatMessage.fromJson(Map<String, dynamic> json) => _$ChatMessageFromJson(json);
@@ -218,9 +220,11 @@ class MessageListResponse {
 
   // 下一页游标，如果为 null 说明没有更多数据了
   final String? nextCursor;
+  final int partnerLastReadSeqId;
 
   MessageListResponse({
     required this.list,
+    required this.partnerLastReadSeqId,
     this.nextCursor,
   });
 
@@ -246,6 +250,8 @@ class SocketMessage {
   final String? tempId;
   final bool isSelf;
 
+  final int? seqId;
+
   SocketMessage({
     required this.id,
     required this.conversationId,
@@ -256,6 +262,7 @@ class SocketMessage {
     this.sender,
     this.tempId,
     required this.isSelf,
+    this.seqId,
   });
 
   factory SocketMessage.fromJson(Map<String, dynamic> json) => _$SocketMessageFromJson(json);
@@ -317,4 +324,21 @@ class MessageMarkReadResponse {
 
   @override
   String toString() => toJson().toString();
+}
+
+@JsonSerializable(checked: true)
+class SocketReadEvent {
+  final String conversationId;
+  final String readerId;
+  @JsonKey(defaultValue: 0)
+  final int lastReadSeqId;
+
+  SocketReadEvent({
+    required this.conversationId,
+    required this.readerId,
+    required this.lastReadSeqId,
+  });
+
+  factory SocketReadEvent.fromJson(Map<String, dynamic> json) =>
+      _$SocketReadEventFromJson(json);
 }

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_app/core/constants/socket_events.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
 import 'package:jwt_decoder/jwt_decoder.dart';
 import '../api/env.dart';
@@ -27,8 +28,14 @@ mixin SocketChatMixin on _SocketBase {
   final _conversationListUpdateController = StreamController<SocketMessage>.broadcast();
   Stream<SocketMessage> get conversationListUpdateStream => _conversationListUpdateController.stream;
 
+  //  新增：已读回执流
+  final _readStatusController = StreamController<SocketReadEvent>.broadcast();
+  Stream<SocketReadEvent> get readStatusStream => _readStatusController.stream;
+
+  // 监听聊天相关事件
   void _setupChatListeners(IO.Socket socket) {
-    socket.on('chat_message', (data) {
+    // 监听聊天消息
+    socket.on(SocketEvents.chatMessage, (data) {
       if (data == null) return;
 
       final mapData = Map<String, dynamic>.from(data);
@@ -50,6 +57,21 @@ mixin SocketChatMixin on _SocketBase {
         }
       }
     });
+
+    // 监听已读回执
+    socket.on(SocketEvents.conversationRead, (data) {
+      print("🔵 [Socket] 收到已读回执: $data");
+      if( data == null ) return;
+      try{
+        final event = SocketReadEvent.fromJson(Map<String, dynamic>.from(data));
+        if(!_readStatusController.isClosed){
+          _readStatusController.add(event);
+        }
+      }catch(e){
+        debugPrint("[Socket] 解析已读回执失败，跳过: $e");
+        return;
+      }
+    });
   }
 
   Future<AckResponse> sendMessage({
@@ -61,7 +83,7 @@ mixin SocketChatMixin on _SocketBase {
     if (!isConnected) return Future.error(SocketException('Socket disconnected'));
     final completer = Completer<AckResponse>();
 
-    socket!.emitWithAck('send_message', {
+    socket!.emitWithAck(SocketEvents.sendMessage, {
       'conversationId': conversationId,
       'content': content,
       'type': type,
@@ -89,10 +111,10 @@ mixin SocketChatMixin on _SocketBase {
   }
 
   void joinChatRoom(String conversationId) =>
-      socket?.emit('join_chat', {'conversationId': conversationId});
+      socket?.emit(SocketEvents.joinChat, {'conversationId': conversationId});
 
   void leaveChatRoom(String conversationId) =>
-      socket?.emit('leave_chat', {'conversationId': conversationId});
+      socket?.emit(SocketEvents.leaveChat, {'conversationId': conversationId});
 }
 
 // ==========================================
@@ -158,7 +180,7 @@ mixin SocketLobbyMixin on _SocketBase {
   /// 加入大厅 (订阅实时更新)
   void joinLobby() {
     if (isConnected) {
-      socket!.emit('join_lobby');
+      socket!.emit(SocketEvents.joinLobby);
       debugPrint('🏟️ [Socket] Joined Lobby');
     }
   }
@@ -166,7 +188,7 @@ mixin SocketLobbyMixin on _SocketBase {
   /// 离开大厅 (取消订阅)
   void leaveLobby() {
     if (isConnected) {
-      socket!.emit('leave_lobby');
+      socket!.emit(SocketEvents.leaveLobby);
       debugPrint('👋 [Socket] Left Lobby');
     }
   }

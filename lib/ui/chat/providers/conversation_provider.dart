@@ -38,6 +38,9 @@ class ConversationListNotifier extends StateNotifier<List<Conversation>> {
 
   // 收到新消息时的逻辑：只更新列表项，不处理具体气泡
   void _onNewMessage(SocketMessage msg) {
+    //  核心修复：第一行必须加这个！
+    // 如果页面已经销毁，直接停止，不要去碰 state
+    if (!mounted) return;
     final convId = msg.conversationId;
     // 简单的文本摘要处理
     String content = '[非文本消息]';
