@@ -1,3 +1,4 @@
+import 'package:camera/camera.dart';
 import 'package:dio/dio.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/cupertino.dart';
@@ -248,7 +249,7 @@ class _KycVerifyPageState extends ConsumerState<KycVerifyPage> {
 
           // 调用 Service 上传
           var result = await GlobalUploadService().uploadOcrScan(
-            filePath: imagePath,
+            file: XFile(imagePath),
             module: UploadModule.kyc,
             // 传入 CancelToken 允许用户取消上传
             cancelToken: CancelToken(),

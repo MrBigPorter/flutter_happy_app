@@ -1,60 +1,69 @@
 import 'dart:io';
 import 'package:dio/dio.dart';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart'; // 用于 kIsWeb
 import 'package:flutter_app/core/models/kyc.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart'; // 引入 XFile
 import 'package:mime/mime.dart';
-import 'package:path/path.dart' as p;
 
 import 'package:flutter_app/common.dart';
-import 'upload_types.dart'; // 定义 UploadModule 枚举的地方
-import 'image_utils.dart';  // 下面第3步提供的工具类
+import 'upload_types.dart';
+import 'image_utils.dart';
 
 class GlobalUploadService {
-  // 1. 创建一个干净、长超时的 Dio 实例专供 S3 使用
-  // sendTimeout 设为 5 分钟，防止大文件在弱网下上传失败
   static final Dio _s3Dio = Dio(BaseOptions(
     connectTimeout: const Duration(seconds: 15),
     sendTimeout: const Duration(minutes: 5),
   ));
 
+  // ===========================================================================
+  // ☁️ 1. S3 通用文件上传 (支持 Web & Mobile)
+  // ===========================================================================
   Future<String> uploadFile({
-    required String filePath,
+    required XFile file, // 🔥 改动点：参数改为 XFile
     required UploadModule module,
     required Function(double) onProgress,
     CancelToken? cancelToken,
   }) async {
-    String? compressedPath;
+    XFile fileToUpload = file;
+    String? tempCompressedPath; // 用于手机端清理临时文件
 
-    // 显式初始化进度，让 UI 知道开始了
     onProgress(0.01);
 
     try {
-      // --- 1. 图片智能预处理 ---
-      final lowerPath = filePath.toLowerCase();
-      final isImage = lowerPath.endsWith(".jpg") ||
-          lowerPath.endsWith(".jpeg") ||
-          lowerPath.endsWith(".png") ||
-          lowerPath.endsWith(".heic");
+      // --- A. 压缩逻辑 (仅 Mobile) ---
+      // Web 端压缩稍微复杂，为了稳健，Web 端暂传原图；Mobile 端继续压缩
+      if (!kIsWeb) {
+        final lowerPath = file.path.toLowerCase();
+        final isImage = lowerPath.endsWith(".jpg") ||
+            lowerPath.endsWith(".jpeg") ||
+            lowerPath.endsWith(".png") ||
+            lowerPath.endsWith(".heic");
 
-      if (isImage) {
-        // 调用压缩工具 (建议确保 ImageUtils 内部在 Isolate 中运行)
-        compressedPath = await ImageUtils.compressImage(filePath);
+        if (isImage) {
+          // compressImage 返回的是 String 路径
+          final compressedPath = await ImageUtils.compressImage(file.path);
+          if (compressedPath != null) {
+            tempCompressedPath = compressedPath;
+            fileToUpload = XFile(compressedPath); // 包装回 XFile
+          }
+        }
       }
 
-      // 确定最终上传的文件路径 (有压缩用压缩的，没压缩用原图)
-      final finalPath = compressedPath ?? filePath;
-      final file = File(finalPath);
+      // --- B. 准备参数 ---
+      String fileName = fileToUpload.name;
 
-      if (!await file.exists()) throw Exception("File not found: $finalPath");
+      // MimeType 获取
+      String mimeType = fileToUpload.mimeType ?? "image/jpeg";
+      // 如果名字为空，或者只是 'blob' (Web常见情况)，手动生成一个
+      if (fileName.trim().isEmpty || fileName == 'blob') {
+        final suffix = mimeType.split('/').last; // image/png -> png
+        fileName = "img_${DateTime.now().millisecondsSinceEpoch}.$suffix";
+      }
 
-      final fileName = p.basename(finalPath);
-      // MimeType 兜底逻辑
-      final mimeType = lookupMimeType(finalPath) ??
-          (lowerPath.endsWith(".png") ? "image/png" : "image/jpeg");
-      final fileSize = await file.length();
+      final fileSize = await fileToUpload.length();
 
-      // --- 2. 申请上传凭证 (0% - 25% 阶段，UI 层假进度在跑) ---
-      // 使用你业务封装的 Http 类，带 Token 去找后端拿 URL
+      // --- C. 申请凭证 ---
       final urlRes = await Http.post(module.apiPath, data: {
         "fileName": fileName,
         "fileType": mimeType,
@@ -62,13 +71,27 @@ class GlobalUploadService {
       });
 
       final String uploadUrl = urlRes['url'];
-      final String s3Key = urlRes['key'];
+      //  变量 2：返回给 UI 的短链接 (CDN 链接)
+      // 这个是上传成功后，我们要拿到的结果
+      String finalResultUrl = urlRes['cdnUrl'];
+      if (finalResultUrl.isEmpty) {
+        // 兜底：如果后端没返回，自己拼
+        finalResultUrl = "https://img.joyminis.com/${urlRes['key']}";
+      }
 
-      // --- 3. 执行 S3 直传 (25% - 100% 阶段) ---
+      // --- D. 执行上传 (Web兼容) ---
+      //  核心区分：Web 用 Bytes，Mobile 用 Stream
+      dynamic uploadData;
+      if (kIsWeb) {
+        uploadData = await fileToUpload.readAsBytes();
+      } else {
+        uploadData = fileToUpload.openRead();
+      }
+
       try {
         await _s3Dio.put(
           uploadUrl,
-          data: file.openRead(), //  流式上传，内存占用极低
+          data: uploadData,
           cancelToken: cancelToken,
           options: Options(headers: {
             "Content-Type": mimeType,
@@ -76,110 +99,78 @@ class GlobalUploadService {
           }),
           onSendProgress: (count, total) {
             if (total <= 0) return;
-
-            // 将 S3 物理上传进度 (0-1) 映射到总进度 (0.25-1.0)
             double uploadP = count / total;
             double totalP = 0.25 + (uploadP * 0.75);
-
             onProgress(totalP.clamp(0.0, 1.0));
           },
         );
-
-        return s3Key;
+        return finalResultUrl;
       } on DioException catch (e) {
         if (CancelToken.isCancel(e)) throw Exception("Upload cancelled");
-        // 抓取 S3 返回的具体 XML 报错
         final s3Error = e.response?.data?.toString() ?? e.message;
         throw Exception("S3 Transmission Error: $s3Error");
       }
     } catch (e) {
       throw Exception("${module.name} upload failed: $e");
     } finally {
-      // --- 4. 自动清理垃圾 ---
-      // 只有当生成了临时压缩文件，且它不是原文件时，才删除
-      if (compressedPath != null && compressedPath != filePath) {
+      // --- E. 清理临时文件 (仅 Mobile) ---
+      if (!kIsWeb && tempCompressedPath != null) {
         try {
-          final tempFile = File(compressedPath);
-          if (await tempFile.exists()) {
-            await tempFile.delete();
-            debugPrint(" Cleaned up temp file: $compressedPath");
-          }
-        } catch (cleanupError) {
-          debugPrint(" Failed to clean up temp file: $cleanupError");
-        }
+          final f = File(tempCompressedPath);
+          if (await f.exists()) await f.delete();
+        } catch (_) {}
       }
     }
   }
 
-  /// 后端 multipart 上传（用于你这个 ocr-scan 接口，不走 S3）
-  /// 对应后端：
-  /// @UseInterceptors(FileInterceptor('file'))
-  /// => 字段名必须是 "file"
-  ///
-  /// 支持：
-  /// - Native/桌面：filePath
-  /// - Web：bytes + fileName
+  // ===========================================================================
+  // 📷 2. OCR 扫描上传 (支持 Web & Mobile)
+  // ===========================================================================
   Future<KycOcrResult> uploadOcrScan({
-    String? filePath,
-    Uint8List? bytes,
-    String? fileName, // bytes 模式必填
+    required XFile file, //  改动点：统一只接收 XFile
     required UploadModule module,
     required Function(double) onProgress,
     CancelToken? cancelToken,
     bool enableImageCompress = true,
   }) async {
-    String? compressedPath;
+    String? tempCompressedPath;
+    XFile fileToSend = file;
 
-    // 显式初始化进度
     onProgress(0.01);
 
-    final hasPath = filePath != null && filePath.isNotEmpty;
-    final hasBytes = bytes != null && bytes.isNotEmpty;
-
-    if (!hasPath && !hasBytes) {
-      throw Exception("uploadOcrScan: must provide either filePath or bytes");
-    }
-    if (hasBytes && (fileName == null || fileName.isEmpty)) {
-      throw Exception("uploadOcrScan: bytes mode requires fileName");
-    }
-
     try {
-      late final MultipartFile mf;
-
-      if (hasPath) {
-        // 可选压缩：OCR 场景通常是身份证照片，压一下省流量更稳
-        final lowerPath = filePath!.toLowerCase();
-        final isImage = lowerPath.endsWith(".jpg") ||
-            lowerPath.endsWith(".jpeg") ||
-            lowerPath.endsWith(".png") ||
-            lowerPath.endsWith(".heic");
-
-        if (isImage && enableImageCompress) {
-          compressedPath = await ImageUtils.compressImage(filePath!);
+      // A. 压缩 (仅 Mobile)
+      if (!kIsWeb && enableImageCompress) {
+        final lowerPath = file.path.toLowerCase();
+        if (lowerPath.endsWith(".jpg") || lowerPath.endsWith(".png")) {
+          final cPath = await ImageUtils.compressImage(file.path);
+          if (cPath != null) {
+            tempCompressedPath = cPath;
+            fileToSend = XFile(cPath);
+          }
         }
+      }
 
-        final finalPath = compressedPath ?? filePath!;
-        final file = File(finalPath);
-        if (!await file.exists()) throw Exception("File not found: $finalPath");
+      late MultipartFile mf;
+      final fileName = fileToSend.name;
 
-        final finalName = p.basename(finalPath);
-        final finalMime =
-            lookupMimeType(finalPath) ?? "application/octet-stream";
-
-        mf = await MultipartFile.fromFile(
-          finalPath,
-          filename: finalName,
-          contentType: DioMediaType.parse(finalMime),
+      // B. 构建 MultipartFile (跨平台)
+      if (kIsWeb) {
+        // Web: 必须读成 bytes 上传
+        final bytes = await fileToSend.readAsBytes();
+        final mime = lookupMimeType(fileName, headerBytes: bytes) ?? "application/octet-stream";
+        mf = MultipartFile.fromBytes(
+          bytes,
+          filename: fileName,
+          contentType: DioMediaType.parse(mime),
         );
       } else {
-        final finalName = fileName!;
-        final finalMime = lookupMimeType(finalName, headerBytes: bytes) ??
-            "application/octet-stream";
-
-        mf = MultipartFile.fromBytes(
-          bytes!,
-          filename: finalName,
-          contentType: DioMediaType.parse(finalMime),
+        // Mobile: 直接传路径，效率高
+        final mime = lookupMimeType(fileToSend.path) ?? "application/octet-stream";
+        mf = await MultipartFile.fromFile(
+          fileToSend.path,
+          filename: fileName,
+          contentType: DioMediaType.parse(mime),
         );
       }
 
@@ -196,98 +187,71 @@ class GlobalUploadService {
         options: Options(sendTimeout: const Duration(minutes: 2)),
       );
 
-
-      //  兼容：Http.post 可能返回 Map，也可能返回 Dio Response
+      // 处理返回结果 (保持你原有的逻辑)
       final dynamic raw = (resp is Response) ? resp.data : resp;
-
-      if (raw is! Map) {
-        throw Exception("Invalid OCR response type: ${raw.runtimeType}");
-      }
-
-      final map = raw.cast<String, dynamic>();
-
-      //  兼容两种后端返回：
-      // 1) 包装结构：{code,message,tid,data:{...}}
-      // 2) 直接 data：{type,typeText,country,...}
+      final map = (raw as Map).cast<String, dynamic>();
       final dynamic dataAny = map['data'] ?? map;
+      final data = (dataAny as Map).cast<String, dynamic>();
 
-      if (dataAny is! Map) {
-        throw Exception("Invalid OCR data type: ${dataAny.runtimeType}");
-      }
-
-      final data = dataAny.cast<String, dynamic>();
-
-
-      //  如果后端有 code，顺便校验一下
       final code = map['code'];
       if (code != null && code != 10000) {
-        throw Exception("OCR failed: code=$code, message=${map['message']}");
+        throw Exception("OCR failed: $code");
       }
 
       return KycOcrResult.fromJson(data);
-    } on DioException catch (e) {
-      if (CancelToken.isCancel(e)) throw Exception("Upload cancelled");
 
-      final msg = e.response?.data?.toString() ?? e.message;
-
-      // 429：Throttle
-      // 423/409：你分布式锁/幂等冲突可能会用到（看你实现）
-      throw Exception("OCR Scan Failed: $msg");
     } catch (e) {
       throw Exception("ocr-scan upload failed: $e");
     } finally {
-      // 清理压缩临时文件
-      if (compressedPath != null && compressedPath != filePath) {
-        try {
-          final tempFile = File(compressedPath);
-          if (await tempFile.exists()) {
-            await tempFile.delete();
-            debugPrint(" Cleaned up temp file: $compressedPath");
-          }
-        } catch (cleanupError) {
-          debugPrint("Failed to clean up temp file: $cleanupError");
-        }
+      // 清理
+      if (!kIsWeb && tempCompressedPath != null) {
+        try { File(tempCompressedPath).delete(); } catch (_) {}
       }
     }
   }
 
-  /// 提交 KYC 实名认证资料
-  /// @param frontPath 身份证正面照片路径
-  /// @param backPath 身份证反面照片路径（可选）
-  /// @param bodyData 其他表单字段数据
-  /// @return 后端响应结果
+  // ===========================================================================
+  // 🆔 3. KYC 提交 (支持 Web & Mobile)
+  // ===========================================================================
   Future<dynamic> submitKyc({
-    required String frontPath,
-    required String? backPath,
+    required XFile frontImage, // 🔥 改动点：传 XFile
+    required XFile? backImage, // 🔥 改动点：传 XFile
     required Map<String, dynamic> bodyData,
-}) async{
-    final Map<String,dynamic> map = Map.from(bodyData);
+  }) async {
+    final Map<String, dynamic> map = Map.from(bodyData);
 
-    map['idCardFront'] = await MultipartFile.fromFile(
-      frontPath,
-      filename: p.basename(frontPath),
-      contentType: DioMediaType.parse(
-        lookupMimeType(frontPath) ?? "image/jpeg",
-      ),
-    );
+    // 辅助函数：将 XFile 转为 MultipartFile
+    Future<MultipartFile> xFileToMultipart(XFile f) async {
+      if (kIsWeb) {
+        final bytes = await f.readAsBytes();
+        final mime = lookupMimeType(f.name, headerBytes: bytes) ?? "image/jpeg";
+        return MultipartFile.fromBytes(
+            bytes,
+            filename: f.name,
+            contentType: DioMediaType.parse(mime)
+        );
+      } else {
+        final mime = lookupMimeType(f.path) ?? "image/jpeg";
+        return MultipartFile.fromFile(
+            f.path,
+            filename: f.name,
+            contentType: DioMediaType.parse(mime)
+        );
+      }
+    }
 
-    if(backPath != null){
-      map['idCardBack'] = await MultipartFile.fromFile(
-        backPath,
-        filename: p.basename(backPath),
-        contentType: DioMediaType.parse(
-          lookupMimeType(backPath) ?? "image/jpeg",
-        ),
-      );
+    map['idCardFront'] = await xFileToMultipart(frontImage);
+
+    if (backImage != null) {
+      map['idCardBack'] = await xFileToMultipart(backImage);
     }
 
     final form = FormData.fromMap(map);
-    return Http.post(
-      '/api/v1/kyc/submit',
-      data: form,
-    );
+    return Http.post('/api/v1/kyc/submit', data: form);
   }
-
-
-
 }
+
+// Provider
+final uploadServiceProvider = Provider<GlobalUploadService>((ref) {
+  return GlobalUploadService();
+});

@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:math';
+import 'package:camera/camera.dart';
 import 'package:flutter_app/common.dart';
 import 'package:flutter_app/core/models/coupon_threshold_data.dart';
 import 'package:flutter_app/core/models/groups.dart';
@@ -10,6 +11,7 @@ import 'package:flutter_app/ui/chat/models/conversation.dart';
 import 'package:flutter_app/utils/helper.dart';
 import 'package:flutter_app/core/models/index.dart';
 
+import '../../ui/chat/models/chat_ui_model.dart';
 import '../../utils/upload/global_upload_service.dart';
 import '../models/fcm_notification.dart';
 import '../models/kyc.dart';
@@ -421,8 +423,8 @@ class Api {
 
     // 它负责把你的本地路径 (String) 变成二进制文件流 (MultipartFile)
     final responseData = await GlobalUploadService().submitKyc(
-      frontPath: dto.idCardFront!,
-      backPath: dto.idCardBack,
+      frontImage: XFile(dto.idCardFront!),
+      backImage: dto.idCardBack != null ? XFile(dto.idCardBack!) : null,
       bodyData: bodyData,
     );
 
@@ -545,11 +547,12 @@ class Api {
   }
 
   // 发送消息
-  static Future<ChatMessage> sendMessage(String conversationId, String content, String tempId) async {
+  static Future<ChatMessage> sendMessage(String conversationId, String content, int type, String tempId) async {
+    print('Sending message: conversationId=$conversationId, content=$content, type=$type, tempId=$tempId');
     final res = await Http.post('/api/v1/chat/message', data: {
       'conversationId': conversationId,
       'content': content,
-      'type': 0,
+      'type': type,
       'tempId': tempId,
     });
 

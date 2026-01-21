@@ -1,9 +1,11 @@
+import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_app/common.dart';
 import 'package:flutter_app/ui/chat/providers/conversation_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 import 'components/chat_bubble.dart';
 import 'providers/chat_room_provider.dart';
 
@@ -206,6 +208,11 @@ class _ChatPageState extends ConsumerState<ChatPage> {
                     .read(chatRoomProvider(widget.conversationId).notifier)
                     .sendMessage(text);
               },
+              //  绑定发图逻辑
+              onSendImage: (XFile file) {
+                // 直接把 file 对象传给 Notifier
+                ref.read(chatRoomProvider(widget.conversationId).notifier).sendImage(file);
+              },
             ),
           ],
         ),
@@ -270,8 +277,9 @@ class _ChatPageState extends ConsumerState<ChatPage> {
 
 class ModernChatInputBar extends StatefulWidget {
   final Function(String) onSend;
+  final Function(XFile) onSendImage;
 
-  const ModernChatInputBar({super.key, required this.onSend});
+  const ModernChatInputBar({super.key, required this.onSend, required this.onSendImage});
 
   @override
   State<ModernChatInputBar> createState() => _ModernChatInputBarState();
@@ -279,6 +287,7 @@ class ModernChatInputBar extends StatefulWidget {
 
 class _ModernChatInputBarState extends State<ModernChatInputBar> {
   final TextEditingController _controller = TextEditingController();
+  final ImagePicker _picker = ImagePicker();
   bool _hasText = false;
 
   @override
@@ -299,6 +308,41 @@ class _ModernChatInputBarState extends State<ModernChatInputBar> {
     if (text.isEmpty) return;
     widget.onSend(text);
     _controller.clear();
+  }
+
+  //  2. 实现相册逻辑
+  Future<void> _handlePickImage() async {
+    try {
+      // 这里的 context 最好用 widget 传进来的，或者是 riverpod ref
+      // 因为这是个 State 类，我们需要回调到外面，或者直接在这里读 Provider
+      // 为了代码解耦，建议我们在 widget.onSend 旁边加一个 widget.onSendImage
+
+      final XFile? image = await _picker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 100, // 选原图，让我们的 GlobalUploadService 去压缩
+      );
+
+      if (image != null) {
+        // 通知父组件发图
+        widget.onSendImage.call(image);
+      }
+    } catch (e) {
+      debugPrint("Pick image failed: $e");
+    }
+  }
+
+  // 示例：处理相机拍照
+  Future<void> _handleCamera() async{
+    try{
+      final XFile? image = await _picker.pickImage(
+        source: ImageSource.camera
+      );
+      if(image != null){
+        widget.onSendImage.call(image);
+      }
+    }catch(e){
+      debugPrint("Camera failed: $e");
+    }
   }
 
   void _handleLike() {
@@ -325,8 +369,8 @@ class _ModernChatInputBarState extends State<ModernChatInputBar> {
               // 🛠️ 左侧功能区 (加号、相机、相册、语音)
               // ===========================================
               _buildActionBtn(Icons.add_circle, isSolid: true), // 实心加号
-              _buildActionBtn(Icons.camera_alt),
-              _buildActionBtn(Icons.image), // 相册
+              _buildActionBtn(Icons.camera_alt, onTap: _handleCamera), // 相机
+              _buildActionBtn(Icons.image, onTap: _handlePickImage), // 相册
               _buildActionBtn(Icons.mic), // 语音
 
               SizedBox(width: 4.w), // 图标和输入框的间距
@@ -409,14 +453,14 @@ class _ModernChatInputBarState extends State<ModernChatInputBar> {
   }
 
   // 🛠️ 封装一个小组件，减少重复代码
-  Widget _buildActionBtn(IconData icon, {bool isSolid = false}) {
+  Widget _buildActionBtn(IconData icon, {bool isSolid = false, VoidCallback? onTap}) {
     // 如果是实心加号，通常颜色更深一点，或者一样
     final color = context.textBrandPrimary900;
 
     return Container(
       margin: EdgeInsets.only(right: 2.w), // 按钮之间的微小间距
       child: IconButton(
-        onPressed: () {},
+        onPressed: onTap ?? () {},
         icon: Icon(icon, color: color, size: 25.sp),
         // 25sp 大小比较适中
 

@@ -2,7 +2,27 @@
 import 'package:flutter_app/ui/chat/models/conversation.dart';
 
 enum MessageStatus { sending, success, failed, read }
-enum MessageType { text, image, audio, video, system }
+enum MessageType {
+  text(1),
+  image(2),
+  audio(3),
+  video(4),
+  system(99);
+
+  // 1. 定义一个成员变量存数值
+  final int value;
+
+  // 2. 构造函数 (必须是 const)
+  const MessageType(this.value);
+
+  // 4. 🛠️ 辅助方法: 从 int 转回 Enum (给 fromApiModel 用)
+  static MessageType fromValue(int value){
+    return MessageType.values.firstWhere(
+      (e) => e.value == value,
+      orElse: () => MessageType.text, // 默认兜底
+    );
+  }
+}
 
 class ChatUiModel {
   final String id;        // 消息唯一ID (前端生成 UUID 或 后端返回 ID)
@@ -15,6 +35,14 @@ class ChatUiModel {
   final String? senderAvatar; // 对方头像 (群聊用)
   final String? senderName;   // 对方昵称
 
+  //  新增：本地文件路径 (用于发送图片时的“乐观更新”)
+  // 当 localPath 不为空时，UI 优先渲染 File(localPath)，而不是 NetworkImage(content)
+  final String? localPath;
+
+  //  新增：图片宽高 (可选，用于优化列表跳动问题)
+  final double? width;
+  final double? height;
+
   ChatUiModel({
     required this.id,
     required this.content,
@@ -24,7 +52,10 @@ class ChatUiModel {
     required this.createdAt,
     this.senderAvatar,
     this.senderName,
-    this.seqId
+    this.seqId,
+    this.localPath,
+    this.width,
+    this.height,
   });
 
   // 用于更新状态 (例如 sending -> success)
@@ -38,6 +69,9 @@ class ChatUiModel {
     String? senderAvatar,
     String? senderName,
     int? seqId,
+    String? localPath,
+    double? width,
+    double? height,
   }) {
     return ChatUiModel(
       id: id ?? this.id,
@@ -49,6 +83,9 @@ class ChatUiModel {
       senderAvatar: senderAvatar ?? this.senderAvatar,
       senderName: senderName ?? this.senderName,
       seqId: seqId ?? this.seqId,
+      localPath: localPath ?? this.localPath,
+      width: width ?? this.width,
+      height: height ?? this.height,
     );
   }
 
@@ -57,14 +94,9 @@ class ChatUiModel {
     // 1. 判断是不是我发的
     final isMe = apiMsg.sender?.id == myUserId;
 
-    // 2. 映射类型 (int -> Enum)
-    MessageType uiType = MessageType.text;
-    if (apiMsg.type == 1) uiType = MessageType.image;
-    if(apiMsg.type == 2) uiType = MessageType.audio;
-    if(apiMsg.type == 3) uiType = MessageType.video;
-    if(apiMsg.type == 99) uiType = MessageType.system;
-
-
+    //  修正点：直接调用 Enum 自带的转换方法
+    // 不要再手写 _mapIntToType 了，容易写错
+    MessageType uiType = MessageType.fromValue(apiMsg.type);
 
     return ChatUiModel(
       id: apiMsg.id,
@@ -77,5 +109,6 @@ class ChatUiModel {
       senderAvatar: apiMsg.sender?.avatar,
     );
   }
+
 
 }
