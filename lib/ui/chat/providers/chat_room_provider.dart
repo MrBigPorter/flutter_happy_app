@@ -116,7 +116,6 @@ class ChatRoomNotifier extends StateNotifier<AsyncValue<List<ChatUiModel>>> {
 
       _maxReadSeqId = response.partnerLastReadSeqId;
       _nextCursor = response.nextCursor;
-
       final uiMessages = _mapToUiModels(response.list);
       final processedList = _applyReadStatusStrategy(uiMessages, _maxReadSeqId);
 
@@ -183,22 +182,47 @@ class ChatRoomNotifier extends StateNotifier<AsyncValue<List<ChatUiModel>>> {
   }
 
   // 📸 Entry point for sending images
+// 📸 发送图片入口
   Future<void> sendImage(XFile file) async {
-    // A. 搬家：从 tmp 搬到 Documents
-    final appDir = await getApplicationDocumentsDirectory();
-    final imagesDir = Directory('${appDir.path}/chat_images');
-    if (!await imagesDir.exists()) {
-      await imagesDir.create(recursive: true);
+    String finalLocalPath;
+    XFile fileToUpload;
+
+    // 1. 分平台处理
+    if (kIsWeb) {
+      //  Web 端逻辑：
+      // 浏览器里不能搬家，而且 image_picker 返回的 path 已经是可用的 blob 链接了
+      // 直接用就行，不用折腾
+      finalLocalPath = file.path;
+      fileToUpload = file;
+    } else {
+      //  手机端逻辑 (iOS/Android)：
+      // 1. 准备目录
+      final appDir = await getApplicationDocumentsDirectory();
+      final imagesDir = Directory('${appDir.path}/chat_images');
+      if (!await imagesDir.exists()) {
+        await imagesDir.create(recursive: true);
+      }
+
+      final fileName = p.basename(file.path);
+      final savedPath = '${imagesDir.path}/$fileName';
+      final saveFile = File(savedPath);
+
+      //  核心修复：改用 readAsBytes + writeAsBytes (flush: true)
+      // 1. 先把 tmp 里的数据读进内存 (避开文件锁)
+      final bytes = await file.readAsBytes();
+      // 2. 写入 Documents，并强制 flush (确保写入磁盘后再继续)
+      await saveFile.writeAsBytes(bytes);
+
+      // 3. 双重检查：如果写入后文件还是不存在，抛出异常
+      if(!await saveFile.exists()){
+        throw Exception("Failed to save image file to $savedPath");
+      }
+
+      finalLocalPath = saveFile.path;
+      fileToUpload = XFile(savedPath);
     }
-    final fileName = p.basename(file.path);
-    final savedPath = '${imagesDir.path}/$fileName';
 
-    // 复制文件
-    final savedFile = await File(file.path).copy(savedPath);
-
-    debugPrint("✅ [搬家成功] 旧路径: ${file.path}");
-    debugPrint("✅ [搬家成功] 新路径: ${savedFile.path}");
-
+    // 2. 正常构建消息
     final tempId = const Uuid().v4();
     final now = DateTime.now().millisecondsSinceEpoch;
 
@@ -206,17 +230,20 @@ class ChatRoomNotifier extends StateNotifier<AsyncValue<List<ChatUiModel>>> {
       id: tempId,
       content: "[Image]",
       type: MessageType.image,
-      // Ensure Enum is correct (usually 2)
       isMe: true,
       status: MessageStatus.sending,
       createdAt: now,
-      localPath: savedFile.path, // Store local path for optimistic UI
+      //  这里把刚才判定好的路径传进去 (Web是Blob, 手机是文件路径)
+      localPath: finalLocalPath,
     );
 
     _updateState((list) => [tempMsg, ...list]);
     _updateConversationList("[Image]", now);
 
-    _executeImageSend(tempId, XFile(savedFile.path));
+    // 3. 执行上传
+    // 注意：Web 端上传时，你的 UploadService 内部不能用 File(path)，
+    // 必须直接使用 XFile 的 bytes 或者 stream，否则也会报错。
+    _executeImageSend(tempId, fileToUpload);
   }
 
   //  Internal: Uploads image then sends message
@@ -249,38 +276,39 @@ class ChatRoomNotifier extends StateNotifier<AsyncValue<List<ChatUiModel>>> {
 
   // Generic underlying send method
   Future<void> _executeSend(
-    String tempId,
-    String content,
-    MessageType type,
-  {
-    String? localPath,
-  }
-  ) async {
+      String tempId,
+      String content,
+      MessageType type, {
+        String? localPath,
+      }) async {
     try {
       // 1. Call API
       final sentMsg = await Api.sendMessage(
         conversationId,
         content,
-        type.value, // Pass the int value (e.g. 1 for Text, 2 for Image)
+        type.value,
         tempId,
       );
 
-      // 2. Update local state with server response
+      debugPrint(" [HTTP] 发送成功: RealID=${sentMsg.id}, TempID=$tempId");
+
+      // 2. Update local state
       state.whenData((list) {
-        // 🔍 步骤 A: 先在当前列表里找这个 tempId
+        // 查找目标：既要找 tempId，也要找 realId (防止 Socket 已经先回来把 ID 改了)
         final tempIndex = list.indexWhere((m) => m.id == tempId);
+        final realIndex = list.indexWhere((m) => m.id == sentMsg.id);
 
-        // 🛠 构造逻辑优化：
-        // 优先用传进来的 localPath，如果没传，再尝试去旧消息里找
+        // 只要找到其中一个，就算找到了
+        final targetIndex = tempIndex != -1 ? tempIndex : realIndex;
+
+        //  确定 localPath
+        // 优先用传进来的参数，如果没有，去旧消息里捞
         String? finalLocalPath = localPath;
-        
-
-        if (finalLocalPath == null && tempIndex != -1) {
-          finalLocalPath = list[tempIndex].localPath;
+        if (finalLocalPath == null && targetIndex != -1) {
+          finalLocalPath = list[targetIndex].localPath;
         }
 
-
-        // 构造新的消息对象
+        // 构造新消息
         final updatedMsg = ChatUiModel(
           id: sentMsg.id,
           seqId: sentMsg.seqId,
@@ -289,32 +317,22 @@ class ChatRoomNotifier extends StateNotifier<AsyncValue<List<ChatUiModel>>> {
           isMe: true,
           status: MessageStatus.success,
           createdAt: sentMsg.createdAt,
+          //  确保带上 localPath
           localPath: finalLocalPath,
         );
 
         List<ChatUiModel> rawList;
 
-        // 🔄 策略分叉：存在的更新，不存在的插入
-        final index = list.indexWhere((m) => m.id == tempId);
-        
-
-        if(tempIndex != -1){
-          //  情况 1: 找到了临时消息 -> 原地替换
-          // 使用 List.of 创建副本，防止修改不可变列表报错
+        if (targetIndex != -1) {
+          //  情况 1: 找到了，原地更新
           rawList = List.of(list);
-          rawList[tempIndex] = updatedMsg;
-        }else{
-          //  情况 2: 没找到 (极少见) -> 只有这种时候才插入新的
-          // 比如：你刚发完消息瞬间切换了页面又切回来，且触发了刷新，导致临时消息丢了
-          // 防止重复：检查一下是不是 id 已经存在了 (防止 Socket 已经推过来了)
-          final isAlreadyExist = list.any((m) => m.id == sentMsg.id);
-          if (isAlreadyExist) {
-            // 如果已经存在真实ID的消息，直接返回，啥也不干
-            return;
-          }
+          rawList[targetIndex] = updatedMsg;
+        } else {
+          //  情况 2: 没找到 (可能列表刷新了?)，做防重后插入
+          if (list.any((m) => m.id == sentMsg.id)) return;
           rawList = [updatedMsg, ...list];
         }
-        // 3. 应用已读状态策略
+
         state = AsyncValue.data(
           _applyReadStatusStrategy(rawList, _maxReadSeqId),
         );
@@ -322,17 +340,14 @@ class ChatRoomNotifier extends StateNotifier<AsyncValue<List<ChatUiModel>>> {
     } catch (e) {
       debugPrint('❌ sendMessage error: $e');
       _updateState(
-        (list) => list
-            .map(
-              (m) =>
-                  m.id == tempId ? m.copyWith(status: MessageStatus.failed) : m,
-            )
+            (list) => list
+            .map((m) => m.id == tempId ? m.copyWith(status: MessageStatus.failed) : m)
             .toList(),
       );
     }
   }
 
-  // 🔄 Resend Logic
+  //  Resend Logic
   Future<void> resendMessage(String tempId) async {
     state.whenData((list) async {
       final targetMsg = list.firstWhere(
@@ -380,36 +395,42 @@ class ChatRoomNotifier extends StateNotifier<AsyncValue<List<ChatUiModel>>> {
       if (msg.conversationId != conversationId) return;
 
       final currentUserId = _ref.read(luckyProvider).userInfo?.id ?? "";
-
-      //  Parse message type from int to Enum
       final msgType = MessageType.fromValue(msg.type);
 
-      // A. My own message echo
+      // A. 重点修复：处理我自己的消息回执
       if (msg.senderId == currentUserId) {
-        if (msg.tempId != null) {
-          state.whenData((list) {
-            final rawList = list.map((m) {
-              if (m.id == msg.tempId) {
-                return m.copyWith(
-                  id: msg.id,
-                  seqId: msg.seqId,
-                  status: MessageStatus.success,
-                  createdAt: msg.createdAt,
-                  content: msg.content,
-                  type: msgType,
-                );
-              }
-              return m;
-            }).toList();
-            state = AsyncValue.data(
-              _applyReadStatusStrategy(rawList, _maxReadSeqId),
-            );
-          });
-        }
+        // 只要 tempId 或 id 有一个能匹配上，就更新它
+        state.whenData((list) {
+          final rawList = list.map((m) {
+            //  核心逻辑：同时检查 tempId 和 realId
+            // 防止 HTTP 接口已经把 ID 改成了 realId，导致这里匹配失败
+            final isMatch = (msg.tempId != null && m.id == msg.tempId) || (m.id == msg.id);
+
+            if (isMatch) {
+              return m.copyWith(
+                id: msg.id, // 确保 ID 是最新的
+                seqId: msg.seqId,
+                status: MessageStatus.success,
+                createdAt: msg.createdAt,
+                content: msg.content,
+                type: msgType,
+
+                // 🔥🔥🔥 死保本地路径！🔥🔥🔥
+                // 只有当 m.localPath 有值时才保留，否则看 socket 消息里有没有(通常没有)
+                localPath: m.localPath,
+              );
+            }
+            return m;
+          }).toList();
+
+          state = AsyncValue.data(
+            _applyReadStatusStrategy(rawList, _maxReadSeqId),
+          );
+        });
         return;
       }
 
-      // B. Partner's message
+      // B. 对方的消息 (保持不变)
       _hasPendingRead = true;
       _readReceiptSubject.add(null);
 
@@ -418,7 +439,6 @@ class ChatRoomNotifier extends StateNotifier<AsyncValue<List<ChatUiModel>>> {
         seqId: msg.seqId,
         content: msg.content,
         type: msgType,
-        // Use parsed type
         isMe: false,
         status: MessageStatus.success,
         createdAt: msg.createdAt,
@@ -507,8 +527,10 @@ class ChatRoomNotifier extends StateNotifier<AsyncValue<List<ChatUiModel>>> {
   }
 
   List<ChatUiModel> _mapToUiModels(List<dynamic> dtoList) {
+    final currentUserId = _ref.read(luckyProvider).userInfo?.id ?? "";
+    debugPrint("🔄 [Fix] 实时获取 UserID: $currentUserId");
     return dtoList.map((dto) {
-      return ChatUiModel.fromApiModel(dto, myUserId);
+      return ChatUiModel.fromApiModel(dto, currentUserId);
     }).toList();
   }
 

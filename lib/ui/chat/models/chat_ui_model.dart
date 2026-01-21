@@ -89,24 +89,51 @@ class ChatUiModel {
     );
   }
 
+  // 工厂构造函数：从后端 API 数据转为 UI 模型
+  // 注意：这里参数改成了 Map<String, dynamic>，直接解析 JSON 最稳妥
+  // 如果你坚持要用 ChatMessage 对象，请确保 ChatMessage 类里定义了 isSelf 字段
+  // 修正：参数类型改回 ChatMessage (因为你的 API 已经转好了对象)
+  // 工厂构造函数
+  // 修正：参数必须是 ChatMessage 对象，因为 API 客户端已经帮我们转好了
   factory ChatUiModel.fromApiModel(ChatMessage apiMsg, String myUserId) {
+    
+    print("转换消息 myUserId=${myUserId}，内容=${apiMsg.sender?.id}");
 
-    // 1. 判断是不是我发的
-    final isMe = apiMsg.sender?.id == myUserId;
+    // --------------------------------------------------------
+    //  身份判定 (修复左边/右边问题)
+    // --------------------------------------------------------
 
-    //  修正点：直接调用 Enum 自带的转换方法
-    // 不要再手写 _mapIntToType 了，容易写错
+    // 1. 获取发送者 ID，强制转成 String (防止 Int vs String 问题)
+    final String senderId = apiMsg.sender?.id?.toString() ?? "";
+
+    // 2. 获取我的 ID，强制转成 String
+    final String currentId = myUserId.toString();
+
+    // 3. 核心比对：只要 ID 相同，就是我发的
+    // 注意：这里必须判空，防止两个空字符串相等
+    bool isMe = senderId.isNotEmpty && senderId == currentId;
+
+    //  补充：如果你的 ChatMessage 类里确实有 isSelf 字段，可以用下面这行代替上面的逻辑：
+    // bool isMe = apiMsg.isSelf ?? (senderId.isNotEmpty && senderId == currentId);
+
+    // --------------------------------------------------------
+    //  转换其他字段
+    // --------------------------------------------------------
+
+    // 类型转换
     MessageType uiType = MessageType.fromValue(apiMsg.type);
 
     return ChatUiModel(
-      id: apiMsg.id,
-      content: apiMsg.content,
+      id: apiMsg.id.toString(), // 强转 String
+      seqId: apiMsg.seqId,
+      content: apiMsg.content ?? "",
       type: uiType,
-      isMe: isMe,
-      status: MessageStatus.success, // 来自后端的肯定成功了
-      createdAt: apiMsg.createdAt,
-      senderName: apiMsg.sender?.nickname, // 直接拿出来，方便 UI 用
+      isMe: isMe, // ✅ 使用强转对比后的结果
+      status: MessageStatus.success,
+      createdAt: apiMsg.createdAt ?? 0,
+      senderName: apiMsg.sender?.nickname,
       senderAvatar: apiMsg.sender?.avatar,
+      localPath: null,
     );
   }
 

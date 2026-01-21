@@ -1,8 +1,10 @@
+import 'dart:io';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:intl/intl.dart';
 
-// 假设你的目录结构如下，请根据实际情况调整 import 路径
 import 'package:flutter_app/ui/img/app_image.dart';
 import '../models/chat_ui_model.dart';
 
@@ -10,21 +12,20 @@ class ChatBubble extends StatelessWidget {
   final ChatUiModel message;
   final VoidCallback? onRetry;
 
-  const ChatBubble({
-    super.key,
-    required this.message,
-    this.onRetry,
-  });
+  const ChatBubble({super.key, required this.message, this.onRetry});
 
   @override
   Widget build(BuildContext context) {
     final isMe = message.isMe;
+    
 
     return Container(
       margin: EdgeInsets.symmetric(vertical: 8.h, horizontal: 12.w),
       child: Row(
         // 布局方向：我是右对齐，对方是左对齐
-        mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
+        mainAxisAlignment: isMe
+            ? MainAxisAlignment.end
+            : MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // 1. 对方头像 (左侧)
@@ -36,7 +37,9 @@ class ChatBubble extends StatelessWidget {
           // 2. 核心消息区域
           Flexible(
             child: Column(
-              crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+              crossAxisAlignment: isMe
+                  ? CrossAxisAlignment.end
+                  : CrossAxisAlignment.start,
               children: [
                 // A. 对方昵称
                 if (!isMe && message.senderName != null)
@@ -44,7 +47,10 @@ class ChatBubble extends StatelessWidget {
                     padding: EdgeInsets.only(bottom: 4.h, left: 4.w),
                     child: Text(
                       message.senderName!,
-                      style: TextStyle(fontSize: 11.sp, color: Colors.grey[600]),
+                      style: TextStyle(
+                        fontSize: 11.sp,
+                        color: Colors.grey[600],
+                      ),
                     ),
                   ),
 
@@ -57,9 +63,7 @@ class ChatBubble extends StatelessWidget {
                     if (isMe) _buildStatusPrefix(),
 
                     // --- 消息内容工厂 (文本/图片) ---
-                    Flexible(
-                      child: _buildContentFactory(context, isMe),
-                    ),
+                    Flexible(child: _buildContentFactory(context, isMe)),
                   ],
                 ),
 
@@ -90,7 +94,7 @@ class ChatBubble extends StatelessWidget {
     );
   }
 
-  // 🏭 内容工厂：根据 type 分发
+  //  内容工厂：根据 type 分发
   Widget _buildContentFactory(BuildContext context, bool isMe) {
     switch (message.type) {
       case MessageType.image:
@@ -102,12 +106,12 @@ class ChatBubble extends StatelessWidget {
   }
 
   // =======================================================
-  // 📝 文本气泡
+  //  文本气泡
   // =======================================================
   Widget _buildTextBubble(BuildContext context, bool isMe) {
-    final timeStr = DateFormat('HH:mm').format(
-      DateTime.fromMillisecondsSinceEpoch(message.createdAt),
-    );
+    final timeStr = DateFormat(
+      'HH:mm',
+    ).format(DateTime.fromMillisecondsSinceEpoch(message.createdAt));
 
     return Container(
       padding: EdgeInsets.fromLTRB(12.w, 10.h, 12.w, 8.h),
@@ -124,7 +128,7 @@ class ChatBubble extends StatelessWidget {
             color: Colors.black.withOpacity(0.04),
             offset: const Offset(0, 1),
             blurRadius: 4,
-          )
+          ),
         ],
       ),
       constraints: BoxConstraints(maxWidth: 0.72.sw),
@@ -154,21 +158,33 @@ class ChatBubble extends StatelessWidget {
   }
 
   // =======================================================
-  // 📸 图片气泡 (最终完美版)
+  // 📸 图片气泡 (智能降级版)
+  // =======================================================
+  // =======================================================
+  // 📸 图片气泡 (Web/Mobile 全兼容版)
   // =======================================================
   Widget _buildImageBubble(BuildContext context, bool isMe) {
-    // 1. 设定固定尺寸 (60% 屏幕宽)，防止 OOM 和布局跳动
     final double bubbleSize = 0.60.sw;
+    final double dpr = MediaQuery.of(context).devicePixelRatio;
+    final int cacheW = (bubbleSize * dpr).toInt();
 
-    // 2. 优先显示本地路径 (秒开)，没有则显示网络图
-    final String showSrc = (message.localPath != null && message.localPath!.isNotEmpty)
-        ? message.localPath!
-        : message.content;
-    
+    final bool canTryLocal =
+        message.localPath != null && message.localPath!.isNotEmpty;
 
-    final timeStr = DateFormat('HH:mm').format(
-      DateTime.fromMillisecondsSinceEpoch(message.createdAt),
-    );
+    final timeStr = DateFormat(
+      'HH:mm',
+    ).format(DateTime.fromMillisecondsSinceEpoch(message.createdAt));
+
+    // 提取网络图组件 (复用)
+    Widget buildNetworkImage() {
+      return AppCachedImage(
+        message.content,
+        width: bubbleSize,
+        height: bubbleSize,
+        fit: BoxFit.cover,
+        enablePreview: false,
+      );
+    }
 
     return Container(
       width: bubbleSize,
@@ -176,49 +192,61 @@ class ChatBubble extends StatelessWidget {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12.r),
         border: Border.all(color: Colors.grey.withOpacity(0.1)),
+        color: Colors.grey[50],
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(12.r),
         child: Stack(
           alignment: Alignment.center,
           children: [
-            // A. 图片层 (AppCachedImage 处理一切脏活)
-            AppCachedImage(
-              showSrc,
-              width: bubbleSize,
-              height: bubbleSize,
-              fit: BoxFit.cover,
-              enablePreview: true, // 开启点击预览
-
-              // 统一 Loading
-              placeholder: Container(
+            // ==========================================
+            // 🖼️ 核心渲染逻辑 (跨平台分流)
+            // ==========================================
+            if (canTryLocal)
+              _buildLocalImage(
+                path: message.localPath!,
                 width: bubbleSize,
                 height: bubbleSize,
-                color: Colors.grey[100],
-                child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
-              ),
+                cacheW: cacheW,
+                fallback: buildNetworkImage, // 传进去当兜底
+              )
+            else
+              buildNetworkImage(),
 
-              // 统一 Error
-              error: Container(
-                width: bubbleSize,
-                height: bubbleSize,
-                color: Colors.grey[200],
-                child: const Icon(Icons.broken_image, color: Colors.grey),
+            // ==========================================
+            // 👇 点击预览
+            // ==========================================
+            Positioned.fill(
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () {
+                    final url = canTryLocal
+                        ? message.localPath
+                        : message.content;
+                    debugPrint("预览图片: $url");
+                  },
+                ),
               ),
             ),
 
-            // B. 发送中遮罩 (仅在 sending 状态显示)
+            // ==========================================
+            // ⏳ 发送中 Loading
+            // ==========================================
             if (message.status == MessageStatus.sending)
-              Positioned.fill(
-                child: Container(
-                  color: Colors.black38,
-                  child: const Center(
-                    child: CircularProgressIndicator(color: Colors.white, strokeWidth: 3),
+              Container(
+                color: Colors.black38,
+                child: const Center(
+                  child: CircularProgressIndicator(
+                    color: Colors.white,
+                    strokeWidth: 3,
                   ),
                 ),
               ),
 
-            // C. 时间戳 (右下角半透明)
+            // ==========================================
+            // 🕒 时间戳
+            // ==========================================
             Positioned(
               right: 6.w,
               bottom: 6.h,
@@ -237,14 +265,54 @@ class ChatBubble extends StatelessWidget {
                   ),
                 ),
               ),
-            )
+            ),
           ],
         ),
       ),
     );
   }
 
-  // 🛠️ 状态前缀 (Loading圈 / 红色感叹号)
+  //  新增：专门处理本地图片的跨平台组件
+  Widget _buildLocalImage({
+    required String path,
+    required double width,
+    required double height,
+    required int cacheW,
+    required Widget Function() fallback,
+  }) {
+    //  Web 端逻辑：把 Blob URL 当作网络图处理
+    if (kIsWeb) {
+      return Image.network(
+        path, // Web 上 path 是 "blob:http://..."
+        width: width,
+        height: height,
+        fit: BoxFit.cover,
+        // Web 浏览器自带缓存管理，通常不需要手动 cacheWidth
+        errorBuilder: (context, error, stack) {
+          debugPrint(" [Web] Blob 加载失败，降级网络图: $error");
+          return fallback();
+        },
+      );
+    }
+
+    // 📱 Mobile 端逻辑：使用 File
+    return Image.file(
+      File(path),
+      width: width,
+      height: height,
+      fit: BoxFit.cover,
+      cacheWidth: cacheW,
+      // 内存优化仅对 Mobile 有效
+      gaplessPlayback: true,
+      key: ValueKey("${message.id}_local"),
+      errorBuilder: (context, error, stack) {
+        debugPrint(" [Mobile] 本地文件失效，降级网络图: $error");
+        return fallback();
+      },
+    );
+  }
+
+  //  状态前缀 (Loading圈 / 红色感叹号)
   Widget _buildStatusPrefix() {
     // 图片消息自带内部 Loading，这里不需要外部 Loading
     if (message.status == MessageStatus.sending) {
@@ -256,7 +324,10 @@ class ChatBubble extends StatelessWidget {
         child: SizedBox(
           width: 14.w,
           height: 14.w,
-          child: const CircularProgressIndicator(strokeWidth: 2, color: Colors.grey),
+          child: const CircularProgressIndicator(
+            strokeWidth: 2,
+            color: Colors.grey,
+          ),
         ),
       );
     }
