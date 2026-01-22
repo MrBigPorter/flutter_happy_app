@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 
 import 'package:flutter_app/ui/img/app_image.dart';
 import '../models/chat_ui_model.dart';
+import '../photo_preview_page.dart';
 
 class ChatBubble extends StatelessWidget {
   final ChatUiModel message;
@@ -17,7 +18,6 @@ class ChatBubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isMe = message.isMe;
-    
 
     return Container(
       margin: EdgeInsets.symmetric(vertical: 8.h, horizontal: 12.w),
@@ -158,10 +158,7 @@ class ChatBubble extends StatelessWidget {
   }
 
   // =======================================================
-  // 📸 图片气泡 (智能降级版)
-  // =======================================================
-  // =======================================================
-  // 📸 图片气泡 (Web/Mobile 全兼容版)
+  //  图片气泡 (Web/Mobile 全兼容 + Hero 动画版)
   // =======================================================
   Widget _buildImageBubble(BuildContext context, bool isMe) {
     final double bubbleSize = 0.60.sw;
@@ -182,7 +179,10 @@ class ChatBubble extends StatelessWidget {
         width: bubbleSize,
         height: bubbleSize,
         fit: BoxFit.cover,
-        enablePreview: false,
+        enablePreview: true,
+        // 开启内部预览
+        //  关键：传入 Hero Tag，确保网络图也有动画
+        heroTag: message.id,
       );
     }
 
@@ -200,10 +200,11 @@ class ChatBubble extends StatelessWidget {
           alignment: Alignment.center,
           children: [
             // ==========================================
-            // 🖼️ 核心渲染逻辑 (跨平台分流)
+            //  核心渲染逻辑
             // ==========================================
             if (canTryLocal)
               _buildLocalImage(
+                context: context,
                 path: message.localPath!,
                 width: bubbleSize,
                 height: bubbleSize,
@@ -214,24 +215,7 @@ class ChatBubble extends StatelessWidget {
               buildNetworkImage(),
 
             // ==========================================
-            // 👇 点击预览
-            // ==========================================
-            Positioned.fill(
-              child: Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: () {
-                    final url = canTryLocal
-                        ? message.localPath
-                        : message.content;
-                    debugPrint("预览图片: $url");
-                  },
-                ),
-              ),
-            ),
-
-            // ==========================================
-            // ⏳ 发送中 Loading
+            //  发送中 Loading
             // ==========================================
             if (message.status == MessageStatus.sending)
               Container(
@@ -245,7 +229,7 @@ class ChatBubble extends StatelessWidget {
               ),
 
             // ==========================================
-            // 🕒 时间戳
+            // 时间戳
             // ==========================================
             Positioned(
               right: 6.w,
@@ -272,49 +256,89 @@ class ChatBubble extends StatelessWidget {
     );
   }
 
-  //  新增：专门处理本地图片的跨平台组件
+
+  //  本地图片构建器 (修复版：自动纠错)
   Widget _buildLocalImage({
+    required BuildContext context,
     required String path,
     required double width,
     required double height,
     required int cacheW,
     required Widget Function() fallback,
   }) {
-    //  Web 端逻辑：把 Blob URL 当作网络图处理
+    // 1. 构建基础图片组件
+    Widget imageWidget;
+
     if (kIsWeb) {
-      return Image.network(
-        path, // Web 上 path 是 "blob:http://..."
+      imageWidget = Image.network(
+        path,
         width: width,
         height: height,
         fit: BoxFit.cover,
-        // Web 浏览器自带缓存管理，通常不需要手动 cacheWidth
         errorBuilder: (context, error, stack) {
-          debugPrint(" [Web] Blob 加载失败，降级网络图: $error");
+          debugPrint(" [Web] Blob 加载失败: $error");
+          return fallback();
+        },
+      );
+    } else {
+      imageWidget = Image.file(
+        File(path),
+        width: width,
+        height: height,
+        fit: BoxFit.cover,
+        cacheWidth: cacheW,
+        gaplessPlayback: true,
+        key: ValueKey("${message.id}_local"),
+        errorBuilder: (context, error, stack) {
+          // 列表页加载失败时，自动降级显示网络图
           return fallback();
         },
       );
     }
 
-    // 📱 Mobile 端逻辑：使用 File
-    return Image.file(
-      File(path),
-      width: width,
-      height: height,
-      fit: BoxFit.cover,
-      cacheWidth: cacheW,
-      // 内存优化仅对 Mobile 有效
-      gaplessPlayback: true,
-      key: ValueKey("${message.id}_local"),
-      errorBuilder: (context, error, stack) {
-        debugPrint(" [Mobile] 本地文件失效，降级网络图: $error");
-        return fallback();
+    // 2.  核心修复：点击时智能判断
+    return GestureDetector(
+      onTap: () {
+        // 默认使用传入的 path
+        String finalSource = path;
+
+        //  救急逻辑：如果不是 Web，且本地文件居然不存在
+        if (!kIsWeb) {
+          final file = File(path);
+          if (!file.existsSync()) {
+            // 强制使用网络 URL (确保 message.content 存的是 http 链接)
+            finalSource = message.content;
+          }
+        }
+
+        Navigator.push(
+          context,
+          PageRouteBuilder(
+            opaque: false,
+            pageBuilder: (_, __, ___) =>
+                PhotoPreviewPage(
+                    heroTag: message.id,
+                    imageSource: finalSource,
+                    thumbnailSource: finalSource
+                ),
+            transitionsBuilder: (_, animation, __, child) =>
+                FadeTransition(opacity: animation, child: child),
+          ),
+        );
       },
+      child: Hero(
+        tag: message.id,
+        transitionOnUserGestures: true,
+        child: imageWidget,
+      ),
     );
   }
 
-  //  状态前缀 (Loading圈 / 红色感叹号)
+  // -------------------------------------------------------
+  // 辅助组件
+  // -------------------------------------------------------
+
   Widget _buildStatusPrefix() {
-    // 图片消息自带内部 Loading，这里不需要外部 Loading
     if (message.status == MessageStatus.sending) {
       if (message.type == MessageType.image) {
         return const SizedBox.shrink();
@@ -332,7 +356,6 @@ class ChatBubble extends StatelessWidget {
       );
     }
 
-    // 失败状态 (点击重试)
     if (message.status == MessageStatus.failed) {
       return GestureDetector(
         onTap: onRetry,
@@ -345,7 +368,6 @@ class ChatBubble extends StatelessWidget {
     return const SizedBox.shrink();
   }
 
-  // 🛠️ 头像组件
   Widget _buildAvatar(String? url) {
     return Container(
       width: 40.w,

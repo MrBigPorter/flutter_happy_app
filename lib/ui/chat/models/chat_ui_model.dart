@@ -96,8 +96,6 @@ class ChatUiModel {
   // 工厂构造函数
   // 修正：参数必须是 ChatMessage 对象，因为 API 客户端已经帮我们转好了
   factory ChatUiModel.fromApiModel(ChatMessage apiMsg, String myUserId) {
-    
-    print("转换消息 myUserId=${myUserId}，内容=${apiMsg.sender?.id}");
 
     // --------------------------------------------------------
     //  身份判定 (修复左边/右边问题)
@@ -128,7 +126,7 @@ class ChatUiModel {
       seqId: apiMsg.seqId,
       content: apiMsg.content ?? "",
       type: uiType,
-      isMe: isMe, // ✅ 使用强转对比后的结果
+      isMe: isMe, //  使用强转对比后的结果
       status: MessageStatus.success,
       createdAt: apiMsg.createdAt ?? 0,
       senderName: apiMsg.sender?.nickname,

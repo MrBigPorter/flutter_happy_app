@@ -46,7 +46,7 @@ class ImageUrl {
     final params = <String>[];
     if (wPx != null) params.add('width=$wPx');
     if (hPx != null) params.add('height=$hPx');
-    params.add('dpr=${_fmtDpr(dpr)}');
+    // params.add('dpr=${_fmtDpr(dpr)}');
     params.add('quality=${quality.clamp(30, 95)}');
     params.add('fit=${_toCdnFit(fit)}');
     params.add('f=$format');

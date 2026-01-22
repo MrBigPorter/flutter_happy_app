@@ -67,11 +67,11 @@ class ChatRoomNotifier extends StateNotifier<AsyncValue<List<ChatUiModel>>> {
   }
 
   // ===========================================================================
-  // 🚀 1. Basic Setup
+  //  1. Basic Setup
   // ===========================================================================
   Future<void> _setup() async {
     _connectionSub = _socketService.onSyncNeeded.listen((_) {
-      debugPrint("🔄 [ChatRoom] Socket reconnecting, re-joining room...");
+      debugPrint(" [ChatRoom] Socket reconnecting, re-joining room...");
       _joinRoom();
     });
 
@@ -97,11 +97,11 @@ class ChatRoomNotifier extends StateNotifier<AsyncValue<List<ChatUiModel>>> {
   }
 
   // ===========================================================================
-  // 🔄 2. Data Refresh & Loading
+  //  2. Data Refresh & Loading
   // ===========================================================================
   Future<void> refresh() async {
     try {
-      debugPrint("🚀 [ChatRoom] Refreshing data...");
+      debugPrint(" [ChatRoom] Refreshing data...");
       try {
         markAsRead();
       } catch (_) {}
@@ -123,7 +123,7 @@ class ChatRoomNotifier extends StateNotifier<AsyncValue<List<ChatUiModel>>> {
         state = AsyncValue.data(processedList);
       }
     } catch (e, st) {
-      debugPrint("❌ Refresh Error: $e");
+      debugPrint("Refresh Error: $e");
       if (mounted) state = AsyncValue.error(e, st);
     }
   }
@@ -150,14 +150,14 @@ class ChatRoomNotifier extends StateNotifier<AsyncValue<List<ChatUiModel>>> {
         );
       });
     } catch (e) {
-      debugPrint("❌ Load more failed: $e");
+      debugPrint("Load more failed: $e");
     } finally {
       _isLoadingMore = false;
     }
   }
 
   // ===========================================================================
-  // 📩 3. Sending Logic (Text & Image)
+  //  3. Sending Logic (Text & Image)
   // ===========================================================================
 
   Future<void> sendMessage(String text) async {
@@ -181,8 +181,8 @@ class ChatRoomNotifier extends StateNotifier<AsyncValue<List<ChatUiModel>>> {
     await _executeSend(tempId, text, MessageType.text);
   }
 
-  // 📸 Entry point for sending images
-// 📸 发送图片入口
+  //  Entry point for sending images
+//  发送图片入口
   Future<void> sendImage(XFile file) async {
     String finalLocalPath;
     XFile fileToUpload;
@@ -262,7 +262,7 @@ class ChatRoomNotifier extends StateNotifier<AsyncValue<List<ChatUiModel>>> {
       // Pass MessageType.image so backend knows it's a picture
       await _executeSend(tempId, cdnUrl, MessageType.image,localPath: file.path );
     } catch (e) {
-      debugPrint("❌ Send Image Failed: $e");
+      debugPrint(" Send Image Failed: $e");
       _updateState(
         (list) => list
             .map(
@@ -338,7 +338,7 @@ class ChatRoomNotifier extends StateNotifier<AsyncValue<List<ChatUiModel>>> {
         );
       });
     } catch (e) {
-      debugPrint('❌ sendMessage error: $e');
+      debugPrint(' sendMessage error: $e');
       _updateState(
             (list) => list
             .map((m) => m.id == tempId ? m.copyWith(status: MessageStatus.failed) : m)
@@ -385,7 +385,7 @@ class ChatRoomNotifier extends StateNotifier<AsyncValue<List<ChatUiModel>>> {
   }
 
   // ===========================================================================
-  // 📡 4. Receiving & Events
+  // 4. Receiving & Events
   // ===========================================================================
 
   void _onSocketMessage(Map<String, dynamic> data) {
@@ -415,7 +415,6 @@ class ChatRoomNotifier extends StateNotifier<AsyncValue<List<ChatUiModel>>> {
                 content: msg.content,
                 type: msgType,
 
-                // 🔥🔥🔥 死保本地路径！🔥🔥🔥
                 // 只有当 m.localPath 有值时才保留，否则看 socket 消息里有没有(通常没有)
                 localPath: m.localPath,
               );
@@ -454,7 +453,7 @@ class ChatRoomNotifier extends StateNotifier<AsyncValue<List<ChatUiModel>>> {
         );
       });
     } catch (e) {
-      debugPrint("❌ Socket Parse Error: $e");
+      debugPrint(" Socket Parse Error: $e");
     }
   }
 
@@ -472,7 +471,7 @@ class ChatRoomNotifier extends StateNotifier<AsyncValue<List<ChatUiModel>>> {
   }
 
   // ===========================================================================
-  // 🧠 5. Strategies & Helpers
+  //  5. Strategies & Helpers
   // ===========================================================================
 
   List<ChatUiModel> _applyReadStatusStrategy(
@@ -507,7 +506,7 @@ class ChatRoomNotifier extends StateNotifier<AsyncValue<List<ChatUiModel>>> {
 
     Api.messageMarkAsReadApi(
       MessageMarkReadRequest(conversationId: conversationId),
-    ).catchError((e) => debugPrint("❌ markRead API: $e"));
+    ).catchError((e) => debugPrint(" markRead API: $e"));
   }
 
   void _updateConversationList(String text, int time) {
@@ -528,7 +527,6 @@ class ChatRoomNotifier extends StateNotifier<AsyncValue<List<ChatUiModel>>> {
 
   List<ChatUiModel> _mapToUiModels(List<dynamic> dtoList) {
     final currentUserId = _ref.read(luckyProvider).userInfo?.id ?? "";
-    debugPrint("🔄 [Fix] 实时获取 UserID: $currentUserId");
     return dtoList.map((dto) {
       return ChatUiModel.fromApiModel(dto, currentUserId);
     }).toList();
