@@ -52,8 +52,7 @@ class ChatBubble extends ConsumerWidget {
                 Navigator.pop(context);
                 //  核心：调用 Notifier 执行撤回
                 ref
-                    .read(chatRoomProvider(message.conversationId).notifier)
-                    .recallMessage(message.id);
+                    .read(chatControllerProvider(message.conversationId)).recallMessage(message.id);
               },
               child: const Text("Unsend for Everyone"),
             ),
@@ -65,8 +64,7 @@ class ChatBubble extends ConsumerWidget {
               Navigator.pop(context);
               // 本地删除，调用 Notifier 移除该消息
               ref
-                  .read(chatRoomProvider(message.conversationId).notifier)
-                  .deleteMessage(message.id);
+                  .read(chatControllerProvider(message.conversationId)).deleteMessage(message.id);
             },
             child: const Text("Remove for You"),
           ),

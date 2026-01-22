@@ -32,7 +32,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
 
     //  关键修改：页面初始化时
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(chatRoomProvider(widget.conversationId).notifier).refresh();
+      ref.read(chatControllerProvider(widget.conversationId)).refresh();
     });
 
     _scrollController.addListener(_onScroll);
@@ -49,19 +49,20 @@ class _ChatPageState extends ConsumerState<ChatPage> {
     if (_scrollController.hasClients &&
         _scrollController.position.pixels >=
             _scrollController.position.maxScrollExtent - 50) {
-      ref.read(chatRoomProvider(widget.conversationId).notifier).loadMore();
+      ref.read(chatControllerProvider(widget.conversationId)).loadMore();
     }
   }
 
   @override
   Widget build(BuildContext context) {
     // 1. 监听消息状态
-    final asyncMessages = ref.watch(chatRoomProvider(widget.conversationId));
+    final asyncMessages = ref.watch(chatStreamProvider(widget.conversationId));
     // 2. 监听详情状态
     final asyncDetail = ref.watch(chatDetailProvider(widget.conversationId));
 
     // 判断是否是静默更新状态 (有数据，但正在刷新)
     final isUpdating = asyncMessages.isLoading && asyncMessages.hasValue;
+
 
     return GestureDetector(
       onTap: () => FocusScope.of(context).unfocus(),
@@ -205,13 +206,12 @@ class _ChatPageState extends ConsumerState<ChatPage> {
             ModernChatInputBar(
               onSend: (text) {
                 ref
-                    .read(chatRoomProvider(widget.conversationId).notifier)
-                    .sendMessage(text);
+                    .read(chatControllerProvider(widget.conversationId)).sendMessage(text);
               },
               //  绑定发图逻辑
               onSendImage: (XFile file) {
                 // 直接把 file 对象传给 Notifier
-                ref.read(chatRoomProvider(widget.conversationId).notifier).sendImage(file);
+                ref.read(chatControllerProvider(widget.conversationId)).sendImage(file);
               },
             ),
           ],
@@ -239,8 +239,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
         // 1. 检查是否到底 (Visual Top)
         if (index == messages.length) {
           final hasMore = ref
-              .read(chatRoomProvider(widget.conversationId).notifier)
-              .hasMore;
+              .read(chatControllerProvider(widget.conversationId)).hasMore;
           return Container(
             padding: const EdgeInsets.symmetric(vertical: 15),
             alignment: Alignment.center,
@@ -265,9 +264,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
         return ChatBubble(
           message: msg,
           onRetry: () {
-            ref
-                .read(chatRoomProvider(widget.conversationId).notifier)
-                .resendMessage(msg.id);
+            ref.read(chatControllerProvider(widget.conversationId)).resendMessage(msg.id);
           },
         );
       },

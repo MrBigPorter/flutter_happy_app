@@ -250,7 +250,7 @@ class SocketMessage {
   final int createdAt;
   final SocketSender? sender;
   final String? tempId;
-  final bool isSelf;
+  final bool? isSelf;
 
   final int? seqId;
 
@@ -263,7 +263,7 @@ class SocketMessage {
     required this.createdAt,
     this.sender,
     this.tempId,
-    required this.isSelf,
+     this.isSelf,
     this.seqId,
   });
 
@@ -332,6 +332,7 @@ class MessageMarkReadResponse {
 class SocketReadEvent {
   final String conversationId;
   final String readerId;
+  final bool? isSelf;
   @JsonKey(defaultValue: 0)
   final int lastReadSeqId;
 
@@ -339,6 +340,7 @@ class SocketReadEvent {
     required this.conversationId,
     required this.readerId,
     required this.lastReadSeqId,
+     this.isSelf,
   });
 
   factory SocketReadEvent.fromJson(Map<String, dynamic> json) =>
@@ -383,11 +385,13 @@ class SocketRecallEvent {
   final String tip;
   final String operatorId;
   final int? seqId;
+  final bool isSelf;
 
   SocketRecallEvent({
     required this.conversationId,
     required this.messageId,
     required this.tip,
+    required this.isSelf,
     required this.operatorId,
     this.seqId,
   });

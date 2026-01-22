@@ -125,6 +125,9 @@ dependencies:
   image_picker: ^1.2.1
   photo_view: ^0.15.0
 
+  sembast: ^3.7.1
+  sembast_web: ^2.3.0 # Web 端专用支持
+
 
 dev_dependencies:
   flutter_test:

@@ -6,15 +6,17 @@ import 'package:flutter_app/core/services/socket_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../../core/providers/socket_provider.dart';
+import '../../../core/store/lucky_store.dart';
 import '../models/conversation.dart';
 
 part 'conversation_provider.g.dart';
 
 class ConversationListNotifier extends StateNotifier<List<Conversation>> {
   final SocketService _socketService;
+  final Ref _ref;
   StreamSubscription? _conversationSub;
 
-  ConversationListNotifier(this._socketService) : super([]) {
+  ConversationListNotifier(this._socketService,this._ref) : super([]) {
     _init();
   }
 
@@ -42,13 +44,11 @@ class ConversationListNotifier extends StateNotifier<List<Conversation>> {
     // 如果页面已经销毁，直接停止，不要去碰 state
     if (!mounted) return;
     final convId = msg.conversationId;
-    // 简单的文本摘要处理
-    String content = '[非文本消息]';
-    if (msg.type == 0 || msg.type == 'text') {
-      content = msg.content;
-    } else if (msg.type == 1 || msg.type == 'image') {
-      content = '[图片]';
-    }
+    final myUserId = _ref.read(luckyProvider).userInfo?.id ?? "";
+    final senderId = msg.sender?.id ?? "";
+    final bool isMe = senderId.isNotEmpty && (senderId == myUserId);
+    String content = _getPreviewContent(msg.type, msg.content);
+
     final time = DateTime.now().millisecondsSinceEpoch;
 
     // 1. 查找列表里有没有这个会话
@@ -58,7 +58,7 @@ class ConversationListNotifier extends StateNotifier<List<Conversation>> {
       // A. 已存在：更新摘要 + 移到顶部 + 未读数+1
       final oldConv = state[index];
       // 自己发的消息不算未读，别人的才需要加
-      final newUnreadCount = msg.isSelf ? oldConv.unreadCount : oldConv.unreadCount + 1;
+      final newUnreadCount = isMe ? oldConv.unreadCount : oldConv.unreadCount + 1;
       // 构造新的 Conversation 对象
       final newConv = oldConv.copyWith(
         lastMsgContent: content,
@@ -73,6 +73,48 @@ class ConversationListNotifier extends StateNotifier<List<Conversation>> {
     } else {
       // B. 新会话：重新刷新列表 (最简单的做法)
       refresh();
+    }
+  }
+
+  String _getPreviewContent(dynamic type, String rawContent) {
+    // Convert to string to handle both int (0, 1) and string ('text', 'image') types
+    final t = type.toString();
+
+    switch (t) {
+      case '1':
+      case 'text':
+        return rawContent; // Show actual text
+
+      case '2':
+      case 'image':
+        return '[Image]';
+
+      case '3':
+      case 'audio':
+      case 'voice':
+        return '[Voice]';
+
+      case '3':
+      case 'video':
+        return '[Video]';
+
+      case '4':
+      case 'file':
+        return '[File]';
+
+      case 'location':
+        return '[Location]';
+
+      case 'recalled':
+      case '99': // Assuming 99 is recall
+        return '[Message recalled]';
+
+      case 'system':
+      case '100':
+        return rawContent;
+
+      default:
+        return '[Unsupported message]';
     }
   }
 
@@ -127,9 +169,8 @@ final conversationListProvider =
       ConversationListNotifier,
       List<Conversation>
     >((ref) {
-      print("🔌 [conversationListProvider] 初始化 ConversationListNotifier");
       final socketService = ref.watch(socketServiceProvider);
-      return ConversationListNotifier(socketService);
+      return ConversationListNotifier(socketService,ref);
     });
 
 @riverpod

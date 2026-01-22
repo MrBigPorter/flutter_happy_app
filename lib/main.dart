@@ -6,6 +6,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_app/common.dart';
+import 'package:flutter_app/ui/chat/database/local_database_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart' as riverpod;
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
@@ -31,13 +32,15 @@ Future<void> main() async {
   await EasyLocalization.ensureInitialized();
   await Http.init();
 
+  await LocalDatabaseService().init();
+
   //  [新增] 2. 初始化 Firebase
   try {
     await Firebase.initializeApp();
 
-    // 🔥 [新增] 3. 获取并打印 FCM Token
+    //  [新增] 3. 获取并打印 FCM Token
     final fcmToken = await FirebaseMessaging.instance.getToken();
-    print("🔥 [FCM] Device Token: $fcmToken");
+    print(" [FCM] Device Token: $fcmToken");
 
   } catch (e) {
     print("❌ Firebase 初始化失败: $e");

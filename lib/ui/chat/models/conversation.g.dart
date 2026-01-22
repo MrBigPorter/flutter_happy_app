@@ -215,7 +215,7 @@ SocketMessage _$SocketMessageFromJson(Map<String, dynamic> json) =>
               : SocketSender.fromJson(v as Map<String, dynamic>),
         ),
         tempId: $checkedConvert('tempId', (v) => v as String?),
-        isSelf: $checkedConvert('isSelf', (v) => v as bool),
+        isSelf: $checkedConvert('isSelf', (v) => v as bool?),
         seqId: $checkedConvert('seqId', (v) => (v as num?)?.toInt()),
       );
       return val;
@@ -295,6 +295,7 @@ SocketReadEvent _$SocketReadEventFromJson(Map<String, dynamic> json) =>
           'lastReadSeqId',
           (v) => (v as num?)?.toInt() ?? 0,
         ),
+        isSelf: $checkedConvert('isSelf', (v) => v as bool?),
       );
       return val;
     });
@@ -303,6 +304,7 @@ Map<String, dynamic> _$SocketReadEventToJson(SocketReadEvent instance) =>
     <String, dynamic>{
       'conversationId': instance.conversationId,
       'readerId': instance.readerId,
+      'isSelf': instance.isSelf,
       'lastReadSeqId': instance.lastReadSeqId,
     };
 
@@ -343,6 +345,7 @@ SocketRecallEvent _$SocketRecallEventFromJson(Map<String, dynamic> json) =>
         conversationId: $checkedConvert('conversationId', (v) => v as String),
         messageId: $checkedConvert('messageId', (v) => v as String),
         tip: $checkedConvert('tip', (v) => v as String),
+        isSelf: $checkedConvert('isSelf', (v) => v as bool),
         operatorId: $checkedConvert('operatorId', (v) => v as String),
         seqId: $checkedConvert('seqId', (v) => (v as num?)?.toInt()),
       );
@@ -356,6 +359,7 @@ Map<String, dynamic> _$SocketRecallEventToJson(SocketRecallEvent instance) =>
       'tip': instance.tip,
       'operatorId': instance.operatorId,
       'seqId': instance.seqId,
+      'isSelf': instance.isSelf,
     };
 
 MessageDeleteRequest _$MessageDeleteRequestFromJson(
