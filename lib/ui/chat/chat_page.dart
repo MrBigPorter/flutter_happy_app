@@ -67,7 +67,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
       onTap: () => FocusScope.of(context).unfocus(),
       child: Scaffold(
         backgroundColor: context.bgPrimary, // iOS 风格背景灰
-        // 🛠️ 优化 2: Messenger 风格 Header
+        //  优化 2: Messenger 风格 Header
         appBar: AppBar(
           backgroundColor: context.bgSecondary,
           surfaceTintColor: Colors.transparent,
@@ -366,7 +366,7 @@ class _ModernChatInputBarState extends State<ModernChatInputBar> {
             crossAxisAlignment: CrossAxisAlignment.end, // 底部对齐
             children: [
               // ===========================================
-              // 🛠️ 左侧功能区 (加号、相机、相册、语音)
+              //  左侧功能区 (加号、相机、相册、语音)
               // ===========================================
               _buildActionBtn(Icons.add_circle, isSolid: true), // 实心加号
               _buildActionBtn(Icons.camera_alt, onTap: _handleCamera), // 相机
@@ -375,7 +375,7 @@ class _ModernChatInputBarState extends State<ModernChatInputBar> {
 
               SizedBox(width: 4.w), // 图标和输入框的间距
               // ===========================================
-              // 📝 中间输入框 (Aa)
+              //  中间输入框 (Aa)
               // ===========================================
               Expanded(
                 child: Container(
@@ -415,7 +415,7 @@ class _ModernChatInputBarState extends State<ModernChatInputBar> {
               SizedBox(width: 8.w),
 
               // ===========================================
-              // 👍 右侧：发送 / 点赞
+              //  右侧：发送 / 点赞
               // ===========================================
               AnimatedSwitcher(
                 duration: const Duration(milliseconds: 200),
@@ -452,7 +452,7 @@ class _ModernChatInputBarState extends State<ModernChatInputBar> {
     );
   }
 
-  // 🛠️ 封装一个小组件，减少重复代码
+  //  封装一个小组件，减少重复代码
   Widget _buildActionBtn(IconData icon, {bool isSolid = false, VoidCallback? onTap}) {
     // 如果是实心加号，通常颜色更深一点，或者一样
     final color = context.textBrandPrimary900;

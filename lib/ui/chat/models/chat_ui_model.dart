@@ -34,6 +34,7 @@ class ChatUiModel {
   final int createdAt;    // 时间戳
   final String? senderAvatar; // 对方头像 (群聊用)
   final String? senderName;   // 对方昵称
+  final String conversationId;// 会话ID
 
   //  新增：本地文件路径 (用于发送图片时的“乐观更新”)
   // 当 localPath 不为空时，UI 优先渲染 File(localPath)，而不是 NetworkImage(content)
@@ -43,6 +44,8 @@ class ChatUiModel {
   final double? width;
   final double? height;
 
+  final bool isRecalled; //  新增：标记是否已撤回
+
   ChatUiModel({
     required this.id,
     required this.content,
@@ -50,6 +53,8 @@ class ChatUiModel {
     required this.isMe,
     this.status = MessageStatus.success,
     required this.createdAt,
+    required this.conversationId,
+     this.isRecalled = false,
     this.senderAvatar,
     this.senderName,
     this.seqId,
@@ -72,6 +77,8 @@ class ChatUiModel {
     String? localPath,
     double? width,
     double? height,
+    bool? isRecalled,
+    String? conversationId,
   }) {
     return ChatUiModel(
       id: id ?? this.id,
@@ -86,6 +93,8 @@ class ChatUiModel {
       localPath: localPath ?? this.localPath,
       width: width ?? this.width,
       height: height ?? this.height,
+      isRecalled: isRecalled ?? this.isRecalled,
+      conversationId: conversationId ?? this.conversationId,
     );
   }
 
@@ -96,6 +105,13 @@ class ChatUiModel {
   // 工厂构造函数
   // 修正：参数必须是 ChatMessage 对象，因为 API 客户端已经帮我们转好了
   factory ChatUiModel.fromApiModel(ChatMessage apiMsg, String myUserId) {
+
+    // 1. 获取后端类型
+    MessageType uiType = MessageType.fromValue(apiMsg.type);
+
+    // 2. 双重判定：类型是系统/撤回类型，或者布尔值为 true
+    // 假设后端 MESSAGE_TYPE.RECALLED 对应的数值是 99
+    bool isRecalled = (uiType == MessageType.system) || (apiMsg.isRecalled);
 
     // --------------------------------------------------------
     //  身份判定 (修复左边/右边问题)
@@ -118,8 +134,6 @@ class ChatUiModel {
     //  转换其他字段
     // --------------------------------------------------------
 
-    // 类型转换
-    MessageType uiType = MessageType.fromValue(apiMsg.type);
 
     return ChatUiModel(
       id: apiMsg.id.toString(), // 强转 String
@@ -131,9 +145,12 @@ class ChatUiModel {
       createdAt: apiMsg.createdAt ?? 0,
       senderName: apiMsg.sender?.nickname,
       senderAvatar: apiMsg.sender?.avatar,
+      isRecalled: isRecalled,
       localPath: null,
+      conversationId: "", // 这里需要调用方传入会话 ID，或者在 ChatMessage 里添加该字段
     );
   }
 
 
 }
+

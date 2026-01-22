@@ -1,22 +1,90 @@
 import 'dart:io';
 
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:intl/intl.dart';
 
 import 'package:flutter_app/ui/img/app_image.dart';
 import '../models/chat_ui_model.dart';
 import '../photo_preview_page.dart';
+import '../providers/chat_room_provider.dart';
 
-class ChatBubble extends StatelessWidget {
+class ChatBubble extends ConsumerWidget {
   final ChatUiModel message;
   final VoidCallback? onRetry;
 
   const ChatBubble({super.key, required this.message, this.onRetry});
 
+  void _showContextMenu(BuildContext context, WidgetRef ref, bool isMe) {
+    final bool isText = message.type == MessageType.text;
+    final bool canRecall =
+        isMe &&
+        DateTime.now()
+                .difference(
+                  DateTime.fromMillisecondsSinceEpoch(message.createdAt),
+                )
+                .inMinutes <
+            2;
+
+    showCupertinoModalPopup(
+      context: context,
+      builder: (context) => CupertinoActionSheet(
+        title: const Text("Message Actions"),
+        actions: [
+          if (isText && !message.isRecalled) // 撤回的消息不能再复制内容
+            CupertinoActionSheetAction(
+              onPressed: () {
+                Navigator.pop(context);
+                Clipboard.setData(ClipboardData(text: message.content));
+              },
+              child: const Text("Copy"),
+            ),
+
+          // --- 撤回逻辑 (Unsend for everyone) ---
+          if (canRecall && !message.isRecalled)
+            CupertinoActionSheetAction(
+              isDestructiveAction: true,
+              onPressed: () {
+                Navigator.pop(context);
+                //  核心：调用 Notifier 执行撤回
+                ref
+                    .read(chatRoomProvider(message.conversationId).notifier)
+                    .recallMessage(message.id);
+              },
+              child: const Text("Unsend for Everyone"),
+            ),
+
+          // --- 删除逻辑 (Remove for you) ---
+          CupertinoActionSheetAction(
+            isDestructiveAction: true,
+            onPressed: () {
+              Navigator.pop(context);
+              // 本地删除，调用 Notifier 移除该消息
+              ref
+                  .read(chatRoomProvider(message.conversationId).notifier)
+                  .deleteMessage(message.id);
+            },
+            child: const Text("Remove for You"),
+          ),
+        ],
+        cancelButton: CupertinoActionSheetAction(
+          onPressed: () => Navigator.pop(context),
+          child: const Text("Cancel"),
+        ),
+      ),
+    );
+  }
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    // 第一优先级：撤回拦截 (直接渲染系统提示)
+    if (message.isRecalled) {
+      return _buildRecalledSystemTip();
+    }
     final isMe = message.isMe;
 
     return Container(
@@ -63,7 +131,7 @@ class ChatBubble extends StatelessWidget {
                     if (isMe) _buildStatusPrefix(),
 
                     // --- 消息内容工厂 (文本/图片) ---
-                    Flexible(child: _buildContentFactory(context, isMe)),
+                    Flexible(child: _buildContentFactory(context, ref, isMe)),
                   ],
                 ),
 
@@ -94,15 +162,50 @@ class ChatBubble extends StatelessWidget {
     );
   }
 
+  // =======================================================
+  //  撤回系统提示气泡
+  // =======================================================
+  Widget _buildRecalledSystemTip() {
+    return Center(
+      child: Container(
+        margin: EdgeInsets.symmetric(vertical: 4.h),
+        padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
+        decoration: BoxDecoration(
+          // Messenger 风格通常是透明背景搭配细边框，或者仅斜体文字
+          borderRadius: BorderRadius.circular(20.r),
+          border: Border.all(color: Colors.grey.withOpacity(0.3), width: 1),
+        ),
+        child: Text(
+          message.isMe
+              ? "You unsent a message"
+              : "${message.senderName ?? 'Someone'} unsent a message",
+          style: TextStyle(
+            fontSize: 12.sp,
+            color: Colors.grey[500],
+            fontStyle: FontStyle.italic, // 斜体是 Messenger 的标志性设计
+          ),
+        ),
+      ),
+    );
+  }
+
   //  内容工厂：根据 type 分发
-  Widget _buildContentFactory(BuildContext context, bool isMe) {
+  Widget _buildContentFactory(BuildContext context, WidgetRef ref, bool isMe) {
+    Widget content;
     switch (message.type) {
       case MessageType.image:
-        return _buildImageBubble(context, isMe);
+        content = _buildImageBubble(context, isMe);
+        break;
       case MessageType.text:
       default:
-        return _buildTextBubble(context, isMe);
+        content = _buildTextBubble(context, isMe);
+        break;
     }
+
+    return GestureDetector(
+      onLongPress: () => _showContextMenu(context, ref, isMe),
+      child: content,
+    );
   }
 
   // =======================================================
@@ -256,7 +359,6 @@ class ChatBubble extends StatelessWidget {
     );
   }
 
-
   //  本地图片构建器 (修复版：自动纠错)
   Widget _buildLocalImage({
     required BuildContext context,
@@ -315,12 +417,11 @@ class ChatBubble extends StatelessWidget {
           context,
           PageRouteBuilder(
             opaque: false,
-            pageBuilder: (_, __, ___) =>
-                PhotoPreviewPage(
-                    heroTag: message.id,
-                    imageSource: finalSource,
-                    thumbnailSource: finalSource
-                ),
+            pageBuilder: (_, __, ___) => PhotoPreviewPage(
+              heroTag: message.id,
+              imageSource: finalSource,
+              thumbnailSource: finalSource,
+            ),
             transitionsBuilder: (_, animation, __, child) =>
                 FadeTransition(opacity: animation, child: child),
           ),

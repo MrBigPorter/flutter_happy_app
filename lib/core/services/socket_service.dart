@@ -32,6 +32,10 @@ mixin SocketChatMixin on _SocketBase {
   final _readStatusController = StreamController<SocketReadEvent>.broadcast();
   Stream<SocketReadEvent> get readStatusStream => _readStatusController.stream;
 
+  // 新增：recall 事件流
+  final _recallEventController = StreamController<SocketRecallEvent>.broadcast();
+  Stream<SocketRecallEvent> get recallEventStream => _recallEventController.stream;
+
   // 监听聊天相关事件
   void _setupChatListeners(IO.Socket socket) {
     // 监听聊天消息
@@ -72,6 +76,22 @@ mixin SocketChatMixin on _SocketBase {
         return;
       }
     });
+
+    // 监听消息撤回事件
+    socket.on(SocketEvents.messageRecall, (data){
+      print("🔵 [Socket] 收到消息撤回事件: $data");
+      if(data == null) return;
+      try{
+        final event = SocketRecallEvent.fromJson(Map<String, dynamic>.from(data));
+        if(!_recallEventController.isClosed){
+          _recallEventController.add(event);
+        }
+      }catch(e){
+        debugPrint("[Socket] 解析消息撤回事件失败，跳过: $e");
+        return;
+      }
+    });
+
   }
 
   Future<AckResponse> sendMessage({

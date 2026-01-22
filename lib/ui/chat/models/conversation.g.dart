@@ -72,6 +72,7 @@ ChatMessage _$ChatMessageFromJson(Map<String, dynamic> json) =>
         type: $checkedConvert('type', (v) => (v as num).toInt()),
         content: $checkedConvert('content', (v) => v as String),
         createdAt: $checkedConvert('createdAt', (v) => (v as num).toInt()),
+        isRecalled: $checkedConvert('isRecalled', (v) => v as bool? ?? false),
         sender: $checkedConvert(
           'sender',
           (v) =>
@@ -91,6 +92,7 @@ Map<String, dynamic> _$ChatMessageToJson(ChatMessage instance) =>
       'createdAt': instance.createdAt,
       'sender': instance.sender,
       'seqId': instance.seqId,
+      'isRecalled': instance.isRecalled,
       'isSelf': instance.isSelf,
     };
 
@@ -303,3 +305,85 @@ Map<String, dynamic> _$SocketReadEventToJson(SocketReadEvent instance) =>
       'readerId': instance.readerId,
       'lastReadSeqId': instance.lastReadSeqId,
     };
+
+MessageRecallRequest _$MessageRecallRequestFromJson(
+  Map<String, dynamic> json,
+) => $checkedCreate('MessageRecallRequest', json, ($checkedConvert) {
+  final val = MessageRecallRequest(
+    conversationId: $checkedConvert('conversationId', (v) => v as String),
+    messageId: $checkedConvert('messageId', (v) => v as String),
+  );
+  return val;
+});
+
+Map<String, dynamic> _$MessageRecallRequestToJson(
+  MessageRecallRequest instance,
+) => <String, dynamic>{
+  'conversationId': instance.conversationId,
+  'messageId': instance.messageId,
+};
+
+MessageRecallResponse _$MessageRecallResponseFromJson(
+  Map<String, dynamic> json,
+) => $checkedCreate('MessageRecallResponse', json, ($checkedConvert) {
+  final val = MessageRecallResponse(
+    messageId: $checkedConvert('messageId', (v) => v as String),
+    tip: $checkedConvert('tip', (v) => v as String),
+  );
+  return val;
+});
+
+Map<String, dynamic> _$MessageRecallResponseToJson(
+  MessageRecallResponse instance,
+) => <String, dynamic>{'messageId': instance.messageId, 'tip': instance.tip};
+
+SocketRecallEvent _$SocketRecallEventFromJson(Map<String, dynamic> json) =>
+    $checkedCreate('SocketRecallEvent', json, ($checkedConvert) {
+      final val = SocketRecallEvent(
+        conversationId: $checkedConvert('conversationId', (v) => v as String),
+        messageId: $checkedConvert('messageId', (v) => v as String),
+        tip: $checkedConvert('tip', (v) => v as String),
+        operatorId: $checkedConvert('operatorId', (v) => v as String),
+        seqId: $checkedConvert('seqId', (v) => (v as num?)?.toInt()),
+      );
+      return val;
+    });
+
+Map<String, dynamic> _$SocketRecallEventToJson(SocketRecallEvent instance) =>
+    <String, dynamic>{
+      'conversationId': instance.conversationId,
+      'messageId': instance.messageId,
+      'tip': instance.tip,
+      'operatorId': instance.operatorId,
+      'seqId': instance.seqId,
+    };
+
+MessageDeleteRequest _$MessageDeleteRequestFromJson(
+  Map<String, dynamic> json,
+) => $checkedCreate('MessageDeleteRequest', json, ($checkedConvert) {
+  final val = MessageDeleteRequest(
+    messageId: $checkedConvert('messageId', (v) => v as String),
+    conversationId: $checkedConvert('conversationId', (v) => v as String),
+  );
+  return val;
+});
+
+Map<String, dynamic> _$MessageDeleteRequestToJson(
+  MessageDeleteRequest instance,
+) => <String, dynamic>{
+  'messageId': instance.messageId,
+  'conversationId': instance.conversationId,
+};
+
+MessageDeleteResponse _$MessageDeleteResponseFromJson(
+  Map<String, dynamic> json,
+) => $checkedCreate('MessageDeleteResponse', json, ($checkedConvert) {
+  final val = MessageDeleteResponse(
+    messageId: $checkedConvert('messageId', (v) => v as String),
+  );
+  return val;
+});
+
+Map<String, dynamic> _$MessageDeleteResponseToJson(
+  MessageDeleteResponse instance,
+) => <String, dynamic>{'messageId': instance.messageId};

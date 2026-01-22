@@ -564,6 +564,18 @@ class Api {
     return MessageMarkReadResponse.fromJson(res);
   }
 
+  // 撤回消息
+  static Future<MessageRecallResponse> messageRecallApi(MessageRecallRequest data) async {
+    final res = await Http.post('/api/v1/chat/message/recall', data: data.toJson());
+    return MessageRecallResponse.fromJson(res);
+  }
+
+  // 删除消息
+  static Future<MessageDeleteResponse> messageDeleteApi(MessageDeleteRequest data) async {
+    final res = await Http.delete('/api/v1/chat/message/delete', data: data.toJson());
+    return MessageDeleteResponse.fromJson(res);
+  }
+
   // 6. 用户搜索
   static Future<List<ChatSender>> chatUsersSearchApi(String keyword) async {
     final res = await Http.get(

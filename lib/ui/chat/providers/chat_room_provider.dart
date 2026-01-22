@@ -30,6 +30,7 @@ class ChatRoomNotifier extends StateNotifier<AsyncValue<List<ChatUiModel>>> {
   StreamSubscription? _msgSub;
   StreamSubscription? _readStatusSub;
   StreamSubscription? _connectionSub;
+  StreamSubscription? _recallSub;
 
   // Rx Pipeline
   final _readReceiptSubject = PublishSubject<void>();
@@ -88,6 +89,11 @@ class ChatRoomNotifier extends StateNotifier<AsyncValue<List<ChatUiModel>>> {
     _readStatusSub = _socketService.readStatusStream.listen(
       _onReadStatusUpdate,
     );
+
+    _recallSub = _socketService.recallEventStream.listen(
+      _onMessageRecalled,
+    );
+
   }
 
   void _joinRoom() {
@@ -173,6 +179,7 @@ class ChatRoomNotifier extends StateNotifier<AsyncValue<List<ChatUiModel>>> {
       isMe: true,
       status: MessageStatus.sending,
       createdAt: now,
+        conversationId: conversationId,
     );
 
     _updateState((list) => [tempMsg, ...list]);
@@ -235,6 +242,7 @@ class ChatRoomNotifier extends StateNotifier<AsyncValue<List<ChatUiModel>>> {
       createdAt: now,
       //  这里把刚才判定好的路径传进去 (Web是Blob, 手机是文件路径)
       localPath: finalLocalPath,
+        conversationId: conversationId,
     );
 
     _updateState((list) => [tempMsg, ...list]);
@@ -319,6 +327,7 @@ class ChatRoomNotifier extends StateNotifier<AsyncValue<List<ChatUiModel>>> {
           createdAt: sentMsg.createdAt,
           //  确保带上 localPath
           localPath: finalLocalPath,
+            conversationId: conversationId,
         );
 
         List<ChatUiModel> rawList;
@@ -384,10 +393,73 @@ class ChatRoomNotifier extends StateNotifier<AsyncValue<List<ChatUiModel>>> {
     });
   }
 
+  //  Message Recall Logic
+  Future<void> recallMessage(String messageId) async {
+    try{
+      // 1. Call recall API
+    final response = await Api.messageRecallApi(
+        MessageRecallRequest(
+          conversationId: conversationId,
+          messageId: messageId,
+        ),
+      );
+      // 2. 更新本地状态 (内存优化)
+      // 商业级做法：不是简单删除消息，而是将该消息的内容和类型替换为“系统撤回提示”
+      _updateState((list) {
+        return list.map((msg) {
+          if (msg.id == messageId) {
+            return msg.copyWith(
+              content: response.tip,
+              type: MessageType.text,
+              status: MessageStatus.success,
+              isRecalled: true, // 建议在模型中增加这个字段
+            );
+          }
+          return msg;
+        }).toList();
+      });
+      _updateConversationList("[message recalled]", DateTime.now().millisecondsSinceEpoch);
+    }catch(e){
+      // 3. 错误处理：如果撤回失败（比如超过2分钟，后端会报错）
+      debugPrint("撤回失败: $e");
+    }
+  }
+
+  Future<void> deleteMessage(String messageId) async {
+    // get current message for failback
+    final previousState = state;
+    try {
+      // 从本地状态中移除该消息
+      _updateState((list) => list.where((msg) => msg.id != messageId).toList());
+      // 调用删除 API
+      await Api.messageDeleteApi(
+        MessageDeleteRequest(
+          messageId: messageId,
+          conversationId: conversationId,
+        ),
+      );
+
+      // 4. 特殊情况：如果你删除的是最后一条消息，需要更新会话列表的预览
+      state.whenData((list) {
+        if (list.isNotEmpty) {
+          final lastMsg = list.first; // 列表是倒序的，first 就是最新的一条
+          _updateConversationList(lastMsg.content, lastMsg.createdAt);
+        } else {
+          _updateConversationList("No messages", DateTime.now().millisecondsSinceEpoch);
+        }
+      });
+    } catch (e) {
+       debugPrint("删除消息失败: $e");
+      // 如果后端报错（比如网络断了），可以选择回滚 UI，或者提示用户
+       state = previousState;
+    }
+  }
+
   // ===========================================================================
   // 4. Receiving & Events
   // ===========================================================================
 
+  //  Socket 消息处理
   void _onSocketMessage(Map<String, dynamic> data) {
     if (!mounted) return;
     try {
@@ -443,6 +515,7 @@ class ChatRoomNotifier extends StateNotifier<AsyncValue<List<ChatUiModel>>> {
         createdAt: msg.createdAt,
         senderName: msg.sender?.nickname,
         senderAvatar: msg.sender?.avatar,
+        conversationId: conversationId,
       );
 
       state.whenData((currentList) {
@@ -457,6 +530,7 @@ class ChatRoomNotifier extends StateNotifier<AsyncValue<List<ChatUiModel>>> {
     }
   }
 
+  //  读取状态更新处理
   void _onReadStatusUpdate(SocketReadEvent event) {
     if (!mounted) return;
     if (event.conversationId != conversationId) return;
@@ -468,6 +542,31 @@ class ChatRoomNotifier extends StateNotifier<AsyncValue<List<ChatUiModel>>> {
     state.whenData((list) {
       state = AsyncValue.data(_applyReadStatusStrategy(list, _maxReadSeqId));
     });
+  }
+
+  //  消息撤回处理
+  void _onMessageRecalled(SocketRecallEvent event) {
+    if (!mounted) return;
+    if (event.conversationId != conversationId) return;
+    final currentUserId = _ref.read(luckyProvider).userInfo?.id ?? "";
+    final bool isMe = event.operatorId == currentUserId;
+    final tip = isMe ? "You unsent a message" : "This message was unsent";
+    _updateState((list) {
+      return list.map((msg) {
+        if (msg.id == event.messageId) {
+          return msg.copyWith(
+            content: tip,
+            type: MessageType.text,
+            status: MessageStatus.success,
+            isRecalled: true,
+            localPath: null
+          );
+        }
+        return msg;
+      }).toList();
+    });
+    // 更新会话列表预览
+    _updateConversationList(tip, DateTime.now().millisecondsSinceEpoch);
   }
 
   // ===========================================================================
@@ -538,6 +637,7 @@ class ChatRoomNotifier extends StateNotifier<AsyncValue<List<ChatUiModel>>> {
     _msgSub?.cancel();
     _readStatusSub?.cancel();
     _connectionSub?.cancel();
+    _recallSub?.cancel();
 
     if (_hasPendingRead) {
       Api.messageMarkAsReadApi(

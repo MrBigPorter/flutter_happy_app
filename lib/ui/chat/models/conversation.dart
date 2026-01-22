@@ -90,6 +90,7 @@ class ChatMessage {
   final int createdAt;
   final ChatSender? sender;
   final int? seqId;
+  final bool isRecalled;
 
   // 接收后端的 isSelf 字段
   @JsonKey(defaultValue: false)
@@ -100,6 +101,7 @@ class ChatMessage {
     required this.type,
     required this.content,
     required this.createdAt,
+    this.isRecalled = false,
     this.sender,
     this.isSelf = false,
     this.seqId,
@@ -341,4 +343,81 @@ class SocketReadEvent {
 
   factory SocketReadEvent.fromJson(Map<String, dynamic> json) =>
       _$SocketReadEventFromJson(json);
+}
+
+
+@JsonSerializable(checked: true)
+class MessageRecallRequest {
+  final String conversationId;
+  final String messageId;
+
+  MessageRecallRequest({
+    required this.conversationId,
+    required this.messageId,
+  });
+
+  Map<String, dynamic> toJson() => _$MessageRecallRequestToJson(this);
+}
+
+
+@JsonSerializable(checked: true)
+class MessageRecallResponse {
+  final String messageId;
+  final String tip;
+  MessageRecallResponse({
+    required this.messageId,
+    required this.tip,
+  });
+  factory MessageRecallResponse.fromJson(Map<String, dynamic> json) =>
+      _$MessageRecallResponseFromJson(json);
+  Map<String, dynamic> toJson() => _$MessageRecallResponseToJson(this);
+  @override
+  String toString() => toJson().toString();
+}
+
+
+@JsonSerializable(checked: true)
+class SocketRecallEvent {
+  final String conversationId;
+  final String messageId;
+  final String tip;
+  final String operatorId;
+  final int? seqId;
+
+  SocketRecallEvent({
+    required this.conversationId,
+    required this.messageId,
+    required this.tip,
+    required this.operatorId,
+    this.seqId,
+  });
+  factory SocketRecallEvent.fromJson(Map<String, dynamic> json) =>
+      _$SocketRecallEventFromJson(json);
+}
+
+
+@JsonSerializable(checked: true)
+class MessageDeleteRequest {
+  final String messageId;
+  final String conversationId;
+
+  MessageDeleteRequest({
+    required this.messageId,
+    required this.conversationId,
+  });
+
+  Map<String, dynamic> toJson() => _$MessageDeleteRequestToJson(this);
+}
+
+@JsonSerializable(checked: true)
+class MessageDeleteResponse {
+  final String messageId;
+  MessageDeleteResponse({
+    required this.messageId,
+  });
+  factory MessageDeleteResponse.fromJson(Map<String, dynamic> json) =>
+      _$MessageDeleteResponseFromJson(json);
+  Map<String, dynamic> toJson() => _$MessageDeleteResponseToJson(this);
+  @override
+  String toString() => toJson().toString();
 }
