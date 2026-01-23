@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../../core/providers/socket_provider.dart';
 import '../../../core/store/lucky_store.dart';
+import '../models/chat_ui_model.dart';
 import '../models/conversation.dart';
 
 part 'conversation_provider.g.dart';
@@ -44,7 +45,10 @@ class ConversationListNotifier extends StateNotifier<List<Conversation>> {
     // 如果页面已经销毁，直接停止，不要去碰 state
     if (!mounted) return;
     final convId = msg.conversationId;
-    final myUserId = _ref.read(luckyProvider).userInfo?.id ?? "";
+    //  修改处：原本是 final myUserId = _ref.read(luckyProvider).userInfo?.id ?? "";
+    //  修复方案：先获取 Store 实例，再安全读取 ID，避免 JS 互操作时的类型混淆
+    final luckyStore = _ref.read(luckyProvider);
+    final myUserId = luckyStore.userInfo?.id ?? "";
     final senderId = msg.sender?.id ?? "";
     final bool isMe = senderId.isNotEmpty && (senderId == myUserId);
     String content = _getPreviewContent(msg.type, msg.content);
@@ -58,7 +62,7 @@ class ConversationListNotifier extends StateNotifier<List<Conversation>> {
       // A. 已存在：更新摘要 + 移到顶部 + 未读数+1
       final oldConv = state[index];
       // 自己发的消息不算未读，别人的才需要加
-      final newUnreadCount = isMe ? oldConv.unreadCount : oldConv.unreadCount + 1;
+      final newUnreadCount = isMe ? 0 : oldConv.unreadCount + 1;
       // 构造新的 Conversation 对象
       final newConv = oldConv.copyWith(
         lastMsgContent: content,
@@ -76,43 +80,25 @@ class ConversationListNotifier extends StateNotifier<List<Conversation>> {
     }
   }
 
+  // conversation_provider.dart
   String _getPreviewContent(dynamic type, String rawContent) {
-    // Convert to string to handle both int (0, 1) and string ('text', 'image') types
-    final t = type.toString();
+    // 统一转为枚举处理
+    final int typeInt = int.tryParse(type.toString()) ?? 0;
+    final messageType = MessageType.fromValue(typeInt);
 
-    switch (t) {
-      case '1':
-      case 'text':
-        return rawContent; // Show actual text
-
-      case '2':
-      case 'image':
-        return '[Image]';
-
-      case '3':
-      case 'audio':
-      case 'voice':
-        return '[Voice]';
-
-      case '3':
-      case 'video':
-        return '[Video]';
-
-      case '4':
-      case 'file':
-        return '[File]';
-
-      case 'location':
-        return '[Location]';
-
-      case 'recalled':
-      case '99': // Assuming 99 is recall
-        return '[Message recalled]';
-
-      case 'system':
-      case '100':
+    switch (messageType) {
+      case MessageType.text:
         return rawContent;
-
+      case MessageType.image:
+        return '[Image]';
+      case MessageType.audio:
+        return '[Voice]';
+      case MessageType.video:
+        return '[Video]';
+      case MessageType.recalled:
+        return '[Message recalled]';
+      case MessageType.system:
+        return rawContent;
       default:
         return '[Unsupported message]';
     }
@@ -134,6 +120,7 @@ class ConversationListNotifier extends StateNotifier<List<Conversation>> {
       final newConv = oldConv.copyWith(
         lastMsgContent: lastMsgContent,
         lastMsgTime: lastMsgTime,
+        unreadCount: 0, //  核心修复：自己发送消息，未读数强制清零
       );
       // 3. 移动到顶部
       final newState = [...state];

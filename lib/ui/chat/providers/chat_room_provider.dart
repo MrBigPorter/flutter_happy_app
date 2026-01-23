@@ -84,6 +84,15 @@ class ChatRoomController {
 
   String get _currentUserId => _ref.read(luckyProvider).userInfo?.id ?? "";
 
+  //  核心补充：静态内存缓存，用于存储消息 ID 与本地路径的映射
+  // 仅在当前 App 运行期间有效，刷新页面即清空
+  static final Map<String, String> _sessionPathCache = {};
+
+  //  核心补充：公开静态方法供 UI 调用
+  static String? getPathFromCache(String msgId) {
+    return _sessionPathCache[msgId];
+  }
+
   ChatRoomController(
       this._socketService,
       this._uploadService,
@@ -283,6 +292,8 @@ class ChatRoomController {
     _executeImageSend(tempId, fileToUpload);
   }
 
+
+
   Future<void> _executeImageSend(String tempId, XFile file) async {
     try {
       final cdnUrl = await _uploadService.uploadFile(
@@ -312,6 +323,13 @@ class ChatRoomController {
         String? localPath,
       }) async {
     try {
+
+      // 1. 发送前，先存入内存缓存
+      if (localPath != null) {
+        _sessionPathCache[tempId] = localPath;
+      }
+
+      // 发送消息 API 调用
       final sentMsg = await Api.sendMessage(
         conversationId,
         content,
@@ -321,11 +339,20 @@ class ChatRoomController {
 
 
       // 2. 存入正式消息 (用 Real ID)
+      // 核心优化：如果是 Web 端或者是网络图，我们把 content (CDN URL) 直接同步给 localPath
+      // 这样下次刷新页面，Image.network(localPath) 依然能拿到图，而不是失效的 blob
       final successMsg = ChatUiModel.fromApiModel(sentMsg).copyWith(
-        localPath: localPath, // 保持本地路径
+        // Mobile 端可以继续存 localPath (文件是永久的)
+        // Web 端则存 null (因为 blob 刷新即失效，我们不把它存入 Sembast)
+        localPath: kIsWeb ? null : localPath,
         conversationId: conversationId,
         status: MessageStatus.success,
       );
+
+      // 3. 把内存缓存迁移到新 ID 下
+      if (localPath != null) {
+        _sessionPathCache[successMsg.id] = localPath;
+      }
 
 
       //  [新代码] 使用事务原子替换

@@ -11,10 +11,11 @@ enum MessageStatus {
 }
 
 enum MessageType {
-  @JsonValue(1) text(1),
-  @JsonValue(2) image(2),
-  @JsonValue(3) audio(3),
-  @JsonValue(4) video(4),
+  @JsonValue(0) text(0),     // 👈 改为 0
+  @JsonValue(1) image(1),    // 👈 改为 1
+  @JsonValue(2) audio(2),    // 👈 改为 2
+  @JsonValue(3) video(3),    // 👈 改为 3
+  @JsonValue(4) recalled(4), // 👈 新增撤回类型，对应后端 4
   @JsonValue(99) system(99);
 
   final int value;

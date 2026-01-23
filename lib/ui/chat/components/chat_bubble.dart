@@ -190,6 +190,7 @@ class ChatBubble extends ConsumerWidget {
   //  内容工厂：根据 type 分发
   Widget _buildContentFactory(BuildContext context, WidgetRef ref, bool isMe) {
     Widget content;
+
     switch (message.type) {
       case MessageType.image:
         content = _buildImageBubble(context, isMe);
@@ -266,8 +267,12 @@ class ChatBubble extends ConsumerWidget {
     final double dpr = MediaQuery.of(context).devicePixelRatio;
     final int cacheW = (bubbleSize * dpr).toInt();
 
-    final bool canTryLocal =
-        message.localPath != null && message.localPath!.isNotEmpty;
+    // 1.  关键：优先从内存缓存中查找路径
+    final String? sessionPath = ChatRoomController.getPathFromCache(message.id);
+    // 2. 优先级排序：内存路径 (Session) > 数据库路径 (LocalPath) > 远程 URL (Content)
+    final String? activeLocalPath = sessionPath ?? message.localPath;
+    final bool canTryLocal = activeLocalPath != null && activeLocalPath.isNotEmpty;
+
 
     final timeStr = DateFormat(
       'HH:mm',
@@ -306,7 +311,7 @@ class ChatBubble extends ConsumerWidget {
             if (canTryLocal)
               _buildLocalImage(
                 context: context,
-                path: message.localPath!,
+                path: activeLocalPath,
                 width: bubbleSize,
                 height: bubbleSize,
                 cacheW: cacheW,
