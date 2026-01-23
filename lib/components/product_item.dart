@@ -130,7 +130,7 @@ class ProductItem extends StatelessWidget {
                 Padding(
                   padding: EdgeInsets.symmetric(vertical: 4.w),
                   child: Text(
-                    'common.sold.upperCase'.tr(namedArgs: {'number': ?rate?.toStringAsFixed(0)}),
+                    'common.sold.upperCase'.tr(namedArgs: {'number': (rate ?? 0).toStringAsFixed(0)}),
                     style: TextStyle(fontSize: 10.w, color: context.textPrimary900),
                   ),
                 ),
