@@ -6,7 +6,8 @@ import 'package:sembast/sembast.dart';
 import 'package:sembast/sembast_io.dart'; // 手机端
 import 'package:sembast_web/sembast_web.dart';
 
-import '../models/chat_ui_model.dart'; // Web 端
+import '../../models/chat_ui_model.dart';
+
 
 
 class LocalDatabaseService {
@@ -56,12 +57,38 @@ class LocalDatabaseService {
 
   //  批量保存 (性能优化版，适合初次加载历史记录)
   Future<void> saveMessages(List<ChatUiModel> msgs) async {
-    // 【埋点侦测】看看存进去的第一条数据，conversationId 到底是不是空的？
-    debugPrint("📦 [存库检查] 正在存入 ${msgs.length} 条。ID: ${msgs.first.conversationId}");
+    if (msgs.isEmpty) return;
+
+    debugPrint("📦 [存库检查] 正在存入 ${msgs.length} 条。conv=${msgs.first.conversationId}");
+
     final db = await database;
     await db.transaction((txn) async {
-      for (var msg in msgs) {
-        await _messageStore.record(msg.id).put(txn, msg.toJson());
+      for (final msg in msgs) {
+        try {
+          // 关键：先验证主键
+          if (msg.id.trim().isEmpty) {
+            debugPrint("❌ [存库] 空 msg.id，跳过：${msg.toString()}");
+            continue;
+          }
+
+          // 关键：先转 json（这里最容易炸）
+          final json = msg.toJson();
+
+          // 可选：再校验关键字段是否存在
+          if (json['conversationId'] == null) {
+            debugPrint("❌ [存库] conversationId 为 null：id=${msg.id} json=$json");
+          }
+          if (json['createdAt'] == null) {
+            debugPrint("❌ [存库] createdAt 为 null：id=${msg.id} json=$json");
+          }
+
+          await _messageStore.record(msg.id).put(txn, json);
+        } catch (e, st) {
+          debugPrint("❌ [存库炸了] id=${msg.id} conv=${msg.conversationId} err=$e");
+          debugPrint("❌ msg=$msg");
+          // 如果你想更狠：把 msg.toJson() 也单独 try 一下看哪一步炸
+          rethrow;
+        }
       }
     });
   }

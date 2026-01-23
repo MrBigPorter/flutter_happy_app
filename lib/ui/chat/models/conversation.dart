@@ -91,6 +91,7 @@ class ChatMessage {
   final ChatSender? sender;
   final int? seqId;
   final bool isRecalled;
+  final int? duration;
 
   // 接收后端的 isSelf 字段
   @JsonKey(defaultValue: false)
@@ -105,6 +106,7 @@ class ChatMessage {
     this.sender,
     this.isSelf = false,
     this.seqId,
+    this.duration,
   });
 
   factory ChatMessage.fromJson(Map<String, dynamic> json) => _$ChatMessageFromJson(json);

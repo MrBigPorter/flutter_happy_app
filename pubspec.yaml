@@ -127,6 +127,8 @@ dependencies:
 
   sembast: ^3.7.1
   sembast_web: ^2.3.0 # Web 端专用支持
+  record: ^6.1.2
+  just_audio: ^0.10.5
 
 
 dev_dependencies:

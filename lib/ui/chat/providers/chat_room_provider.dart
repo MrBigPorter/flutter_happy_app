@@ -16,8 +16,8 @@ import 'package:flutter_app/ui/chat/models/chat_ui_model.dart';
 import 'package:flutter_app/core/store/lucky_store.dart';
 
 import '../../../utils/upload/global_upload_service.dart';
-import '../database/local_database_service.dart';
 import '../models/conversation.dart';
+import '../services/database/local_database_service.dart';
 import 'conversation_provider.dart';
 import 'package:path/path.dart' as p;
 
@@ -249,6 +249,9 @@ class ChatRoomController {
   }
 
 
+  // ===========================================================================
+  //  Sending Image Logic
+  // ===========================================================================
   Future<void> sendImage(XFile file) async {
     String finalLocalPath;
     XFile fileToUpload;
@@ -292,6 +295,30 @@ class ChatRoomController {
     _executeImageSend(tempId, fileToUpload);
   }
 
+  Future<void> sendVoiceMessage(String path, int duration) async {
+    final tempId = const Uuid().v4();
+    final now = DateTime.now().millisecondsSinceEpoch;
+
+    final tempMsg = ChatUiModel(
+      id: tempId,
+      content: "[Voice]",
+      type: MessageType.audio,
+      isMe: true,
+      status: MessageStatus.sending,
+      createdAt: now,
+      localPath: path, // 本地路径用于回显
+      duration: duration, // 录音时长
+      conversationId: conversationId,
+    );
+
+    // 存库
+    await LocalDatabaseService().saveMessage(tempMsg);
+    _updateConversationList("[Voice]", now);
+
+    _executeVoiceSend(tempId, path, duration);
+  }
+
+
 
 
   Future<void> _executeImageSend(String tempId, XFile file) async {
@@ -312,6 +339,45 @@ class ChatRoomController {
     } catch (e) {
       debugPrint(" Send Image Failed: $e");
       //  失败：更新数据库状态
+      _updateMessageStatus(tempId, MessageStatus.failed);
+    }
+  }
+
+  Future<void> _executeVoiceSend(String tempId, String localPath, int duration) async {
+    try {
+      // 1. 上传音频文件
+      // 注意：Web 端 localPath 是 blob:，Mobile 端是文件路径
+      final cdnUrl = await _uploadService.uploadFile(
+        file: XFile(localPath),
+        module: UploadModule.chat,
+        onProgress: (_) {},
+      );
+
+      // 2. 调用发送消息 API
+      // 假设后端支持传入 duration 参数
+      final sentMsg = await Api.sendMessage(
+        conversationId,
+        cdnUrl,
+        MessageType.audio.value,
+        tempId,
+        // 可以在此处扩展 API 参数以包含 duration
+        // duration: duration,
+      );
+
+      // 3. 构造成功模型并保持本地路径 (防止播放中断)
+      final successMsg = ChatUiModel.fromApiModel(sentMsg, _currentUserId).copyWith(
+        conversationId: conversationId,
+        status: MessageStatus.success,
+        localPath: kIsWeb ? null : localPath, // Web 端不持久化 blob
+        duration: duration,
+      );
+
+      // 4. 原子替换：TempID -> RealID
+      await LocalDatabaseService().replaceMessage(tempId, successMsg);
+
+    } catch (e) {
+      debugPrint("❌ Voice Send Failed: $e");
+      // 失败处理：更新状态为 failed
       _updateMessageStatus(tempId, MessageStatus.failed);
     }
   }
@@ -341,7 +407,7 @@ class ChatRoomController {
       // 2. 存入正式消息 (用 Real ID)
       // 核心优化：如果是 Web 端或者是网络图，我们把 content (CDN URL) 直接同步给 localPath
       // 这样下次刷新页面，Image.network(localPath) 依然能拿到图，而不是失效的 blob
-      final successMsg = ChatUiModel.fromApiModel(sentMsg).copyWith(
+      final successMsg = ChatUiModel.fromApiModel(sentMsg,conversationId).copyWith(
         // Mobile 端可以继续存 localPath (文件是永久的)
         // Web 端则存 null (因为 blob 刷新即失效，我们不把它存入 Sembast)
         localPath: kIsWeb ? null : localPath,
@@ -473,7 +539,7 @@ class ChatRoomController {
         seqId: msg.seqId,
         createdAt: msg.createdAt,
         isSelf: isMe,
-      )).copyWith(
+      ),conversationId).copyWith(
         conversationId: conversationId,
         // 这里可以尝试保留本地已有的 localPath (如果是自己发的)
       );
@@ -541,10 +607,7 @@ class ChatRoomController {
 
   List<ChatUiModel> _mapToUiModels(List<dynamic> dtoList) {
     return dtoList.map((dto) {
-      final uiMsg = ChatUiModel.fromApiModel(dto,_currentUserId);
-      return uiMsg.copyWith(
-        conversationId: conversationId,
-      );
+      return ChatUiModel.fromApiModel(dto, conversationId, _currentUserId);
     }).toList();
   }
 }

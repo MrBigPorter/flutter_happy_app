@@ -80,6 +80,7 @@ ChatMessage _$ChatMessageFromJson(Map<String, dynamic> json) =>
         ),
         isSelf: $checkedConvert('isSelf', (v) => v as bool? ?? false),
         seqId: $checkedConvert('seqId', (v) => (v as num?)?.toInt()),
+        duration: $checkedConvert('duration', (v) => (v as num?)?.toInt()),
       );
       return val;
     });
@@ -93,6 +94,7 @@ Map<String, dynamic> _$ChatMessageToJson(ChatMessage instance) =>
       'sender': instance.sender,
       'seqId': instance.seqId,
       'isRecalled': instance.isRecalled,
+      'duration': instance.duration,
       'isSelf': instance.isSelf,
     };
 

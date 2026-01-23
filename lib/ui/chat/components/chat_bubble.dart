@@ -4,6 +4,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_app/ui/chat/components/voice_bubble.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:intl/intl.dart';
@@ -52,7 +53,8 @@ class ChatBubble extends ConsumerWidget {
                 Navigator.pop(context);
                 //  核心：调用 Notifier 执行撤回
                 ref
-                    .read(chatControllerProvider(message.conversationId)).recallMessage(message.id);
+                    .read(chatControllerProvider(message.conversationId))
+                    .recallMessage(message.id);
               },
               child: const Text("Unsend for Everyone"),
             ),
@@ -64,7 +66,8 @@ class ChatBubble extends ConsumerWidget {
               Navigator.pop(context);
               // 本地删除，调用 Notifier 移除该消息
               ref
-                  .read(chatControllerProvider(message.conversationId)).deleteMessage(message.id);
+                  .read(chatControllerProvider(message.conversationId))
+                  .deleteMessage(message.id);
             },
             child: const Text("Remove for You"),
           ),
@@ -195,6 +198,8 @@ class ChatBubble extends ConsumerWidget {
       case MessageType.image:
         content = _buildImageBubble(context, isMe);
         break;
+      case MessageType.audio:
+        content = VoiceBubble(message: message, isMe: isMe);
       case MessageType.text:
       default:
         content = _buildTextBubble(context, isMe);
@@ -271,8 +276,8 @@ class ChatBubble extends ConsumerWidget {
     final String? sessionPath = ChatRoomController.getPathFromCache(message.id);
     // 2. 优先级排序：内存路径 (Session) > 数据库路径 (LocalPath) > 远程 URL (Content)
     final String? activeLocalPath = sessionPath ?? message.localPath;
-    final bool canTryLocal = activeLocalPath != null && activeLocalPath.isNotEmpty;
-
+    final bool canTryLocal =
+        activeLocalPath != null && activeLocalPath.isNotEmpty;
 
     final timeStr = DateFormat(
       'HH:mm',

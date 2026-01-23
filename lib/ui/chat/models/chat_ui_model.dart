@@ -47,6 +47,7 @@ class ChatUiModel {
   final double? width;
   final double? height;
   final bool isRecalled;
+  final int? duration;
 
   ChatUiModel({
     required this.id,
@@ -63,6 +64,7 @@ class ChatUiModel {
     this.localPath,
     this.width,
     this.height,
+    this.duration,
   });
 
   //  2. Sembast 读取数据时必须要用的方法
@@ -88,6 +90,7 @@ class ChatUiModel {
     double? height,
     bool? isRecalled,
     String? conversationId,
+    int? duration,
   }) {
     return ChatUiModel(
       id: id ?? this.id,
@@ -104,10 +107,11 @@ class ChatUiModel {
       height: height ?? this.height,
       isRecalled: isRecalled ?? this.isRecalled,
       conversationId: conversationId ?? this.conversationId,
+      duration: duration ?? this.duration,
     );
   }
 
-  factory ChatUiModel.fromApiModel(ChatMessage apiMsg, [String? myUserId]) {
+  factory ChatUiModel.fromApiModel(ChatMessage apiMsg,String conversationId, [String? myUserId]) {
     MessageType uiType = MessageType.fromValue(apiMsg.type);
     bool isRecalled = (uiType == MessageType.system) || (apiMsg.isRecalled);
     final String senderId = apiMsg.sender?.id?.toString() ?? "";
@@ -128,7 +132,8 @@ class ChatUiModel {
       senderAvatar: apiMsg.sender?.avatar,
       isRecalled: isRecalled,
       localPath: null,
-      conversationId: "",
+      conversationId: conversationId,
+      duration: apiMsg.duration,
     );
   }
 }
