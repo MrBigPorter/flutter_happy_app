@@ -77,6 +77,14 @@ class LocalDatabaseService {
       await _messageStore.record(newMsg.id).put(txn, newMsg.toJson());
     });
   }
+  Future<void> updateMessageStatus(String msgId, MessageStatus newStatus) async {
+
+    final db = await database;
+    //仅仅更新状态字段
+    await _messageStore.record(msgId).update(db, {
+      'status': newStatus.name,
+    });
+  }
 
   Future<void> doLocalRecall(String messageId, String tip) async {
     // 1. 先查出旧消息 (为了保留 createdAt, sender 等信息)

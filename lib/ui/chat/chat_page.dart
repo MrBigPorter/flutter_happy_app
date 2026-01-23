@@ -238,24 +238,21 @@ class _ChatPageState extends ConsumerState<ChatPage> {
       itemBuilder: (context, index) {
         // 1. 检查是否到底 (Visual Top)
         if (index == messages.length) {
-          final hasMore = ref
-              .read(chatControllerProvider(widget.conversationId)).hasMore;
+          // 1. 获取是否有更多
+          final controller = ref.read(chatControllerProvider(widget.conversationId));
+          final hasMore = controller.hasMore;
+          // 2. 监听是否正在加载 (关键！)
+          final isLoadingMore = ref.watch(chatLoadingMoreProvider(widget.conversationId));
           return Container(
             padding: const EdgeInsets.symmetric(vertical: 15),
             alignment: Alignment.center,
-            child: hasMore
+            // 只有当“有更多”且“正在加载”时，才显示 Spinner
+            child: (hasMore && isLoadingMore)
                 ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Colors.grey,
-                    ),
-                  )
-                : const Text(
-                    "—— No more history ——",
-                    style: TextStyle(color: Colors.grey, fontSize: 10),
-                  ),
+              width: 20, height: 20,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+                : (hasMore ? const SizedBox.shrink() : const Text("—— No more history ——")),
           );
         }
 

@@ -29,6 +29,9 @@ final chatStreamProvider = StreamProvider.family.autoDispose<List<ChatUiModel>, 
   return LocalDatabaseService().watchMessages(conversationId);
 });
 
+// 专门负责分页加载状态的提供者
+final chatLoadingMoreProvider = StateProvider.family<bool, String>((ref, id) => false);
+
 // ===========================================================================
 //  2. 写：业务控制器 (UI 调用这个)
 // ===========================================================================
@@ -183,6 +186,7 @@ class ChatRoomController {
   Future<void> loadMore() async {
     if (_nextCursor == null || _isLoadingMore) return;
     _isLoadingMore = true;
+    _ref.read(chatLoadingMoreProvider(conversationId).notifier).state = true;
 
     try {
       final request = MessageHistoryRequest(
@@ -203,6 +207,7 @@ class ChatRoomController {
       debugPrint("Load more failed: $e");
     } finally {
       _isLoadingMore = false;
+      _ref.read(chatLoadingMoreProvider(conversationId).notifier).state = false;
     }
   }
 
@@ -335,15 +340,7 @@ class ChatRoomController {
 
   // 辅助方法：只更新状态
   Future<void> _updateMessageStatus(String id, MessageStatus status) async {
-    // 简单粗暴：这里假设你要自己去 Service 里加个 updateStatus 方法
-    // 或者读出来改完再存回去
-    // 暂时演示读改存：
-    // final msgs = await LocalDatabaseService().getMessagesByConversation(conversationId);
-    // final target = msgs.firstWhere((e) => e.id == id);
-    // await LocalDatabaseService().saveMessage(target.copyWith(status: status));
-
-    // 由于我们没有直接提供 getById，这里作为 TODO 提醒
-    // 实际项目中建议给 LocalDatabaseService 加一个 getMessageById(id)
+    await LocalDatabaseService().updateMessageStatus(id, status);
   }
 
   // ===========================================================================
