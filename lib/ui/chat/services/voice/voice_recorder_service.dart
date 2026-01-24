@@ -43,7 +43,7 @@ class VoiceRecorderService {
       // 生成唯一文件名
       path = p.join(folder.path, '${const Uuid().v4()}.m4a');
     }
-    // 开始录音
+    // 核心：Web 端通常不需要 Config 指定 Encoder，它会自动选择浏览器支持的
     const config = RecordConfig(encoder: AudioEncoder.aacLc);
     // 返回录音文件路径
     await _audioRecorder.start(config,path: path);
