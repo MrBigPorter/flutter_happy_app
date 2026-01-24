@@ -59,8 +59,7 @@ class ModalSheetService {
     final allowBgClose = (config.allowBackgroundCloseOverride ?? policy.allowBackgroundClose) && clickBgToClose;
     final enableDrag = config.enableDragToClose ?? policy.enableDragToClose;
 
-    final barrierColor = Colors.transparent;
-    final visualBarrierColor = config.theme.barrierColor ?? theme.colorScheme.scrim.withValues(alpha: 0.45);
+    final _ = config.theme.barrierColor ?? theme.colorScheme.scrim.withValues(alpha: 0.45);
 
     try {
       _sheetFuture = showModalBottomSheet<T>(

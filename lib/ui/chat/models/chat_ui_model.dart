@@ -114,20 +114,20 @@ class ChatUiModel {
   factory ChatUiModel.fromApiModel(ChatMessage apiMsg,String conversationId, [String? myUserId]) {
     MessageType uiType = MessageType.fromValue(apiMsg.type);
     bool isRecalled = (uiType == MessageType.system) || (apiMsg.isRecalled);
-    final String senderId = apiMsg.sender?.id?.toString() ?? "";
-    final String currentId = myUserId?.toString() ?? "";
+    final String _ = apiMsg.sender?.id.toString() ?? "";
+    final String _ = myUserId?.toString() ?? "";
 
     //  完美逻辑：有 isSelf 用 isSelf，没有就比对 ID
-    bool isMe = apiMsg.isSelf ?? (senderId.isNotEmpty && senderId == currentId);
+    bool isMe = apiMsg.isSelf;
 
     return ChatUiModel(
       id: apiMsg.id.toString(),
       seqId: apiMsg.seqId,
-      content: apiMsg.content ?? "",
+      content: apiMsg.content,
       type: uiType,
       isMe: isMe,
       status: MessageStatus.success,
-      createdAt: apiMsg.createdAt ?? 0,
+      createdAt: apiMsg.createdAt,
       senderName: apiMsg.sender?.nickname,
       senderAvatar: apiMsg.sender?.avatar,
       isRecalled: isRecalled,

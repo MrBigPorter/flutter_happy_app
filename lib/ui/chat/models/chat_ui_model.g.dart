@@ -7,24 +7,23 @@ part of 'chat_ui_model.dart';
 // **************************************************************************
 
 ChatUiModel _$ChatUiModelFromJson(Map<String, dynamic> json) => ChatUiModel(
-  id: json['id'] as String,
-  content: json['content'] as String,
-  type: $enumDecode(_$MessageTypeEnumMap, json['type']),
-  isMe: json['isMe'] as bool,
-  status:
-      $enumDecodeNullable(_$MessageStatusEnumMap, json['status']) ??
-      MessageStatus.success,
-  createdAt: (json['createdAt'] as num).toInt(),
-  conversationId: json['conversationId'] as String,
-  isRecalled: json['isRecalled'] as bool? ?? false,
-  senderAvatar: json['senderAvatar'] as String?,
-  senderName: json['senderName'] as String?,
-  seqId: (json['seqId'] as num?)?.toInt(),
-  localPath: json['localPath'] as String?,
-  width: (json['width'] as num?)?.toDouble(),
-  height: (json['height'] as num?)?.toDouble(),
-  duration: (json['duration'] as num?)?.toInt(),
-);
+      id: json['id'] as String,
+      content: json['content'] as String,
+      type: $enumDecode(_$MessageTypeEnumMap, json['type']),
+      isMe: json['isMe'] as bool,
+      status: $enumDecodeNullable(_$MessageStatusEnumMap, json['status']) ??
+          MessageStatus.success,
+      createdAt: (json['createdAt'] as num).toInt(),
+      conversationId: json['conversationId'] as String,
+      isRecalled: json['isRecalled'] as bool? ?? false,
+      senderAvatar: json['senderAvatar'] as String?,
+      senderName: json['senderName'] as String?,
+      seqId: (json['seqId'] as num?)?.toInt(),
+      localPath: json['localPath'] as String?,
+      width: (json['width'] as num?)?.toDouble(),
+      height: (json['height'] as num?)?.toDouble(),
+      duration: (json['duration'] as num?)?.toInt(),
+    );
 
 Map<String, dynamic> _$ChatUiModelToJson(ChatUiModel instance) =>
     <String, dynamic>{

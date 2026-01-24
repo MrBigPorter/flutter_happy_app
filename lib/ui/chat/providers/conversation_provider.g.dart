@@ -39,15 +39,21 @@ class ChatDetailFamily extends Family<AsyncValue<ConversationDetail>> {
   const ChatDetailFamily();
 
   /// See also [chatDetail].
-  ChatDetailProvider call(String conversationId) {
-    return ChatDetailProvider(conversationId);
+  ChatDetailProvider call(
+    String conversationId,
+  ) {
+    return ChatDetailProvider(
+      conversationId,
+    );
   }
 
   @override
   ChatDetailProvider getProviderOverride(
     covariant ChatDetailProvider provider,
   ) {
-    return call(provider.conversationId);
+    return call(
+      provider.conversationId,
+    );
   }
 
   static const Iterable<ProviderOrFamily>? _dependencies = null;
@@ -68,18 +74,24 @@ class ChatDetailFamily extends Family<AsyncValue<ConversationDetail>> {
 /// See also [chatDetail].
 class ChatDetailProvider extends AutoDisposeFutureProvider<ConversationDetail> {
   /// See also [chatDetail].
-  ChatDetailProvider(String conversationId)
-    : this._internal(
-        (ref) => chatDetail(ref as ChatDetailRef, conversationId),
-        from: chatDetailProvider,
-        name: r'chatDetailProvider',
-        debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-            ? null
-            : _$chatDetailHash,
-        dependencies: ChatDetailFamily._dependencies,
-        allTransitiveDependencies: ChatDetailFamily._allTransitiveDependencies,
-        conversationId: conversationId,
-      );
+  ChatDetailProvider(
+    String conversationId,
+  ) : this._internal(
+          (ref) => chatDetail(
+            ref as ChatDetailRef,
+            conversationId,
+          ),
+          from: chatDetailProvider,
+          name: r'chatDetailProvider',
+          debugGetCreateSourceHash:
+              const bool.fromEnvironment('dart.vm.product')
+                  ? null
+                  : _$chatDetailHash,
+          dependencies: ChatDetailFamily._dependencies,
+          allTransitiveDependencies:
+              ChatDetailFamily._allTransitiveDependencies,
+          conversationId: conversationId,
+        );
 
   ChatDetailProvider._internal(
     super._createNotifier, {
@@ -131,8 +143,6 @@ class ChatDetailProvider extends AutoDisposeFutureProvider<ConversationDetail> {
   }
 }
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
 mixin ChatDetailRef on AutoDisposeFutureProviderRef<ConversationDetail> {
   /// The parameter `conversationId` of this provider.
   String get conversationId;
@@ -152,63 +162,54 @@ String _$createGroupControllerHash() =>
 
 /// See also [CreateGroupController].
 @ProviderFor(CreateGroupController)
-final createGroupControllerProvider =
-    AutoDisposeNotifierProvider<
-      CreateGroupController,
-      AsyncValue<ConversationIdResponse?>
-    >.internal(
-      CreateGroupController.new,
-      name: r'createGroupControllerProvider',
-      debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-          ? null
-          : _$createGroupControllerHash,
-      dependencies: null,
-      allTransitiveDependencies: null,
-    );
+final createGroupControllerProvider = AutoDisposeNotifierProvider<
+    CreateGroupController, AsyncValue<ConversationIdResponse?>>.internal(
+  CreateGroupController.new,
+  name: r'createGroupControllerProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$createGroupControllerHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
 
-typedef _$CreateGroupController =
-    AutoDisposeNotifier<AsyncValue<ConversationIdResponse?>>;
+typedef _$CreateGroupController
+    = AutoDisposeNotifier<AsyncValue<ConversationIdResponse?>>;
 String _$createDirectChatControllerHash() =>
     r'9aca1d98d65f5b16888ff80fdf559a335813b296';
 
 /// See also [CreateDirectChatController].
 @ProviderFor(CreateDirectChatController)
-final createDirectChatControllerProvider =
-    AutoDisposeNotifierProvider<
-      CreateDirectChatController,
-      AsyncValue<ConversationIdResponse?>
-    >.internal(
-      CreateDirectChatController.new,
-      name: r'createDirectChatControllerProvider',
-      debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-          ? null
-          : _$createDirectChatControllerHash,
-      dependencies: null,
-      allTransitiveDependencies: null,
-    );
+final createDirectChatControllerProvider = AutoDisposeNotifierProvider<
+    CreateDirectChatController, AsyncValue<ConversationIdResponse?>>.internal(
+  CreateDirectChatController.new,
+  name: r'createDirectChatControllerProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$createDirectChatControllerHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
 
-typedef _$CreateDirectChatController =
-    AutoDisposeNotifier<AsyncValue<ConversationIdResponse?>>;
+typedef _$CreateDirectChatController
+    = AutoDisposeNotifier<AsyncValue<ConversationIdResponse?>>;
 String _$userSearchControllerHash() =>
     r'fd0297440893e1df12e16064f3860807e49186e0';
 
 /// See also [UserSearchController].
 @ProviderFor(UserSearchController)
-final userSearchControllerProvider =
-    AutoDisposeNotifierProvider<
-      UserSearchController,
-      AsyncValue<List<ChatSender>>
-    >.internal(
-      UserSearchController.new,
-      name: r'userSearchControllerProvider',
-      debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-          ? null
-          : _$userSearchControllerHash,
-      dependencies: null,
-      allTransitiveDependencies: null,
-    );
+final userSearchControllerProvider = AutoDisposeNotifierProvider<
+    UserSearchController, AsyncValue<List<ChatSender>>>.internal(
+  UserSearchController.new,
+  name: r'userSearchControllerProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$userSearchControllerHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
 
-typedef _$UserSearchController =
-    AutoDisposeNotifier<AsyncValue<List<ChatSender>>>;
+typedef _$UserSearchController
+    = AutoDisposeNotifier<AsyncValue<List<ChatSender>>>;
 // ignore_for_file: type=lint
-// ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package
+// ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member

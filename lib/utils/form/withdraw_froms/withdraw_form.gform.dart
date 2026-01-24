@@ -1,7 +1,7 @@
 // coverage:ignore-file
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // ignore_for_file: type=lint
-// ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
+// ignore_for_file:
 
 part of 'withdraw_form.dart';
 
@@ -55,7 +55,7 @@ class ReactiveWithdrawFormModelForm extends StatelessWidget {
     required this.form,
     required this.child,
     this.canPop,
-    this.onPopInvokedWithResult,
+    this.onPopInvoked,
   }) : super(key: key);
 
   final Widget child;
@@ -64,8 +64,7 @@ class ReactiveWithdrawFormModelForm extends StatelessWidget {
 
   final bool Function(FormGroup formGroup)? canPop;
 
-  final ReactiveFormPopInvokedWithResultCallback<dynamic>?
-      onPopInvokedWithResult;
+  final void Function(FormGroup formGroup, bool didPop)? onPopInvoked;
 
   static WithdrawFormModelForm? of(
     BuildContext context, {
@@ -92,7 +91,7 @@ class ReactiveWithdrawFormModelForm extends StatelessWidget {
       stream: form.form.statusChanged,
       child: ReactiveFormPopScope(
         canPop: canPop,
-        onPopInvokedWithResult: onPopInvokedWithResult,
+        onPopInvoked: onPopInvoked,
         child: child,
       ),
     );
@@ -113,7 +112,7 @@ class WithdrawFormModelFormBuilder extends StatefulWidget {
     this.model,
     this.child,
     this.canPop,
-    this.onPopInvokedWithResult,
+    this.onPopInvoked,
     required this.builder,
     this.initState,
   }) : super(key: key);
@@ -124,8 +123,7 @@ class WithdrawFormModelFormBuilder extends StatefulWidget {
 
   final bool Function(FormGroup formGroup)? canPop;
 
-  final ReactiveFormPopInvokedWithResultCallback<dynamic>?
-      onPopInvokedWithResult;
+  final void Function(FormGroup formGroup, bool didPop)? onPopInvoked;
 
   final Widget Function(
           BuildContext context, WithdrawFormModelForm formModel, Widget? child)
@@ -143,8 +141,6 @@ class _WithdrawFormModelFormBuilderState
     extends State<WithdrawFormModelFormBuilder> {
   late WithdrawFormModelForm _formModel;
 
-  StreamSubscription<LogRecord>? _logSubscription;
-
   @override
   void initState() {
     _formModel = WithdrawFormModelForm(
@@ -155,34 +151,6 @@ class _WithdrawFormModelFormBuilderState
     }
 
     widget.initState?.call(context, _formModel);
-
-    _logSubscription = _logWithdrawFormModelForm.onRecord.listen((LogRecord e) {
-      // use `dumpErrorToConsole` for severe messages to ensure that severe
-      // exceptions are formatted consistently with other Flutter examples and
-      // avoids printing duplicate exceptions
-      if (e.level >= Level.SEVERE) {
-        final Object? error = e.error;
-        FlutterError.dumpErrorToConsole(
-          FlutterErrorDetails(
-            exception: error is Exception ? error : Exception(error),
-            stack: e.stackTrace,
-            library: e.loggerName,
-            context: ErrorDescription(e.message),
-          ),
-        );
-      } else {
-        log(
-          e.message,
-          time: e.time,
-          sequenceNumber: e.sequenceNumber,
-          level: e.level.value,
-          name: e.loggerName,
-          zone: e.zone,
-          error: e.error,
-          stackTrace: e.stackTrace,
-        );
-      }
-    });
 
     super.initState();
   }
@@ -199,7 +167,6 @@ class _WithdrawFormModelFormBuilderState
   @override
   void dispose() {
     _formModel.form.dispose();
-    _logSubscription?.cancel();
     super.dispose();
   }
 
@@ -208,12 +175,12 @@ class _WithdrawFormModelFormBuilderState
     return ReactiveWithdrawFormModelForm(
       key: ObjectKey(_formModel),
       form: _formModel,
-      // canPop: widget.canPop,
-      // onPopInvoked: widget.onPopInvoked,
+      canPop: widget.canPop,
+      onPopInvoked: widget.onPopInvoked,
       child: ReactiveFormBuilder(
         form: () => _formModel.form,
         canPop: widget.canPop,
-        onPopInvokedWithResult: widget.onPopInvokedWithResult,
+        onPopInvoked: widget.onPopInvoked,
         builder: (context, formGroup, child) =>
             widget.builder(context, _formModel, widget.child),
         child: widget.child,
@@ -222,10 +189,7 @@ class _WithdrawFormModelFormBuilderState
   }
 }
 
-final _logWithdrawFormModelForm = Logger.detached('WithdrawFormModelForm');
-
-class WithdrawFormModelForm
-    implements FormModel<WithdrawFormModel, WithdrawFormModel> {
+class WithdrawFormModelForm implements FormModel<WithdrawFormModel> {
   WithdrawFormModelForm(
     this.form,
     this.path,
@@ -249,20 +213,12 @@ class WithdrawFormModelForm
 
   String accountNumberControlPath() => pathBuilder(accountNumberControlName);
 
-  String get _amountValue => amountControl.value ?? '';
+  String get _amountValue => amountControl.value ?? "";
 
-  String get _accountNameValue => accountNameControl.value ?? '';
+  String get _accountNameValue => accountNameControl.value ?? "";
 
-  String get _accountNumberValue => accountNumberControl.value ?? '';
+  String get _accountNumberValue => accountNumberControl.value ?? "";
 
-  String get _amountRawValue => amountControl.value ?? '';
-
-  String get _accountNameRawValue => accountNameControl.value ?? '';
-
-  String get _accountNumberRawValue => accountNumberControl.value ?? '';
-
-  @Deprecated(
-      'Generator completely wraps the form and ensures at startup that all controls are present inside the form so we do not need this additional step')
   bool get containsAmount {
     try {
       form.control(amountControlPath());
@@ -272,8 +228,6 @@ class WithdrawFormModelForm
     }
   }
 
-  @Deprecated(
-      'Generator completely wraps the form and ensures at startup that all controls are present inside the form so we do not need this additional step')
   bool get containsAccountName {
     try {
       form.control(accountNameControlPath());
@@ -283,8 +237,6 @@ class WithdrawFormModelForm
     }
   }
 
-  @Deprecated(
-      'Generator completely wraps the form and ensures at startup that all controls are present inside the form so we do not need this additional step')
   bool get containsAccountNumber {
     try {
       form.control(accountNumberControlPath());
@@ -294,11 +246,11 @@ class WithdrawFormModelForm
     }
   }
 
-  Map<String, Object> get amountErrors => amountControl.errors;
+  Object? get amountErrors => amountControl.errors;
 
-  Map<String, Object> get accountNameErrors => accountNameControl.errors;
+  Object? get accountNameErrors => accountNameControl.errors;
 
-  Map<String, Object> get accountNumberErrors => accountNumberControl.errors;
+  Object? get accountNumberErrors => accountNumberControl.errors;
 
   void get amountFocus => form.focus(amountControlPath());
 
@@ -368,12 +320,7 @@ class WithdrawFormModelForm
     bool? disabled,
   }) =>
       amountControl.reset(
-        value: value,
-        updateParent: updateParent,
-        emitEvent: emitEvent,
-        removeFocus: removeFocus,
-        disabled: disabled,
-      );
+          value: value, updateParent: updateParent, emitEvent: emitEvent);
 
   void accountNameValueReset(
     String value, {
@@ -383,12 +330,7 @@ class WithdrawFormModelForm
     bool? disabled,
   }) =>
       accountNameControl.reset(
-        value: value,
-        updateParent: updateParent,
-        emitEvent: emitEvent,
-        removeFocus: removeFocus,
-        disabled: disabled,
-      );
+          value: value, updateParent: updateParent, emitEvent: emitEvent);
 
   void accountNumberValueReset(
     String value, {
@@ -398,12 +340,7 @@ class WithdrawFormModelForm
     bool? disabled,
   }) =>
       accountNumberControl.reset(
-        value: value,
-        updateParent: updateParent,
-        emitEvent: emitEvent,
-        removeFocus: removeFocus,
-        disabled: disabled,
-      );
+          value: value, updateParent: updateParent, emitEvent: emitEvent);
 
   FormControl<String> get amountControl =>
       form.control(amountControlPath()) as FormControl<String>;
@@ -473,24 +410,14 @@ class WithdrawFormModelForm
     final isValid = !currentForm.hasErrors && currentForm.errors.isEmpty;
 
     if (!isValid) {
-      _logWithdrawFormModelForm.warning(
-        'Avoid calling `model` on invalid form.Possible exceptions for non-nullable fields which should be guarded by `required` validator.',
-        null,
-        StackTrace.current,
-      );
+      debugPrintStack(
+          label:
+              '[${path ?? 'WithdrawFormModelForm'}]\n┗━ Avoid calling `model` on invalid form. Possible exceptions for non-nullable fields which should be guarded by `required` validator.');
     }
     return WithdrawFormModel(
         amount: _amountValue,
         accountName: _accountNameValue,
         accountNumber: _accountNumberValue);
-  }
-
-  @override
-  WithdrawFormModel get rawModel {
-    return WithdrawFormModel(
-        amount: _amountRawValue,
-        accountName: _accountNameRawValue,
-        accountNumber: _accountNumberRawValue);
   }
 
   @override
@@ -526,18 +453,6 @@ class WithdrawFormModelForm
   }
 
   @override
-  bool equalsTo(WithdrawFormModel? other) {
-    final currentForm = this.currentForm;
-
-    return const DeepCollectionEquality().equals(
-      currentForm is FormControlCollection<dynamic>
-          ? currentForm.rawValue
-          : currentForm.value,
-      WithdrawFormModelForm.formElements(other).rawValue,
-    );
-  }
-
-  @override
   void submit({
     required void Function(WithdrawFormModel model) onValid,
     void Function()? onNotValid,
@@ -546,8 +461,6 @@ class WithdrawFormModelForm
     if (currentForm.valid) {
       onValid(model);
     } else {
-      _logWithdrawFormModelForm.info('Errors');
-      _logWithdrawFormModelForm.info('┗━━ ${form.errors}');
       onNotValid?.call();
     }
   }
@@ -617,8 +530,6 @@ class ReactiveWithdrawFormModelFormArrayBuilder<
     this.formControl,
     this.builder,
     required this.itemBuilder,
-    this.emptyBuilder,
-    this.controlFilter,
   })  : assert(control != null || formControl != null,
             "You have to specify `control` or `formControl`!"),
         super(key: key);
@@ -634,16 +545,9 @@ class ReactiveWithdrawFormModelFormArrayBuilder<
   final Widget Function(
       BuildContext context,
       int i,
-      FormControl<ReactiveWithdrawFormModelFormArrayBuilderT> control,
       ReactiveWithdrawFormModelFormArrayBuilderT? item,
       WithdrawFormModelForm formModel) itemBuilder;
 
-  final Widget Function(BuildContext context)? emptyBuilder;
-
-  final bool Function(
-          FormControl<ReactiveWithdrawFormModelFormArrayBuilderT> control)?
-      controlFilter;
-
   @override
   Widget build(BuildContext context) {
     final formModel = ReactiveWithdrawFormModelForm.of(context);
@@ -652,109 +556,33 @@ class ReactiveWithdrawFormModelFormArrayBuilder<
       throw FormControlParentNotFoundException(this);
     }
 
-    final builder = this.builder;
-    final itemBuilder = this.itemBuilder;
+    return ReactiveFormArray<ReactiveWithdrawFormModelFormArrayBuilderT>(
+      formArray: formControl ?? control?.call(formModel),
+      builder: (context, formArray, child) {
+        final values = formArray.controls.map((e) => e.value).toList();
+        final itemList = values
+            .asMap()
+            .map((i, item) {
+              return MapEntry(
+                i,
+                itemBuilder(
+                  context,
+                  i,
+                  item,
+                  formModel,
+                ),
+              );
+            })
+            .values
+            .toList();
 
-    return ReactiveFormArrayItemBuilder<
-        ReactiveWithdrawFormModelFormArrayBuilderT>(
-      formControl: formControl ?? control?.call(formModel),
-      builder: builder != null
-          ? (context, itemList) => builder(
-                context,
-                itemList,
-                formModel,
-              )
-          : null,
-      itemBuilder: (
-        context,
-        i,
-        control,
-        item,
-      ) =>
-          itemBuilder(context, i, control, item, formModel),
-      emptyBuilder: emptyBuilder,
-      controlFilter: controlFilter,
-    );
-  }
-}
-
-class ReactiveWithdrawFormModelFormArrayBuilder2<
-    ReactiveWithdrawFormModelFormArrayBuilderT> extends StatelessWidget {
-  const ReactiveWithdrawFormModelFormArrayBuilder2({
-    Key? key,
-    this.control,
-    this.formControl,
-    this.builder,
-    required this.itemBuilder,
-    this.emptyBuilder,
-    this.controlFilter,
-  })  : assert(control != null || formControl != null,
-            "You have to specify `control` or `formControl`!"),
-        super(key: key);
-
-  final FormArray<ReactiveWithdrawFormModelFormArrayBuilderT>? formControl;
-
-  final FormArray<ReactiveWithdrawFormModelFormArrayBuilderT>? Function(
-      WithdrawFormModelForm formModel)? control;
-
-  final Widget Function(
-      ({
-        BuildContext context,
-        List<Widget> itemList,
-        WithdrawFormModelForm formModel
-      }) params)? builder;
-
-  final Widget Function(
-      ({
-        BuildContext context,
-        int i,
-        FormControl<ReactiveWithdrawFormModelFormArrayBuilderT> control,
-        ReactiveWithdrawFormModelFormArrayBuilderT? item,
-        WithdrawFormModelForm formModel
-      }) params) itemBuilder;
-
-  final Widget Function(BuildContext context)? emptyBuilder;
-
-  final bool Function(
-          FormControl<ReactiveWithdrawFormModelFormArrayBuilderT> control)?
-      controlFilter;
-
-  @override
-  Widget build(BuildContext context) {
-    final formModel = ReactiveWithdrawFormModelForm.of(context);
-
-    if (formModel == null) {
-      throw FormControlParentNotFoundException(this);
-    }
-
-    final builder = this.builder;
-    final itemBuilder = this.itemBuilder;
-
-    return ReactiveFormArrayItemBuilder<
-        ReactiveWithdrawFormModelFormArrayBuilderT>(
-      formControl: formControl ?? control?.call(formModel),
-      builder: builder != null
-          ? (context, itemList) => builder((
-                context: context,
-                itemList: itemList,
-                formModel: formModel,
-              ))
-          : null,
-      itemBuilder: (
-        context,
-        i,
-        control,
-        item,
-      ) =>
-          itemBuilder((
-        context: context,
-        i: i,
-        control: control,
-        item: item,
-        formModel: formModel
-      )),
-      emptyBuilder: emptyBuilder,
-      controlFilter: controlFilter,
+        return builder?.call(
+              context,
+              itemList,
+              formModel,
+            ) ??
+            Column(children: itemList);
+      },
     );
   }
 }

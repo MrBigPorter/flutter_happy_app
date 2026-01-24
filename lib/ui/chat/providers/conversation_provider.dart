@@ -99,9 +99,7 @@ class ConversationListNotifier extends StateNotifier<List<Conversation>> {
         return '[Message recalled]';
       case MessageType.system:
         return rawContent;
-      default:
-        return '[Unsupported message]';
-    }
+      }
   }
 
   // --------------------------------------------------------

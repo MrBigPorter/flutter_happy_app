@@ -7,20 +7,21 @@ part of 'index_statistics.dart';
 // **************************************************************************
 
 IndexStatistics _$IndexStatisticsFromJson(Map<String, dynamic> json) =>
-    $checkedCreate('IndexStatistics', json, ($checkedConvert) {
-      final val = IndexStatistics(
-        charityFundNum: $checkedConvert(
-          'charityFundNum',
-          (v) => (v as num).toInt(),
-        ),
-        totalAmount: $checkedConvert('totalAmount', (v) => (v as num).toInt()),
-        totalUserAmount: $checkedConvert(
-          'totalUserAmount',
-          (v) => (v as num).toInt(),
-        ),
-      );
-      return val;
-    });
+    $checkedCreate(
+      'IndexStatistics',
+      json,
+      ($checkedConvert) {
+        final val = IndexStatistics(
+          charityFundNum:
+              $checkedConvert('charityFundNum', (v) => (v as num).toInt()),
+          totalAmount:
+              $checkedConvert('totalAmount', (v) => (v as num).toInt()),
+          totalUserAmount:
+              $checkedConvert('totalUserAmount', (v) => (v as num).toInt()),
+        );
+        return val;
+      },
+    );
 
 Map<String, dynamic> _$IndexStatisticsToJson(IndexStatistics instance) =>
     <String, dynamic>{

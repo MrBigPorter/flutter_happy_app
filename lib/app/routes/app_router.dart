@@ -30,7 +30,6 @@ import '../page/home_page.dart';
 import '../page/product_page.dart';
 import '../page/transaction/transaction_ui_model.dart';
 import '../page/transaction_record_page.dart';
-import '../page/winners_page.dart';
 import '../page/me_page.dart';
 import '../page/login_page.dart';
 import '../page/product_detail_page.dart';

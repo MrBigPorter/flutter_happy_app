@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:path/path.dart' as p; //  引入 path 库，处理路径最稳
 

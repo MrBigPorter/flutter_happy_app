@@ -83,7 +83,7 @@ class LocalDatabaseService {
           }
 
           await _messageStore.record(msg.id).put(txn, json);
-        } catch (e, st) {
+        } catch (e) {
           debugPrint("❌ [存库炸了] id=${msg.id} conv=${msg.conversationId} err=$e");
           debugPrint("❌ msg=$msg");
           // 如果你想更狠：把 msg.toJson() 也单独 try 一下看哪一步炸

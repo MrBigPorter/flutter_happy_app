@@ -39,7 +39,7 @@ class ServerTimeHelper {
          debugPrint("ServerTimeHelper: 服务器时间校准成功，偏移量: $_offset ms");
        }catch(e) {
           // 解析失败则忽略
-         print("ServerTimeHelper: 无法解析服务器时间: $serverTimeStr");
+        // print("ServerTimeHelper: 无法解析服务器时间: $serverTimeStr");
        }
     }
 

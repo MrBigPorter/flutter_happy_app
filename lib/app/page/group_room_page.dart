@@ -229,7 +229,7 @@ class _GroupRoomPageState extends ConsumerState<GroupRoomPage> {
           width: 60.w,
           alignment: Alignment.center,
           child: Text(
-            isEmpty ? "Wait..." : (member!.user?.nickname ?? "User"),
+            isEmpty ? "Wait..." : (member.user?.nickname ?? "User"),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(

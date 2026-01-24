@@ -155,7 +155,7 @@ class ChatRoomController {
 
     Api.messageMarkAsReadApi(
       MessageMarkReadRequest(conversationId: conversationId),
-    ).catchError((e) => debugPrint(" markRead API: $e"));
+    );
   }
 
   // ===========================================================================

@@ -1,7 +1,7 @@
 // coverage:ignore-file
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // ignore_for_file: type=lint
-// ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
+// ignore_for_file:
 
 part of 'deposit_form.dart';
 
@@ -54,7 +54,7 @@ class ReactiveDepositFormModelForm extends StatelessWidget {
     required this.form,
     required this.child,
     this.canPop,
-    this.onPopInvokedWithResult,
+    this.onPopInvoked,
   }) : super(key: key);
 
   final Widget child;
@@ -63,8 +63,7 @@ class ReactiveDepositFormModelForm extends StatelessWidget {
 
   final bool Function(FormGroup formGroup)? canPop;
 
-  final ReactiveFormPopInvokedWithResultCallback<dynamic>?
-      onPopInvokedWithResult;
+  final void Function(FormGroup formGroup, bool didPop)? onPopInvoked;
 
   static DepositFormModelForm? of(
     BuildContext context, {
@@ -91,7 +90,7 @@ class ReactiveDepositFormModelForm extends StatelessWidget {
       stream: form.form.statusChanged,
       child: ReactiveFormPopScope(
         canPop: canPop,
-        onPopInvokedWithResult: onPopInvokedWithResult,
+        onPopInvoked: onPopInvoked,
         child: child,
       ),
     );
@@ -112,7 +111,7 @@ class DepositFormModelFormBuilder extends StatefulWidget {
     this.model,
     this.child,
     this.canPop,
-    this.onPopInvokedWithResult,
+    this.onPopInvoked,
     required this.builder,
     this.initState,
   }) : super(key: key);
@@ -123,8 +122,7 @@ class DepositFormModelFormBuilder extends StatefulWidget {
 
   final bool Function(FormGroup formGroup)? canPop;
 
-  final ReactiveFormPopInvokedWithResultCallback<dynamic>?
-      onPopInvokedWithResult;
+  final void Function(FormGroup formGroup, bool didPop)? onPopInvoked;
 
   final Widget Function(
           BuildContext context, DepositFormModelForm formModel, Widget? child)
@@ -142,8 +140,6 @@ class _DepositFormModelFormBuilderState
     extends State<DepositFormModelFormBuilder> {
   late DepositFormModelForm _formModel;
 
-  StreamSubscription<LogRecord>? _logSubscription;
-
   @override
   void initState() {
     _formModel = DepositFormModelForm(
@@ -154,34 +150,6 @@ class _DepositFormModelFormBuilderState
     }
 
     widget.initState?.call(context, _formModel);
-
-    _logSubscription = _logDepositFormModelForm.onRecord.listen((LogRecord e) {
-      // use `dumpErrorToConsole` for severe messages to ensure that severe
-      // exceptions are formatted consistently with other Flutter examples and
-      // avoids printing duplicate exceptions
-      if (e.level >= Level.SEVERE) {
-        final Object? error = e.error;
-        FlutterError.dumpErrorToConsole(
-          FlutterErrorDetails(
-            exception: error is Exception ? error : Exception(error),
-            stack: e.stackTrace,
-            library: e.loggerName,
-            context: ErrorDescription(e.message),
-          ),
-        );
-      } else {
-        log(
-          e.message,
-          time: e.time,
-          sequenceNumber: e.sequenceNumber,
-          level: e.level.value,
-          name: e.loggerName,
-          zone: e.zone,
-          error: e.error,
-          stackTrace: e.stackTrace,
-        );
-      }
-    });
 
     super.initState();
   }
@@ -198,7 +166,6 @@ class _DepositFormModelFormBuilderState
   @override
   void dispose() {
     _formModel.form.dispose();
-    _logSubscription?.cancel();
     super.dispose();
   }
 
@@ -207,12 +174,12 @@ class _DepositFormModelFormBuilderState
     return ReactiveDepositFormModelForm(
       key: ObjectKey(_formModel),
       form: _formModel,
-      // canPop: widget.canPop,
-      // onPopInvoked: widget.onPopInvoked,
+      canPop: widget.canPop,
+      onPopInvoked: widget.onPopInvoked,
       child: ReactiveFormBuilder(
         form: () => _formModel.form,
         canPop: widget.canPop,
-        onPopInvokedWithResult: widget.onPopInvokedWithResult,
+        onPopInvoked: widget.onPopInvoked,
         builder: (context, formGroup, child) =>
             widget.builder(context, _formModel, widget.child),
         child: widget.child,
@@ -221,10 +188,7 @@ class _DepositFormModelFormBuilderState
   }
 }
 
-final _logDepositFormModelForm = Logger.detached('DepositFormModelForm');
-
-class DepositFormModelForm
-    implements FormModel<DepositFormModel, DepositFormModel> {
+class DepositFormModelForm implements FormModel<DepositFormModel> {
   DepositFormModelForm(
     this.form,
     this.path,
@@ -240,12 +204,8 @@ class DepositFormModelForm
 
   String amountControlPath() => pathBuilder(amountControlName);
 
-  String get _amountValue => amountControl.value ?? '';
+  String get _amountValue => amountControl.value ?? "";
 
-  String get _amountRawValue => amountControl.value ?? '';
-
-  @Deprecated(
-      'Generator completely wraps the form and ensures at startup that all controls are present inside the form so we do not need this additional step')
   bool get containsAmount {
     try {
       form.control(amountControlPath());
@@ -255,7 +215,7 @@ class DepositFormModelForm
     }
   }
 
-  Map<String, Object> get amountErrors => amountControl.errors;
+  Object? get amountErrors => amountControl.errors;
 
   void get amountFocus => form.focus(amountControlPath());
 
@@ -285,12 +245,7 @@ class DepositFormModelForm
     bool? disabled,
   }) =>
       amountControl.reset(
-        value: value,
-        updateParent: updateParent,
-        emitEvent: emitEvent,
-        removeFocus: removeFocus,
-        disabled: disabled,
-      );
+          value: value, updateParent: updateParent, emitEvent: emitEvent);
 
   FormControl<String> get amountControl =>
       form.control(amountControlPath()) as FormControl<String>;
@@ -318,18 +273,11 @@ class DepositFormModelForm
     final isValid = !currentForm.hasErrors && currentForm.errors.isEmpty;
 
     if (!isValid) {
-      _logDepositFormModelForm.warning(
-        'Avoid calling `model` on invalid form.Possible exceptions for non-nullable fields which should be guarded by `required` validator.',
-        null,
-        StackTrace.current,
-      );
+      debugPrintStack(
+          label:
+              '[${path ?? 'DepositFormModelForm'}]\n┗━ Avoid calling `model` on invalid form. Possible exceptions for non-nullable fields which should be guarded by `required` validator.');
     }
     return DepositFormModel(amount: _amountValue);
-  }
-
-  @override
-  DepositFormModel get rawModel {
-    return DepositFormModel(amount: _amountRawValue);
   }
 
   @override
@@ -365,18 +313,6 @@ class DepositFormModelForm
   }
 
   @override
-  bool equalsTo(DepositFormModel? other) {
-    final currentForm = this.currentForm;
-
-    return const DeepCollectionEquality().equals(
-      currentForm is FormControlCollection<dynamic>
-          ? currentForm.rawValue
-          : currentForm.value,
-      DepositFormModelForm.formElements(other).rawValue,
-    );
-  }
-
-  @override
   void submit({
     required void Function(DepositFormModel model) onValid,
     void Function()? onNotValid,
@@ -385,8 +321,6 @@ class DepositFormModelForm
     if (currentForm.valid) {
       onValid(model);
     } else {
-      _logDepositFormModelForm.info('Errors');
-      _logDepositFormModelForm.info('┗━━ ${form.errors}');
       onNotValid?.call();
     }
   }
@@ -442,8 +376,6 @@ class ReactiveDepositFormModelFormArrayBuilder<
     this.formControl,
     this.builder,
     required this.itemBuilder,
-    this.emptyBuilder,
-    this.controlFilter,
   })  : assert(control != null || formControl != null,
             "You have to specify `control` or `formControl`!"),
         super(key: key);
@@ -459,16 +391,9 @@ class ReactiveDepositFormModelFormArrayBuilder<
   final Widget Function(
       BuildContext context,
       int i,
-      FormControl<ReactiveDepositFormModelFormArrayBuilderT> control,
       ReactiveDepositFormModelFormArrayBuilderT? item,
       DepositFormModelForm formModel) itemBuilder;
 
-  final Widget Function(BuildContext context)? emptyBuilder;
-
-  final bool Function(
-          FormControl<ReactiveDepositFormModelFormArrayBuilderT> control)?
-      controlFilter;
-
   @override
   Widget build(BuildContext context) {
     final formModel = ReactiveDepositFormModelForm.of(context);
@@ -477,109 +402,33 @@ class ReactiveDepositFormModelFormArrayBuilder<
       throw FormControlParentNotFoundException(this);
     }
 
-    final builder = this.builder;
-    final itemBuilder = this.itemBuilder;
+    return ReactiveFormArray<ReactiveDepositFormModelFormArrayBuilderT>(
+      formArray: formControl ?? control?.call(formModel),
+      builder: (context, formArray, child) {
+        final values = formArray.controls.map((e) => e.value).toList();
+        final itemList = values
+            .asMap()
+            .map((i, item) {
+              return MapEntry(
+                i,
+                itemBuilder(
+                  context,
+                  i,
+                  item,
+                  formModel,
+                ),
+              );
+            })
+            .values
+            .toList();
 
-    return ReactiveFormArrayItemBuilder<
-        ReactiveDepositFormModelFormArrayBuilderT>(
-      formControl: formControl ?? control?.call(formModel),
-      builder: builder != null
-          ? (context, itemList) => builder(
-                context,
-                itemList,
-                formModel,
-              )
-          : null,
-      itemBuilder: (
-        context,
-        i,
-        control,
-        item,
-      ) =>
-          itemBuilder(context, i, control, item, formModel),
-      emptyBuilder: emptyBuilder,
-      controlFilter: controlFilter,
-    );
-  }
-}
-
-class ReactiveDepositFormModelFormArrayBuilder2<
-    ReactiveDepositFormModelFormArrayBuilderT> extends StatelessWidget {
-  const ReactiveDepositFormModelFormArrayBuilder2({
-    Key? key,
-    this.control,
-    this.formControl,
-    this.builder,
-    required this.itemBuilder,
-    this.emptyBuilder,
-    this.controlFilter,
-  })  : assert(control != null || formControl != null,
-            "You have to specify `control` or `formControl`!"),
-        super(key: key);
-
-  final FormArray<ReactiveDepositFormModelFormArrayBuilderT>? formControl;
-
-  final FormArray<ReactiveDepositFormModelFormArrayBuilderT>? Function(
-      DepositFormModelForm formModel)? control;
-
-  final Widget Function(
-      ({
-        BuildContext context,
-        List<Widget> itemList,
-        DepositFormModelForm formModel
-      }) params)? builder;
-
-  final Widget Function(
-      ({
-        BuildContext context,
-        int i,
-        FormControl<ReactiveDepositFormModelFormArrayBuilderT> control,
-        ReactiveDepositFormModelFormArrayBuilderT? item,
-        DepositFormModelForm formModel
-      }) params) itemBuilder;
-
-  final Widget Function(BuildContext context)? emptyBuilder;
-
-  final bool Function(
-          FormControl<ReactiveDepositFormModelFormArrayBuilderT> control)?
-      controlFilter;
-
-  @override
-  Widget build(BuildContext context) {
-    final formModel = ReactiveDepositFormModelForm.of(context);
-
-    if (formModel == null) {
-      throw FormControlParentNotFoundException(this);
-    }
-
-    final builder = this.builder;
-    final itemBuilder = this.itemBuilder;
-
-    return ReactiveFormArrayItemBuilder<
-        ReactiveDepositFormModelFormArrayBuilderT>(
-      formControl: formControl ?? control?.call(formModel),
-      builder: builder != null
-          ? (context, itemList) => builder((
-                context: context,
-                itemList: itemList,
-                formModel: formModel,
-              ))
-          : null,
-      itemBuilder: (
-        context,
-        i,
-        control,
-        item,
-      ) =>
-          itemBuilder((
-        context: context,
-        i: i,
-        control: control,
-        item: item,
-        formModel: formModel
-      )),
-      emptyBuilder: emptyBuilder,
-      controlFilter: controlFilter,
+        return builder?.call(
+              context,
+              itemList,
+              formModel,
+            ) ??
+            Column(children: itemList);
+      },
     );
   }
 }

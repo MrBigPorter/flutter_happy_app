@@ -83,7 +83,7 @@ class _MyAppState extends ConsumerState<MyApp> {
         );
 
         // 2. 包裹你的全局逻辑处理 (Socket监听等)
-        child = GlobalHandler(child: child);
+        child = GlobalHandler(child: content);
 
         // 3. 最外层包裹 BotToastInit
         // 这样 BotToast 才能覆盖在所有页面(包括 GlobalHandler)之上

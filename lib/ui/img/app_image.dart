@@ -165,7 +165,7 @@ class AppCachedImage extends StatelessWidget {
         onTap: () {
           // 这里只负责最基础的预览，聊天页面会自己处理点击
           // 所以这段逻辑主要是给非聊天页面用的
-          final bool isLocal =
+          final bool _ =
               !src!.startsWith('http') && !src!.startsWith('assets/');
 
           Navigator.push(

@@ -307,7 +307,7 @@ class SubmitKycDto {
   final int barangayId;
 
   final String address;
-  final int postalCode;
+  final int? postalCode;
 
   /// 后端是 Record<String, any>
   final Map<String, dynamic>? ocrRawData;

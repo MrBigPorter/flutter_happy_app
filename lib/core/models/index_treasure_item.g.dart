@@ -7,23 +7,25 @@ part of 'index_treasure_item.dart';
 // **************************************************************************
 
 IndexTreasureItem _$IndexTreasureItemFromJson(Map<String, dynamic> json) =>
-    $checkedCreate('IndexTreasureItem', json, ($checkedConvert) {
-      final val = IndexTreasureItem(
-        actId: $checkedConvert('actId', (v) => v as String),
-        title: $checkedConvert('title', (v) => v as String),
-        imgStyleType: $checkedConvert(
-          'imgStyleType',
-          (v) => (v as num).toInt(),
-        ),
-        treasureResp: $checkedConvert(
-          'treasureResp',
-          (v) => (v as List<dynamic>?)
-              ?.map((e) => ProductListItem.fromJson(e as Map<String, dynamic>))
-              .toList(),
-        ),
-      );
-      return val;
-    });
+    $checkedCreate(
+      'IndexTreasureItem',
+      json,
+      ($checkedConvert) {
+        final val = IndexTreasureItem(
+          actId: $checkedConvert('actId', (v) => v as String),
+          title: $checkedConvert('title', (v) => v as String),
+          imgStyleType:
+              $checkedConvert('imgStyleType', (v) => (v as num).toInt()),
+          treasureResp: $checkedConvert(
+              'treasureResp',
+              (v) => (v as List<dynamic>?)
+                  ?.map((e) =>
+                      ProductListItem.fromJson(e as Map<String, dynamic>))
+                  .toList()),
+        );
+        return val;
+      },
+    );
 
 Map<String, dynamic> _$IndexTreasureItemToJson(IndexTreasureItem instance) =>
     <String, dynamic>{

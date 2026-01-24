@@ -101,26 +101,26 @@ class _GroupItemState extends State<GroupItem>
                 ),
               ),
             ),
-            if (item.members != null) ...[
-              AnimatedSize(
-                duration: Duration(milliseconds: 200),
-                alignment: Alignment.topCenter,
-                child: ClipRect(
-                  child: Align(
-                    heightFactor: isExpanded ? 1.0 : 0.0,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: item.members!.map((member) {
-                        return GroupUserItem(
-                          item: member,
-                          padding: EdgeInsets.zero,
-                        );
-                      }).toList(),
-                    ),
+            ...[
+            AnimatedSize(
+              duration: Duration(milliseconds: 200),
+              alignment: Alignment.topCenter,
+              child: ClipRect(
+                child: Align(
+                  heightFactor: isExpanded ? 1.0 : 0.0,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: item.members.map((member) {
+                      return GroupUserItem(
+                        item: member,
+                        padding: EdgeInsets.zero,
+                      );
+                    }).toList(),
                   ),
                 ),
               ),
-            ],
+            ),
+          ],
           ],
         ),
       ),

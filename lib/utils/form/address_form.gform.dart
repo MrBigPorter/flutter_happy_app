@@ -1,7 +1,7 @@
 // coverage:ignore-file
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // ignore_for_file: type=lint
-// ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
+// ignore_for_file:
 
 part of 'address_form.dart';
 
@@ -54,7 +54,7 @@ class ReactiveAddressFormModelForm extends StatelessWidget {
     required this.form,
     required this.child,
     this.canPop,
-    this.onPopInvokedWithResult,
+    this.onPopInvoked,
   }) : super(key: key);
 
   final Widget child;
@@ -63,8 +63,7 @@ class ReactiveAddressFormModelForm extends StatelessWidget {
 
   final bool Function(FormGroup formGroup)? canPop;
 
-  final ReactiveFormPopInvokedWithResultCallback<dynamic>?
-      onPopInvokedWithResult;
+  final void Function(FormGroup formGroup, bool didPop)? onPopInvoked;
 
   static AddressFormModelForm? of(
     BuildContext context, {
@@ -91,7 +90,7 @@ class ReactiveAddressFormModelForm extends StatelessWidget {
       stream: form.form.statusChanged,
       child: ReactiveFormPopScope(
         canPop: canPop,
-        onPopInvokedWithResult: onPopInvokedWithResult,
+        onPopInvoked: onPopInvoked,
         child: child,
       ),
     );
@@ -112,7 +111,7 @@ class AddressFormModelFormBuilder extends StatefulWidget {
     this.model,
     this.child,
     this.canPop,
-    this.onPopInvokedWithResult,
+    this.onPopInvoked,
     required this.builder,
     this.initState,
   }) : super(key: key);
@@ -123,8 +122,7 @@ class AddressFormModelFormBuilder extends StatefulWidget {
 
   final bool Function(FormGroup formGroup)? canPop;
 
-  final ReactiveFormPopInvokedWithResultCallback<dynamic>?
-      onPopInvokedWithResult;
+  final void Function(FormGroup formGroup, bool didPop)? onPopInvoked;
 
   final Widget Function(
           BuildContext context, AddressFormModelForm formModel, Widget? child)
@@ -142,8 +140,6 @@ class _AddressFormModelFormBuilderState
     extends State<AddressFormModelFormBuilder> {
   late AddressFormModelForm _formModel;
 
-  StreamSubscription<LogRecord>? _logSubscription;
-
   @override
   void initState() {
     _formModel = AddressFormModelForm(
@@ -154,34 +150,6 @@ class _AddressFormModelFormBuilderState
     }
 
     widget.initState?.call(context, _formModel);
-
-    _logSubscription = _logAddressFormModelForm.onRecord.listen((LogRecord e) {
-      // use `dumpErrorToConsole` for severe messages to ensure that severe
-      // exceptions are formatted consistently with other Flutter examples and
-      // avoids printing duplicate exceptions
-      if (e.level >= Level.SEVERE) {
-        final Object? error = e.error;
-        FlutterError.dumpErrorToConsole(
-          FlutterErrorDetails(
-            exception: error is Exception ? error : Exception(error),
-            stack: e.stackTrace,
-            library: e.loggerName,
-            context: ErrorDescription(e.message),
-          ),
-        );
-      } else {
-        log(
-          e.message,
-          time: e.time,
-          sequenceNumber: e.sequenceNumber,
-          level: e.level.value,
-          name: e.loggerName,
-          zone: e.zone,
-          error: e.error,
-          stackTrace: e.stackTrace,
-        );
-      }
-    });
 
     super.initState();
   }
@@ -198,7 +166,6 @@ class _AddressFormModelFormBuilderState
   @override
   void dispose() {
     _formModel.form.dispose();
-    _logSubscription?.cancel();
     super.dispose();
   }
 
@@ -207,12 +174,12 @@ class _AddressFormModelFormBuilderState
     return ReactiveAddressFormModelForm(
       key: ObjectKey(_formModel),
       form: _formModel,
-      // canPop: widget.canPop,
-      // onPopInvoked: widget.onPopInvoked,
+      canPop: widget.canPop,
+      onPopInvoked: widget.onPopInvoked,
       child: ReactiveFormBuilder(
         form: () => _formModel.form,
         canPop: widget.canPop,
-        onPopInvokedWithResult: widget.onPopInvokedWithResult,
+        onPopInvoked: widget.onPopInvoked,
         builder: (context, formGroup, child) =>
             widget.builder(context, _formModel, widget.child),
         child: widget.child,
@@ -221,10 +188,7 @@ class _AddressFormModelFormBuilderState
   }
 }
 
-final _logAddressFormModelForm = Logger.detached('AddressFormModelForm');
-
-class AddressFormModelForm
-    implements FormModel<AddressFormModel, AddressFormModel> {
+class AddressFormModelForm implements FormModel<AddressFormModel> {
   AddressFormModelForm(
     this.form,
     this.path,
@@ -284,56 +248,30 @@ class AddressFormModelForm
 
   String labelControlPath() => pathBuilder(labelControlName);
 
-  String? get _firstNameValue => firstNameControl.value;
+  String? get _firstNameValue => firstNameControl?.value;
 
-  String? get _middleNameValue => middleNameControl.value;
+  String? get _middleNameValue => middleNameControl?.value;
 
-  String? get _lastNameValue => lastNameControl.value;
+  String? get _lastNameValue => lastNameControl?.value;
 
-  String get _contactNameValue => contactNameControl.value ?? '';
+  String get _contactNameValue => contactNameControl.value ?? "";
 
-  String get _fullAddressValue => fullAddressControl.value ?? '';
+  String get _fullAddressValue => fullAddressControl.value ?? "";
 
-  int? get _provinceIdValue => provinceIdControl.value;
+  int? get _provinceIdValue => provinceIdControl?.value;
 
-  int? get _cityIdValue => cityIdControl.value;
+  int? get _cityIdValue => cityIdControl?.value;
 
-  int? get _barangayIdValue => barangayIdControl.value;
+  int? get _barangayIdValue => barangayIdControl?.value;
 
-  String? get _postalCodeValue => postalCodeControl.value;
+  String? get _postalCodeValue => postalCodeControl?.value;
 
-  String get _phoneValue => phoneControl.value ?? '';
+  String get _phoneValue => phoneControl.value ?? "";
 
-  bool get _isDefaultValue => isDefaultControl.value ?? false;
+  bool get _isDefaultValue => isDefaultControl.value as bool;
 
-  String? get _labelValue => labelControl.value;
+  String? get _labelValue => labelControl?.value;
 
-  String? get _firstNameRawValue => firstNameControl.value;
-
-  String? get _middleNameRawValue => middleNameControl.value;
-
-  String? get _lastNameRawValue => lastNameControl.value;
-
-  String get _contactNameRawValue => contactNameControl.value ?? '';
-
-  String get _fullAddressRawValue => fullAddressControl.value ?? '';
-
-  int? get _provinceIdRawValue => provinceIdControl.value;
-
-  int? get _cityIdRawValue => cityIdControl.value;
-
-  int? get _barangayIdRawValue => barangayIdControl.value;
-
-  String? get _postalCodeRawValue => postalCodeControl.value;
-
-  String get _phoneRawValue => phoneControl.value ?? '';
-
-  bool get _isDefaultRawValue => isDefaultControl.value ?? false;
-
-  String? get _labelRawValue => labelControl.value;
-
-  @Deprecated(
-      'Generator completely wraps the form and ensures at startup that all controls are present inside the form so we do not need this additional step')
   bool get containsFirstName {
     try {
       form.control(firstNameControlPath());
@@ -343,8 +281,6 @@ class AddressFormModelForm
     }
   }
 
-  @Deprecated(
-      'Generator completely wraps the form and ensures at startup that all controls are present inside the form so we do not need this additional step')
   bool get containsMiddleName {
     try {
       form.control(middleNameControlPath());
@@ -354,8 +290,6 @@ class AddressFormModelForm
     }
   }
 
-  @Deprecated(
-      'Generator completely wraps the form and ensures at startup that all controls are present inside the form so we do not need this additional step')
   bool get containsLastName {
     try {
       form.control(lastNameControlPath());
@@ -365,8 +299,6 @@ class AddressFormModelForm
     }
   }
 
-  @Deprecated(
-      'Generator completely wraps the form and ensures at startup that all controls are present inside the form so we do not need this additional step')
   bool get containsContactName {
     try {
       form.control(contactNameControlPath());
@@ -376,8 +308,6 @@ class AddressFormModelForm
     }
   }
 
-  @Deprecated(
-      'Generator completely wraps the form and ensures at startup that all controls are present inside the form so we do not need this additional step')
   bool get containsFullAddress {
     try {
       form.control(fullAddressControlPath());
@@ -387,8 +317,6 @@ class AddressFormModelForm
     }
   }
 
-  @Deprecated(
-      'Generator completely wraps the form and ensures at startup that all controls are present inside the form so we do not need this additional step')
   bool get containsProvinceId {
     try {
       form.control(provinceIdControlPath());
@@ -398,8 +326,6 @@ class AddressFormModelForm
     }
   }
 
-  @Deprecated(
-      'Generator completely wraps the form and ensures at startup that all controls are present inside the form so we do not need this additional step')
   bool get containsCityId {
     try {
       form.control(cityIdControlPath());
@@ -409,8 +335,6 @@ class AddressFormModelForm
     }
   }
 
-  @Deprecated(
-      'Generator completely wraps the form and ensures at startup that all controls are present inside the form so we do not need this additional step')
   bool get containsBarangayId {
     try {
       form.control(barangayIdControlPath());
@@ -420,8 +344,6 @@ class AddressFormModelForm
     }
   }
 
-  @Deprecated(
-      'Generator completely wraps the form and ensures at startup that all controls are present inside the form so we do not need this additional step')
   bool get containsPostalCode {
     try {
       form.control(postalCodeControlPath());
@@ -431,8 +353,6 @@ class AddressFormModelForm
     }
   }
 
-  @Deprecated(
-      'Generator completely wraps the form and ensures at startup that all controls are present inside the form so we do not need this additional step')
   bool get containsPhone {
     try {
       form.control(phoneControlPath());
@@ -442,8 +362,6 @@ class AddressFormModelForm
     }
   }
 
-  @Deprecated(
-      'Generator completely wraps the form and ensures at startup that all controls are present inside the form so we do not need this additional step')
   bool get containsIsDefault {
     try {
       form.control(isDefaultControlPath());
@@ -453,8 +371,6 @@ class AddressFormModelForm
     }
   }
 
-  @Deprecated(
-      'Generator completely wraps the form and ensures at startup that all controls are present inside the form so we do not need this additional step')
   bool get containsLabel {
     try {
       form.control(labelControlPath());
@@ -464,29 +380,29 @@ class AddressFormModelForm
     }
   }
 
-  Map<String, Object>? get firstNameErrors => firstNameControl.errors;
+  Object? get firstNameErrors => firstNameControl?.errors;
 
-  Map<String, Object>? get middleNameErrors => middleNameControl.errors;
+  Object? get middleNameErrors => middleNameControl?.errors;
 
-  Map<String, Object>? get lastNameErrors => lastNameControl.errors;
+  Object? get lastNameErrors => lastNameControl?.errors;
 
-  Map<String, Object> get contactNameErrors => contactNameControl.errors;
+  Object? get contactNameErrors => contactNameControl.errors;
 
-  Map<String, Object> get fullAddressErrors => fullAddressControl.errors;
+  Object? get fullAddressErrors => fullAddressControl.errors;
 
-  Map<String, Object>? get provinceIdErrors => provinceIdControl.errors;
+  Object? get provinceIdErrors => provinceIdControl?.errors;
 
-  Map<String, Object>? get cityIdErrors => cityIdControl.errors;
+  Object? get cityIdErrors => cityIdControl?.errors;
 
-  Map<String, Object>? get barangayIdErrors => barangayIdControl.errors;
+  Object? get barangayIdErrors => barangayIdControl?.errors;
 
-  Map<String, Object>? get postalCodeErrors => postalCodeControl.errors;
+  Object? get postalCodeErrors => postalCodeControl?.errors;
 
-  Map<String, Object> get phoneErrors => phoneControl.errors;
+  Object? get phoneErrors => phoneControl.errors;
 
-  Map<String, Object> get isDefaultErrors => isDefaultControl.errors;
+  Object? get isDefaultErrors => isDefaultControl.errors;
 
-  Map<String, Object>? get labelErrors => labelControl.errors;
+  Object? get labelErrors => labelControl?.errors;
 
   void get firstNameFocus => form.focus(firstNameControlPath());
 
@@ -512,8 +428,6 @@ class AddressFormModelForm
 
   void get labelFocus => form.focus(labelControlPath());
 
-  @Deprecated(
-      'Generator completely wraps the form so manual fields removal could lead to unexpected crashes')
   void firstNameRemove({
     bool updateParent = true,
     bool emitEvent = true,
@@ -540,8 +454,6 @@ class AddressFormModelForm
     }
   }
 
-  @Deprecated(
-      'Generator completely wraps the form so manual fields removal could lead to unexpected crashes')
   void middleNameRemove({
     bool updateParent = true,
     bool emitEvent = true,
@@ -568,8 +480,6 @@ class AddressFormModelForm
     }
   }
 
-  @Deprecated(
-      'Generator completely wraps the form so manual fields removal could lead to unexpected crashes')
   void lastNameRemove({
     bool updateParent = true,
     bool emitEvent = true,
@@ -596,8 +506,6 @@ class AddressFormModelForm
     }
   }
 
-  @Deprecated(
-      'Generator completely wraps the form so manual fields removal could lead to unexpected crashes')
   void provinceIdRemove({
     bool updateParent = true,
     bool emitEvent = true,
@@ -624,8 +532,6 @@ class AddressFormModelForm
     }
   }
 
-  @Deprecated(
-      'Generator completely wraps the form so manual fields removal could lead to unexpected crashes')
   void cityIdRemove({
     bool updateParent = true,
     bool emitEvent = true,
@@ -652,8 +558,6 @@ class AddressFormModelForm
     }
   }
 
-  @Deprecated(
-      'Generator completely wraps the form so manual fields removal could lead to unexpected crashes')
   void barangayIdRemove({
     bool updateParent = true,
     bool emitEvent = true,
@@ -680,8 +584,6 @@ class AddressFormModelForm
     }
   }
 
-  @Deprecated(
-      'Generator completely wraps the form so manual fields removal could lead to unexpected crashes')
   void postalCodeRemove({
     bool updateParent = true,
     bool emitEvent = true,
@@ -708,8 +610,6 @@ class AddressFormModelForm
     }
   }
 
-  @Deprecated(
-      'Generator completely wraps the form so manual fields removal could lead to unexpected crashes')
   void labelRemove({
     bool updateParent = true,
     bool emitEvent = true,
@@ -741,7 +641,7 @@ class AddressFormModelForm
     bool updateParent = true,
     bool emitEvent = true,
   }) {
-    firstNameControl.updateValue(value,
+    firstNameControl?.updateValue(value,
         updateParent: updateParent, emitEvent: emitEvent);
   }
 
@@ -750,7 +650,7 @@ class AddressFormModelForm
     bool updateParent = true,
     bool emitEvent = true,
   }) {
-    middleNameControl.updateValue(value,
+    middleNameControl?.updateValue(value,
         updateParent: updateParent, emitEvent: emitEvent);
   }
 
@@ -759,7 +659,7 @@ class AddressFormModelForm
     bool updateParent = true,
     bool emitEvent = true,
   }) {
-    lastNameControl.updateValue(value,
+    lastNameControl?.updateValue(value,
         updateParent: updateParent, emitEvent: emitEvent);
   }
 
@@ -786,7 +686,7 @@ class AddressFormModelForm
     bool updateParent = true,
     bool emitEvent = true,
   }) {
-    provinceIdControl.updateValue(value,
+    provinceIdControl?.updateValue(value,
         updateParent: updateParent, emitEvent: emitEvent);
   }
 
@@ -795,7 +695,7 @@ class AddressFormModelForm
     bool updateParent = true,
     bool emitEvent = true,
   }) {
-    cityIdControl.updateValue(value,
+    cityIdControl?.updateValue(value,
         updateParent: updateParent, emitEvent: emitEvent);
   }
 
@@ -804,7 +704,7 @@ class AddressFormModelForm
     bool updateParent = true,
     bool emitEvent = true,
   }) {
-    barangayIdControl.updateValue(value,
+    barangayIdControl?.updateValue(value,
         updateParent: updateParent, emitEvent: emitEvent);
   }
 
@@ -813,7 +713,7 @@ class AddressFormModelForm
     bool updateParent = true,
     bool emitEvent = true,
   }) {
-    postalCodeControl.updateValue(value,
+    postalCodeControl?.updateValue(value,
         updateParent: updateParent, emitEvent: emitEvent);
   }
 
@@ -840,7 +740,7 @@ class AddressFormModelForm
     bool updateParent = true,
     bool emitEvent = true,
   }) {
-    labelControl.updateValue(value,
+    labelControl?.updateValue(value,
         updateParent: updateParent, emitEvent: emitEvent);
   }
 
@@ -849,7 +749,7 @@ class AddressFormModelForm
     bool updateParent = true,
     bool emitEvent = true,
   }) {
-    firstNameControl.patchValue(value,
+    firstNameControl?.patchValue(value,
         updateParent: updateParent, emitEvent: emitEvent);
   }
 
@@ -858,7 +758,7 @@ class AddressFormModelForm
     bool updateParent = true,
     bool emitEvent = true,
   }) {
-    middleNameControl.patchValue(value,
+    middleNameControl?.patchValue(value,
         updateParent: updateParent, emitEvent: emitEvent);
   }
 
@@ -867,7 +767,7 @@ class AddressFormModelForm
     bool updateParent = true,
     bool emitEvent = true,
   }) {
-    lastNameControl.patchValue(value,
+    lastNameControl?.patchValue(value,
         updateParent: updateParent, emitEvent: emitEvent);
   }
 
@@ -894,7 +794,7 @@ class AddressFormModelForm
     bool updateParent = true,
     bool emitEvent = true,
   }) {
-    provinceIdControl.patchValue(value,
+    provinceIdControl?.patchValue(value,
         updateParent: updateParent, emitEvent: emitEvent);
   }
 
@@ -903,7 +803,7 @@ class AddressFormModelForm
     bool updateParent = true,
     bool emitEvent = true,
   }) {
-    cityIdControl.patchValue(value,
+    cityIdControl?.patchValue(value,
         updateParent: updateParent, emitEvent: emitEvent);
   }
 
@@ -912,7 +812,7 @@ class AddressFormModelForm
     bool updateParent = true,
     bool emitEvent = true,
   }) {
-    barangayIdControl.patchValue(value,
+    barangayIdControl?.patchValue(value,
         updateParent: updateParent, emitEvent: emitEvent);
   }
 
@@ -921,7 +821,7 @@ class AddressFormModelForm
     bool updateParent = true,
     bool emitEvent = true,
   }) {
-    postalCodeControl.patchValue(value,
+    postalCodeControl?.patchValue(value,
         updateParent: updateParent, emitEvent: emitEvent);
   }
 
@@ -948,7 +848,7 @@ class AddressFormModelForm
     bool updateParent = true,
     bool emitEvent = true,
   }) {
-    labelControl.patchValue(value,
+    labelControl?.patchValue(value,
         updateParent: updateParent, emitEvent: emitEvent);
   }
 
@@ -959,13 +859,8 @@ class AddressFormModelForm
     bool removeFocus = false,
     bool? disabled,
   }) =>
-      firstNameControl.reset(
-        value: value,
-        updateParent: updateParent,
-        emitEvent: emitEvent,
-        removeFocus: removeFocus,
-        disabled: disabled,
-      );
+      firstNameControl?.reset(
+          value: value, updateParent: updateParent, emitEvent: emitEvent);
 
   void middleNameValueReset(
     String? value, {
@@ -974,13 +869,8 @@ class AddressFormModelForm
     bool removeFocus = false,
     bool? disabled,
   }) =>
-      middleNameControl.reset(
-        value: value,
-        updateParent: updateParent,
-        emitEvent: emitEvent,
-        removeFocus: removeFocus,
-        disabled: disabled,
-      );
+      middleNameControl?.reset(
+          value: value, updateParent: updateParent, emitEvent: emitEvent);
 
   void lastNameValueReset(
     String? value, {
@@ -989,13 +879,8 @@ class AddressFormModelForm
     bool removeFocus = false,
     bool? disabled,
   }) =>
-      lastNameControl.reset(
-        value: value,
-        updateParent: updateParent,
-        emitEvent: emitEvent,
-        removeFocus: removeFocus,
-        disabled: disabled,
-      );
+      lastNameControl?.reset(
+          value: value, updateParent: updateParent, emitEvent: emitEvent);
 
   void contactNameValueReset(
     String value, {
@@ -1005,12 +890,7 @@ class AddressFormModelForm
     bool? disabled,
   }) =>
       contactNameControl.reset(
-        value: value,
-        updateParent: updateParent,
-        emitEvent: emitEvent,
-        removeFocus: removeFocus,
-        disabled: disabled,
-      );
+          value: value, updateParent: updateParent, emitEvent: emitEvent);
 
   void fullAddressValueReset(
     String value, {
@@ -1020,12 +900,7 @@ class AddressFormModelForm
     bool? disabled,
   }) =>
       fullAddressControl.reset(
-        value: value,
-        updateParent: updateParent,
-        emitEvent: emitEvent,
-        removeFocus: removeFocus,
-        disabled: disabled,
-      );
+          value: value, updateParent: updateParent, emitEvent: emitEvent);
 
   void provinceIdValueReset(
     int? value, {
@@ -1034,13 +909,8 @@ class AddressFormModelForm
     bool removeFocus = false,
     bool? disabled,
   }) =>
-      provinceIdControl.reset(
-        value: value,
-        updateParent: updateParent,
-        emitEvent: emitEvent,
-        removeFocus: removeFocus,
-        disabled: disabled,
-      );
+      provinceIdControl?.reset(
+          value: value, updateParent: updateParent, emitEvent: emitEvent);
 
   void cityIdValueReset(
     int? value, {
@@ -1049,13 +919,8 @@ class AddressFormModelForm
     bool removeFocus = false,
     bool? disabled,
   }) =>
-      cityIdControl.reset(
-        value: value,
-        updateParent: updateParent,
-        emitEvent: emitEvent,
-        removeFocus: removeFocus,
-        disabled: disabled,
-      );
+      cityIdControl?.reset(
+          value: value, updateParent: updateParent, emitEvent: emitEvent);
 
   void barangayIdValueReset(
     int? value, {
@@ -1064,13 +929,8 @@ class AddressFormModelForm
     bool removeFocus = false,
     bool? disabled,
   }) =>
-      barangayIdControl.reset(
-        value: value,
-        updateParent: updateParent,
-        emitEvent: emitEvent,
-        removeFocus: removeFocus,
-        disabled: disabled,
-      );
+      barangayIdControl?.reset(
+          value: value, updateParent: updateParent, emitEvent: emitEvent);
 
   void postalCodeValueReset(
     String? value, {
@@ -1079,13 +939,8 @@ class AddressFormModelForm
     bool removeFocus = false,
     bool? disabled,
   }) =>
-      postalCodeControl.reset(
-        value: value,
-        updateParent: updateParent,
-        emitEvent: emitEvent,
-        removeFocus: removeFocus,
-        disabled: disabled,
-      );
+      postalCodeControl?.reset(
+          value: value, updateParent: updateParent, emitEvent: emitEvent);
 
   void phoneValueReset(
     String value, {
@@ -1095,12 +950,7 @@ class AddressFormModelForm
     bool? disabled,
   }) =>
       phoneControl.reset(
-        value: value,
-        updateParent: updateParent,
-        emitEvent: emitEvent,
-        removeFocus: removeFocus,
-        disabled: disabled,
-      );
+          value: value, updateParent: updateParent, emitEvent: emitEvent);
 
   void isDefaultValueReset(
     bool value, {
@@ -1110,12 +960,7 @@ class AddressFormModelForm
     bool? disabled,
   }) =>
       isDefaultControl.reset(
-        value: value,
-        updateParent: updateParent,
-        emitEvent: emitEvent,
-        removeFocus: removeFocus,
-        disabled: disabled,
-      );
+          value: value, updateParent: updateParent, emitEvent: emitEvent);
 
   void labelValueReset(
     String? value, {
@@ -1124,22 +969,20 @@ class AddressFormModelForm
     bool removeFocus = false,
     bool? disabled,
   }) =>
-      labelControl.reset(
-        value: value,
-        updateParent: updateParent,
-        emitEvent: emitEvent,
-        removeFocus: removeFocus,
-        disabled: disabled,
-      );
+      labelControl?.reset(
+          value: value, updateParent: updateParent, emitEvent: emitEvent);
 
-  FormControl<String> get firstNameControl =>
-      form.control(firstNameControlPath()) as FormControl<String>;
+  FormControl<String>? get firstNameControl => containsFirstName
+      ? form.control(firstNameControlPath()) as FormControl<String>?
+      : null;
 
-  FormControl<String> get middleNameControl =>
-      form.control(middleNameControlPath()) as FormControl<String>;
+  FormControl<String>? get middleNameControl => containsMiddleName
+      ? form.control(middleNameControlPath()) as FormControl<String>?
+      : null;
 
-  FormControl<String> get lastNameControl =>
-      form.control(lastNameControlPath()) as FormControl<String>;
+  FormControl<String>? get lastNameControl => containsLastName
+      ? form.control(lastNameControlPath()) as FormControl<String>?
+      : null;
 
   FormControl<String> get contactNameControl =>
       form.control(contactNameControlPath()) as FormControl<String>;
@@ -1147,17 +990,21 @@ class AddressFormModelForm
   FormControl<String> get fullAddressControl =>
       form.control(fullAddressControlPath()) as FormControl<String>;
 
-  FormControl<int> get provinceIdControl =>
-      form.control(provinceIdControlPath()) as FormControl<int>;
+  FormControl<int>? get provinceIdControl => containsProvinceId
+      ? form.control(provinceIdControlPath()) as FormControl<int>?
+      : null;
 
-  FormControl<int> get cityIdControl =>
-      form.control(cityIdControlPath()) as FormControl<int>;
+  FormControl<int>? get cityIdControl => containsCityId
+      ? form.control(cityIdControlPath()) as FormControl<int>?
+      : null;
 
-  FormControl<int> get barangayIdControl =>
-      form.control(barangayIdControlPath()) as FormControl<int>;
+  FormControl<int>? get barangayIdControl => containsBarangayId
+      ? form.control(barangayIdControlPath()) as FormControl<int>?
+      : null;
 
-  FormControl<String> get postalCodeControl =>
-      form.control(postalCodeControlPath()) as FormControl<String>;
+  FormControl<String>? get postalCodeControl => containsPostalCode
+      ? form.control(postalCodeControlPath()) as FormControl<String>?
+      : null;
 
   FormControl<String> get phoneControl =>
       form.control(phoneControlPath()) as FormControl<String>;
@@ -1165,8 +1012,9 @@ class AddressFormModelForm
   FormControl<bool> get isDefaultControl =>
       form.control(isDefaultControlPath()) as FormControl<bool>;
 
-  FormControl<String> get labelControl =>
-      form.control(labelControlPath()) as FormControl<String>;
+  FormControl<String>? get labelControl => containsLabel
+      ? form.control(labelControlPath()) as FormControl<String>?
+      : null;
 
   void firstNameSetDisabled(
     bool disabled, {
@@ -1174,12 +1022,12 @@ class AddressFormModelForm
     bool emitEvent = true,
   }) {
     if (disabled) {
-      firstNameControl.markAsDisabled(
+      firstNameControl?.markAsDisabled(
         updateParent: updateParent,
         emitEvent: emitEvent,
       );
     } else {
-      firstNameControl.markAsEnabled(
+      firstNameControl?.markAsEnabled(
         updateParent: updateParent,
         emitEvent: emitEvent,
       );
@@ -1192,12 +1040,12 @@ class AddressFormModelForm
     bool emitEvent = true,
   }) {
     if (disabled) {
-      middleNameControl.markAsDisabled(
+      middleNameControl?.markAsDisabled(
         updateParent: updateParent,
         emitEvent: emitEvent,
       );
     } else {
-      middleNameControl.markAsEnabled(
+      middleNameControl?.markAsEnabled(
         updateParent: updateParent,
         emitEvent: emitEvent,
       );
@@ -1210,12 +1058,12 @@ class AddressFormModelForm
     bool emitEvent = true,
   }) {
     if (disabled) {
-      lastNameControl.markAsDisabled(
+      lastNameControl?.markAsDisabled(
         updateParent: updateParent,
         emitEvent: emitEvent,
       );
     } else {
-      lastNameControl.markAsEnabled(
+      lastNameControl?.markAsEnabled(
         updateParent: updateParent,
         emitEvent: emitEvent,
       );
@@ -1264,12 +1112,12 @@ class AddressFormModelForm
     bool emitEvent = true,
   }) {
     if (disabled) {
-      provinceIdControl.markAsDisabled(
+      provinceIdControl?.markAsDisabled(
         updateParent: updateParent,
         emitEvent: emitEvent,
       );
     } else {
-      provinceIdControl.markAsEnabled(
+      provinceIdControl?.markAsEnabled(
         updateParent: updateParent,
         emitEvent: emitEvent,
       );
@@ -1282,12 +1130,12 @@ class AddressFormModelForm
     bool emitEvent = true,
   }) {
     if (disabled) {
-      cityIdControl.markAsDisabled(
+      cityIdControl?.markAsDisabled(
         updateParent: updateParent,
         emitEvent: emitEvent,
       );
     } else {
-      cityIdControl.markAsEnabled(
+      cityIdControl?.markAsEnabled(
         updateParent: updateParent,
         emitEvent: emitEvent,
       );
@@ -1300,12 +1148,12 @@ class AddressFormModelForm
     bool emitEvent = true,
   }) {
     if (disabled) {
-      barangayIdControl.markAsDisabled(
+      barangayIdControl?.markAsDisabled(
         updateParent: updateParent,
         emitEvent: emitEvent,
       );
     } else {
-      barangayIdControl.markAsEnabled(
+      barangayIdControl?.markAsEnabled(
         updateParent: updateParent,
         emitEvent: emitEvent,
       );
@@ -1318,12 +1166,12 @@ class AddressFormModelForm
     bool emitEvent = true,
   }) {
     if (disabled) {
-      postalCodeControl.markAsDisabled(
+      postalCodeControl?.markAsDisabled(
         updateParent: updateParent,
         emitEvent: emitEvent,
       );
     } else {
-      postalCodeControl.markAsEnabled(
+      postalCodeControl?.markAsEnabled(
         updateParent: updateParent,
         emitEvent: emitEvent,
       );
@@ -1372,12 +1220,12 @@ class AddressFormModelForm
     bool emitEvent = true,
   }) {
     if (disabled) {
-      labelControl.markAsDisabled(
+      labelControl?.markAsDisabled(
         updateParent: updateParent,
         emitEvent: emitEvent,
       );
     } else {
-      labelControl.markAsEnabled(
+      labelControl?.markAsEnabled(
         updateParent: updateParent,
         emitEvent: emitEvent,
       );
@@ -1389,11 +1237,9 @@ class AddressFormModelForm
     final isValid = !currentForm.hasErrors && currentForm.errors.isEmpty;
 
     if (!isValid) {
-      _logAddressFormModelForm.warning(
-        'Avoid calling `model` on invalid form.Possible exceptions for non-nullable fields which should be guarded by `required` validator.',
-        null,
-        StackTrace.current,
-      );
+      debugPrintStack(
+          label:
+              '[${path ?? 'AddressFormModelForm'}]\n┗━ Avoid calling `model` on invalid form. Possible exceptions for non-nullable fields which should be guarded by `required` validator.');
     }
     return AddressFormModel(
         firstName: _firstNameValue,
@@ -1408,23 +1254,6 @@ class AddressFormModelForm
         phone: _phoneValue,
         isDefault: _isDefaultValue,
         label: _labelValue);
-  }
-
-  @override
-  AddressFormModel get rawModel {
-    return AddressFormModel(
-        firstName: _firstNameRawValue,
-        middleName: _middleNameRawValue,
-        lastName: _lastNameRawValue,
-        contactName: _contactNameRawValue,
-        fullAddress: _fullAddressRawValue,
-        provinceId: _provinceIdRawValue,
-        cityId: _cityIdRawValue,
-        barangayId: _barangayIdRawValue,
-        postalCode: _postalCodeRawValue,
-        phone: _phoneRawValue,
-        isDefault: _isDefaultRawValue,
-        label: _labelRawValue);
   }
 
   @override
@@ -1460,18 +1289,6 @@ class AddressFormModelForm
   }
 
   @override
-  bool equalsTo(AddressFormModel? other) {
-    final currentForm = this.currentForm;
-
-    return const DeepCollectionEquality().equals(
-      currentForm is FormControlCollection<dynamic>
-          ? currentForm.rawValue
-          : currentForm.value,
-      AddressFormModelForm.formElements(other).rawValue,
-    );
-  }
-
-  @override
   void submit({
     required void Function(AddressFormModel model) onValid,
     void Function()? onNotValid,
@@ -1480,8 +1297,6 @@ class AddressFormModelForm
     if (currentForm.valid) {
       onValid(model);
     } else {
-      _logAddressFormModelForm.info('Errors');
-      _logAddressFormModelForm.info('┗━━ ${form.errors}');
       onNotValid?.call();
     }
   }
@@ -1614,8 +1429,6 @@ class ReactiveAddressFormModelFormArrayBuilder<
     this.formControl,
     this.builder,
     required this.itemBuilder,
-    this.emptyBuilder,
-    this.controlFilter,
   })  : assert(control != null || formControl != null,
             "You have to specify `control` or `formControl`!"),
         super(key: key);
@@ -1631,16 +1444,9 @@ class ReactiveAddressFormModelFormArrayBuilder<
   final Widget Function(
       BuildContext context,
       int i,
-      FormControl<ReactiveAddressFormModelFormArrayBuilderT> control,
       ReactiveAddressFormModelFormArrayBuilderT? item,
       AddressFormModelForm formModel) itemBuilder;
 
-  final Widget Function(BuildContext context)? emptyBuilder;
-
-  final bool Function(
-          FormControl<ReactiveAddressFormModelFormArrayBuilderT> control)?
-      controlFilter;
-
   @override
   Widget build(BuildContext context) {
     final formModel = ReactiveAddressFormModelForm.of(context);
@@ -1649,109 +1455,33 @@ class ReactiveAddressFormModelFormArrayBuilder<
       throw FormControlParentNotFoundException(this);
     }
 
-    final builder = this.builder;
-    final itemBuilder = this.itemBuilder;
+    return ReactiveFormArray<ReactiveAddressFormModelFormArrayBuilderT>(
+      formArray: formControl ?? control?.call(formModel),
+      builder: (context, formArray, child) {
+        final values = formArray.controls.map((e) => e.value).toList();
+        final itemList = values
+            .asMap()
+            .map((i, item) {
+              return MapEntry(
+                i,
+                itemBuilder(
+                  context,
+                  i,
+                  item,
+                  formModel,
+                ),
+              );
+            })
+            .values
+            .toList();
 
-    return ReactiveFormArrayItemBuilder<
-        ReactiveAddressFormModelFormArrayBuilderT>(
-      formControl: formControl ?? control?.call(formModel),
-      builder: builder != null
-          ? (context, itemList) => builder(
-                context,
-                itemList,
-                formModel,
-              )
-          : null,
-      itemBuilder: (
-        context,
-        i,
-        control,
-        item,
-      ) =>
-          itemBuilder(context, i, control, item, formModel),
-      emptyBuilder: emptyBuilder,
-      controlFilter: controlFilter,
-    );
-  }
-}
-
-class ReactiveAddressFormModelFormArrayBuilder2<
-    ReactiveAddressFormModelFormArrayBuilderT> extends StatelessWidget {
-  const ReactiveAddressFormModelFormArrayBuilder2({
-    Key? key,
-    this.control,
-    this.formControl,
-    this.builder,
-    required this.itemBuilder,
-    this.emptyBuilder,
-    this.controlFilter,
-  })  : assert(control != null || formControl != null,
-            "You have to specify `control` or `formControl`!"),
-        super(key: key);
-
-  final FormArray<ReactiveAddressFormModelFormArrayBuilderT>? formControl;
-
-  final FormArray<ReactiveAddressFormModelFormArrayBuilderT>? Function(
-      AddressFormModelForm formModel)? control;
-
-  final Widget Function(
-      ({
-        BuildContext context,
-        List<Widget> itemList,
-        AddressFormModelForm formModel
-      }) params)? builder;
-
-  final Widget Function(
-      ({
-        BuildContext context,
-        int i,
-        FormControl<ReactiveAddressFormModelFormArrayBuilderT> control,
-        ReactiveAddressFormModelFormArrayBuilderT? item,
-        AddressFormModelForm formModel
-      }) params) itemBuilder;
-
-  final Widget Function(BuildContext context)? emptyBuilder;
-
-  final bool Function(
-          FormControl<ReactiveAddressFormModelFormArrayBuilderT> control)?
-      controlFilter;
-
-  @override
-  Widget build(BuildContext context) {
-    final formModel = ReactiveAddressFormModelForm.of(context);
-
-    if (formModel == null) {
-      throw FormControlParentNotFoundException(this);
-    }
-
-    final builder = this.builder;
-    final itemBuilder = this.itemBuilder;
-
-    return ReactiveFormArrayItemBuilder<
-        ReactiveAddressFormModelFormArrayBuilderT>(
-      formControl: formControl ?? control?.call(formModel),
-      builder: builder != null
-          ? (context, itemList) => builder((
-                context: context,
-                itemList: itemList,
-                formModel: formModel,
-              ))
-          : null,
-      itemBuilder: (
-        context,
-        i,
-        control,
-        item,
-      ) =>
-          itemBuilder((
-        context: context,
-        i: i,
-        control: control,
-        item: item,
-        formModel: formModel
-      )),
-      emptyBuilder: emptyBuilder,
-      controlFilter: controlFilter,
+        return builder?.call(
+              context,
+              itemList,
+              formModel,
+            ) ??
+            Column(children: itemList);
+      },
     );
   }
 }

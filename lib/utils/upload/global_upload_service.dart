@@ -20,7 +20,7 @@ class GlobalUploadService {
   // ☁️ 1. S3 通用文件上传 (支持 Web & Mobile)
   // ===========================================================================
   Future<String> uploadFile({
-    required XFile file, // 🔥 改动点：参数改为 XFile
+    required XFile file, //  改动点：参数改为 XFile
     required UploadModule module,
     required Function(double) onProgress,
     CancelToken? cancelToken,

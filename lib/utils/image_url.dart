@@ -72,13 +72,6 @@ class ImageUrl {
     return min(max(px, 1), 2048);
   }
 
-  static String _fmtDpr(double dpr) {
-    if (dpr <= 1.0) return '1';
-    if (dpr <= 1.5) return '1.5';
-    if (dpr <= 2.0) return '2';
-    if (dpr <= 3.0) return '3';
-    return '3';
-  }
 
   static String _toCdnFit(BoxFit fit) {
     switch (fit) {

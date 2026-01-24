@@ -13,5 +13,8 @@ ProductCategoryItem _$ProductCategoryItemFromJson(Map<String, dynamic> json) =>
     );
 
 Map<String, dynamic> _$ProductCategoryItemToJson(
-  ProductCategoryItem instance,
-) => <String, dynamic>{'name': instance.name, 'id': instance.id};
+        ProductCategoryItem instance) =>
+    <String, dynamic>{
+      'name': instance.name,
+      'id': instance.id,
+    };

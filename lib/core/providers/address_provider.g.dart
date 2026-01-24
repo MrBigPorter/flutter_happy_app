@@ -12,17 +12,14 @@ String _$addressListHash() => r'a0bfc8646a96590c403f7b0068b73fa4203b920f';
 @ProviderFor(addressList)
 final addressListProvider =
     AutoDisposeFutureProvider<PageResult<AddressRes>>.internal(
-      addressList,
-      name: r'addressListProvider',
-      debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-          ? null
-          : _$addressListHash,
-      dependencies: null,
-      allTransitiveDependencies: null,
-    );
+  addressList,
+  name: r'addressListProvider',
+  debugGetCreateSourceHash:
+      const bool.fromEnvironment('dart.vm.product') ? null : _$addressListHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
 typedef AddressListRef = AutoDisposeFutureProviderRef<PageResult<AddressRes>>;
 String _$addressDetailHash() => r'6e9b267aa46589577db10ca75cc0599553415be0';
 
@@ -57,15 +54,21 @@ class AddressDetailFamily extends Family<AsyncValue<AddressRes>> {
   const AddressDetailFamily();
 
   /// See also [addressDetail].
-  AddressDetailProvider call(String addressId) {
-    return AddressDetailProvider(addressId);
+  AddressDetailProvider call(
+    String addressId,
+  ) {
+    return AddressDetailProvider(
+      addressId,
+    );
   }
 
   @override
   AddressDetailProvider getProviderOverride(
     covariant AddressDetailProvider provider,
   ) {
-    return call(provider.addressId);
+    return call(
+      provider.addressId,
+    );
   }
 
   static const Iterable<ProviderOrFamily>? _dependencies = null;
@@ -86,19 +89,24 @@ class AddressDetailFamily extends Family<AsyncValue<AddressRes>> {
 /// See also [addressDetail].
 class AddressDetailProvider extends AutoDisposeFutureProvider<AddressRes> {
   /// See also [addressDetail].
-  AddressDetailProvider(String addressId)
-    : this._internal(
-        (ref) => addressDetail(ref as AddressDetailRef, addressId),
-        from: addressDetailProvider,
-        name: r'addressDetailProvider',
-        debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-            ? null
-            : _$addressDetailHash,
-        dependencies: AddressDetailFamily._dependencies,
-        allTransitiveDependencies:
-            AddressDetailFamily._allTransitiveDependencies,
-        addressId: addressId,
-      );
+  AddressDetailProvider(
+    String addressId,
+  ) : this._internal(
+          (ref) => addressDetail(
+            ref as AddressDetailRef,
+            addressId,
+          ),
+          from: addressDetailProvider,
+          name: r'addressDetailProvider',
+          debugGetCreateSourceHash:
+              const bool.fromEnvironment('dart.vm.product')
+                  ? null
+                  : _$addressDetailHash,
+          dependencies: AddressDetailFamily._dependencies,
+          allTransitiveDependencies:
+              AddressDetailFamily._allTransitiveDependencies,
+          addressId: addressId,
+        );
 
   AddressDetailProvider._internal(
     super._createNotifier, {
@@ -149,16 +157,13 @@ class AddressDetailProvider extends AutoDisposeFutureProvider<AddressRes> {
   }
 }
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
 mixin AddressDetailRef on AutoDisposeFutureProviderRef<AddressRes> {
   /// The parameter `addressId` of this provider.
   String get addressId;
 }
 
 class _AddressDetailProviderElement
-    extends AutoDisposeFutureProviderElement<AddressRes>
-    with AddressDetailRef {
+    extends AutoDisposeFutureProviderElement<AddressRes> with AddressDetailRef {
   _AddressDetailProviderElement(super.provider);
 
   @override
@@ -171,14 +176,14 @@ String _$selectedAddressHash() => r'bd8ea455919f4164b519b9f1741b82c66e0994fd';
 @ProviderFor(SelectedAddress)
 final selectedAddressProvider =
     AutoDisposeNotifierProvider<SelectedAddress, AddressRes?>.internal(
-      SelectedAddress.new,
-      name: r'selectedAddressProvider',
-      debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-          ? null
-          : _$selectedAddressHash,
-      dependencies: null,
-      allTransitiveDependencies: null,
-    );
+  SelectedAddress.new,
+  name: r'selectedAddressProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$selectedAddressHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
 
 typedef _$SelectedAddress = AutoDisposeNotifier<AddressRes?>;
 String _$addressManagerHash() => r'6d9b60aa090bbff101986aeb9467c9844f525b8a';
@@ -187,15 +192,15 @@ String _$addressManagerHash() => r'6d9b60aa090bbff101986aeb9467c9844f525b8a';
 @ProviderFor(AddressManager)
 final addressManagerProvider =
     NotifierProvider<AddressManager, AsyncValue<void>>.internal(
-      AddressManager.new,
-      name: r'addressManagerProvider',
-      debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-          ? null
-          : _$addressManagerHash,
-      dependencies: null,
-      allTransitiveDependencies: null,
-    );
+  AddressManager.new,
+  name: r'addressManagerProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$addressManagerHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
 
 typedef _$AddressManager = Notifier<AsyncValue<void>>;
 // ignore_for_file: type=lint
-// ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package
+// ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member

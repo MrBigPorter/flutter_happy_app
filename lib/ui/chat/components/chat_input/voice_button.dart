@@ -1,10 +1,16 @@
 import 'dart:async';
+import 'package:flutter_app/ui/chat/widgets/voice_record_button_web_utils.dart'
+if (dart.library.js) 'package:flutter_app/ui/chat/widgets/voice_record_button_web_utils_web.dart'
+as web_utils;
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../providers/chat_room_provider.dart';
 import '../../services/voice/voice_recorder_service.dart';
+
 import 'recording_overlay.dart';
 
 class VoiceRecordButton extends ConsumerStatefulWidget {
@@ -24,6 +30,44 @@ class _VoiceRecordButtonState extends ConsumerState<VoiceRecordButton> {
   Timer? _recordTimer;
   OverlayEntry? _overlayEntry;
   DateTime? _recordStartTime;
+
+  @override
+  void initState() {
+    super.initState();
+    // 在调用时
+    if (kIsWeb) {
+      web_utils.preventDefaultContextMenu();
+    }
+  }
+
+  @override
+  void dispose() {
+    _recordTimer?.cancel();
+    _hideOverlay();
+    super.dispose();
+  }
+
+  // 将启动逻辑抽取出来，方便复用
+  Future<void> _startRecording() async {
+    if (!await VoiceRecorderService().hasPermission()) return;
+    widget.onRecordingChange?.call(true);
+
+    setState(() {
+      _isRecording = true;
+      _isCancelArea = false;
+      _recordDuration = 0;
+      _recordStartTime = DateTime.now();
+    });
+
+    _showOverlay();
+    _recordTimer = Timer.periodic(const Duration(seconds: 1), (t) {
+      setState(() => _recordDuration++);
+      _updateOverlay();
+    });
+
+    await VoiceRecorderService().start();
+    if (!kIsWeb) HapticFeedback.mediumImpact();
+  }
 
   // 显示录音浮层
   void _showOverlay() {
@@ -61,51 +105,31 @@ class _VoiceRecordButtonState extends ConsumerState<VoiceRecordButton> {
     setState(() => _isRecording = false);
 
     // 逻辑判定：取消、为空或时长太短则作废
-    if (_isCancelArea || path == null || duration! < 1) {
+    if (_isCancelArea || path == null || (duration??0) < 1) {
       debugPrint(" Recording discarded: CancelArea=$_isCancelArea, Duration=$duration");
       return;
     }
 
     //  执行投递：调用 Controller 进入发送链路
-    ref.read(chatControllerProvider(widget.conversationId)).sendVoiceMessage(path, duration!);
+    ref.read(chatControllerProvider(widget.conversationId)).sendVoiceMessage(path, duration??0);
   }
 
   @override
   Widget build(BuildContext context) {
+
     return GestureDetector(
-      onLongPressStart: (_) async {
-        if (!await VoiceRecorderService().hasPermission()) return;
-
-        // 通知父组件：开始录音
-        widget.onRecordingChange?.call(true);
-
-        setState(() {
-          _isRecording = true;
-          _isCancelArea = false;
-          _recordDuration = 0;
-          _recordStartTime = DateTime.now();
-        });
-
-        _showOverlay();
-        _recordTimer = Timer.periodic(const Duration(seconds: 1), (t) {
-          setState(() => _recordDuration++);
-          _updateOverlay();
-        });
-
-        await VoiceRecorderService().start();
-        HapticFeedback.mediumImpact(); // 触感反馈
-      },
-      onLongPressMoveUpdate: (details) {
-        if (!_isRecording) return;
-        // 判定上滑距离 (阈值 -100)
-        bool isCancel = details.localOffsetFromOrigin.dy < -100.h;
-        if (isCancel != _isCancelArea) {
-          setState(() => _isCancelArea = isCancel);
-          _updateOverlay();
+      // --- 移动端逻辑：长按 ---
+      onLongPressStart: kIsWeb ? null : (_) => _startRecording(),
+      onLongPressEnd: kIsWeb ? null : (_) => _stopRecording(),
+      onLongPressCancel: kIsWeb ? null : () => _stopRecording(),
+      // --- Web/电脑端逻辑：点击切换 ---
+      onTap: kIsWeb ? () {
+        if (_isRecording) {
+          _stopRecording();
+        } else {
+          _startRecording();
         }
-      },
-      onLongPressEnd: (_) => _stopRecording(),
-      onLongPressCancel: () => _stopRecording(),
+      } : null,
       child: Container(
         height: 40.h,
         alignment: Alignment.center,
@@ -115,7 +139,9 @@ class _VoiceRecordButtonState extends ConsumerState<VoiceRecordButton> {
           border: Border.all(color: Colors.black12),
         ),
         child: Text(
-          _isRecording ? "Release to Send" : "Hold to Talk",
+          _isRecording
+              ? (kIsWeb ? "Click to Send" : "Release to Send")
+              : (kIsWeb ? "Click to Record" : "Hold to Talk"),
           style: TextStyle(
             fontWeight: FontWeight.bold,
             color: _isRecording ? Colors.black54 : Colors.black87,

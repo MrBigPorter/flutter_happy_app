@@ -1,7 +1,7 @@
 // coverage:ignore-file
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // ignore_for_file: type=lint
-// ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
+// ignore_for_file:
 
 part of 'kyc_information_confirm_forms.dart';
 
@@ -54,7 +54,7 @@ class ReactiveKycInformationConfirmModelForm extends StatelessWidget {
     required this.form,
     required this.child,
     this.canPop,
-    this.onPopInvokedWithResult,
+    this.onPopInvoked,
   }) : super(key: key);
 
   final Widget child;
@@ -63,8 +63,7 @@ class ReactiveKycInformationConfirmModelForm extends StatelessWidget {
 
   final bool Function(FormGroup formGroup)? canPop;
 
-  final ReactiveFormPopInvokedWithResultCallback<dynamic>?
-      onPopInvokedWithResult;
+  final void Function(FormGroup formGroup, bool didPop)? onPopInvoked;
 
   static KycInformationConfirmModelForm? of(
     BuildContext context, {
@@ -92,7 +91,7 @@ class ReactiveKycInformationConfirmModelForm extends StatelessWidget {
       stream: form.form.statusChanged,
       child: ReactiveFormPopScope(
         canPop: canPop,
-        onPopInvokedWithResult: onPopInvokedWithResult,
+        onPopInvoked: onPopInvoked,
         child: child,
       ),
     );
@@ -113,7 +112,7 @@ class KycInformationConfirmModelFormBuilder extends StatefulWidget {
     this.model,
     this.child,
     this.canPop,
-    this.onPopInvokedWithResult,
+    this.onPopInvoked,
     required this.builder,
     this.initState,
   }) : super(key: key);
@@ -124,8 +123,7 @@ class KycInformationConfirmModelFormBuilder extends StatefulWidget {
 
   final bool Function(FormGroup formGroup)? canPop;
 
-  final ReactiveFormPopInvokedWithResultCallback<dynamic>?
-      onPopInvokedWithResult;
+  final void Function(FormGroup formGroup, bool didPop)? onPopInvoked;
 
   final Widget Function(BuildContext context,
       KycInformationConfirmModelForm formModel, Widget? child) builder;
@@ -143,8 +141,6 @@ class _KycInformationConfirmModelFormBuilderState
     extends State<KycInformationConfirmModelFormBuilder> {
   late KycInformationConfirmModelForm _formModel;
 
-  StreamSubscription<LogRecord>? _logSubscription;
-
   @override
   void initState() {
     _formModel = KycInformationConfirmModelForm(
@@ -155,35 +151,6 @@ class _KycInformationConfirmModelFormBuilderState
     }
 
     widget.initState?.call(context, _formModel);
-
-    _logSubscription =
-        _logKycInformationConfirmModelForm.onRecord.listen((LogRecord e) {
-      // use `dumpErrorToConsole` for severe messages to ensure that severe
-      // exceptions are formatted consistently with other Flutter examples and
-      // avoids printing duplicate exceptions
-      if (e.level >= Level.SEVERE) {
-        final Object? error = e.error;
-        FlutterError.dumpErrorToConsole(
-          FlutterErrorDetails(
-            exception: error is Exception ? error : Exception(error),
-            stack: e.stackTrace,
-            library: e.loggerName,
-            context: ErrorDescription(e.message),
-          ),
-        );
-      } else {
-        log(
-          e.message,
-          time: e.time,
-          sequenceNumber: e.sequenceNumber,
-          level: e.level.value,
-          name: e.loggerName,
-          zone: e.zone,
-          error: e.error,
-          stackTrace: e.stackTrace,
-        );
-      }
-    });
 
     super.initState();
   }
@@ -201,7 +168,6 @@ class _KycInformationConfirmModelFormBuilderState
   @override
   void dispose() {
     _formModel.form.dispose();
-    _logSubscription?.cancel();
     super.dispose();
   }
 
@@ -210,12 +176,12 @@ class _KycInformationConfirmModelFormBuilderState
     return ReactiveKycInformationConfirmModelForm(
       key: ObjectKey(_formModel),
       form: _formModel,
-      // canPop: widget.canPop,
-      // onPopInvoked: widget.onPopInvoked,
+      canPop: widget.canPop,
+      onPopInvoked: widget.onPopInvoked,
       child: ReactiveFormBuilder(
         form: () => _formModel.form,
         canPop: widget.canPop,
-        onPopInvokedWithResult: widget.onPopInvokedWithResult,
+        onPopInvoked: widget.onPopInvoked,
         builder: (context, formGroup, child) =>
             widget.builder(context, _formModel, widget.child),
         child: widget.child,
@@ -224,12 +190,8 @@ class _KycInformationConfirmModelFormBuilderState
   }
 }
 
-final _logKycInformationConfirmModelForm =
-    Logger.detached('KycInformationConfirmModelForm');
-
 class KycInformationConfirmModelForm
-    implements
-        FormModel<KycInformationConfirmModel, KycInformationConfirmModel> {
+    implements FormModel<KycInformationConfirmModel> {
   KycInformationConfirmModelForm(
     this.form,
     this.path,
@@ -305,72 +267,38 @@ class KycInformationConfirmModelForm
 
   String addressControlPath() => pathBuilder(addressControlName);
 
-  int get _typeValue => typeControl.value ?? 0;
+  int get _typeValue => typeControl.value as int;
 
-  String get _typeTextValue => typeTextControl.value ?? 'UNKNOWN';
+  String get _typeTextValue => typeTextControl.value ?? "UNKNOWN";
 
-  String get _idNumberValue => idNumberControl.value ?? '';
+  String get _idNumberValue => idNumberControl.value ?? "";
 
-  String get _firstNameValue => firstNameControl.value ?? '';
+  String get _firstNameValue => firstNameControl.value ?? "";
 
-  String? get _middleNameValue => middleNameControl.value;
+  String? get _middleNameValue => middleNameControl?.value;
 
-  String get _lastNameValue => lastNameControl.value ?? '';
+  String get _lastNameValue => lastNameControl.value ?? "";
 
-  String get _realNameValue => realNameControl.value ?? '';
+  String get _realNameValue => realNameControl.value ?? "";
 
-  String get _genderValue => genderControl.value ?? 'MALE';
+  String get _genderValue => genderControl.value ?? "MALE";
 
-  String get _birthdayValue => birthdayControl.value ?? '';
+  String get _birthdayValue => birthdayControl.value ?? "";
 
-  String? get _expiryDateValue => expiryDateControl.value;
+  String? get _expiryDateValue => expiryDateControl?.value;
 
-  int get _countryCodeValue => countryCodeControl.value ?? 63;
+  int get _countryCodeValue => countryCodeControl.value as int;
 
-  int? get _provinceValue => provinceControl.value;
+  int? get _provinceValue => provinceControl?.value;
 
-  int? get _cityValue => cityControl.value;
+  int? get _cityValue => cityControl?.value;
 
-  int? get _barangayValue => barangayControl.value;
+  int? get _barangayValue => barangayControl?.value;
 
-  int? get _postalCodeValue => postalCodeControl.value;
+  int? get _postalCodeValue => postalCodeControl?.value;
 
-  String get _addressValue => addressControl.value ?? '';
+  String get _addressValue => addressControl.value ?? "";
 
-  int get _typeRawValue => typeControl.value ?? 0;
-
-  String get _typeTextRawValue => typeTextControl.value ?? 'UNKNOWN';
-
-  String get _idNumberRawValue => idNumberControl.value ?? '';
-
-  String get _firstNameRawValue => firstNameControl.value ?? '';
-
-  String? get _middleNameRawValue => middleNameControl.value;
-
-  String get _lastNameRawValue => lastNameControl.value ?? '';
-
-  String get _realNameRawValue => realNameControl.value ?? '';
-
-  String get _genderRawValue => genderControl.value ?? 'MALE';
-
-  String get _birthdayRawValue => birthdayControl.value ?? '';
-
-  String? get _expiryDateRawValue => expiryDateControl.value;
-
-  int get _countryCodeRawValue => countryCodeControl.value ?? 63;
-
-  int? get _provinceRawValue => provinceControl.value;
-
-  int? get _cityRawValue => cityControl.value;
-
-  int? get _barangayRawValue => barangayControl.value;
-
-  int? get _postalCodeRawValue => postalCodeControl.value;
-
-  String get _addressRawValue => addressControl.value ?? '';
-
-  @Deprecated(
-      'Generator completely wraps the form and ensures at startup that all controls are present inside the form so we do not need this additional step')
   bool get containsType {
     try {
       form.control(typeControlPath());
@@ -380,8 +308,6 @@ class KycInformationConfirmModelForm
     }
   }
 
-  @Deprecated(
-      'Generator completely wraps the form and ensures at startup that all controls are present inside the form so we do not need this additional step')
   bool get containsTypeText {
     try {
       form.control(typeTextControlPath());
@@ -391,8 +317,6 @@ class KycInformationConfirmModelForm
     }
   }
 
-  @Deprecated(
-      'Generator completely wraps the form and ensures at startup that all controls are present inside the form so we do not need this additional step')
   bool get containsIdNumber {
     try {
       form.control(idNumberControlPath());
@@ -402,8 +326,6 @@ class KycInformationConfirmModelForm
     }
   }
 
-  @Deprecated(
-      'Generator completely wraps the form and ensures at startup that all controls are present inside the form so we do not need this additional step')
   bool get containsFirstName {
     try {
       form.control(firstNameControlPath());
@@ -413,8 +335,6 @@ class KycInformationConfirmModelForm
     }
   }
 
-  @Deprecated(
-      'Generator completely wraps the form and ensures at startup that all controls are present inside the form so we do not need this additional step')
   bool get containsMiddleName {
     try {
       form.control(middleNameControlPath());
@@ -424,8 +344,6 @@ class KycInformationConfirmModelForm
     }
   }
 
-  @Deprecated(
-      'Generator completely wraps the form and ensures at startup that all controls are present inside the form so we do not need this additional step')
   bool get containsLastName {
     try {
       form.control(lastNameControlPath());
@@ -435,8 +353,6 @@ class KycInformationConfirmModelForm
     }
   }
 
-  @Deprecated(
-      'Generator completely wraps the form and ensures at startup that all controls are present inside the form so we do not need this additional step')
   bool get containsRealName {
     try {
       form.control(realNameControlPath());
@@ -446,8 +362,6 @@ class KycInformationConfirmModelForm
     }
   }
 
-  @Deprecated(
-      'Generator completely wraps the form and ensures at startup that all controls are present inside the form so we do not need this additional step')
   bool get containsGender {
     try {
       form.control(genderControlPath());
@@ -457,8 +371,6 @@ class KycInformationConfirmModelForm
     }
   }
 
-  @Deprecated(
-      'Generator completely wraps the form and ensures at startup that all controls are present inside the form so we do not need this additional step')
   bool get containsBirthday {
     try {
       form.control(birthdayControlPath());
@@ -468,8 +380,6 @@ class KycInformationConfirmModelForm
     }
   }
 
-  @Deprecated(
-      'Generator completely wraps the form and ensures at startup that all controls are present inside the form so we do not need this additional step')
   bool get containsExpiryDate {
     try {
       form.control(expiryDateControlPath());
@@ -479,8 +389,6 @@ class KycInformationConfirmModelForm
     }
   }
 
-  @Deprecated(
-      'Generator completely wraps the form and ensures at startup that all controls are present inside the form so we do not need this additional step')
   bool get containsCountryCode {
     try {
       form.control(countryCodeControlPath());
@@ -490,8 +398,6 @@ class KycInformationConfirmModelForm
     }
   }
 
-  @Deprecated(
-      'Generator completely wraps the form and ensures at startup that all controls are present inside the form so we do not need this additional step')
   bool get containsProvince {
     try {
       form.control(provinceControlPath());
@@ -501,8 +407,6 @@ class KycInformationConfirmModelForm
     }
   }
 
-  @Deprecated(
-      'Generator completely wraps the form and ensures at startup that all controls are present inside the form so we do not need this additional step')
   bool get containsCity {
     try {
       form.control(cityControlPath());
@@ -512,8 +416,6 @@ class KycInformationConfirmModelForm
     }
   }
 
-  @Deprecated(
-      'Generator completely wraps the form and ensures at startup that all controls are present inside the form so we do not need this additional step')
   bool get containsBarangay {
     try {
       form.control(barangayControlPath());
@@ -523,8 +425,6 @@ class KycInformationConfirmModelForm
     }
   }
 
-  @Deprecated(
-      'Generator completely wraps the form and ensures at startup that all controls are present inside the form so we do not need this additional step')
   bool get containsPostalCode {
     try {
       form.control(postalCodeControlPath());
@@ -534,8 +434,6 @@ class KycInformationConfirmModelForm
     }
   }
 
-  @Deprecated(
-      'Generator completely wraps the form and ensures at startup that all controls are present inside the form so we do not need this additional step')
   bool get containsAddress {
     try {
       form.control(addressControlPath());
@@ -545,37 +443,37 @@ class KycInformationConfirmModelForm
     }
   }
 
-  Map<String, Object> get typeErrors => typeControl.errors;
+  Object? get typeErrors => typeControl.errors;
 
-  Map<String, Object> get typeTextErrors => typeTextControl.errors;
+  Object? get typeTextErrors => typeTextControl.errors;
 
-  Map<String, Object> get idNumberErrors => idNumberControl.errors;
+  Object? get idNumberErrors => idNumberControl.errors;
 
-  Map<String, Object> get firstNameErrors => firstNameControl.errors;
+  Object? get firstNameErrors => firstNameControl.errors;
 
-  Map<String, Object>? get middleNameErrors => middleNameControl.errors;
+  Object? get middleNameErrors => middleNameControl?.errors;
 
-  Map<String, Object> get lastNameErrors => lastNameControl.errors;
+  Object? get lastNameErrors => lastNameControl.errors;
 
-  Map<String, Object> get realNameErrors => realNameControl.errors;
+  Object? get realNameErrors => realNameControl.errors;
 
-  Map<String, Object> get genderErrors => genderControl.errors;
+  Object? get genderErrors => genderControl.errors;
 
-  Map<String, Object> get birthdayErrors => birthdayControl.errors;
+  Object? get birthdayErrors => birthdayControl.errors;
 
-  Map<String, Object>? get expiryDateErrors => expiryDateControl.errors;
+  Object? get expiryDateErrors => expiryDateControl?.errors;
 
-  Map<String, Object> get countryCodeErrors => countryCodeControl.errors;
+  Object? get countryCodeErrors => countryCodeControl.errors;
 
-  Map<String, Object>? get provinceErrors => provinceControl.errors;
+  Object? get provinceErrors => provinceControl?.errors;
 
-  Map<String, Object>? get cityErrors => cityControl.errors;
+  Object? get cityErrors => cityControl?.errors;
 
-  Map<String, Object>? get barangayErrors => barangayControl.errors;
+  Object? get barangayErrors => barangayControl?.errors;
 
-  Map<String, Object>? get postalCodeErrors => postalCodeControl.errors;
+  Object? get postalCodeErrors => postalCodeControl?.errors;
 
-  Map<String, Object> get addressErrors => addressControl.errors;
+  Object? get addressErrors => addressControl.errors;
 
   void get typeFocus => form.focus(typeControlPath());
 
@@ -609,8 +507,6 @@ class KycInformationConfirmModelForm
 
   void get addressFocus => form.focus(addressControlPath());
 
-  @Deprecated(
-      'Generator completely wraps the form so manual fields removal could lead to unexpected crashes')
   void middleNameRemove({
     bool updateParent = true,
     bool emitEvent = true,
@@ -637,8 +533,6 @@ class KycInformationConfirmModelForm
     }
   }
 
-  @Deprecated(
-      'Generator completely wraps the form so manual fields removal could lead to unexpected crashes')
   void expiryDateRemove({
     bool updateParent = true,
     bool emitEvent = true,
@@ -665,8 +559,6 @@ class KycInformationConfirmModelForm
     }
   }
 
-  @Deprecated(
-      'Generator completely wraps the form so manual fields removal could lead to unexpected crashes')
   void provinceRemove({
     bool updateParent = true,
     bool emitEvent = true,
@@ -693,8 +585,6 @@ class KycInformationConfirmModelForm
     }
   }
 
-  @Deprecated(
-      'Generator completely wraps the form so manual fields removal could lead to unexpected crashes')
   void cityRemove({
     bool updateParent = true,
     bool emitEvent = true,
@@ -721,8 +611,6 @@ class KycInformationConfirmModelForm
     }
   }
 
-  @Deprecated(
-      'Generator completely wraps the form so manual fields removal could lead to unexpected crashes')
   void barangayRemove({
     bool updateParent = true,
     bool emitEvent = true,
@@ -749,8 +637,6 @@ class KycInformationConfirmModelForm
     }
   }
 
-  @Deprecated(
-      'Generator completely wraps the form so manual fields removal could lead to unexpected crashes')
   void postalCodeRemove({
     bool updateParent = true,
     bool emitEvent = true,
@@ -818,7 +704,7 @@ class KycInformationConfirmModelForm
     bool updateParent = true,
     bool emitEvent = true,
   }) {
-    middleNameControl.updateValue(value,
+    middleNameControl?.updateValue(value,
         updateParent: updateParent, emitEvent: emitEvent);
   }
 
@@ -863,7 +749,7 @@ class KycInformationConfirmModelForm
     bool updateParent = true,
     bool emitEvent = true,
   }) {
-    expiryDateControl.updateValue(value,
+    expiryDateControl?.updateValue(value,
         updateParent: updateParent, emitEvent: emitEvent);
   }
 
@@ -881,7 +767,7 @@ class KycInformationConfirmModelForm
     bool updateParent = true,
     bool emitEvent = true,
   }) {
-    provinceControl.updateValue(value,
+    provinceControl?.updateValue(value,
         updateParent: updateParent, emitEvent: emitEvent);
   }
 
@@ -890,7 +776,7 @@ class KycInformationConfirmModelForm
     bool updateParent = true,
     bool emitEvent = true,
   }) {
-    cityControl.updateValue(value,
+    cityControl?.updateValue(value,
         updateParent: updateParent, emitEvent: emitEvent);
   }
 
@@ -899,7 +785,7 @@ class KycInformationConfirmModelForm
     bool updateParent = true,
     bool emitEvent = true,
   }) {
-    barangayControl.updateValue(value,
+    barangayControl?.updateValue(value,
         updateParent: updateParent, emitEvent: emitEvent);
   }
 
@@ -908,7 +794,7 @@ class KycInformationConfirmModelForm
     bool updateParent = true,
     bool emitEvent = true,
   }) {
-    postalCodeControl.updateValue(value,
+    postalCodeControl?.updateValue(value,
         updateParent: updateParent, emitEvent: emitEvent);
   }
 
@@ -962,7 +848,7 @@ class KycInformationConfirmModelForm
     bool updateParent = true,
     bool emitEvent = true,
   }) {
-    middleNameControl.patchValue(value,
+    middleNameControl?.patchValue(value,
         updateParent: updateParent, emitEvent: emitEvent);
   }
 
@@ -1007,7 +893,7 @@ class KycInformationConfirmModelForm
     bool updateParent = true,
     bool emitEvent = true,
   }) {
-    expiryDateControl.patchValue(value,
+    expiryDateControl?.patchValue(value,
         updateParent: updateParent, emitEvent: emitEvent);
   }
 
@@ -1025,7 +911,7 @@ class KycInformationConfirmModelForm
     bool updateParent = true,
     bool emitEvent = true,
   }) {
-    provinceControl.patchValue(value,
+    provinceControl?.patchValue(value,
         updateParent: updateParent, emitEvent: emitEvent);
   }
 
@@ -1034,7 +920,7 @@ class KycInformationConfirmModelForm
     bool updateParent = true,
     bool emitEvent = true,
   }) {
-    cityControl.patchValue(value,
+    cityControl?.patchValue(value,
         updateParent: updateParent, emitEvent: emitEvent);
   }
 
@@ -1043,7 +929,7 @@ class KycInformationConfirmModelForm
     bool updateParent = true,
     bool emitEvent = true,
   }) {
-    barangayControl.patchValue(value,
+    barangayControl?.patchValue(value,
         updateParent: updateParent, emitEvent: emitEvent);
   }
 
@@ -1052,7 +938,7 @@ class KycInformationConfirmModelForm
     bool updateParent = true,
     bool emitEvent = true,
   }) {
-    postalCodeControl.patchValue(value,
+    postalCodeControl?.patchValue(value,
         updateParent: updateParent, emitEvent: emitEvent);
   }
 
@@ -1073,12 +959,7 @@ class KycInformationConfirmModelForm
     bool? disabled,
   }) =>
       typeControl.reset(
-        value: value,
-        updateParent: updateParent,
-        emitEvent: emitEvent,
-        removeFocus: removeFocus,
-        disabled: disabled,
-      );
+          value: value, updateParent: updateParent, emitEvent: emitEvent);
 
   void typeTextValueReset(
     String value, {
@@ -1088,12 +969,7 @@ class KycInformationConfirmModelForm
     bool? disabled,
   }) =>
       typeTextControl.reset(
-        value: value,
-        updateParent: updateParent,
-        emitEvent: emitEvent,
-        removeFocus: removeFocus,
-        disabled: disabled,
-      );
+          value: value, updateParent: updateParent, emitEvent: emitEvent);
 
   void idNumberValueReset(
     String value, {
@@ -1103,12 +979,7 @@ class KycInformationConfirmModelForm
     bool? disabled,
   }) =>
       idNumberControl.reset(
-        value: value,
-        updateParent: updateParent,
-        emitEvent: emitEvent,
-        removeFocus: removeFocus,
-        disabled: disabled,
-      );
+          value: value, updateParent: updateParent, emitEvent: emitEvent);
 
   void firstNameValueReset(
     String value, {
@@ -1118,12 +989,7 @@ class KycInformationConfirmModelForm
     bool? disabled,
   }) =>
       firstNameControl.reset(
-        value: value,
-        updateParent: updateParent,
-        emitEvent: emitEvent,
-        removeFocus: removeFocus,
-        disabled: disabled,
-      );
+          value: value, updateParent: updateParent, emitEvent: emitEvent);
 
   void middleNameValueReset(
     String? value, {
@@ -1132,13 +998,8 @@ class KycInformationConfirmModelForm
     bool removeFocus = false,
     bool? disabled,
   }) =>
-      middleNameControl.reset(
-        value: value,
-        updateParent: updateParent,
-        emitEvent: emitEvent,
-        removeFocus: removeFocus,
-        disabled: disabled,
-      );
+      middleNameControl?.reset(
+          value: value, updateParent: updateParent, emitEvent: emitEvent);
 
   void lastNameValueReset(
     String value, {
@@ -1148,12 +1009,7 @@ class KycInformationConfirmModelForm
     bool? disabled,
   }) =>
       lastNameControl.reset(
-        value: value,
-        updateParent: updateParent,
-        emitEvent: emitEvent,
-        removeFocus: removeFocus,
-        disabled: disabled,
-      );
+          value: value, updateParent: updateParent, emitEvent: emitEvent);
 
   void realNameValueReset(
     String value, {
@@ -1163,12 +1019,7 @@ class KycInformationConfirmModelForm
     bool? disabled,
   }) =>
       realNameControl.reset(
-        value: value,
-        updateParent: updateParent,
-        emitEvent: emitEvent,
-        removeFocus: removeFocus,
-        disabled: disabled,
-      );
+          value: value, updateParent: updateParent, emitEvent: emitEvent);
 
   void genderValueReset(
     String value, {
@@ -1178,12 +1029,7 @@ class KycInformationConfirmModelForm
     bool? disabled,
   }) =>
       genderControl.reset(
-        value: value,
-        updateParent: updateParent,
-        emitEvent: emitEvent,
-        removeFocus: removeFocus,
-        disabled: disabled,
-      );
+          value: value, updateParent: updateParent, emitEvent: emitEvent);
 
   void birthdayValueReset(
     String value, {
@@ -1193,12 +1039,7 @@ class KycInformationConfirmModelForm
     bool? disabled,
   }) =>
       birthdayControl.reset(
-        value: value,
-        updateParent: updateParent,
-        emitEvent: emitEvent,
-        removeFocus: removeFocus,
-        disabled: disabled,
-      );
+          value: value, updateParent: updateParent, emitEvent: emitEvent);
 
   void expiryDateValueReset(
     String? value, {
@@ -1207,13 +1048,8 @@ class KycInformationConfirmModelForm
     bool removeFocus = false,
     bool? disabled,
   }) =>
-      expiryDateControl.reset(
-        value: value,
-        updateParent: updateParent,
-        emitEvent: emitEvent,
-        removeFocus: removeFocus,
-        disabled: disabled,
-      );
+      expiryDateControl?.reset(
+          value: value, updateParent: updateParent, emitEvent: emitEvent);
 
   void countryCodeValueReset(
     int value, {
@@ -1223,12 +1059,7 @@ class KycInformationConfirmModelForm
     bool? disabled,
   }) =>
       countryCodeControl.reset(
-        value: value,
-        updateParent: updateParent,
-        emitEvent: emitEvent,
-        removeFocus: removeFocus,
-        disabled: disabled,
-      );
+          value: value, updateParent: updateParent, emitEvent: emitEvent);
 
   void provinceValueReset(
     int? value, {
@@ -1237,13 +1068,8 @@ class KycInformationConfirmModelForm
     bool removeFocus = false,
     bool? disabled,
   }) =>
-      provinceControl.reset(
-        value: value,
-        updateParent: updateParent,
-        emitEvent: emitEvent,
-        removeFocus: removeFocus,
-        disabled: disabled,
-      );
+      provinceControl?.reset(
+          value: value, updateParent: updateParent, emitEvent: emitEvent);
 
   void cityValueReset(
     int? value, {
@@ -1252,13 +1078,8 @@ class KycInformationConfirmModelForm
     bool removeFocus = false,
     bool? disabled,
   }) =>
-      cityControl.reset(
-        value: value,
-        updateParent: updateParent,
-        emitEvent: emitEvent,
-        removeFocus: removeFocus,
-        disabled: disabled,
-      );
+      cityControl?.reset(
+          value: value, updateParent: updateParent, emitEvent: emitEvent);
 
   void barangayValueReset(
     int? value, {
@@ -1267,13 +1088,8 @@ class KycInformationConfirmModelForm
     bool removeFocus = false,
     bool? disabled,
   }) =>
-      barangayControl.reset(
-        value: value,
-        updateParent: updateParent,
-        emitEvent: emitEvent,
-        removeFocus: removeFocus,
-        disabled: disabled,
-      );
+      barangayControl?.reset(
+          value: value, updateParent: updateParent, emitEvent: emitEvent);
 
   void postalCodeValueReset(
     int? value, {
@@ -1282,13 +1098,8 @@ class KycInformationConfirmModelForm
     bool removeFocus = false,
     bool? disabled,
   }) =>
-      postalCodeControl.reset(
-        value: value,
-        updateParent: updateParent,
-        emitEvent: emitEvent,
-        removeFocus: removeFocus,
-        disabled: disabled,
-      );
+      postalCodeControl?.reset(
+          value: value, updateParent: updateParent, emitEvent: emitEvent);
 
   void addressValueReset(
     String value, {
@@ -1298,12 +1109,7 @@ class KycInformationConfirmModelForm
     bool? disabled,
   }) =>
       addressControl.reset(
-        value: value,
-        updateParent: updateParent,
-        emitEvent: emitEvent,
-        removeFocus: removeFocus,
-        disabled: disabled,
-      );
+          value: value, updateParent: updateParent, emitEvent: emitEvent);
 
   FormControl<int> get typeControl =>
       form.control(typeControlPath()) as FormControl<int>;
@@ -1317,8 +1123,9 @@ class KycInformationConfirmModelForm
   FormControl<String> get firstNameControl =>
       form.control(firstNameControlPath()) as FormControl<String>;
 
-  FormControl<String> get middleNameControl =>
-      form.control(middleNameControlPath()) as FormControl<String>;
+  FormControl<String>? get middleNameControl => containsMiddleName
+      ? form.control(middleNameControlPath()) as FormControl<String>?
+      : null;
 
   FormControl<String> get lastNameControl =>
       form.control(lastNameControlPath()) as FormControl<String>;
@@ -1332,23 +1139,28 @@ class KycInformationConfirmModelForm
   FormControl<String> get birthdayControl =>
       form.control(birthdayControlPath()) as FormControl<String>;
 
-  FormControl<String> get expiryDateControl =>
-      form.control(expiryDateControlPath()) as FormControl<String>;
+  FormControl<String>? get expiryDateControl => containsExpiryDate
+      ? form.control(expiryDateControlPath()) as FormControl<String>?
+      : null;
 
   FormControl<int> get countryCodeControl =>
       form.control(countryCodeControlPath()) as FormControl<int>;
 
-  FormControl<int> get provinceControl =>
-      form.control(provinceControlPath()) as FormControl<int>;
+  FormControl<int>? get provinceControl => containsProvince
+      ? form.control(provinceControlPath()) as FormControl<int>?
+      : null;
 
-  FormControl<int> get cityControl =>
-      form.control(cityControlPath()) as FormControl<int>;
+  FormControl<int>? get cityControl => containsCity
+      ? form.control(cityControlPath()) as FormControl<int>?
+      : null;
 
-  FormControl<int> get barangayControl =>
-      form.control(barangayControlPath()) as FormControl<int>;
+  FormControl<int>? get barangayControl => containsBarangay
+      ? form.control(barangayControlPath()) as FormControl<int>?
+      : null;
 
-  FormControl<int> get postalCodeControl =>
-      form.control(postalCodeControlPath()) as FormControl<int>;
+  FormControl<int>? get postalCodeControl => containsPostalCode
+      ? form.control(postalCodeControlPath()) as FormControl<int>?
+      : null;
 
   FormControl<String> get addressControl =>
       form.control(addressControlPath()) as FormControl<String>;
@@ -1431,12 +1243,12 @@ class KycInformationConfirmModelForm
     bool emitEvent = true,
   }) {
     if (disabled) {
-      middleNameControl.markAsDisabled(
+      middleNameControl?.markAsDisabled(
         updateParent: updateParent,
         emitEvent: emitEvent,
       );
     } else {
-      middleNameControl.markAsEnabled(
+      middleNameControl?.markAsEnabled(
         updateParent: updateParent,
         emitEvent: emitEvent,
       );
@@ -1521,12 +1333,12 @@ class KycInformationConfirmModelForm
     bool emitEvent = true,
   }) {
     if (disabled) {
-      expiryDateControl.markAsDisabled(
+      expiryDateControl?.markAsDisabled(
         updateParent: updateParent,
         emitEvent: emitEvent,
       );
     } else {
-      expiryDateControl.markAsEnabled(
+      expiryDateControl?.markAsEnabled(
         updateParent: updateParent,
         emitEvent: emitEvent,
       );
@@ -1557,12 +1369,12 @@ class KycInformationConfirmModelForm
     bool emitEvent = true,
   }) {
     if (disabled) {
-      provinceControl.markAsDisabled(
+      provinceControl?.markAsDisabled(
         updateParent: updateParent,
         emitEvent: emitEvent,
       );
     } else {
-      provinceControl.markAsEnabled(
+      provinceControl?.markAsEnabled(
         updateParent: updateParent,
         emitEvent: emitEvent,
       );
@@ -1575,12 +1387,12 @@ class KycInformationConfirmModelForm
     bool emitEvent = true,
   }) {
     if (disabled) {
-      cityControl.markAsDisabled(
+      cityControl?.markAsDisabled(
         updateParent: updateParent,
         emitEvent: emitEvent,
       );
     } else {
-      cityControl.markAsEnabled(
+      cityControl?.markAsEnabled(
         updateParent: updateParent,
         emitEvent: emitEvent,
       );
@@ -1593,12 +1405,12 @@ class KycInformationConfirmModelForm
     bool emitEvent = true,
   }) {
     if (disabled) {
-      barangayControl.markAsDisabled(
+      barangayControl?.markAsDisabled(
         updateParent: updateParent,
         emitEvent: emitEvent,
       );
     } else {
-      barangayControl.markAsEnabled(
+      barangayControl?.markAsEnabled(
         updateParent: updateParent,
         emitEvent: emitEvent,
       );
@@ -1611,12 +1423,12 @@ class KycInformationConfirmModelForm
     bool emitEvent = true,
   }) {
     if (disabled) {
-      postalCodeControl.markAsDisabled(
+      postalCodeControl?.markAsDisabled(
         updateParent: updateParent,
         emitEvent: emitEvent,
       );
     } else {
-      postalCodeControl.markAsEnabled(
+      postalCodeControl?.markAsEnabled(
         updateParent: updateParent,
         emitEvent: emitEvent,
       );
@@ -1646,11 +1458,9 @@ class KycInformationConfirmModelForm
     final isValid = !currentForm.hasErrors && currentForm.errors.isEmpty;
 
     if (!isValid) {
-      _logKycInformationConfirmModelForm.warning(
-        'Avoid calling `model` on invalid form.Possible exceptions for non-nullable fields which should be guarded by `required` validator.',
-        null,
-        StackTrace.current,
-      );
+      debugPrintStack(
+          label:
+              '[${path ?? 'KycInformationConfirmModelForm'}]\n┗━ Avoid calling `model` on invalid form. Possible exceptions for non-nullable fields which should be guarded by `required` validator.');
     }
     return KycInformationConfirmModel(
         type: _typeValue,
@@ -1669,27 +1479,6 @@ class KycInformationConfirmModelForm
         barangay: _barangayValue,
         postalCode: _postalCodeValue,
         address: _addressValue);
-  }
-
-  @override
-  KycInformationConfirmModel get rawModel {
-    return KycInformationConfirmModel(
-        type: _typeRawValue,
-        typeText: _typeTextRawValue,
-        idNumber: _idNumberRawValue,
-        firstName: _firstNameRawValue,
-        middleName: _middleNameRawValue,
-        lastName: _lastNameRawValue,
-        realName: _realNameRawValue,
-        gender: _genderRawValue,
-        birthday: _birthdayRawValue,
-        expiryDate: _expiryDateRawValue,
-        countryCode: _countryCodeRawValue,
-        province: _provinceRawValue,
-        city: _cityRawValue,
-        barangay: _barangayRawValue,
-        postalCode: _postalCodeRawValue,
-        address: _addressRawValue);
   }
 
   @override
@@ -1725,18 +1514,6 @@ class KycInformationConfirmModelForm
   }
 
   @override
-  bool equalsTo(KycInformationConfirmModel? other) {
-    final currentForm = this.currentForm;
-
-    return const DeepCollectionEquality().equals(
-      currentForm is FormControlCollection<dynamic>
-          ? currentForm.rawValue
-          : currentForm.value,
-      KycInformationConfirmModelForm.formElements(other).rawValue,
-    );
-  }
-
-  @override
   void submit({
     required void Function(KycInformationConfirmModel model) onValid,
     void Function()? onNotValid,
@@ -1745,8 +1522,6 @@ class KycInformationConfirmModelForm
     if (currentForm.valid) {
       onValid(model);
     } else {
-      _logKycInformationConfirmModelForm.info('Errors');
-      _logKycInformationConfirmModelForm.info('┗━━ ${form.errors}');
       onNotValid?.call();
     }
   }
@@ -1911,8 +1686,6 @@ class ReactiveKycInformationConfirmModelFormArrayBuilder<
     this.formControl,
     this.builder,
     required this.itemBuilder,
-    this.emptyBuilder,
-    this.controlFilter,
   })  : assert(control != null || formControl != null,
             "You have to specify `control` or `formControl`!"),
         super(key: key);
@@ -1929,16 +1702,9 @@ class ReactiveKycInformationConfirmModelFormArrayBuilder<
   final Widget Function(
       BuildContext context,
       int i,
-      FormControl<ReactiveKycInformationConfirmModelFormArrayBuilderT> control,
       ReactiveKycInformationConfirmModelFormArrayBuilderT? item,
       KycInformationConfirmModelForm formModel) itemBuilder;
 
-  final Widget Function(BuildContext context)? emptyBuilder;
-
-  final bool Function(
-      FormControl<ReactiveKycInformationConfirmModelFormArrayBuilderT>
-          control)? controlFilter;
-
   @override
   Widget build(BuildContext context) {
     final formModel = ReactiveKycInformationConfirmModelForm.of(context);
@@ -1947,112 +1713,34 @@ class ReactiveKycInformationConfirmModelFormArrayBuilder<
       throw FormControlParentNotFoundException(this);
     }
 
-    final builder = this.builder;
-    final itemBuilder = this.itemBuilder;
-
-    return ReactiveFormArrayItemBuilder<
+    return ReactiveFormArray<
         ReactiveKycInformationConfirmModelFormArrayBuilderT>(
-      formControl: formControl ?? control?.call(formModel),
-      builder: builder != null
-          ? (context, itemList) => builder(
-                context,
-                itemList,
-                formModel,
-              )
-          : null,
-      itemBuilder: (
-        context,
-        i,
-        control,
-        item,
-      ) =>
-          itemBuilder(context, i, control, item, formModel),
-      emptyBuilder: emptyBuilder,
-      controlFilter: controlFilter,
-    );
-  }
-}
+      formArray: formControl ?? control?.call(formModel),
+      builder: (context, formArray, child) {
+        final values = formArray.controls.map((e) => e.value).toList();
+        final itemList = values
+            .asMap()
+            .map((i, item) {
+              return MapEntry(
+                i,
+                itemBuilder(
+                  context,
+                  i,
+                  item,
+                  formModel,
+                ),
+              );
+            })
+            .values
+            .toList();
 
-class ReactiveKycInformationConfirmModelFormArrayBuilder2<
-        ReactiveKycInformationConfirmModelFormArrayBuilderT>
-    extends StatelessWidget {
-  const ReactiveKycInformationConfirmModelFormArrayBuilder2({
-    Key? key,
-    this.control,
-    this.formControl,
-    this.builder,
-    required this.itemBuilder,
-    this.emptyBuilder,
-    this.controlFilter,
-  })  : assert(control != null || formControl != null,
-            "You have to specify `control` or `formControl`!"),
-        super(key: key);
-
-  final FormArray<ReactiveKycInformationConfirmModelFormArrayBuilderT>?
-      formControl;
-
-  final FormArray<ReactiveKycInformationConfirmModelFormArrayBuilderT>?
-      Function(KycInformationConfirmModelForm formModel)? control;
-
-  final Widget Function(
-      ({
-        BuildContext context,
-        List<Widget> itemList,
-        KycInformationConfirmModelForm formModel
-      }) params)? builder;
-
-  final Widget Function(
-      ({
-        BuildContext context,
-        int i,
-        FormControl<
-            ReactiveKycInformationConfirmModelFormArrayBuilderT> control,
-        ReactiveKycInformationConfirmModelFormArrayBuilderT? item,
-        KycInformationConfirmModelForm formModel
-      }) params) itemBuilder;
-
-  final Widget Function(BuildContext context)? emptyBuilder;
-
-  final bool Function(
-      FormControl<ReactiveKycInformationConfirmModelFormArrayBuilderT>
-          control)? controlFilter;
-
-  @override
-  Widget build(BuildContext context) {
-    final formModel = ReactiveKycInformationConfirmModelForm.of(context);
-
-    if (formModel == null) {
-      throw FormControlParentNotFoundException(this);
-    }
-
-    final builder = this.builder;
-    final itemBuilder = this.itemBuilder;
-
-    return ReactiveFormArrayItemBuilder<
-        ReactiveKycInformationConfirmModelFormArrayBuilderT>(
-      formControl: formControl ?? control?.call(formModel),
-      builder: builder != null
-          ? (context, itemList) => builder((
-                context: context,
-                itemList: itemList,
-                formModel: formModel,
-              ))
-          : null,
-      itemBuilder: (
-        context,
-        i,
-        control,
-        item,
-      ) =>
-          itemBuilder((
-        context: context,
-        i: i,
-        control: control,
-        item: item,
-        formModel: formModel
-      )),
-      emptyBuilder: emptyBuilder,
-      controlFilter: controlFilter,
+        return builder?.call(
+              context,
+              itemList,
+              formModel,
+            ) ??
+            Column(children: itemList);
+      },
     );
   }
 }

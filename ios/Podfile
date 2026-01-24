@@ -49,6 +49,15 @@ post_install do |installer|
 
           # 如果你需要麦克风，把这个也加上
           config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] << 'PERMISSION_MICROPHONE=1'
+
+          #1. 强制所有 Pods 目标至少为 13.0，消除所有警告
+          config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '13.0'
+
+           #  2. 绕过 Swift 6 的严格检查
+           config.build_settings['SWIFT_VERSION'] = '5.0'
+
+           # 3. 禁用死代码剥离警告
+           config.build_settings['GCC_WARN_64_TO_32_BIT_CONVERSION'] = 'NO'
         end
   end
 end

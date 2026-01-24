@@ -38,7 +38,7 @@ Future<void> main() async {
           useInheritedMediaQuery: true,
           minTextAdapt: true,
           splitScreenMode: true,
-          builder: (_, __) => const WidgetBookApp(),
+          builder: (_, _) => const WidgetBookApp(),
         ),
       ),
   ));

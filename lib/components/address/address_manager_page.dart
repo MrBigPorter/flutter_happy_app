@@ -45,12 +45,10 @@ class _AddressManagerPageState extends ConsumerState<AddressManagerPage> {
   void initState() {
     super.initState();
 
-      if (isEditing) {
-        _prefillForm(widget.address!);
-      }
+    if (isEditing) {
+      _prefillForm(widget.address!);
+    }
     _setupResetListeners();
-
-
   }
 
   void _prefillForm(AddressRes address) {
@@ -72,17 +70,18 @@ class _AddressManagerPageState extends ConsumerState<AddressManagerPage> {
   }
 
   void _setupResetListeners() {
-    _provinceSub = addressForm.provinceIdControl.valueChanges.listen((_) {
+    // 🛠️ 修复点 1：加了 !，因为旧版生成器生成的控件可能为空
+    _provinceSub = addressForm.provinceIdControl?.valueChanges.listen((_) {
       //修改监听逻辑：如果是 Patching 过程中，不要重置
       if (_isPatching) return;
-      addressForm.cityIdControl.reset();
-      addressForm.barangayIdControl.reset();
+      addressForm.cityIdControl?.reset(); // 🛠️ 修复点：加了 ?
+      addressForm.barangayIdControl?.reset(); // 🛠️ 修复点：加了 ?
     });
 
-    _citySub = addressForm.cityIdControl.valueChanges.listen((_) {
+    _citySub = addressForm.cityIdControl?.valueChanges.listen((_) {
       //修改监听逻辑：如果是 Patching 过程中，不要重置
       if (_isPatching) return;
-      addressForm.barangayIdControl.reset();
+      addressForm.barangayIdControl?.reset(); // 🛠️ 修复点：加了 ?
     });
   }
 
@@ -109,9 +108,10 @@ class _AddressManagerPageState extends ConsumerState<AddressManagerPage> {
     final req = AddressCreateDto(
       contactName: val['contactName'] as String,
       fullAddress: val['fullAddress'] as String,
-      provinceId: val['provinceId'] as int,
-      cityId: val['cityId'] as int,
-      barangayId: val['barangayId'] as int,
+      // 🛠️ 优化点：增加空值保护，防止 as int 崩溃
+      provinceId: val['provinceId'] as int? ?? 0,
+      cityId: val['cityId'] as int? ?? 0,
+      barangayId: val['barangayId'] as int? ?? 0,
       postalCode: val['postalCode'] as String?,
       phone: val['phone'] as String,
       isDefault: val['isDefault'] == true ? 1 : 0,
@@ -222,17 +222,25 @@ class _AddressManagerPageState extends ConsumerState<AddressManagerPage> {
                     ),
                     child: Column(
                       children: [
-                        SizedBox(height:height,),
-                        LfInput(name: "contactName", label: "Contact Name", required: true,),
+                        SizedBox(height: height),
+                        LfInput(
+                          name: "contactName",
+                          label: "Contact Name",
+                          required: true,
+                        ),
                         SizedBox(height: 16.h),
-                        LfInput(name: "fullAddress", label: "full Address", required: true,),
+                        LfInput(
+                          name: "fullAddress",
+                          label: "full Address",
+                          required: true,
+                        ),
                         SizedBox(height: 16.h),
                         LfWheelSelect(
                           required: true,
                           name: 'provinceId',
                           label: "Province",
                           isLoading:
-                              provincesAsync.isLoading ||
+                          provincesAsync.isLoading ||
                               provincesAsync.hasError,
                           options: provincesAsync.when(
                             data: (list) => list,
@@ -244,7 +252,8 @@ class _AddressManagerPageState extends ConsumerState<AddressManagerPage> {
                         ReactiveValueListenableBuilder<int>(
                           formControlName: 'provinceId',
                           builder: (context, control, child) {
-                            final provinceId = control.value ?? widget.address?.provinceId;
+                            final provinceId =
+                                control.value ?? widget.address?.provinceId;
                             // 监听省份变化，加载对应的城市
                             final citiesAsync = ref.watch(
                               cityProvider(provinceId ?? -1),
@@ -254,7 +263,7 @@ class _AddressManagerPageState extends ConsumerState<AddressManagerPage> {
                               name: 'cityId',
                               label: "City",
                               isLoading:
-                                  citiesAsync.isLoading || citiesAsync.hasError,
+                              citiesAsync.isLoading || citiesAsync.hasError,
                               options: citiesAsync.when(
                                 data: (list) => list,
                                 loading: () => [],
@@ -267,7 +276,8 @@ class _AddressManagerPageState extends ConsumerState<AddressManagerPage> {
                         ReactiveValueListenableBuilder<int>(
                           formControlName: 'cityId',
                           builder: (context, control, child) {
-                            final cityId = control.value ?? widget.address?.cityId;
+                            final cityId =
+                                control.value ?? widget.address?.cityId;
                             // 监听城市变化，加载对应的区/县
                             final districtsAsync = ref.watch(
                               barangaysProvider(cityId ?? -1),
@@ -277,7 +287,7 @@ class _AddressManagerPageState extends ConsumerState<AddressManagerPage> {
                               name: 'barangayId',
                               label: "Barangay",
                               isLoading:
-                                  districtsAsync.isLoading ||
+                              districtsAsync.isLoading ||
                                   districtsAsync.hasError,
                               options: districtsAsync.when(
                                 data: (list) => list,
@@ -290,7 +300,12 @@ class _AddressManagerPageState extends ConsumerState<AddressManagerPage> {
                         SizedBox(height: 16.h),
                         LfInput(name: "postalCode", label: "Postal Code"),
                         SizedBox(height: 16.h),
-                        LfInput(name: "phone", label: "Phone", keyboardType: TextInputType.phone, required: true,),
+                        LfInput(
+                          name: "phone",
+                          label: "Phone",
+                          keyboardType: TextInputType.phone,
+                          required: true,
+                        ),
                         LfCheckbox(
                           name: "isDefault",
                           label: "Set as Default Address",
@@ -311,7 +326,7 @@ class _AddressManagerPageState extends ConsumerState<AddressManagerPage> {
           right: 16.w,
           top: 16.h,
           bottom:
-              16.h +
+          16.h +
               (keyboardHeight > 0
                   ? keyboardHeight
                   : MediaQuery.of(context).padding.bottom),

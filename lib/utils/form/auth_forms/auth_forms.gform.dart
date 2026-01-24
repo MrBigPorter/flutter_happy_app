@@ -1,7 +1,7 @@
 // coverage:ignore-file
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // ignore_for_file: type=lint
-// ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
+// ignore_for_file:
 
 part of 'auth_forms.dart';
 
@@ -53,7 +53,7 @@ class ReactiveLoginOtpModelForm extends StatelessWidget {
     required this.form,
     required this.child,
     this.canPop,
-    this.onPopInvokedWithResult,
+    this.onPopInvoked,
   }) : super(key: key);
 
   final Widget child;
@@ -62,8 +62,7 @@ class ReactiveLoginOtpModelForm extends StatelessWidget {
 
   final bool Function(FormGroup formGroup)? canPop;
 
-  final ReactiveFormPopInvokedWithResultCallback<dynamic>?
-      onPopInvokedWithResult;
+  final void Function(FormGroup formGroup, bool didPop)? onPopInvoked;
 
   static LoginOtpModelForm? of(
     BuildContext context, {
@@ -90,7 +89,7 @@ class ReactiveLoginOtpModelForm extends StatelessWidget {
       stream: form.form.statusChanged,
       child: ReactiveFormPopScope(
         canPop: canPop,
-        onPopInvokedWithResult: onPopInvokedWithResult,
+        onPopInvoked: onPopInvoked,
         child: child,
       ),
     );
@@ -111,7 +110,7 @@ class LoginOtpModelFormBuilder extends StatefulWidget {
     this.model,
     this.child,
     this.canPop,
-    this.onPopInvokedWithResult,
+    this.onPopInvoked,
     required this.builder,
     this.initState,
   }) : super(key: key);
@@ -122,8 +121,7 @@ class LoginOtpModelFormBuilder extends StatefulWidget {
 
   final bool Function(FormGroup formGroup)? canPop;
 
-  final ReactiveFormPopInvokedWithResultCallback<dynamic>?
-      onPopInvokedWithResult;
+  final void Function(FormGroup formGroup, bool didPop)? onPopInvoked;
 
   final Widget Function(
       BuildContext context, LoginOtpModelForm formModel, Widget? child) builder;
@@ -139,8 +137,6 @@ class LoginOtpModelFormBuilder extends StatefulWidget {
 class _LoginOtpModelFormBuilderState extends State<LoginOtpModelFormBuilder> {
   late LoginOtpModelForm _formModel;
 
-  StreamSubscription<LogRecord>? _logSubscription;
-
   @override
   void initState() {
     _formModel =
@@ -151,34 +147,6 @@ class _LoginOtpModelFormBuilderState extends State<LoginOtpModelFormBuilder> {
     }
 
     widget.initState?.call(context, _formModel);
-
-    _logSubscription = _logLoginOtpModelForm.onRecord.listen((LogRecord e) {
-      // use `dumpErrorToConsole` for severe messages to ensure that severe
-      // exceptions are formatted consistently with other Flutter examples and
-      // avoids printing duplicate exceptions
-      if (e.level >= Level.SEVERE) {
-        final Object? error = e.error;
-        FlutterError.dumpErrorToConsole(
-          FlutterErrorDetails(
-            exception: error is Exception ? error : Exception(error),
-            stack: e.stackTrace,
-            library: e.loggerName,
-            context: ErrorDescription(e.message),
-          ),
-        );
-      } else {
-        log(
-          e.message,
-          time: e.time,
-          sequenceNumber: e.sequenceNumber,
-          level: e.level.value,
-          name: e.loggerName,
-          zone: e.zone,
-          error: e.error,
-          stackTrace: e.stackTrace,
-        );
-      }
-    });
 
     super.initState();
   }
@@ -195,7 +163,6 @@ class _LoginOtpModelFormBuilderState extends State<LoginOtpModelFormBuilder> {
   @override
   void dispose() {
     _formModel.form.dispose();
-    _logSubscription?.cancel();
     super.dispose();
   }
 
@@ -204,12 +171,12 @@ class _LoginOtpModelFormBuilderState extends State<LoginOtpModelFormBuilder> {
     return ReactiveLoginOtpModelForm(
       key: ObjectKey(_formModel),
       form: _formModel,
-      // canPop: widget.canPop,
-      // onPopInvoked: widget.onPopInvoked,
+      canPop: widget.canPop,
+      onPopInvoked: widget.onPopInvoked,
       child: ReactiveFormBuilder(
         form: () => _formModel.form,
         canPop: widget.canPop,
-        onPopInvokedWithResult: widget.onPopInvokedWithResult,
+        onPopInvoked: widget.onPopInvoked,
         builder: (context, formGroup, child) =>
             widget.builder(context, _formModel, widget.child),
         child: widget.child,
@@ -218,9 +185,7 @@ class _LoginOtpModelFormBuilderState extends State<LoginOtpModelFormBuilder> {
   }
 }
 
-final _logLoginOtpModelForm = Logger.detached('LoginOtpModelForm');
-
-class LoginOtpModelForm implements FormModel<LoginOtpModel, LoginOtpModel> {
+class LoginOtpModelForm implements FormModel<LoginOtpModel> {
   LoginOtpModelForm(
     this.form,
     this.path,
@@ -244,20 +209,12 @@ class LoginOtpModelForm implements FormModel<LoginOtpModel, LoginOtpModel> {
 
   String inviteCodeControlPath() => pathBuilder(inviteCodeControlName);
 
-  String get _phoneValue => phoneControl.value ?? '';
+  String get _phoneValue => phoneControl.value ?? "";
 
-  String get _otpValue => otpControl.value ?? '';
+  String get _otpValue => otpControl.value ?? "";
 
-  String? get _inviteCodeValue => inviteCodeControl.value;
+  String? get _inviteCodeValue => inviteCodeControl?.value;
 
-  String get _phoneRawValue => phoneControl.value ?? '';
-
-  String get _otpRawValue => otpControl.value ?? '';
-
-  String? get _inviteCodeRawValue => inviteCodeControl.value;
-
-  @Deprecated(
-      'Generator completely wraps the form and ensures at startup that all controls are present inside the form so we do not need this additional step')
   bool get containsPhone {
     try {
       form.control(phoneControlPath());
@@ -267,8 +224,6 @@ class LoginOtpModelForm implements FormModel<LoginOtpModel, LoginOtpModel> {
     }
   }
 
-  @Deprecated(
-      'Generator completely wraps the form and ensures at startup that all controls are present inside the form so we do not need this additional step')
   bool get containsOtp {
     try {
       form.control(otpControlPath());
@@ -278,8 +233,6 @@ class LoginOtpModelForm implements FormModel<LoginOtpModel, LoginOtpModel> {
     }
   }
 
-  @Deprecated(
-      'Generator completely wraps the form and ensures at startup that all controls are present inside the form so we do not need this additional step')
   bool get containsInviteCode {
     try {
       form.control(inviteCodeControlPath());
@@ -289,11 +242,11 @@ class LoginOtpModelForm implements FormModel<LoginOtpModel, LoginOtpModel> {
     }
   }
 
-  Map<String, Object> get phoneErrors => phoneControl.errors;
+  Object? get phoneErrors => phoneControl.errors;
 
-  Map<String, Object> get otpErrors => otpControl.errors;
+  Object? get otpErrors => otpControl.errors;
 
-  Map<String, Object>? get inviteCodeErrors => inviteCodeControl.errors;
+  Object? get inviteCodeErrors => inviteCodeControl?.errors;
 
   void get phoneFocus => form.focus(phoneControlPath());
 
@@ -301,8 +254,6 @@ class LoginOtpModelForm implements FormModel<LoginOtpModel, LoginOtpModel> {
 
   void get inviteCodeFocus => form.focus(inviteCodeControlPath());
 
-  @Deprecated(
-      'Generator completely wraps the form so manual fields removal could lead to unexpected crashes')
   void inviteCodeRemove({
     bool updateParent = true,
     bool emitEvent = true,
@@ -352,7 +303,7 @@ class LoginOtpModelForm implements FormModel<LoginOtpModel, LoginOtpModel> {
     bool updateParent = true,
     bool emitEvent = true,
   }) {
-    inviteCodeControl.updateValue(value,
+    inviteCodeControl?.updateValue(value,
         updateParent: updateParent, emitEvent: emitEvent);
   }
 
@@ -379,7 +330,7 @@ class LoginOtpModelForm implements FormModel<LoginOtpModel, LoginOtpModel> {
     bool updateParent = true,
     bool emitEvent = true,
   }) {
-    inviteCodeControl.patchValue(value,
+    inviteCodeControl?.patchValue(value,
         updateParent: updateParent, emitEvent: emitEvent);
   }
 
@@ -391,12 +342,7 @@ class LoginOtpModelForm implements FormModel<LoginOtpModel, LoginOtpModel> {
     bool? disabled,
   }) =>
       phoneControl.reset(
-        value: value,
-        updateParent: updateParent,
-        emitEvent: emitEvent,
-        removeFocus: removeFocus,
-        disabled: disabled,
-      );
+          value: value, updateParent: updateParent, emitEvent: emitEvent);
 
   void otpValueReset(
     String value, {
@@ -406,12 +352,7 @@ class LoginOtpModelForm implements FormModel<LoginOtpModel, LoginOtpModel> {
     bool? disabled,
   }) =>
       otpControl.reset(
-        value: value,
-        updateParent: updateParent,
-        emitEvent: emitEvent,
-        removeFocus: removeFocus,
-        disabled: disabled,
-      );
+          value: value, updateParent: updateParent, emitEvent: emitEvent);
 
   void inviteCodeValueReset(
     String? value, {
@@ -420,13 +361,8 @@ class LoginOtpModelForm implements FormModel<LoginOtpModel, LoginOtpModel> {
     bool removeFocus = false,
     bool? disabled,
   }) =>
-      inviteCodeControl.reset(
-        value: value,
-        updateParent: updateParent,
-        emitEvent: emitEvent,
-        removeFocus: removeFocus,
-        disabled: disabled,
-      );
+      inviteCodeControl?.reset(
+          value: value, updateParent: updateParent, emitEvent: emitEvent);
 
   FormControl<String> get phoneControl =>
       form.control(phoneControlPath()) as FormControl<String>;
@@ -434,8 +370,9 @@ class LoginOtpModelForm implements FormModel<LoginOtpModel, LoginOtpModel> {
   FormControl<String> get otpControl =>
       form.control(otpControlPath()) as FormControl<String>;
 
-  FormControl<String> get inviteCodeControl =>
-      form.control(inviteCodeControlPath()) as FormControl<String>;
+  FormControl<String>? get inviteCodeControl => containsInviteCode
+      ? form.control(inviteCodeControlPath()) as FormControl<String>?
+      : null;
 
   void phoneSetDisabled(
     bool disabled, {
@@ -479,12 +416,12 @@ class LoginOtpModelForm implements FormModel<LoginOtpModel, LoginOtpModel> {
     bool emitEvent = true,
   }) {
     if (disabled) {
-      inviteCodeControl.markAsDisabled(
+      inviteCodeControl?.markAsDisabled(
         updateParent: updateParent,
         emitEvent: emitEvent,
       );
     } else {
-      inviteCodeControl.markAsEnabled(
+      inviteCodeControl?.markAsEnabled(
         updateParent: updateParent,
         emitEvent: emitEvent,
       );
@@ -496,22 +433,12 @@ class LoginOtpModelForm implements FormModel<LoginOtpModel, LoginOtpModel> {
     final isValid = !currentForm.hasErrors && currentForm.errors.isEmpty;
 
     if (!isValid) {
-      _logLoginOtpModelForm.warning(
-        'Avoid calling `model` on invalid form.Possible exceptions for non-nullable fields which should be guarded by `required` validator.',
-        null,
-        StackTrace.current,
-      );
+      debugPrintStack(
+          label:
+              '[${path ?? 'LoginOtpModelForm'}]\n┗━ Avoid calling `model` on invalid form. Possible exceptions for non-nullable fields which should be guarded by `required` validator.');
     }
     return LoginOtpModel(
         phone: _phoneValue, otp: _otpValue, inviteCode: _inviteCodeValue);
-  }
-
-  @override
-  LoginOtpModel get rawModel {
-    return LoginOtpModel(
-        phone: _phoneRawValue,
-        otp: _otpRawValue,
-        inviteCode: _inviteCodeRawValue);
   }
 
   @override
@@ -547,18 +474,6 @@ class LoginOtpModelForm implements FormModel<LoginOtpModel, LoginOtpModel> {
   }
 
   @override
-  bool equalsTo(LoginOtpModel? other) {
-    final currentForm = this.currentForm;
-
-    return const DeepCollectionEquality().equals(
-      currentForm is FormControlCollection<dynamic>
-          ? currentForm.rawValue
-          : currentForm.value,
-      LoginOtpModelForm.formElements(other).rawValue,
-    );
-  }
-
-  @override
   void submit({
     required void Function(LoginOtpModel model) onValid,
     void Function()? onNotValid,
@@ -567,8 +482,6 @@ class LoginOtpModelForm implements FormModel<LoginOtpModel, LoginOtpModel> {
     if (currentForm.valid) {
       onValid(model);
     } else {
-      _logLoginOtpModelForm.info('Errors');
-      _logLoginOtpModelForm.info('┗━━ ${form.errors}');
       onNotValid?.call();
     }
   }
@@ -637,8 +550,6 @@ class ReactiveLoginOtpModelFormArrayBuilder<
     this.formControl,
     this.builder,
     required this.itemBuilder,
-    this.emptyBuilder,
-    this.controlFilter,
   })  : assert(control != null || formControl != null,
             "You have to specify `control` or `formControl`!"),
         super(key: key);
@@ -654,16 +565,9 @@ class ReactiveLoginOtpModelFormArrayBuilder<
   final Widget Function(
       BuildContext context,
       int i,
-      FormControl<ReactiveLoginOtpModelFormArrayBuilderT> control,
       ReactiveLoginOtpModelFormArrayBuilderT? item,
       LoginOtpModelForm formModel) itemBuilder;
 
-  final Widget Function(BuildContext context)? emptyBuilder;
-
-  final bool Function(
-          FormControl<ReactiveLoginOtpModelFormArrayBuilderT> control)?
-      controlFilter;
-
   @override
   Widget build(BuildContext context) {
     final formModel = ReactiveLoginOtpModelForm.of(context);
@@ -672,107 +576,33 @@ class ReactiveLoginOtpModelFormArrayBuilder<
       throw FormControlParentNotFoundException(this);
     }
 
-    final builder = this.builder;
-    final itemBuilder = this.itemBuilder;
+    return ReactiveFormArray<ReactiveLoginOtpModelFormArrayBuilderT>(
+      formArray: formControl ?? control?.call(formModel),
+      builder: (context, formArray, child) {
+        final values = formArray.controls.map((e) => e.value).toList();
+        final itemList = values
+            .asMap()
+            .map((i, item) {
+              return MapEntry(
+                i,
+                itemBuilder(
+                  context,
+                  i,
+                  item,
+                  formModel,
+                ),
+              );
+            })
+            .values
+            .toList();
 
-    return ReactiveFormArrayItemBuilder<ReactiveLoginOtpModelFormArrayBuilderT>(
-      formControl: formControl ?? control?.call(formModel),
-      builder: builder != null
-          ? (context, itemList) => builder(
-                context,
-                itemList,
-                formModel,
-              )
-          : null,
-      itemBuilder: (
-        context,
-        i,
-        control,
-        item,
-      ) =>
-          itemBuilder(context, i, control, item, formModel),
-      emptyBuilder: emptyBuilder,
-      controlFilter: controlFilter,
-    );
-  }
-}
-
-class ReactiveLoginOtpModelFormArrayBuilder2<
-    ReactiveLoginOtpModelFormArrayBuilderT> extends StatelessWidget {
-  const ReactiveLoginOtpModelFormArrayBuilder2({
-    Key? key,
-    this.control,
-    this.formControl,
-    this.builder,
-    required this.itemBuilder,
-    this.emptyBuilder,
-    this.controlFilter,
-  })  : assert(control != null || formControl != null,
-            "You have to specify `control` or `formControl`!"),
-        super(key: key);
-
-  final FormArray<ReactiveLoginOtpModelFormArrayBuilderT>? formControl;
-
-  final FormArray<ReactiveLoginOtpModelFormArrayBuilderT>? Function(
-      LoginOtpModelForm formModel)? control;
-
-  final Widget Function(
-      ({
-        BuildContext context,
-        List<Widget> itemList,
-        LoginOtpModelForm formModel
-      }) params)? builder;
-
-  final Widget Function(
-      ({
-        BuildContext context,
-        int i,
-        FormControl<ReactiveLoginOtpModelFormArrayBuilderT> control,
-        ReactiveLoginOtpModelFormArrayBuilderT? item,
-        LoginOtpModelForm formModel
-      }) params) itemBuilder;
-
-  final Widget Function(BuildContext context)? emptyBuilder;
-
-  final bool Function(
-          FormControl<ReactiveLoginOtpModelFormArrayBuilderT> control)?
-      controlFilter;
-
-  @override
-  Widget build(BuildContext context) {
-    final formModel = ReactiveLoginOtpModelForm.of(context);
-
-    if (formModel == null) {
-      throw FormControlParentNotFoundException(this);
-    }
-
-    final builder = this.builder;
-    final itemBuilder = this.itemBuilder;
-
-    return ReactiveFormArrayItemBuilder<ReactiveLoginOtpModelFormArrayBuilderT>(
-      formControl: formControl ?? control?.call(formModel),
-      builder: builder != null
-          ? (context, itemList) => builder((
-                context: context,
-                itemList: itemList,
-                formModel: formModel,
-              ))
-          : null,
-      itemBuilder: (
-        context,
-        i,
-        control,
-        item,
-      ) =>
-          itemBuilder((
-        context: context,
-        i: i,
-        control: control,
-        item: item,
-        formModel: formModel
-      )),
-      emptyBuilder: emptyBuilder,
-      controlFilter: controlFilter,
+        return builder?.call(
+              context,
+              itemList,
+              formModel,
+            ) ??
+            Column(children: itemList);
+      },
     );
   }
 }
@@ -890,7 +720,7 @@ class ReactiveLoginPasswordModelForm extends StatelessWidget {
     required this.form,
     required this.child,
     this.canPop,
-    this.onPopInvokedWithResult,
+    this.onPopInvoked,
   }) : super(key: key);
 
   final Widget child;
@@ -899,8 +729,7 @@ class ReactiveLoginPasswordModelForm extends StatelessWidget {
 
   final bool Function(FormGroup formGroup)? canPop;
 
-  final ReactiveFormPopInvokedWithResultCallback<dynamic>?
-      onPopInvokedWithResult;
+  final void Function(FormGroup formGroup, bool didPop)? onPopInvoked;
 
   static LoginPasswordModelForm? of(
     BuildContext context, {
@@ -927,7 +756,7 @@ class ReactiveLoginPasswordModelForm extends StatelessWidget {
       stream: form.form.statusChanged,
       child: ReactiveFormPopScope(
         canPop: canPop,
-        onPopInvokedWithResult: onPopInvokedWithResult,
+        onPopInvoked: onPopInvoked,
         child: child,
       ),
     );
@@ -948,7 +777,7 @@ class LoginPasswordModelFormBuilder extends StatefulWidget {
     this.model,
     this.child,
     this.canPop,
-    this.onPopInvokedWithResult,
+    this.onPopInvoked,
     required this.builder,
     this.initState,
   }) : super(key: key);
@@ -959,8 +788,7 @@ class LoginPasswordModelFormBuilder extends StatefulWidget {
 
   final bool Function(FormGroup formGroup)? canPop;
 
-  final ReactiveFormPopInvokedWithResultCallback<dynamic>?
-      onPopInvokedWithResult;
+  final void Function(FormGroup formGroup, bool didPop)? onPopInvoked;
 
   final Widget Function(
           BuildContext context, LoginPasswordModelForm formModel, Widget? child)
@@ -978,8 +806,6 @@ class _LoginPasswordModelFormBuilderState
     extends State<LoginPasswordModelFormBuilder> {
   late LoginPasswordModelForm _formModel;
 
-  StreamSubscription<LogRecord>? _logSubscription;
-
   @override
   void initState() {
     _formModel = LoginPasswordModelForm(
@@ -990,35 +816,6 @@ class _LoginPasswordModelFormBuilderState
     }
 
     widget.initState?.call(context, _formModel);
-
-    _logSubscription =
-        _logLoginPasswordModelForm.onRecord.listen((LogRecord e) {
-      // use `dumpErrorToConsole` for severe messages to ensure that severe
-      // exceptions are formatted consistently with other Flutter examples and
-      // avoids printing duplicate exceptions
-      if (e.level >= Level.SEVERE) {
-        final Object? error = e.error;
-        FlutterError.dumpErrorToConsole(
-          FlutterErrorDetails(
-            exception: error is Exception ? error : Exception(error),
-            stack: e.stackTrace,
-            library: e.loggerName,
-            context: ErrorDescription(e.message),
-          ),
-        );
-      } else {
-        log(
-          e.message,
-          time: e.time,
-          sequenceNumber: e.sequenceNumber,
-          level: e.level.value,
-          name: e.loggerName,
-          zone: e.zone,
-          error: e.error,
-          stackTrace: e.stackTrace,
-        );
-      }
-    });
 
     super.initState();
   }
@@ -1035,7 +832,6 @@ class _LoginPasswordModelFormBuilderState
   @override
   void dispose() {
     _formModel.form.dispose();
-    _logSubscription?.cancel();
     super.dispose();
   }
 
@@ -1044,12 +840,12 @@ class _LoginPasswordModelFormBuilderState
     return ReactiveLoginPasswordModelForm(
       key: ObjectKey(_formModel),
       form: _formModel,
-      // canPop: widget.canPop,
-      // onPopInvoked: widget.onPopInvoked,
+      canPop: widget.canPop,
+      onPopInvoked: widget.onPopInvoked,
       child: ReactiveFormBuilder(
         form: () => _formModel.form,
         canPop: widget.canPop,
-        onPopInvokedWithResult: widget.onPopInvokedWithResult,
+        onPopInvoked: widget.onPopInvoked,
         builder: (context, formGroup, child) =>
             widget.builder(context, _formModel, widget.child),
         child: widget.child,
@@ -1058,10 +854,7 @@ class _LoginPasswordModelFormBuilderState
   }
 }
 
-final _logLoginPasswordModelForm = Logger.detached('LoginPasswordModelForm');
-
-class LoginPasswordModelForm
-    implements FormModel<LoginPasswordModel, LoginPasswordModel> {
+class LoginPasswordModelForm implements FormModel<LoginPasswordModel> {
   LoginPasswordModelForm(
     this.form,
     this.path,
@@ -1085,20 +878,12 @@ class LoginPasswordModelForm
 
   String inviteCodeControlPath() => pathBuilder(inviteCodeControlName);
 
-  String get _phoneValue => phoneControl.value ?? '';
+  String get _phoneValue => phoneControl.value ?? "";
 
-  String get _passwordValue => passwordControl.value ?? '';
+  String get _passwordValue => passwordControl.value ?? "";
 
-  String? get _inviteCodeValue => inviteCodeControl.value;
+  String? get _inviteCodeValue => inviteCodeControl?.value;
 
-  String get _phoneRawValue => phoneControl.value ?? '';
-
-  String get _passwordRawValue => passwordControl.value ?? '';
-
-  String? get _inviteCodeRawValue => inviteCodeControl.value;
-
-  @Deprecated(
-      'Generator completely wraps the form and ensures at startup that all controls are present inside the form so we do not need this additional step')
   bool get containsPhone {
     try {
       form.control(phoneControlPath());
@@ -1108,8 +893,6 @@ class LoginPasswordModelForm
     }
   }
 
-  @Deprecated(
-      'Generator completely wraps the form and ensures at startup that all controls are present inside the form so we do not need this additional step')
   bool get containsPassword {
     try {
       form.control(passwordControlPath());
@@ -1119,8 +902,6 @@ class LoginPasswordModelForm
     }
   }
 
-  @Deprecated(
-      'Generator completely wraps the form and ensures at startup that all controls are present inside the form so we do not need this additional step')
   bool get containsInviteCode {
     try {
       form.control(inviteCodeControlPath());
@@ -1130,11 +911,11 @@ class LoginPasswordModelForm
     }
   }
 
-  Map<String, Object> get phoneErrors => phoneControl.errors;
+  Object? get phoneErrors => phoneControl.errors;
 
-  Map<String, Object> get passwordErrors => passwordControl.errors;
+  Object? get passwordErrors => passwordControl.errors;
 
-  Map<String, Object>? get inviteCodeErrors => inviteCodeControl.errors;
+  Object? get inviteCodeErrors => inviteCodeControl?.errors;
 
   void get phoneFocus => form.focus(phoneControlPath());
 
@@ -1142,8 +923,6 @@ class LoginPasswordModelForm
 
   void get inviteCodeFocus => form.focus(inviteCodeControlPath());
 
-  @Deprecated(
-      'Generator completely wraps the form so manual fields removal could lead to unexpected crashes')
   void inviteCodeRemove({
     bool updateParent = true,
     bool emitEvent = true,
@@ -1193,7 +972,7 @@ class LoginPasswordModelForm
     bool updateParent = true,
     bool emitEvent = true,
   }) {
-    inviteCodeControl.updateValue(value,
+    inviteCodeControl?.updateValue(value,
         updateParent: updateParent, emitEvent: emitEvent);
   }
 
@@ -1220,7 +999,7 @@ class LoginPasswordModelForm
     bool updateParent = true,
     bool emitEvent = true,
   }) {
-    inviteCodeControl.patchValue(value,
+    inviteCodeControl?.patchValue(value,
         updateParent: updateParent, emitEvent: emitEvent);
   }
 
@@ -1232,12 +1011,7 @@ class LoginPasswordModelForm
     bool? disabled,
   }) =>
       phoneControl.reset(
-        value: value,
-        updateParent: updateParent,
-        emitEvent: emitEvent,
-        removeFocus: removeFocus,
-        disabled: disabled,
-      );
+          value: value, updateParent: updateParent, emitEvent: emitEvent);
 
   void passwordValueReset(
     String value, {
@@ -1247,12 +1021,7 @@ class LoginPasswordModelForm
     bool? disabled,
   }) =>
       passwordControl.reset(
-        value: value,
-        updateParent: updateParent,
-        emitEvent: emitEvent,
-        removeFocus: removeFocus,
-        disabled: disabled,
-      );
+          value: value, updateParent: updateParent, emitEvent: emitEvent);
 
   void inviteCodeValueReset(
     String? value, {
@@ -1261,13 +1030,8 @@ class LoginPasswordModelForm
     bool removeFocus = false,
     bool? disabled,
   }) =>
-      inviteCodeControl.reset(
-        value: value,
-        updateParent: updateParent,
-        emitEvent: emitEvent,
-        removeFocus: removeFocus,
-        disabled: disabled,
-      );
+      inviteCodeControl?.reset(
+          value: value, updateParent: updateParent, emitEvent: emitEvent);
 
   FormControl<String> get phoneControl =>
       form.control(phoneControlPath()) as FormControl<String>;
@@ -1275,8 +1039,9 @@ class LoginPasswordModelForm
   FormControl<String> get passwordControl =>
       form.control(passwordControlPath()) as FormControl<String>;
 
-  FormControl<String> get inviteCodeControl =>
-      form.control(inviteCodeControlPath()) as FormControl<String>;
+  FormControl<String>? get inviteCodeControl => containsInviteCode
+      ? form.control(inviteCodeControlPath()) as FormControl<String>?
+      : null;
 
   void phoneSetDisabled(
     bool disabled, {
@@ -1320,12 +1085,12 @@ class LoginPasswordModelForm
     bool emitEvent = true,
   }) {
     if (disabled) {
-      inviteCodeControl.markAsDisabled(
+      inviteCodeControl?.markAsDisabled(
         updateParent: updateParent,
         emitEvent: emitEvent,
       );
     } else {
-      inviteCodeControl.markAsEnabled(
+      inviteCodeControl?.markAsEnabled(
         updateParent: updateParent,
         emitEvent: emitEvent,
       );
@@ -1337,24 +1102,14 @@ class LoginPasswordModelForm
     final isValid = !currentForm.hasErrors && currentForm.errors.isEmpty;
 
     if (!isValid) {
-      _logLoginPasswordModelForm.warning(
-        'Avoid calling `model` on invalid form.Possible exceptions for non-nullable fields which should be guarded by `required` validator.',
-        null,
-        StackTrace.current,
-      );
+      debugPrintStack(
+          label:
+              '[${path ?? 'LoginPasswordModelForm'}]\n┗━ Avoid calling `model` on invalid form. Possible exceptions for non-nullable fields which should be guarded by `required` validator.');
     }
     return LoginPasswordModel(
         phone: _phoneValue,
         password: _passwordValue,
         inviteCode: _inviteCodeValue);
-  }
-
-  @override
-  LoginPasswordModel get rawModel {
-    return LoginPasswordModel(
-        phone: _phoneRawValue,
-        password: _passwordRawValue,
-        inviteCode: _inviteCodeRawValue);
   }
 
   @override
@@ -1390,18 +1145,6 @@ class LoginPasswordModelForm
   }
 
   @override
-  bool equalsTo(LoginPasswordModel? other) {
-    final currentForm = this.currentForm;
-
-    return const DeepCollectionEquality().equals(
-      currentForm is FormControlCollection<dynamic>
-          ? currentForm.rawValue
-          : currentForm.value,
-      LoginPasswordModelForm.formElements(other).rawValue,
-    );
-  }
-
-  @override
   void submit({
     required void Function(LoginPasswordModel model) onValid,
     void Function()? onNotValid,
@@ -1410,8 +1153,6 @@ class LoginPasswordModelForm
     if (currentForm.valid) {
       onValid(model);
     } else {
-      _logLoginPasswordModelForm.info('Errors');
-      _logLoginPasswordModelForm.info('┗━━ ${form.errors}');
       onNotValid?.call();
     }
   }
@@ -1481,8 +1222,6 @@ class ReactiveLoginPasswordModelFormArrayBuilder<
     this.formControl,
     this.builder,
     required this.itemBuilder,
-    this.emptyBuilder,
-    this.controlFilter,
   })  : assert(control != null || formControl != null,
             "You have to specify `control` or `formControl`!"),
         super(key: key);
@@ -1498,16 +1237,9 @@ class ReactiveLoginPasswordModelFormArrayBuilder<
   final Widget Function(
       BuildContext context,
       int i,
-      FormControl<ReactiveLoginPasswordModelFormArrayBuilderT> control,
       ReactiveLoginPasswordModelFormArrayBuilderT? item,
       LoginPasswordModelForm formModel) itemBuilder;
 
-  final Widget Function(BuildContext context)? emptyBuilder;
-
-  final bool Function(
-          FormControl<ReactiveLoginPasswordModelFormArrayBuilderT> control)?
-      controlFilter;
-
   @override
   Widget build(BuildContext context) {
     final formModel = ReactiveLoginPasswordModelForm.of(context);
@@ -1516,109 +1248,33 @@ class ReactiveLoginPasswordModelFormArrayBuilder<
       throw FormControlParentNotFoundException(this);
     }
 
-    final builder = this.builder;
-    final itemBuilder = this.itemBuilder;
+    return ReactiveFormArray<ReactiveLoginPasswordModelFormArrayBuilderT>(
+      formArray: formControl ?? control?.call(formModel),
+      builder: (context, formArray, child) {
+        final values = formArray.controls.map((e) => e.value).toList();
+        final itemList = values
+            .asMap()
+            .map((i, item) {
+              return MapEntry(
+                i,
+                itemBuilder(
+                  context,
+                  i,
+                  item,
+                  formModel,
+                ),
+              );
+            })
+            .values
+            .toList();
 
-    return ReactiveFormArrayItemBuilder<
-        ReactiveLoginPasswordModelFormArrayBuilderT>(
-      formControl: formControl ?? control?.call(formModel),
-      builder: builder != null
-          ? (context, itemList) => builder(
-                context,
-                itemList,
-                formModel,
-              )
-          : null,
-      itemBuilder: (
-        context,
-        i,
-        control,
-        item,
-      ) =>
-          itemBuilder(context, i, control, item, formModel),
-      emptyBuilder: emptyBuilder,
-      controlFilter: controlFilter,
-    );
-  }
-}
-
-class ReactiveLoginPasswordModelFormArrayBuilder2<
-    ReactiveLoginPasswordModelFormArrayBuilderT> extends StatelessWidget {
-  const ReactiveLoginPasswordModelFormArrayBuilder2({
-    Key? key,
-    this.control,
-    this.formControl,
-    this.builder,
-    required this.itemBuilder,
-    this.emptyBuilder,
-    this.controlFilter,
-  })  : assert(control != null || formControl != null,
-            "You have to specify `control` or `formControl`!"),
-        super(key: key);
-
-  final FormArray<ReactiveLoginPasswordModelFormArrayBuilderT>? formControl;
-
-  final FormArray<ReactiveLoginPasswordModelFormArrayBuilderT>? Function(
-      LoginPasswordModelForm formModel)? control;
-
-  final Widget Function(
-      ({
-        BuildContext context,
-        List<Widget> itemList,
-        LoginPasswordModelForm formModel
-      }) params)? builder;
-
-  final Widget Function(
-      ({
-        BuildContext context,
-        int i,
-        FormControl<ReactiveLoginPasswordModelFormArrayBuilderT> control,
-        ReactiveLoginPasswordModelFormArrayBuilderT? item,
-        LoginPasswordModelForm formModel
-      }) params) itemBuilder;
-
-  final Widget Function(BuildContext context)? emptyBuilder;
-
-  final bool Function(
-          FormControl<ReactiveLoginPasswordModelFormArrayBuilderT> control)?
-      controlFilter;
-
-  @override
-  Widget build(BuildContext context) {
-    final formModel = ReactiveLoginPasswordModelForm.of(context);
-
-    if (formModel == null) {
-      throw FormControlParentNotFoundException(this);
-    }
-
-    final builder = this.builder;
-    final itemBuilder = this.itemBuilder;
-
-    return ReactiveFormArrayItemBuilder<
-        ReactiveLoginPasswordModelFormArrayBuilderT>(
-      formControl: formControl ?? control?.call(formModel),
-      builder: builder != null
-          ? (context, itemList) => builder((
-                context: context,
-                itemList: itemList,
-                formModel: formModel,
-              ))
-          : null,
-      itemBuilder: (
-        context,
-        i,
-        control,
-        item,
-      ) =>
-          itemBuilder((
-        context: context,
-        i: i,
-        control: control,
-        item: item,
-        formModel: formModel
-      )),
-      emptyBuilder: emptyBuilder,
-      controlFilter: controlFilter,
+        return builder?.call(
+              context,
+              itemList,
+              formModel,
+            ) ??
+            Column(children: itemList);
+      },
     );
   }
 }

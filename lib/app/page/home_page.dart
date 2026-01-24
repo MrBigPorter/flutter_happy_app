@@ -7,7 +7,6 @@ import 'package:flutter_app/utils/helper.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_app/core/providers/index.dart';
-import 'package:flutter_app/core/models/product_list_item.dart';
 
 
 import 'home_components/group_buying_section.dart';

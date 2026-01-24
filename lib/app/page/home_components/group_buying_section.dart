@@ -98,7 +98,7 @@ class GroupBuyingSection extends StatelessWidget {
             itemBuilder: (context, index) {
               final item = list![index];
               return GroupBuyingItemWrapper(
-                uniqueKey: item.treasureId ?? 'unknown_$index',
+                uniqueKey: item.treasureId,
                 index: index,
                 child: GroupBuyingCard(item: item),
               );
@@ -150,15 +150,13 @@ class GroupBuyingCard extends StatelessWidget {
     return GestureDetector(
       onTap: () {
         //  点击跳转详情页
-        if (item.treasureId != null) {
-          context.pushNamed(
-            'productDetail',
-            pathParameters: {'id': item.treasureId!},
-            // 如果已经加入了，就不自动打开拼团弹窗了
-            queryParameters: {'autoOpenGroup': isJoined ? 'false' : 'true'},
-          );
-        }
-      },
+        context.pushNamed(
+          'productDetail',
+          pathParameters: {'id': item.treasureId},
+          // 如果已经加入了，就不自动打开拼团弹窗了
+          queryParameters: {'autoOpenGroup': isJoined ? 'false' : 'true'},
+        );
+            },
       child: Container(
         width: 300.w, // 卡片宽度
         decoration: BoxDecoration(
