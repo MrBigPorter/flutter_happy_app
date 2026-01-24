@@ -129,6 +129,7 @@ dependencies:
   sembast_web: ^2.3.0 # Web 端专用支持
   record: ^5.1.0 # 建议使用最新稳定版
   just_audio: ^0.10.5
+  connectivity_plus: ^7.0.0
 
 
 dev_dependencies:

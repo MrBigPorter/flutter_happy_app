@@ -215,6 +215,23 @@ class LocalDatabaseService {
       }).toList();
     });
   }
+  // 即使重启 App，这些消息也能被捞出来重发
+  Future<List<ChatUiModel>> getPendingMessages() async {
+    final db = await database;
+    final finder = Finder(
+      filter: Filter.equals('status', MessageStatus.pending),
+      sortOrders: [SortOrder('createdAt', true)], // 先发的先重试,正序
+    );
+
+    final snapshots = await _messageStore.find(db, finder: finder);
+    return snapshots.map((snapshot) => ChatUiModel.fromJson(snapshot.value)).toList();
+  }
+
+  ////  [新增] 专门用于更新状态的方法 (比 updateMessage 更安全)
+  Future<void> markMessageAsPending(String msgId) async {
+    await updateMessageStatus(msgId, MessageStatus.pending);
+  }
+
 
   //  删除单条消息
   Future<void> deleteMessage(String msgId) async {

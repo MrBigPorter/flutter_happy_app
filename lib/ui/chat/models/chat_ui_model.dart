@@ -7,7 +7,8 @@ enum MessageStatus {
   @JsonValue('sending') sending,
   @JsonValue('success') success,
   @JsonValue('failed') failed,
-  @JsonValue('read') read
+  @JsonValue('read') read,
+  @JsonValue('pending') pending,
 }
 
 enum MessageType {
