@@ -16,7 +16,9 @@ class AudioPlayerManager {
   String? get currentPlayingId => _currentPlayingId;
   bool isPlaying(String id) => _currentPlayingId == id && _player.playing;
   // expose player state stream
-  Stream<PlayerState> get playerStateStream => _player.playerStateStream;
+  Stream<PlayerState> get playerStateStream => _player.playerStateStream;// 播放状态流
+  Stream<Duration> get positionStream => _player.positionStream;// 播放进度流
+  Stream<Duration?> get durationStream => _player.durationStream;// 总时长流
 
   // Play or pause audio by id and url/path
   Future<void> play(String id, String urlOrPath) async {

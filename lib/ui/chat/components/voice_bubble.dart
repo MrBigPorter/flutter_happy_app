@@ -1,10 +1,9 @@
-import 'package:flutter/cupertino.dart';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_app/ui/chat/models/chat_ui_model.dart';
 import 'package:flutter_app/ui/chat/providers/chat_room_provider.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:just_audio/just_audio.dart';
-
 import '../services/voice/audio_player_manager.dart';
 
 class VoiceBubble extends StatefulWidget {
@@ -17,115 +16,157 @@ class VoiceBubble extends StatefulWidget {
   State<VoiceBubble> createState() => _VoiceBubbleState();
 }
 
-class _VoiceBubbleState extends State<VoiceBubble>
-    with SingleTickerProviderStateMixin {
+class _VoiceBubbleState extends State<VoiceBubble> {
   final _playerManager = AudioPlayerManager();
 
-  // 1. 增加动画控制器，让波形能动起来
-  late AnimationController _animationController;
-
-  //在这里集成 just_audio 的播放逻辑
-  bool _isPlaying = false;
+  // 存储波形高度，保证 UI 稳定
+  late List<double> _waveformHeights;
+  final int _barCount = 12;
 
   @override
   void initState() {
     super.initState();
-    _animationController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1000), // 1 秒一个周期
-    );
+    _generateStaticWaveform();
   }
 
-  @override
-  void dispose() {
-    _animationController.dispose();
-    super.dispose();
+  void _generateStaticWaveform() {
+    // 使用 message.id 作为种子，确保同一条消息的波形形状永远一样
+    final random = Random(widget.message.id.hashCode);
+    _waveformHeights = List.generate(_barCount, (_) {
+      // 随机高度范围：30% - 100%
+      return 0.3 + (random.nextDouble() * 0.7);
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    // 1. 动态宽度计算：时长越长气泡越宽
-    // 公式：基础宽度(70) + 时长占宽(每秒加若干像素)，最高不超过屏幕宽度的 60%
-    final double minWidth = 100.w;
-    final double maxWidth = 0.6.sw;
-    final int duration = widget.message.duration ?? 0;
-    final double bubbleWidth = (minWidth + (duration * 6.w)).clamp(
-      minWidth,
-      maxWidth,
-    );
+    // 基础参数
+    final double minWidth = 140.w;
+    final double maxWidth = 0.65.sw;
+    final int dbDuration = widget.message.duration ?? 0;
 
-    //// 2. 确定播放源：Session 缓存 > 本地路径 > 远程 URL
-    final String? sessionPath = ChatRoomController.getPathFromCache(
-      widget.message.id,
-    );
-    final String? audioSource =
-        sessionPath ?? widget.message.localPath ?? widget.message.content;
+    // 气泡宽度计算
+    final double bubbleWidth = (minWidth + (dbDuration * 5.w)).clamp(minWidth, maxWidth);
 
-    final bool isCurrentPlaying = _playerManager.isPlaying(widget.message.id);
-    
+    // 播放源获取
+    final String? sessionPath = ChatRoomController.getPathFromCache(widget.message.id);
+    final String? audioSource = sessionPath ?? widget.message.localPath ?? widget.message.content;
+
+    //  颜色配置 (Messenger 风格)
+    // 如果想要微信绿，把 activeColor 改为 Colors.black87，把 Active 背景改为 Color(0xFF95EC69)
+    final Color bubbleBgColor = widget.isMe ? const Color(0xFF0084FF) : const Color(0xFFE4E6EB);
+    final Color activeBarColor = widget.isMe ? Colors.white : Colors.black87;
+    final Color inactiveBarColor = widget.isMe ? Colors.white.withOpacity(0.4) : Colors.grey[400]!;
+    final Color iconColor = widget.isMe ? Colors.white : Colors.black;
 
     return StreamBuilder<PlayerState>(
-      stream: _playerManager.playerStateStream, // 监听播放器状态变化
-      builder: (context, snapshot) {
-        final playerState = snapshot.data;
+      stream: _playerManager.playerStateStream, // 1. 监听播放状态
+      builder: (context, snapshotState) {
+        final playerState = snapshotState.data;
         final processingState = playerState?.processingState;
         final bool isPlaying = playerState?.playing ?? false;
+        final bool isSelected = _playerManager.currentPlayingId == widget.message.id;
 
-        print("VoiceBubble StreamBuilder: isPlaying = $isPlaying, processingState = $processingState for message id ${widget.message.id}");
-        // 判断：当前播放器里放的，是不是这条消息？
-        // (需要在 AudioPlayerManager 里加一个 isMessageSelected 方法，或者直接对比 ID)
-        final bool isCurrentMessage =
-            _playerManager.currentPlayingId == widget.message.id;
+        final bool isLoading = isSelected && (processingState == ProcessingState.loading || processingState == ProcessingState.buffering);
 
-        // 更新播放状态和动画
-        final bool isActive =
-            isCurrentMessage &&
-            isPlaying &&
-            processingState != ProcessingState.completed;
-        final bool isLoading =
-            isCurrentMessage &&
-            (processingState == ProcessingState.loading ||
-                processingState == ProcessingState.buffering);
-        // 控制波形动画
-        if (isActive) {
-          _animationController.repeat();
-        } else {
-          _animationController.stop();
-          _animationController.reset();
-        }
         return InkWell(
-          onTap: () => setState(() {
-            _playerManager.play(widget.message.id, audioSource!);
-          }),
+          onTap: () async {
+            if (audioSource != null && audioSource.isNotEmpty) {
+              await _playerManager.play(widget.message.id, audioSource);
+            }
+          },
           child: Container(
             width: bubbleWidth,
-            padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
+            height: 44.h,
+            padding: EdgeInsets.symmetric(horizontal: 12.w),
             decoration: BoxDecoration(
-              color: widget.isMe ? const Color(0xFF95EC69) : Colors.white,
-              borderRadius: BorderRadius.circular(12.r),
+              color: bubbleBgColor,
+              borderRadius: BorderRadius.circular(18.r),
             ),
             child: Row(
-              mainAxisSize: MainAxisSize.min,
               children: [
-                // 播放按钮
-                Icon(
-                  isActive ? Icons.pause : Icons.play_arrow,
-                  size: 20.sp,
-                  color: Colors.black87,
-                ),
-                SizedBox(width: 8.w),
-                // 静态声纹 (你可以之后替换为真正的波形绘制)
-                Expanded(
-                  child: AnimatedBuilder(
-                    animation: _animationController,
-                    builder: (context, child) => _buildWaveform(isActive),
+                // === 左侧：播放按钮 ===
+                Container(
+                  width: 28.w,
+                  height: 28.w,
+                  decoration: BoxDecoration(
+                    color: widget.isMe ? Colors.white.withOpacity(0.2) : Colors.white,
+                    shape: BoxShape.circle,
+                  ),
+                  child: isLoading
+                      ? Padding(
+                    padding: const EdgeInsets.all(6.0),
+                    child: CircularProgressIndicator(strokeWidth: 2, color: activeBarColor),
+                  )
+                      : Icon(
+                    (isPlaying && isSelected && processingState != ProcessingState.completed)
+                        ? Icons.pause
+                        : Icons.play_arrow_rounded,
+                    size: 20.sp,
+                    color: iconColor,
                   ),
                 ),
+
+                SizedBox(width: 10.w),
+
+                // === 中间：波形进度条 (双重流监听) ===
+                Expanded(
+                  child: StreamBuilder<Duration?>(
+                    stream: _playerManager.durationStream, // 2. 外层：监听总时长
+                    builder: (context, snapshotDuration) {
+                      // 获取真实总时长：优先用播放器的，没有则兜底用数据库的
+                      final realDuration = snapshotDuration.data ?? Duration(seconds: dbDuration);
+                      final int totalMills = realDuration.inMilliseconds;
+
+                      return StreamBuilder<Duration>(
+                        stream: _playerManager.positionStream, // 3. 内层：监听实时进度
+                        builder: (context, snapshotPos) {
+                          double progress = 0.0;
+
+                          // 只有当前选中的消息才计算进度
+                          if (isSelected && totalMills > 0) {
+                            final current = snapshotPos.data?.inMilliseconds ?? 0;
+                            progress = (current / totalMills).clamp(0.0, 1.0);
+
+                            // 播放完成归零
+                            if (processingState == ProcessingState.completed) progress = 0.0;
+                          }
+
+                          return Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: List.generate(_barCount, (index) {
+                              // 计算这根线的位置比例 (0.0 ~ 1.0)
+                              final double barPosition = index / _barCount;
+                              // 如果当前进度超过了这根线的位置，就变色
+                              final bool isPlayed = barPosition < progress;
+
+                              return Container(
+                                width: 2.5.w,
+                                height: 24.h * _waveformHeights[index], // 随机高度
+                                decoration: BoxDecoration(
+                                  color: isPlayed ? activeBarColor : inactiveBarColor,
+                                  borderRadius: BorderRadius.circular(2.r),
+                                ),
+                              );
+                            }),
+                          );
+                        },
+                      );
+                    },
+                  ),
+                ),
+
                 SizedBox(width: 8.w),
-                // 时长文字
+
+                // === 右侧：时长文字 ===
                 Text(
-                  "$duration''",
-                  style: TextStyle(fontSize: 14.sp, color: Colors.black87),
+                  _formatDuration(dbDuration),
+                  style: TextStyle(
+                    fontSize: 12.sp,
+                    fontWeight: FontWeight.w500,
+                    color: widget.isMe ? Colors.white.withOpacity(0.9) : Colors.black54,
+                  ),
                 ),
               ],
             ),
@@ -135,20 +176,10 @@ class _VoiceBubbleState extends State<VoiceBubble>
     );
   }
 
-  Widget _buildWaveform(bool active) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-      children: List.generate(
-        10,
-        (index) => Container(
-          width: 2.w,
-          height: (10 + (index % 3) * 4.h), // 模拟不同高度
-          decoration: BoxDecoration(
-            color: active ? Colors.black87 : Colors.black26,
-            borderRadius: BorderRadius.circular(1.r),
-          ),
-        ),
-      ),
-    );
+  String _formatDuration(int seconds) {
+    if (seconds < 60) return "$seconds''";
+    final m = seconds ~/ 60;
+    final s = seconds % 60;
+    return "$m:${s.toString().padLeft(2, '0')}";
   }
 }
