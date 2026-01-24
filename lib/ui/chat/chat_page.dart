@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'components/chat_bubble.dart';
 import 'components/chat_input/modern_chat_input_bar.dart';
+import 'models/chat_ui_model.dart';
 import 'providers/chat_room_provider.dart';
 
 class ChatPage extends ConsumerStatefulWidget {
@@ -30,10 +31,15 @@ class _ChatPageState extends ConsumerState<ChatPage> {
   @override
   void initState() {
     super.initState();
+    Future.microtask(() {
+      // 1. 占位：告诉全 App 我正在看这个房间
+      ref.read(activeConversationIdProvider.notifier).state = widget.conversationId;
 
-    //  关键修改：页面初始化时
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+      // 2. 刷新数据
       ref.read(chatControllerProvider(widget.conversationId)).refresh();
+
+      // 3. 进门消红
+      ref.read(chatControllerProvider(widget.conversationId)).markAsRead();
     });
 
     _scrollController.addListener(_onScroll);
@@ -42,6 +48,10 @@ class _ChatPageState extends ConsumerState<ChatPage> {
   @override
   void dispose() {
     _scrollController.dispose();
+    // 如果不清空，你回到列表页，新消息还是不会有红点！
+    try {
+      ref.read(activeConversationIdProvider.notifier).state = null;
+    } catch (_) {}
     super.dispose();
   }
 
@@ -56,6 +66,8 @@ class _ChatPageState extends ConsumerState<ChatPage> {
 
   @override
   Widget build(BuildContext context) {
+    // 只要这行代码在，页面不关，Controller 就不会死，就不会反复 Join Room
+    ref.watch(chatControllerProvider(widget.conversationId));
     // 1. 监听消息状态
     final asyncMessages = ref.watch(chatStreamProvider(widget.conversationId));
     // 2. 监听详情状态
@@ -229,6 +241,15 @@ class _ChatPageState extends ConsumerState<ChatPage> {
       );
     }
 
+    //  [这里 1] 先算出谁是最新已读 ID
+    String? latestReadMsgId;
+    for (final msg in messages) {
+      if (msg is ChatUiModel && msg.isMe && msg.status == MessageStatus.read) {
+        latestReadMsgId = msg.id;
+        break;
+      }
+    }
+
     return ListView.builder(
       controller: _scrollController,
       reverse: true,
@@ -259,9 +280,12 @@ class _ChatPageState extends ConsumerState<ChatPage> {
 
         // 2. 渲染气泡
         final msg = messages[index];
+        final isLatestRead = (msg.id == latestReadMsgId);
         return ChatBubble(
           key: ValueKey(msg.id),
           message: msg,
+          //  [这里 3] 把 true/false 传进去！
+          showReadStatus: isLatestRead,
           onRetry: () {
             ref.read(chatControllerProvider(widget.conversationId)).resendMessage(msg.id);
           },

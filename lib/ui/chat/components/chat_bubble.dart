@@ -17,8 +17,9 @@ import '../providers/chat_room_provider.dart';
 class ChatBubble extends ConsumerWidget {
   final ChatUiModel message;
   final VoidCallback? onRetry;
+  final bool showReadStatus;
 
-  const ChatBubble({super.key, required this.message, this.onRetry});
+  const ChatBubble({super.key, required this.message, this.onRetry, this.showReadStatus = false});
 
   void _showContextMenu(BuildContext context, WidgetRef ref, bool isMe) {
     final bool isText = message.type == MessageType.text;
@@ -137,7 +138,7 @@ class ChatBubble extends ConsumerWidget {
                 ),
 
                 // C. "Read" 已读状态 (仅我方显示)
-                if (isMe && message.status == MessageStatus.read)
+                if (isMe && showReadStatus)
                   Padding(
                     padding: EdgeInsets.only(top: 2.h, right: 2.w),
                     child: Text(

@@ -1,84 +1,82 @@
-# 🏛️ Lucky IM 项目核心蓝图 (Project Master Log v2.0)
+# 🏛️ Lucky IM 项目核心蓝图 (Project Master Log v2.2)
 
 > **🔴 状态校准 (2026-01-24)**
-> 当前架构已完成 **方案 B (Client-First ID + Zero Jitter)** 的全量重构。
-> **核心变更**：
-> 1. 彻底移除 `tempId` 概念，发送时即生成终身 `id` (UUID)。
-> 2. 彻底移除 `replaceMessage`，仅使用 `updateMessage` 更新状态。
-> 3. 语音全链路（录制-发送-播放-红点）已闭环。
+> **里程碑达成：健壮性与细节打磨 (Robustness & Polish)**
+> 在 v2.1 全链路闭环的基础上，修复了双重广播带来的副作用，并完善了已读回执的触发时机与显示逻辑。
+> **核心变更 (v2.2)**：
+> 1.  **前端消息去重 (Deduplication)**：`ChatRoomController` 引入 `Set` 缓存池，拦截后端双重广播产生的重复消息 ID。
+> 2.  **生命周期感知 (Lifecycle Aware)**：引入 `WidgetsBindingObserver`，确保仅在 App 前台 (`resumed`) 且 Controller 存活时发送已读回执，杜绝后台“僵尸”行为。
+> 3.  **视觉已读优化 (Visual Read Status)**：UI 渲染层增加过滤算法，**仅在最新一条**已读消息下方显示 "Read" 文本，拒绝满屏 "Read"。
+> 4.  **初始化修复**: 修复构造函数丢失 `_setup()` 问题，确保 Socket 监听器正确挂载。
 
 ---
 
-## 1. 🗺️ 代码地如 (Code Map) - 你现在的代码结构
-*(核对你的文件是否与此一致)*
+## 1. 🗺️ 代码地如 (Code Map) - 关键更新
 
 ### A. 数据层 (Database)
 * **文件**: `local_database_service.dart`
-* **关键方法**:
-    * `saveMessage(msg)`: 用于发送初始状态（Sending）。
-    * `updateMessage(id, updates)`: **[核心]** 用于 API 成功后更新状态、点击播放后消除红点。
-    * **已废弃**: `replaceMessage` (代码可留存但逻辑中不再调用)。
+* **机制**: Sembast (NoSQL)。
+* **逻辑**: 接收所有数据更新 (包括批量已读)，保持数据层的一致性 (All Read)，不关心 UI 显示。
 
-### B. 控制层 (Controller)
+### B. 全局监听层 (Global Listener)
+* **文件**: `conversation_provider.dart` (`ConversationListNotifier`)
+* **逻辑**:
+    * 监听 Socket，强制存库。
+    * **红点互斥**: 结合 `activeConversationIdProvider`，如果用户正在浏览该房间，则 `unreadCount` 强制归零，否则 +1。
+
+### C. 聊天室控制层 (Room Controller)
 * **文件**: `chat_room_controller.dart`
-* **发送流程**:
-    1.  生成 `msgId = Uuid().v4()`.
-    2.  `saveMessage` (UI 上屏).
-    3.  `Api.sendMessage` (透传 ID).
-    4.  `updateMessage` (更新 `status: success`, `seqId`, `createdAt`).
-* **重发流程**:
-    * `resendMessage(msgId)` -> 读取原消息 -> `_executeSend`.
+* **增强逻辑 (v2.2)**:
+    * **去重**: `_processedMsgIds.contains(id)` ? `return` : `process`.
+    * **生命周期**: `if (!mounted || appState != resumed) return`.
+    * **初始化**: 构造函数强制调用 `_setup()`。
 
-### C. 模型层 (Model)
-* **文件**: `chat_ui_model.dart`
-* **关键字段**:
-    * `id`: 终身 UUID。
-    * `meta`: 存放 `{'w': 100, 'h': 200, 'duration': 5}`。
-    * `isPlayed`: **[新增]** `bool`。自己发的默认 true，收到的语音默认 false。
-
-### D. UI 层 (Widgets)
-* **文件**: `voice_message_bubble.dart` **[新增]**
-    * **逻辑**: 根据 `!isMe && !isPlayed` 显示红点。
-    * **交互**: 点击播放 -> `updateMessage(id, {'isPlayed': true})`。
+### D. UI 层 (ChatPage & Bubble)
+* **文件**: `chat_page.dart` / `chat_bubble.dart`
+* **视觉过滤**:
+    * `_buildMessageList`: 遍历消息列表，计算出 `latestReadMsgId` (第一条 isMe && Read)。
+    * `ChatBubble`: 接收 `showReadStatus` 参数，仅匹配 ID 时渲染文本。
 
 ---
 
-## 2. 🛡️ 架构铁律 (The Iron Rules)
-**AI 在写代码时必须死守的三条红线：**
-
-1.  **ID 唯一性原则**：
-    * 前端生成 ID。
-    * 后端接口必须接受 `id` 字段。
-    * **严禁**依靠后端返回新 ID 来替换前端 ID。
-
-2.  **UI 零抖动原则**：
-    * **严禁**在发送成功后删除旧消息插入新消息。
-    * 必须使用 `update` 操作，保持 Flutter Widget 的 `Key` 不变，防止图片闪烁/语音中断。
-
-3.  **单向数据流原则**：
-    * UI 只听 DB (`watchMessages`)。
-    * 交互只改 DB (`save`/`update`)。
-    * UI 不直接依赖 API 回调刷新。
+## 2. 📡 广播与触达策略 (Delivery Strategy)
+* **双重广播 (Current)**: 房间广播 (Online) + 用户广播 (List/Background)。
+* **漏斗模型**:
+    1.  **In Room**: Socket (去重后处理，不发红点，发已读)。
+    2.  **In App (Background)**: Socket (更新红点)。
+    3.  **Killed/Offline**: *[待开发]* FCM/APNs 推送。
 
 ---
 
-## 3. ✅ 已完结功能 (Checklist)
+## 3. 🛡️ 架构铁律 (The Iron Rules)
+1.  **ID 唯一性**: 前端生成 UUID，后端透传。
+2.  **UI 零抖动**: 严禁删旧插新，使用 `update` 操作。
+3.  **单向数据流**: UI 听 DB，交互改 DB。
+4.  **消息幂等性 (v2.2新增)**: 客户端必须具备处理重复消息的能力 (Idempotency)，同一 ID 只处理一次。
 
-- [x] **列表防抖**：图片/语音发送不闪烁。
-- [x] **Web 兼容**：`dart:io` 隔离，Blob 上传修复。
-- [x] **语音发送**：`.m4a` 格式，时长 (`duration`) 透传。
-- [x] **语音播放**：`just_audio` 集成。
-- [x] **语音红点**：数据模型支持，点击自动消除。
+---
 
-## 4. 🚧 待办任务 (Next Steps)
+## 4. ✅ 已完结功能 (Checklist)
 
-*(当前语音红点代码已给出，等待验证，下一步是多媒体细节优化)*
+- [x] **架构重构**：方案 B (Client ID + Zero Jitter) 落地。
+- [x] **红点闭环**：ActiveID 互斥逻辑，解决“该红不红/不该红乱红”问题。
+- [x] **Socket 健壮性**：解决反复 Join Room 问题；解决构造函数漏调 Setup 问题。
+- [x] **性能防御**：前端实现消息去重，抵御双重广播。
+- [x] **体验优化**：实现 Messenger 风格的“最新一条显示已读”。
 
-1.  **验证红点逻辑**：运行 App，测试接收语音是否有红点，点击是否消失。
-2.  **Web 图片缓存**：解决 Web 端 Blob URL 刷新失效问题 (需建立 CDN URL -> Blob 的恢复机制)。
-3.  **断网重发队列**：引入自动重试机制。
+## 5. 🚦 待办任务 (Next Steps)
+
+*(进入 v3.0 预备阶段)*
+
+1.  **Web 媒体优化**:
+    * [ ] **Blob 降级**: 完善 Web 端 Blob URL 失效后的自动 CDN 恢复机制。
+    * [ ] **图片缓存**: 优化查看大图时的加载体验。
+2.  **离线推送 (Notification)**:
+    * [ ] 集成 FCM (Firebase Cloud Messaging) 处理 App 离线时的通知。
+3.  **断网重发**:
+    * [ ] 引入 Job Queue 处理发送失败的消息。
 
 ---
 
 > **🚀 提示词 (Prompt)**：
-> 以后发给我指令时，请说：*"基于 Project Master Log v2.0，我们下一步..."*
+> 以后发给我指令时，请说：*"基于 Project Master Log v2.2，我们下一步..."*

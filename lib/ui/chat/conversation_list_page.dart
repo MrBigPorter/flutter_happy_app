@@ -15,9 +15,21 @@ import 'components/create_group_dialog.dart';
 class ConversationListPage extends ConsumerWidget {
   const ConversationListPage({super.key});
 
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isLoggedIn = ref.watch(authProvider.select((s) => s.isAuthenticated));
+
+    //  [双保险]：进入列表页立即清理
+    final currentActive = ref.read(activeConversationIdProvider);
+
+    // 必须加判断，否则无限循环
+    if (currentActive != null) {
+      //  必须包在 microtask 里！
+      Future.microtask(() {
+        ref.read(activeConversationIdProvider.notifier).state = null;
+      });
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -32,7 +44,7 @@ class ConversationListPage extends ConsumerWidget {
   }
 }
 
-// 🟢 提取：右上角菜单按钮 (保持主文件干净)
+//  提取：右上角菜单按钮 (保持主文件干净)
 class _AddMenuButton extends StatelessWidget {
   const _AddMenuButton();
 
@@ -77,7 +89,7 @@ class _AddMenuButton extends StatelessWidget {
   }
 }
 
-// 🟢 提取：未登录视图
+//  提取：未登录视图
 class _GuestView extends StatelessWidget {
   const _GuestView();
 
@@ -102,7 +114,7 @@ class _GuestView extends StatelessWidget {
   }
 }
 
-// 🟢 提取：已登录列表视图
+//  提取：已登录列表视图
 class _ConversationListView extends ConsumerWidget {
   const _ConversationListView();
 

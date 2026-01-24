@@ -3,7 +3,6 @@ import 'dart:io';
 import 'dart:ui' as ui; //  必须引入这个用于获取图片尺寸
 import 'package:camera/camera.dart'; // For XFile
 import 'package:flutter/foundation.dart';
-import 'package:flutter_app/utils/cache/cache_for_extension.dart';
 import 'package:flutter_app/utils/upload/upload_types.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
@@ -64,8 +63,11 @@ class ChatRoomController {
   StreamSubscription? _readStatusSub;
   StreamSubscription? _connectionSub;
   StreamSubscription? _recallSub;
+  StreamSubscription? _dbSubscription;
 
   final _readReceiptSubject = PublishSubject<void>();
+  //  [新增] 去重缓存池
+  final Set<String> _processedMsgIds = {};
 
   String? _nextCursor;
   bool _isLoadingMore = false;
@@ -98,6 +100,7 @@ class ChatRoomController {
     _readStatusSub?.cancel();
     _connectionSub?.cancel();
     _recallSub?.cancel();
+    _dbSubscription?.cancel();
     _readReceiptSubject.close();
   }
 
@@ -108,6 +111,17 @@ class ChatRoomController {
     _msgSub = _socketService.chatMessageStream.listen(_onSocketMessage);
     _readStatusSub = _socketService.readStatusStream.listen(_onReadStatusUpdate);
     _recallSub = _socketService.recallEventStream.listen(_onMessageRecalled);
+
+  }
+
+  //  [新增] 检查是否需要触发已读
+  void _checkAndTriggerRead(ChatUiModel lastMsg) {
+    // 1. 如果是自己发的，不管
+    if (lastMsg.isMe) return;
+
+    // 2. 只要有别人的新消息进库，就触发防抖信号
+    // (Socket那边的 _onSocketMessage 可能会漏，但数据库绝对不会漏)
+    _readReceiptSubject.add(null);
   }
 
   void _joinRoom() {
@@ -120,6 +134,14 @@ class ChatRoomController {
     _readReceiptSubject.debounceTime(const Duration(milliseconds: 500)).listen((_) {
       _executeMarkRead();
     });
+  }
+
+  //  [修改] 改为公开方法，供 ChatPage.initState 调用
+  void markAsRead() {
+    // 1. 立即触发一次 Socket 请求 (跳过防抖，立刻执行)
+    _executeMarkRead();
+    // 2. 或者是触发防抖流 (二选一，推荐直接执行)
+    // _readReceiptSubject.add(null);
   }
 
   void _executeMarkRead() {
@@ -471,8 +493,23 @@ class ChatRoomController {
       final msg = SocketMessage.fromJson(data);
       if (msg.conversationId != conversationId) return;
 
+      //  [核心修复] 去重拦截！
+      // 如果这个 ID 已经在缓存里了，说明是双重广播的“回声”，直接忽略
+      if (_processedMsgIds.contains(msg.id)) {
+        return;
+      }
+
+      // 记录 ID，并防止 Set 无限膨胀 (只保留最近 20 条即可)
+      _processedMsgIds.add(msg.id);
+      if (_processedMsgIds.length > 20) {
+        _processedMsgIds.remove(_processedMsgIds.first); // 移除最早的
+      }
+
       //  回声消除：如果是我发的，直接忽略
       if (msg.sender?.id == _currentUserId) return;
+
+      // 只要 Socket 收到别人的消息，说明我在线且在房间里，直接触发防抖
+      _readReceiptSubject.add(null);
 
       final apiMsg = ChatMessage(
         id: msg.id,
@@ -486,13 +523,17 @@ class ChatRoomController {
 
       final uiMsg = ChatUiModel.fromApiModel(apiMsg, conversationId).copyWith(conversationId: conversationId);
       await LocalDatabaseService().saveMessage(uiMsg);
-      if (!uiMsg.isMe) _readReceiptSubject.add(null);
     } catch (e) { debugPrint(" Socket Parse Error: $e"); }
   }
 
   void _onReadStatusUpdate(SocketReadEvent event) async {
     if (event.conversationId != conversationId || event.readerId == _currentUserId) return;
     if (event.lastReadSeqId > _maxReadSeqId) _maxReadSeqId = event.lastReadSeqId;
+    // 告诉数据库：所有“SeqID 小于等于 maxReadSeqId”且“是我发的”消息，状态改为 read
+    await LocalDatabaseService().markMessagesAsRead(
+        conversationId,
+        _maxReadSeqId
+    );
   }
 
   void _onMessageRecalled(SocketRecallEvent event) async {

@@ -121,6 +121,30 @@ class LocalDatabaseService {
     await _messageStore.record(id).update(db, updates);
   }
 
+  /// 批量将消息标记为已读
+  Future<void> markMessagesAsRead(String conversationId, int maxSeqId) async {
+    final db = await database;
+    final finder = Finder(
+      filter: Filter.and([
+        Filter.equals('conversationId', conversationId),
+        Filter.equals('isMe', true), // 只更新我自己发的
+        Filter.lessThanOrEquals('seqId', maxSeqId), // 小于等于对方读到的位置
+        Filter.notEquals('status', 'read') // 还没变成已读的
+      ]),
+    );
+
+    // 查出来
+    final records = await _messageStore.find(db, finder: finder);
+
+    // 批量更新
+    for (var record in records) {
+      // 保持原有数据，只改 status
+      var map = Map<String, dynamic>.from(record.value);
+      map['status'] = 'read'; // 对应 MessageStatus.read.name
+      await _messageStore.record(record.key).put(db, map);
+    }
+  }
+
   Future<void> doLocalRecall(String messageId, String tip) async {
     // 1. 先查出旧消息 (为了保留 createdAt, sender 等信息)
     final existingMsg = await getMessageById(messageId);
@@ -184,7 +208,6 @@ class LocalDatabaseService {
     // query.onSnapshots 会返回一个流
     yield* _messageStore.query(finder: finder).onSnapshots(db).map((snapshots) {
       //  [埋点 2] 打印查到了多少条
-      debugPrint(" [DB] 查到数据: ${snapshots.length} 条");
       return snapshots.map((snapshot) {
         //  [埋点 3] (可选) 如果查到了但 UI 没显示，打印第一条看看数据结构对不对
         // debugPrint(" [DB] 第一条数据: ${snapshot.value}");

@@ -64,7 +64,6 @@ mixin SocketChatMixin on _SocketBase {
 
     // 监听已读回执
     socket.on(SocketEvents.conversationRead, (data) {
-      print("🔵 [Socket] 收到已读回执: $data");
       if( data == null ) return;
       try{
         final event = SocketReadEvent.fromJson(Map<String, dynamic>.from(data));
@@ -79,7 +78,6 @@ mixin SocketChatMixin on _SocketBase {
 
     // 监听消息撤回事件
     socket.on(SocketEvents.messageRecall, (data){
-      print("🔵 [Socket] 收到消息撤回事件: $data");
       if(data == null) return;
       try{
         final event = SocketRecallEvent.fromJson(Map<String, dynamic>.from(data));

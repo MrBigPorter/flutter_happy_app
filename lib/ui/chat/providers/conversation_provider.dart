@@ -9,8 +9,12 @@ import '../../../core/providers/socket_provider.dart';
 import '../../../core/store/lucky_store.dart';
 import '../models/chat_ui_model.dart';
 import '../models/conversation.dart';
+import '../services/database/local_database_service.dart';
 
 part 'conversation_provider.g.dart';
+
+// 如果为 null，说明用户不在任何聊天室里
+final activeConversationIdProvider = StateProvider<String?>((ref) => null);
 
 class ConversationListNotifier extends StateNotifier<List<Conversation>> {
   final SocketService _socketService;
@@ -32,37 +36,93 @@ class ConversationListNotifier extends StateNotifier<List<Conversation>> {
   Future<void> refresh() async {
     try {
       final list = await Api.chatListApi(page: 1);
-      state = list;
-      print("✅ [ConversationListNotifier] 刷新会话列表成功，数量: ${list.length}");
+
+      //  [新增] 强行修正：如果我正盯着某个房间看，API 返回的红点不算数，必须归零
+      final currentActiveId = _ref.read(activeConversationIdProvider);
+      if (currentActiveId != null) {
+        state = list.map((c) {
+          if (c.id == currentActiveId) return c.copyWith(unreadCount: 0);
+          return c;
+        }).toList();
+      } else {
+        state = list;
+      }
+
+      debugPrint(" [Notifier] 刷新列表完成，当前ActiveID: $currentActiveId");
     } catch (e) {
-      debugPrint("❌ [ConversationListNotifier] 刷新会话列表失败: $e");
+      debugPrint(" [Notifier] 刷新失败: $e");
     }
   }
 
   // 收到新消息时的逻辑：只更新列表项，不处理具体气泡
-  void _onNewMessage(SocketMessage msg) {
-    //  核心修复：第一行必须加这个！
-    // 如果页面已经销毁，直接停止，不要去碰 state
+  void _onNewMessage(SocketMessage msg) async {
+    // 1. 安全检查：如果页面销毁，停止操作
     if (!mounted) return;
-    final convId = msg.conversationId;
-    //  修改处：原本是 final myUserId = _ref.read(luckyProvider).userInfo?.id ?? "";
-    //  修复方案：先获取 Store 实例，再安全读取 ID，避免 JS 互操作时的类型混淆
+
+    // 2. 解析基础信息
     final luckyStore = _ref.read(luckyProvider);
     final myUserId = luckyStore.userInfo?.id ?? "";
     final senderId = msg.sender?.id ?? "";
     final bool isMe = senderId.isNotEmpty && (senderId == myUserId);
-    String content = _getPreviewContent(msg.type, msg.content);
+    final convId = msg.conversationId;
 
+    // ---------------------------------------------------------
+    // 🛠️ 步骤 A: 无论在不在房间，先存入本地数据库 (Sembast)
+    // ---------------------------------------------------------
+    try {
+      final apiMsg = ChatMessage(
+        id: msg.id,
+        content: msg.content,
+        type: msg.type,
+        seqId: msg.seqId,
+        createdAt: msg.createdAt,
+        isSelf: isMe,
+        meta: msg.meta,
+        sender: msg.sender == null
+            ? null
+            : ChatSender(
+          id: msg.sender!.id,
+          nickname: msg.sender!.nickname,
+          avatar: msg.sender!.avatar,
+        ),
+      );
+      final uiMsg = ChatUiModel.fromApiModel(apiMsg, convId, myUserId);
+      // 调用数据库保存
+      await LocalDatabaseService().saveMessage(uiMsg);
+    } catch (e) {
+      debugPrint(" [ConversationListNotifier] 存储消息到本地数据库失败: $e");
+    }
+
+    // ---------------------------------------------------------
+    // 🛠️ 步骤 B: 更新会话列表 UI (红点 & 摘要)
+    // ---------------------------------------------------------
+    String content = _getPreviewContent(msg.type, msg.content);
     final time = DateTime.now().millisecondsSinceEpoch;
 
     // 1. 查找列表里有没有这个会话
     final index = state.indexWhere((conv) => conv.id == convId);
 
+
     if (index != -1) {
-      // A. 已存在：更新摘要 + 移到顶部 + 未读数+1
       final oldConv = state[index];
-      // 自己发的消息不算未读，别人的才需要加
-      final newUnreadCount = isMe ? 0 : oldConv.unreadCount + 1;
+
+      //  [核心修复逻辑 Start]
+
+      // 1. 获取当前正在浏览的房间 ID (从 Provider 读取)
+      final currentActiveId = _ref.read(activeConversationIdProvider);
+
+      // 2. 判断是否“正在看”这个房间
+      final bool isViewingNow = (currentActiveId == convId);
+
+
+      // 3. 计算未读数
+      // 规则：如果是【我发的】或者【我正在看这个房间】，未读数为 0 (或者保持不变，视需求而定，通常归0更安全)
+      // 否则：未读数 + 1
+      final newUnreadCount = (isMe || isViewingNow) ? 0 : (oldConv.unreadCount + 1);
+
+
+      //  [核心修复逻辑 End]
+
       // 构造新的 Conversation 对象
       final newConv = oldConv.copyWith(
         lastMsgContent: content,
@@ -75,7 +135,7 @@ class ConversationListNotifier extends StateNotifier<List<Conversation>> {
       newState.insert(0, newConv); // 再插入更新后的到顶部
       state = newState;
     } else {
-      // B. 新会话：重新刷新列表 (最简单的做法)
+      // B. 新会话：重新刷新列表
       refresh();
     }
   }
@@ -150,7 +210,7 @@ class ConversationListNotifier extends StateNotifier<List<Conversation>> {
 
 // 定义 Provider
 final conversationListProvider =
-    StateNotifierProvider.autoDispose<
+    StateNotifierProvider<
       ConversationListNotifier,
       List<Conversation>
     >((ref) {
