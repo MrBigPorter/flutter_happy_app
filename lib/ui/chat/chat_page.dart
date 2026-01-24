@@ -260,6 +260,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
         // 2. 渲染气泡
         final msg = messages[index];
         return ChatBubble(
+          key: ValueKey(msg.id),
           message: msg,
           onRetry: () {
             ref.read(chatControllerProvider(widget.conversationId)).resendMessage(msg.id);

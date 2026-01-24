@@ -41,11 +41,22 @@ class ChatUiModel {
   final String? senderAvatar;
   final String? senderName;
   final String conversationId;
+
+  // Local file path for images/audio
   final String? localPath;
-  final double? width;
-  final double? height;
-  final bool isRecalled;
+
+  // Audio duration (can also be retrieved from meta)
   final int? duration;
+
+  // Message is recalled
+  final bool isRecalled;
+
+  // Meta data (stores width, height, duration, etc.)
+  final Map<String, dynamic>? meta;
+
+  // Helper Getters for Image Dimensions
+  double? get imgWidth => meta?['w'] is num ? (meta!['w'] as num).toDouble() : null;
+  double? get imgHeight => meta?['h'] is num ? (meta!['h'] as num).toDouble() : null;
 
   ChatUiModel({
     required this.id,
@@ -60,9 +71,8 @@ class ChatUiModel {
     this.senderName,
     this.seqId,
     this.localPath,
-    this.width,
-    this.height,
     this.duration,
+    this.meta,
   });
 
   factory ChatUiModel.fromJson(Map<String, dynamic> json) =>
@@ -81,11 +91,10 @@ class ChatUiModel {
     String? senderName,
     int? seqId,
     String? localPath,
-    double? width,
-    double? height,
     bool? isRecalled,
     String? conversationId,
     int? duration,
+    Map<String, dynamic>? meta,
   }) {
     return ChatUiModel(
       id: id ?? this.id,
@@ -98,29 +107,31 @@ class ChatUiModel {
       senderName: senderName ?? this.senderName,
       seqId: seqId ?? this.seqId,
       localPath: localPath ?? this.localPath,
-      width: width ?? this.width,
-      height: height ?? this.height,
       isRecalled: isRecalled ?? this.isRecalled,
       conversationId: conversationId ?? this.conversationId,
       duration: duration ?? this.duration,
+      meta: meta ?? this.meta,
     );
   }
 
-  //  核心修改在这里
-  factory ChatUiModel.fromApiModel(ChatMessage apiMsg, String conversationId, [String? myUserId]) {
+  // Mapper: API Model -> UI Model
+  factory ChatUiModel.fromApiModel(ChatMessage apiMsg, String conversationId, [String? currentUserId]) {
     MessageType uiType = MessageType.fromValue(apiMsg.type);
     bool isRecalled = (uiType == MessageType.system) || (apiMsg.isRecalled);
 
-    // 1. 安全提取 meta
+    // 1. Safely extract meta
     final Map<String, dynamic> meta = apiMsg.meta ?? {};
 
-    // 2. 这里的 duration 从 meta 里取
-    // 注意：JSON 里的数字有时候会是 double，强转 int 比较安全
-    final int? metaDuration = meta['duration'] is int
-        ? meta['duration']
-        : (meta['duration'] as num?)?.toInt();
+    // 2. Extract duration from meta safely (handle int/double mismatch)
+    final int? metaDuration = meta['duration'] is num
+        ? (meta['duration'] as num).toInt()
+        : null;
 
+    // 3. Determine ownership
     bool isMe = apiMsg.isSelf;
+    if (currentUserId != null && apiMsg.sender?.id == currentUserId) {
+      isMe = true;
+    }
 
     return ChatUiModel(
       id: apiMsg.id.toString(),
@@ -133,11 +144,10 @@ class ChatUiModel {
       senderName: apiMsg.sender?.nickname,
       senderAvatar: apiMsg.sender?.avatar,
       isRecalled: isRecalled,
-      localPath: null,
+      localPath: null, // API messages don't have local paths by default
       conversationId: conversationId,
-
-      //  赋值：使用从 meta 里拿到的时长
-      duration: metaDuration,
+      duration: metaDuration, // Assign duration from meta
+      meta: meta, // Assign the full meta map
     );
   }
 }

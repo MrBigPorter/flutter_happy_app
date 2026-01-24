@@ -113,6 +113,14 @@ class LocalDatabaseService {
     });
   }
 
+  // 作用：只更新消息的特定字段（如 status, seqId, createdAt），不删旧记录，不改 ID
+  // 结果：UI 组件不会销毁重建，彻底解决闪烁
+  Future<void> updateMessage(String id, Map<String, dynamic> updates) async {
+    final db = await database;
+    // record.update 会合并 updates 到现有数据中，只修改你传的字段
+    await _messageStore.record(id).update(db, updates);
+  }
+
   Future<void> doLocalRecall(String messageId, String tip) async {
     // 1. 先查出旧消息 (为了保留 createdAt, sender 等信息)
     final existingMsg = await getMessageById(messageId);

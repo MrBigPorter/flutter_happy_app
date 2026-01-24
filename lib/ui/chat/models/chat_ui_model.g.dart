@@ -20,9 +20,8 @@ ChatUiModel _$ChatUiModelFromJson(Map<String, dynamic> json) => ChatUiModel(
       senderName: json['senderName'] as String?,
       seqId: (json['seqId'] as num?)?.toInt(),
       localPath: json['localPath'] as String?,
-      width: (json['width'] as num?)?.toDouble(),
-      height: (json['height'] as num?)?.toDouble(),
       duration: (json['duration'] as num?)?.toInt(),
+      meta: json['meta'] as Map<String, dynamic>?,
     );
 
 Map<String, dynamic> _$ChatUiModelToJson(ChatUiModel instance) =>
@@ -38,10 +37,9 @@ Map<String, dynamic> _$ChatUiModelToJson(ChatUiModel instance) =>
       'senderName': instance.senderName,
       'conversationId': instance.conversationId,
       'localPath': instance.localPath,
-      'width': instance.width,
-      'height': instance.height,
-      'isRecalled': instance.isRecalled,
       'duration': instance.duration,
+      'isRecalled': instance.isRecalled,
+      'meta': instance.meta,
     };
 
 const _$MessageTypeEnumMap = {

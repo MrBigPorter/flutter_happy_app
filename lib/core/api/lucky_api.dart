@@ -540,39 +540,69 @@ class Api {
   }
 
   // 6. 获取消息列表 (进入 ChatPage 时调用)
-  static Future<MessageListResponse> chatMessagesApi(MessageHistoryRequest data) async {
+  static Future<MessageListResponse> chatMessagesApi(
+    MessageHistoryRequest data,
+  ) async {
     final res = await Http.get('/api/v1/chat/messages', query: data.toJson());
     return MessageListResponse.fromJson(res);
   }
 
   // 发送消息
-  static Future<ChatMessage> sendMessage(String conversationId, String content, int type, String tempId,{int? duration}) async {
-    final res = await Http.post('/api/v1/chat/message', data: {
-      'conversationId': conversationId,
-      'content': content,
-      'type': type,
-      'tempId': tempId,
-      if(duration != null) 'duration': duration,
-    });
+  static Future<ChatMessage> sendMessage(
+    String id,
+    String conversationId,
+    String content,
+    int type, {
+    int? duration,
+    int? width,
+    int? height,
+  }) async {
+    final res = await Http.post(
+      '/api/v1/chat/message',
+      data: {
+        'id': id,
+        'conversationId': conversationId,
+        'content': content,
+        'type': type,
+        if (duration != null) 'duration': duration,
+        if (width != null) 'width': width,
+        if (height != null) 'height': height,
+      },
+    );
 
     return ChatMessage.fromJson(res);
   }
 
   // 标记消息已读
-  static Future<MessageMarkReadResponse> messageMarkAsReadApi(MessageMarkReadRequest data) async {
-    final res = await Http.post('/api/v1/chat/message/mark-as-read', data: data.toJson());
+  static Future<MessageMarkReadResponse> messageMarkAsReadApi(
+    MessageMarkReadRequest data,
+  ) async {
+    final res = await Http.post(
+      '/api/v1/chat/message/mark-as-read',
+      data: data.toJson(),
+    );
     return MessageMarkReadResponse.fromJson(res);
   }
 
   // 撤回消息
-  static Future<MessageRecallResponse> messageRecallApi(MessageRecallRequest data) async {
-    final res = await Http.post('/api/v1/chat/message/recall', data: data.toJson());
+  static Future<MessageRecallResponse> messageRecallApi(
+    MessageRecallRequest data,
+  ) async {
+    final res = await Http.post(
+      '/api/v1/chat/message/recall',
+      data: data.toJson(),
+    );
     return MessageRecallResponse.fromJson(res);
   }
 
   // 删除消息
-  static Future<MessageDeleteResponse> messageDeleteApi(MessageDeleteRequest data) async {
-    final res = await Http.delete('/api/v1/chat/message/delete', data: data.toJson());
+  static Future<MessageDeleteResponse> messageDeleteApi(
+    MessageDeleteRequest data,
+  ) async {
+    final res = await Http.delete(
+      '/api/v1/chat/message/delete',
+      data: data.toJson(),
+    );
     return MessageDeleteResponse.fromJson(res);
   }
 
