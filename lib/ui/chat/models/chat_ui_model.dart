@@ -11,11 +11,11 @@ enum MessageStatus {
 }
 
 enum MessageType {
-  @JsonValue(0) text(0),     // 👈 改为 0
-  @JsonValue(1) image(1),    // 👈 改为 1
-  @JsonValue(2) audio(2),    // 👈 改为 2
-  @JsonValue(3) video(3),    // 👈 改为 3
-  @JsonValue(4) recalled(4), // 👈 新增撤回类型，对应后端 4
+  @JsonValue(0) text(0),
+  @JsonValue(1) image(1),
+  @JsonValue(2) audio(2),
+  @JsonValue(3) video(3),
+  @JsonValue(4) recalled(4),
   @JsonValue(99) system(99);
 
   final int value;
@@ -29,13 +29,11 @@ enum MessageType {
   }
 }
 
-@JsonSerializable() //  1. 加上这个注解
+@JsonSerializable()
 class ChatUiModel {
   final String id;
   final int? seqId;
   final String content;
-
-  // 这里的 Enum 会被自动转成 @JsonValue 里定义的数字
   final MessageType type;
   final bool isMe;
   final MessageStatus status;
@@ -67,13 +65,10 @@ class ChatUiModel {
     this.duration,
   });
 
-  //  2. Sembast 读取数据时必须要用的方法
   factory ChatUiModel.fromJson(Map<String, dynamic> json) =>
       _$ChatUiModelFromJson(json);
 
-  //  3. Sembast 存入数据时必须要用的方法
   Map<String, dynamic> toJson() => _$ChatUiModelToJson(this);
-
 
   ChatUiModel copyWith({
     String? id,
@@ -111,13 +106,20 @@ class ChatUiModel {
     );
   }
 
-  factory ChatUiModel.fromApiModel(ChatMessage apiMsg,String conversationId, [String? myUserId]) {
+  //  核心修改在这里
+  factory ChatUiModel.fromApiModel(ChatMessage apiMsg, String conversationId, [String? myUserId]) {
     MessageType uiType = MessageType.fromValue(apiMsg.type);
     bool isRecalled = (uiType == MessageType.system) || (apiMsg.isRecalled);
-    final String _ = apiMsg.sender?.id.toString() ?? "";
-    final String _ = myUserId?.toString() ?? "";
 
-    //  完美逻辑：有 isSelf 用 isSelf，没有就比对 ID
+    // 1. 安全提取 meta
+    final Map<String, dynamic> meta = apiMsg.meta ?? {};
+
+    // 2. 这里的 duration 从 meta 里取
+    // 注意：JSON 里的数字有时候会是 double，强转 int 比较安全
+    final int? metaDuration = meta['duration'] is int
+        ? meta['duration']
+        : (meta['duration'] as num?)?.toInt();
+
     bool isMe = apiMsg.isSelf;
 
     return ChatUiModel(
@@ -133,7 +135,9 @@ class ChatUiModel {
       isRecalled: isRecalled,
       localPath: null,
       conversationId: conversationId,
-      duration: apiMsg.duration,
+
+      //  赋值：使用从 meta 里拿到的时长
+      duration: metaDuration,
     );
   }
 }

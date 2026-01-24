@@ -546,12 +546,13 @@ class Api {
   }
 
   // 发送消息
-  static Future<ChatMessage> sendMessage(String conversationId, String content, int type, String tempId) async {
+  static Future<ChatMessage> sendMessage(String conversationId, String content, int type, String tempId,{int? duration}) async {
     final res = await Http.post('/api/v1/chat/message', data: {
       'conversationId': conversationId,
       'content': content,
       'type': type,
       'tempId': tempId,
+      if(duration != null) 'duration': duration,
     });
 
     return ChatMessage.fromJson(res);

@@ -347,8 +347,18 @@ class ChatRoomController {
     try {
       // 1. 上传音频文件
       // 注意：Web 端 localPath 是 blob:，Mobile 端是文件路径
+
+      //  核心修复：强制给文件指定一个带 .m4a 后缀的名字
+      // Web 端的 blob url 没有后缀，必须手动指定 name，否则上传服务会把它当成 unknown 或 image 处理
+      final fileToUpload = XFile(
+        localPath,
+        name: '${const Uuid().v4()}.m4a', //  关键：手动加上 .m4a
+        mimeType: 'audio/mp4',            //  关键：显式声明 MIME 类型
+      );
+
+      // 1. 上传音频文件
       final cdnUrl = await _uploadService.uploadFile(
-        file: XFile(localPath),
+        file: fileToUpload,
         module: UploadModule.chat,
         onProgress: (_) {},
       );
@@ -361,7 +371,7 @@ class ChatRoomController {
         MessageType.audio.value,
         tempId,
         // 可以在此处扩展 API 参数以包含 duration
-        // duration: duration,
+         duration: duration,
       );
 
       // 3. 构造成功模型并保持本地路径 (防止播放中断)
@@ -532,20 +542,28 @@ class ChatRoomController {
       final senderId = msg.sender?.id ?? "";
       final bool isMe = senderId.isNotEmpty && (senderId == _currentUserId);
 
-      final uiMsg = ChatUiModel.fromApiModel(ChatMessage(
+      //  核心修改：构造 ChatMessage 时，必须把 msg.meta 透传进去
+      final apiMsg = ChatMessage(
         id: msg.id,
         content: msg.content,
         type: msg.type,
         seqId: msg.seqId,
         createdAt: msg.createdAt,
         isSelf: isMe,
-      ),conversationId).copyWith(
+
+        // 👇👇👇 加上这一行！！！
+        // 如果这里不传，ChatUiModel.fromApiModel 就读不到 duration
+        meta: msg.meta,
+      );
+
+      final uiMsg = ChatUiModel.fromApiModel(
+        apiMsg,
+        conversationId,
+      ).copyWith(
         conversationId: conversationId,
-        // 这里可以尝试保留本地已有的 localPath (如果是自己发的)
       );
 
       //  存库
-      // 如果是自己的消息回执，Sembast 会根据 ID 覆盖，从而把 status 变为 success
       await LocalDatabaseService().saveMessage(uiMsg);
 
       // 5. 如果是对方发的，触发已读回执逻辑

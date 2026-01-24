@@ -87,7 +87,7 @@ ChatMessage _$ChatMessageFromJson(Map<String, dynamic> json) => $checkedCreate(
                   : ChatSender.fromJson(v as Map<String, dynamic>)),
           isSelf: $checkedConvert('isSelf', (v) => v as bool? ?? false),
           seqId: $checkedConvert('seqId', (v) => (v as num?)?.toInt()),
-          duration: $checkedConvert('duration', (v) => (v as num?)?.toInt()),
+          meta: $checkedConvert('meta', (v) => v as Map<String, dynamic>?),
         );
         return val;
       },
@@ -102,7 +102,7 @@ Map<String, dynamic> _$ChatMessageToJson(ChatMessage instance) =>
       'sender': instance.sender,
       'seqId': instance.seqId,
       'isRecalled': instance.isRecalled,
-      'duration': instance.duration,
+      'meta': instance.meta,
       'isSelf': instance.isSelf,
     };
 
@@ -240,6 +240,7 @@ SocketMessage _$SocketMessageFromJson(Map<String, dynamic> json) =>
           tempId: $checkedConvert('tempId', (v) => v as String?),
           isSelf: $checkedConvert('isSelf', (v) => v as bool?),
           seqId: $checkedConvert('seqId', (v) => (v as num?)?.toInt()),
+          meta: $checkedConvert('meta', (v) => v as Map<String, dynamic>?),
         );
         return val;
       },
@@ -257,6 +258,7 @@ Map<String, dynamic> _$SocketMessageToJson(SocketMessage instance) =>
       'tempId': instance.tempId,
       'isSelf': instance.isSelf,
       'seqId': instance.seqId,
+      'meta': instance.meta,
     };
 
 SocketSender _$SocketSenderFromJson(Map<String, dynamic> json) =>

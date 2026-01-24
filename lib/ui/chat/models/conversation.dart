@@ -90,8 +90,9 @@ class ChatMessage {
   final ChatSender? sender;
   final int? seqId;
   final bool isRecalled;
-  final int? duration;
 
+  // [新增] 核心字段
+  final Map<String, dynamic>? meta;
   // 接收后端的 isSelf 字段
   @JsonKey(defaultValue: false)
   final bool isSelf;
@@ -105,7 +106,7 @@ class ChatMessage {
     this.sender,
     this.isSelf = false,
     this.seqId,
-    this.duration,
+    this.meta,
   });
 
   factory ChatMessage.fromJson(Map<String, dynamic> json) => _$ChatMessageFromJson(json);
@@ -254,6 +255,7 @@ class SocketMessage {
   final bool? isSelf;
 
   final int? seqId;
+  final Map<String, dynamic>? meta;
 
   SocketMessage({
     required this.id,
@@ -266,6 +268,7 @@ class SocketMessage {
     this.tempId,
      this.isSelf,
     this.seqId,
+    this.meta,
   });
 
   factory SocketMessage.fromJson(Map<String, dynamic> json) => _$SocketMessageFromJson(json);

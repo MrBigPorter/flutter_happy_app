@@ -156,7 +156,8 @@ SubmitKycDto _$SubmitKycDtoFromJson(Map<String, dynamic> json) =>
           cityId: $checkedConvert('cityId', (v) => (v as num).toInt()),
           barangayId: $checkedConvert('barangayId', (v) => (v as num).toInt()),
           address: $checkedConvert('address', (v) => v as String),
-          postalCode: $checkedConvert('postalCode', (v) => (v as num).toInt()),
+          postalCode:
+              $checkedConvert('postalCode', (v) => (v as num?)?.toInt()),
           ocrRawData:
               $checkedConvert('ocrRawData', (v) => v as Map<String, dynamic>?),
           placeOfBirth: $checkedConvert('placeOfBirth', (v) => v as String?),
@@ -200,7 +201,7 @@ Map<String, dynamic> _$SubmitKycDtoToJson(SubmitKycDto instance) {
   val['cityId'] = instance.cityId;
   val['barangayId'] = instance.barangayId;
   val['address'] = instance.address;
-  val['postalCode'] = instance.postalCode;
+  writeNotNull('postalCode', instance.postalCode);
   writeNotNull('ocrRawData', instance.ocrRawData);
   writeNotNull('placeOfBirth', instance.placeOfBirth);
   writeNotNull('nationality', instance.nationality);
