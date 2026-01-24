@@ -35,7 +35,6 @@ final chatLoadingMoreProvider = StateProvider.family<bool, String>((ref, id) => 
 // ===========================================================================
 final chatControllerProvider = Provider.family.autoDispose<ChatRoomController, String>(
       (ref, conversationId) {
-    ref.cacheFor(const Duration(minutes: 5));
 
     final socketService = ref.read(socketServiceProvider);
     final uploadService = ref.read(uploadServiceProvider);

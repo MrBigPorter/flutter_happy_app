@@ -412,13 +412,30 @@ class ChatBubble extends ConsumerWidget {
         // 默认使用传入的 path
         String finalSource = path;
 
-        //  救急逻辑：如果不是 Web，且本地文件居然不存在
-        if (!kIsWeb) {
-          final file = File(path);
-          if (!file.existsSync()) {
-            // 强制使用网络 URL (确保 message.content 存的是 http 链接)
+        // 2. Web 端特判修复 (Blob 失效问题)
+        if (kIsWeb) {
+          // 如果消息发送成功且有 CDN 链接，强制使用 CDN
+          // 因为 Blob URL 刷新页面后就打不开了
+          if (message.status == MessageStatus.success && message.content.isNotEmpty) {
             finalSource = message.content;
           }
+        }
+        // 3. App 端特判修复 (本地文件丢失问题)
+        else {
+          final file = File(path);
+          // 如果本地文件不存在 (被清理了或路径变了)，降级使用 CDN
+          if (!file.existsSync()) {
+            // 确保 CDN 链接不为空
+            if (message.content.isNotEmpty) {
+              finalSource = message.content;
+            }
+          }
+        }
+
+        // 4. 安全检查：如果最终没有任何可用的链接，拦截跳转
+        if (finalSource.isEmpty) {
+          debugPrint("❌ 无法预览：本地文件不存在且没有 CDN 链接");
+          return;
         }
 
         Navigator.push(
