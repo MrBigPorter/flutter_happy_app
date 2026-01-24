@@ -214,4 +214,6 @@ flutter:
 dependency_overrides:
   vector_graphics: 1.1.11
   vector_graphics_compiler: 1.1.11
-
+  # 强制使用更旧的接口版本，或者更新的 linux 版本
+  # 这里我们强制把 linux 包提上来（假设 1.2.0 是兼容版本）
+  record_linux: ^1.2.0

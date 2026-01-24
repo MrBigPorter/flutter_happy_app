@@ -46,7 +46,7 @@ class _VoiceBubbleState extends State<VoiceBubble>
   Widget build(BuildContext context) {
     // 1. 动态宽度计算：时长越长气泡越宽
     // 公式：基础宽度(70) + 时长占宽(每秒加若干像素)，最高不超过屏幕宽度的 60%
-    final double minWidth = 70.w;
+    final double minWidth = 100.w;
     final double maxWidth = 0.6.sw;
     final int duration = widget.message.duration ?? 0;
     final double bubbleWidth = (minWidth + (duration * 6.w)).clamp(
@@ -62,6 +62,7 @@ class _VoiceBubbleState extends State<VoiceBubble>
         sessionPath ?? widget.message.localPath ?? widget.message.content;
 
     final bool isCurrentPlaying = _playerManager.isPlaying(widget.message.id);
+    
 
     return StreamBuilder<PlayerState>(
       stream: _playerManager.playerStateStream, // 监听播放器状态变化
@@ -69,6 +70,8 @@ class _VoiceBubbleState extends State<VoiceBubble>
         final playerState = snapshot.data;
         final processingState = playerState?.processingState;
         final bool isPlaying = playerState?.playing ?? false;
+
+        print("VoiceBubble StreamBuilder: isPlaying = $isPlaying, processingState = $processingState for message id ${widget.message.id}");
         // 判断：当前播放器里放的，是不是这条消息？
         // (需要在 AudioPlayerManager 里加一个 isMessageSelected 方法，或者直接对比 ID)
         final bool isCurrentMessage =
@@ -106,7 +109,7 @@ class _VoiceBubbleState extends State<VoiceBubble>
               children: [
                 // 播放按钮
                 Icon(
-                  _isPlaying ? Icons.pause : Icons.play_arrow,
+                  isActive ? Icons.pause : Icons.play_arrow,
                   size: 20.sp,
                   color: Colors.black87,
                 ),

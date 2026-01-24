@@ -22,13 +22,16 @@ class AudioPlayerManager {
   Future<void> play(String id, String urlOrPath) async {
    try {
      if(_currentPlayingId == id && _player.playing) {
-       if(_player.playing){
+       // 核心修复：只有在 [正在播放] 且 [没播完] 的时候，点击才是暂停
+       // 如果已经播完了 (completed)，即使 playing 为 true，点击也应该是重播
+       final bool isRunning = _player.playing && _player.processingState != ProcessingState.completed;
+       if(isRunning){
          // 正在播放 -> 暂停
          await _player.pause();
        }else{
-         // 未播放 (可能是暂停，也可能是播放结束)
+         // 否则（暂停中 或 已播完），都是播放
          if(_player.processingState == ProcessingState.completed){
-           // 播放结束，重新开始
+           // 播放结束，重新开始, 播完的要归零
            await _player.seek(Duration.zero);
          }
          // 暂停中 -> 继续播放
