@@ -5,14 +5,14 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:camera/camera.dart';
 import 'package:flutter_app/utils/helper.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:path/path.dart' as p;
 
 import 'package:flutter_app/core/api/lucky_api.dart';
 import 'package:flutter_app/utils/upload/global_upload_service.dart';
 import 'package:flutter_app/utils/upload/upload_types.dart';
 import 'package:flutter_app/ui/chat/models/chat_ui_model.dart';
 import 'package:flutter_app/ui/chat/services/database/local_database_service.dart';
+
+import '../../../../utils/asset/asset_manager.dart';
 
 
 class OfflineQueueManager with WidgetsBindingObserver {
@@ -74,6 +74,7 @@ class OfflineQueueManager with WidgetsBindingObserver {
     debugPrint("[OfflineQueue] Resending ${pendingMessages.length} items.");
 
     for (var msg in pendingMessages) {
+      // check connectivity before each attempt
       final connectivity = await Connectivity().checkConnectivity();
       if (connectivity.contains(ConnectivityResult.none)) {
         debugPrint("[OfflineQueue] Aborting flush: Network lost.");
@@ -88,6 +89,7 @@ class OfflineQueueManager with WidgetsBindingObserver {
         continue;
       }
 
+      // Attempt resend
       bool success = await _resend(msg);
 
       if (!success) {
@@ -108,43 +110,37 @@ class OfflineQueueManager with WidgetsBindingObserver {
       String contentToSend = msg.content;
       int? width, height, duration = msg.duration;
 
+      // ==========================================
+      //  核心修改开始：使用 AssetManager 接管路径查找
+      // ==========================================
       if (msg.type != MessageType.text) {
-        bool canUpload = false;
-        // 用于存储动态拼接后的完整路径
-        String? fullPath; // 用于存储动态拼接后的完整路径
+        String? fullPath;
 
-        if (kIsWeb) {
-          canUpload = msg.content.startsWith('http') || (msg.localPath != null);
-        } else {
-          //核心修复：动态获取当前的 Documents 目录，并拼接文件名
-          if(msg.localPath != null) {
-            final appDir = await getApplicationDocumentsDirectory();
-
-            //根据类型分流目录
-            String subDir = 'chat_images';
-            if (msg.type == MessageType.audio) {
-              subDir = 'chat_audio';
-            }
-            // 假设你存入的是文件名，这里拼成完整路径
-            fullPath = p.join(appDir.path, subDir, msg.localPath!);
-            canUpload = File(fullPath).existsSync();
-          }
+        // 1. 直接问管家要路径 (管家内部处理了 Web/App、Audio/Image、路径清洗等所有逻辑)
+        if (msg.localPath != null) {
+          fullPath = await AssetManager.getFullPath(msg.localPath, msg.type);
         }
 
-        // 如果本地没找到文件且也不是 URL，说明真的丢了
+        // 2. 判断是否可以上传 (全路径不为空)
+        bool canUpload = (fullPath != null);
+
+        // 3. 兜底判断：如果本地找不到文件，且 content 也不是网络链接，说明彻底丢了
         if (!canUpload && !msg.content.startsWith('http')) {
-          debugPrint("[OfflineQueue] File not found for ${msg.id}. Marking failed.");
+          debugPrint("❌ [OfflineQueue] 文件丢失，无法重发 ID: ${msg.id}");
           await LocalDatabaseService().updateMessageStatus(msg.id, MessageStatus.failed);
           return false;
         }
 
+        // 4. 执行上传
         if (!msg.content.startsWith('http')) {
+          // 注意：如果 fullPath 为 null 但 content 是 http，这段代码不会执行，逻辑是安全的
+          // 如果走到这里 fullPath 一定不是 null (因为上面的 check)
           debugPrint("[OfflineQueue] Uploading resource for ${msg.id}...");
+
           contentToSend = await _uploadService.uploadFile(
-            //核心修复：使用动态生成的 fullPath
             file: XFile(
-                fullPath ?? "",
-                mimeType: msg.type == MessageType.audio ? 'audio/mp4' : null,
+              fullPath!, // 这里肯定是安全的非空值
+              mimeType: msg.type == MessageType.audio ? 'audio/mp4' : null,
             ),
             module: UploadModule.chat,
             onProgress: (p) => debugPrint("[OfflineQueue] Progress: $p"),
@@ -156,8 +152,12 @@ class OfflineQueueManager with WidgetsBindingObserver {
           height = (msg.meta!['h'] as num?)?.toInt();
         }
       }
+      // ==========================================
+      //  核心修改结束
+      // ==========================================
 
       debugPrint("[OfflineQueue] Executing API send for: ${msg.id}");
+      // ... 下面的代码保持不变 ...
       final serverMsg = await Api.sendMessage(
         msg.id,
         msg.conversationId,
@@ -168,6 +168,7 @@ class OfflineQueueManager with WidgetsBindingObserver {
         duration: duration,
       );
 
+      // ... 保存数据库逻辑保持不变 ...
       await LocalDatabaseService().updateMessage(msg.id, {
         'status': MessageStatus.success.name,
         'seqId': serverMsg.seqId,

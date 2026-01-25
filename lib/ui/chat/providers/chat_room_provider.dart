@@ -17,6 +17,7 @@ import 'package:flutter_app/core/services/socket_service.dart';
 import 'package:flutter_app/core/providers/socket_provider.dart';
 import 'package:flutter_app/ui/chat/models/chat_ui_model.dart';
 import 'package:flutter_app/core/store/lucky_store.dart';
+import '../../../utils/asset/asset_manager.dart';
 import '../../../utils/upload/global_upload_service.dart';
 import '../../../utils/upload/upload_types.dart';
 import '../models/conversation.dart';
@@ -200,82 +201,81 @@ class ChatRoomController with WidgetsBindingObserver {
     // 1. 并发处理：生成微缩图 + 物理搬家
     final results = await Future.wait([
      ImageCompressionService.getTinyThumbnail(file),// 生成 <50KB 字节流
-     _processLocalImage(file)// 物理落户 chat_images/
+      AssetManager.save(file, MessageType.image),
+      _calculateImageSize(file), // (下面会补这个辅助方法)
     ]);
 
 
-    // 2. 等待微缩图生成 (极快)，用于首屏渲染
     final Uint8List previewBytes = results[0] as Uint8List;
-    final processed = results[1] as dynamic; // 包含 relativePath, absolutePath, meta
-    // 3. 缓存绝对路径
-    _sessionPathCache[msgId] = processed.absolutePath; // 内存缓存存绝对路径防止闪烁
+    final String fileName = results[1] as String; // 拿到纯文件名
+    final Map<String, dynamic> meta = results[2] as Map<String, dynamic>;
 
-    // 4. 创建消息模型并乐观发送
+    // 2. 缓存绝对路径 (用于 UI 零抖动)
+    // 问管家要绝对路径，管家会自动处理 Web/Mobile 差异
+    final absPath = await AssetManager.getFullPath(fileName, MessageType.image);
+    if (absPath != null) _sessionPathCache[msgId] = absPath;
+
+    // 3. 创建消息 (存入 DB 的是纯文件名)
     final msg = _createBaseMessage(
       id: msgId,
       content: "[Image]",
       type: MessageType.image,
-      localPath: processed.relativePath,
-      previewBytes: previewBytes, //  写入数据库的关键字节
-      meta: processed.meta,
+      localPath: fileName, // 数据库里只存 abc.jpg
+      previewBytes: previewBytes,
+      meta: meta,
     );
 
-    // 5. 处理乐观发送逻辑
-    await _handleOptimisticSend(
-      msg,
-      networkTask: () async {
-        final cdnUrl = await _uploadService.uploadFile(
-          file: XFile(processed.absolutePath),
-          module: UploadModule.chat,
-          onProgress: (_) {},
-        );
-        return Api.sendMessage(
-          msg.id,
-          conversationId,
-          cdnUrl,
-          MessageType.image.value,
-          width: processed.width,
-          height: processed.height,
-        );
-      },
-    );
+    // 4. 乐观发送
+    await _handleOptimisticSend(msg, networkTask: () async {
+      // 上传时，问管家要物理路径
+      final fullPath = await AssetManager.getFullPath(fileName, MessageType.image);
+      // 兜底：如果万一管家找不到(极罕见)，用原文件路径
+      final uploadPath = fullPath ?? file.path;
+
+      final cdnUrl = await _uploadService.uploadFile(
+        file: XFile(uploadPath),
+        module: UploadModule.chat,
+        onProgress: (_) {},
+      );
+
+      return Api.sendMessage(
+        msg.id, conversationId, cdnUrl, MessageType.image.value,
+        width: (meta['w'] as num?)?.toInt(),
+        height: (meta['h'] as num?)?.toInt(),
+      );
+    });
   }
 
-  ///
   Future<void> sendVoiceMessage(String path, int duration) async {
-    // A. 预处理：将语音从临时目录搬到持久化目录，获取文件名
-    final processed = await _processLocalAudio(path);
     final msgId = const Uuid().v4();
 
-    _sessionPathCache[msgId] = processed.absolutePath; // 内存缓存存绝对路径防止闪烁
+    // 1. 管家帮忙搬家
+    final fileName = await AssetManager.save(XFile(path), MessageType.audio);
+
+    // 2. 缓存路径
+    final absPath = await AssetManager.getFullPath(fileName, MessageType.audio);
+    if (absPath != null) _sessionPathCache[msgId] = absPath;
 
     final msg = _createBaseMessage(
+      id: msgId,
       content: "[Voice]",
       type: MessageType.audio,
-      localPath: processed.relativePath, // 存入 DB 的是文件名
+      localPath: fileName, //  只存文件名
       duration: duration,
     );
-    await _handleOptimisticSend(
-      msg,
-      networkTask: () async {
-        final cdnUrl = await _uploadService.uploadFile(
-          file: XFile(
-            processed.absolutePath,
-            name: '${const Uuid().v4()}.m4a',
-            mimeType: 'audio/mp4',
-          ),
-          module: UploadModule.chat,
-          onProgress: (_) {},
-        );
-        return Api.sendMessage(
-          msg.id,
-          conversationId,
-          cdnUrl,
-          MessageType.audio.value,
-          duration: duration,
-        );
-      },
-    );
+
+    await _handleOptimisticSend(msg, networkTask: () async {
+      final fullPath = await AssetManager.getFullPath(fileName, MessageType.audio) ?? path;
+      final cdnUrl = await _uploadService.uploadFile(
+        file: XFile(fullPath, name: '$msgId.m4a', mimeType: 'audio/mp4'),
+        module: UploadModule.chat,
+        onProgress: (_) {},
+      );
+      return Api.sendMessage(
+        msg.id, conversationId, cdnUrl, MessageType.audio.value,
+        duration: duration,
+      );
+    });
   }
 
   // --- Message Recall & Delete (修复丢失的方法) ---
@@ -381,6 +381,19 @@ class ChatRoomController with WidgetsBindingObserver {
     );
   }
 
+  // 计算图片宽高的辅助方法
+  Future<Map<String, dynamic>> _calculateImageSize(XFile file) async {
+    int w = 0, h = 0;
+    try {
+      final bytes = await file.readAsBytes();
+      final codec = await ui.instantiateImageCodec(bytes);
+      final frameInfo = await codec.getNextFrame();
+      w = frameInfo.image.width;
+      h = frameInfo.image.height;
+    } catch (_) {}
+    return w > 0 ? {'w': w, 'h': h} : {};
+  }
+
   Future<void> _handleOptimisticSend(
     ChatUiModel msg, {
     required Future<ChatMessage> Function() networkTask,
@@ -405,71 +418,7 @@ class ChatRoomController with WidgetsBindingObserver {
     }
   }
 
-  //  修复 Record 类型错误
-  Future<
-    ({
-      String relativePath,
-      String absolutePath,
-      int width,
-      int height,
-      Map<String, dynamic> meta,
-    })
-  >
-  _processLocalImage(XFile file) async {
-    String relPath = "";
-    String absPath = "";
-    if (kIsWeb) {
-      relPath = file.path;
-      absPath = file.path;
-    } else {
-      final appDir = await getApplicationDocumentsDirectory();
-      final imagesDir = Directory(p.join(appDir.path, 'chat_images'));
-      if (!await imagesDir.exists()) await imagesDir.create(recursive: true);
-      relPath = p.basename(file.path);
-      absPath = p.join(imagesDir.path, relPath);
-      await File(absPath).writeAsBytes(await file.readAsBytes());
-    }
-
-    int w = 0, h = 0;
-    try {
-      final bytes = await file.readAsBytes();
-      final codec = await ui.instantiateImageCodec(bytes);
-      final frameInfo = await codec.getNextFrame();
-      w = frameInfo.image.width;
-      h = frameInfo.image.height;
-    } catch (_) {}
-
-    final Map<String, dynamic> metaData = w > 0
-        ? {'w': w, 'h': h}
-        : <String, dynamic>{};
-
-    return (
-      relativePath: relPath, absolutePath: absPath, width: w, height: h,
-      meta: metaData, // 这里强制使用了 Map<String, dynamic> 类型
-    );
-  }
-
   /// 语音预处理：实现“永久居住证”
-  Future<({String relativePath, String absolutePath})> _processLocalAudio(String tempPath) async {
-    if (kIsWeb) return (relativePath: tempPath, absolutePath: tempPath);
-
-    // 创建持久化目录
-    final appDir = await getApplicationDocumentsDirectory();
-    // chat_audio 目录
-    final audioDir = Directory(p.join(appDir.path, 'chat_audio'));
-    // 确保目录存在
-    if (!await audioDir.exists()) await audioDir.create(recursive: true);
-
-    // 生成文件名和绝对路径
-    final fileName = p.basename(tempPath);
-    // 绝对路径
-    final absolutePath = p.join(audioDir.path, fileName);
-
-    // 执行物理搬家
-    await File(tempPath).copy(absolutePath);
-
-    return (relativePath: fileName, absolutePath: absolutePath);
-  }
   // --- Socket Handlers & Mapping ---
   void _onSocketMessage(Map<String, dynamic> data) async {
     if (!_mounted) return;

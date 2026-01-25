@@ -7,11 +7,10 @@ import 'package:flutter_app/ui/chat/components/voice_bubble.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:intl/intl.dart';
-import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart';
 import 'dart:typed_data'; // 必须加这一行，解决 Uint8List 报错
 
 import 'package:flutter_app/ui/img/app_image.dart';
+import '../../../utils/asset/asset_manager.dart';
 import '../models/chat_ui_model.dart';
 import '../photo_preview_page.dart';
 import '../providers/chat_room_provider.dart';
@@ -242,38 +241,31 @@ class ChatBubble extends ConsumerWidget {
     final double bubbleSize = 0.60.sw;
     final double dpr = MediaQuery.of(context).devicePixelRatio;
     final int cacheW = (bubbleSize * dpr).toInt();
-    final timeStr = DateFormat(
-      'HH:mm',
-    ).format(DateTime.fromMillisecondsSinceEpoch(message.createdAt));
+    final timeStr = DateFormat('HH:mm').format(
+        DateTime.fromMillisecondsSinceEpoch(message.createdAt)
+    );
 
-    // L1: Memory Cache (Zero Jitter for sending state)
+    // L1: Memory Cache (内存缓存，用于发送瞬间防抖动)
     final String? sessionPath = ChatRoomController.getPathFromCache(message.id);
 
-    // Use FutureBuilder to dynamically resolve absolute path on iOS
-    return FutureBuilder<Directory>(
-      future: getApplicationDocumentsDirectory(),
+    //  核心修改：不再自己获取 Directory 拼路径，而是直接问 AssetManager
+    return FutureBuilder<String?>(
+      future: AssetManager.getFullPath(message.localPath, MessageType.image),
       builder: (context, snapshot) {
-        // 1. Path Reconstruction: Combine sandbox root with relative filename
-        String? activeLocalPath = sessionPath;
-        if (activeLocalPath == null &&
-            snapshot.hasData &&
-            message.localPath != null) {
-          activeLocalPath = p.join(
-            snapshot.data!.path,
-            'chat_images',
-            message.localPath!,
-          );
-        }
 
-        // 2. Physical Validation: Ensure file exists to prevent rendering errors
-        final bool hasLocalFile =
-            activeLocalPath != null &&
-            !kIsWeb &&
-            File(activeLocalPath).existsSync();
+        // 1. 获取物理路径 (Mobile 是绝对路径，Web 是 null 或 Blob)
+        final String? managerPath = snapshot.data;
 
-        // 3. Persistent Preview: Check for tiny thumbnail bytes (Web refresh safety)
-        // 使用 length > 0 是最稳的，绝对不会报 getter missing
-        final bool hasPreviewBytes = message.previewBytes != null && (message.previewBytes as Uint8List).isNotEmpty;
+        // 2. 决策：优先用 sessionPath (内存)，其次用 AssetManager 找到的路径
+        //    注意：如果 managerPath 不为空，说明本地文件一定存在 (AssetManager 内部已 check exists)
+        final activeLocalPath = sessionPath ?? managerPath;
+
+        // 3. 标记是否有本地文件
+        final bool hasLocalFile = activeLocalPath != null;
+
+        // Persistent Preview (微缩图)
+        final bool hasPreviewBytes = message.previewBytes != null &&
+            (message.previewBytes as Uint8List).isNotEmpty;
 
         // L4: CDN Fallback Widget
         Widget buildNetworkImage() {
@@ -283,12 +275,9 @@ class ChatBubble extends ConsumerWidget {
             height: bubbleSize,
             fit: BoxFit.cover,
             enablePreview: true,
-            heroTag:
-                null, // Fixed: Remove internal Hero to prevent nesting error
           );
         }
 
-        // Fixed: Lift Hero to the top-level container
         return Hero(
           tag: message.id,
           child: Container(
@@ -303,24 +292,29 @@ class ChatBubble extends ConsumerWidget {
               borderRadius: BorderRadius.circular(12.r),
               child: Stack(
                 alignment: Alignment.center,
-                fit: StackFit.expand, // Ensure children fill the container
+                fit: StackFit.expand,
                 children: [
-                  // L4: Network Image (Base Layer)
+                  // L4: Network Image (Base Layer - 最底层兜底)
                   buildNetworkImage(),
 
-                  // L2: Persistent Preview Bytes (Visual Placeholder)
+                  // L2: Persistent Preview Bytes (中间层 - 模糊预览)
                   if (hasPreviewBytes)
-                    Image.memory(message.previewBytes! as Uint8List, fit: BoxFit.cover),
+                    Image.memory(
+                      message.previewBytes! as Uint8List,
+                      fit: BoxFit.cover,
+                      gaplessPlayback: true,
+                    ),
 
-                  // L3/L1: High-Res Local File (Physical Source)
-                  if (hasLocalFile || (kIsWeb && sessionPath != null))
+                  // L3/L1: High-Res Local File (顶层 - 本地高清图)
+                  //  这里不需要再判断 kIsWeb 了，因为 activeLocalPath 是由 AssetManager 保证可用的
+                  if (hasLocalFile)
                     _buildLocalImage(
                       context: context,
-                      path: activeLocalPath ?? sessionPath!,
+                      path: activeLocalPath!,
                       width: bubbleSize,
                       height: bubbleSize,
                       cacheW: cacheW,
-                      fallback: buildNetworkImage, // Pass fallback correctly
+                      fallback: buildNetworkImage,
                     ),
 
                   // Status: Sending Overlay
@@ -340,10 +334,7 @@ class ChatBubble extends ConsumerWidget {
                     right: 6.w,
                     bottom: 6.h,
                     child: Container(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: 6.w,
-                        vertical: 2.h,
-                      ),
+                      padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
                       decoration: BoxDecoration(
                         color: Colors.black.withOpacity(0.4),
                         borderRadius: BorderRadius.circular(10.r),
@@ -377,6 +368,11 @@ class ChatBubble extends ConsumerWidget {
   }) {
     Widget imageWidget;
     if (kIsWeb) {
+      //  优化：如果路径不是 http 开头，也不是 blob 开头，说明是无效路径
+      // 直接显示 fallback，不要去请求网络，连 404 都不让它报
+      if (!path.startsWith('http') && !path.startsWith('blob:')) {
+        return fallback();
+      }
       imageWidget = Image.network(
         path,
         width: width,
@@ -470,7 +466,15 @@ class ChatBubble extends ConsumerWidget {
     // Failed: Show Red Warning (Tap to Retry)
     if (message.status == MessageStatus.failed) {
       return GestureDetector(
-        onTap: onRetry,
+        behavior: HitTestBehavior.opaque,
+        onTap: () {
+          // 防止连点
+          if (onRetry != null) {
+            // 震动反馈 (提升体验)
+            HapticFeedback.lightImpact();
+            onRetry!();
+          }
+        },
         child: Padding(
           padding: EdgeInsets.only(right: 8.w, bottom: 4.h),
           child: Icon(Icons.error, size: 20.sp, color: Colors.red[400]),
