@@ -4,6 +4,7 @@ import 'dart:ui' as ui; // 用于获取图片尺寸
 import 'package:camera/camera.dart'; // For XFile
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart'; // For WidgetsBindingObserver
+import 'package:flutter_app/ui/chat/services/network/offline_queue_manager.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
@@ -442,11 +443,15 @@ class ChatRoomController with WidgetsBindingObserver {
         msg.id,
         MessageStatus.pending,
       );
+
+      // 2.  [关键调用] 立即通知管家尝试冲刷队列
+      // 这样即便网络没断只是请求超时，管家也会马上接手重试逻辑
+      OfflineQueueManager().startFlush();
     }
   }
 
   // ===========================================================================
-  //  🖼️ 图片预处理逻辑
+  //   图片预处理逻辑
   // ===========================================================================
 
   Future<

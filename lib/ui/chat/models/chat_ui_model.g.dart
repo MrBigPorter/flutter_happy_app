@@ -56,4 +56,5 @@ const _$MessageStatusEnumMap = {
   MessageStatus.success: 'success',
   MessageStatus.failed: 'failed',
   MessageStatus.read: 'read',
+  MessageStatus.pending: 'pending',
 };

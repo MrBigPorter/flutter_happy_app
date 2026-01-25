@@ -1,12 +1,11 @@
-// main.dart
 import 'dart:ui';
-
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_app/common.dart';
 import 'package:flutter_app/ui/chat/services/database/local_database_service.dart';
+import 'package:flutter_app/ui/chat/services/network/offline_queue_manager.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart' as riverpod;
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
@@ -18,95 +17,84 @@ import 'core/store/auth/auth_initial.dart';
 import 'theme/theme_provider.dart';
 import 'app/app.dart';
 
+// Mandatory: This must be a top-level function to handle notifications when app is killed
+@pragma('vm:entry-point')
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  await Firebase.initializeApp();
+  debugPrint("[FCM] Handling background message: ${message.messageId}");
+}
 
 Future<void> main() async {
-// main.dart 中正常初始化 Firebase 即可
-  // Web 去掉 #，其它平台无影响
   if (kIsWeb) usePathUrlStrategy();
-  //  让 push 也同步 URL
   GoRouter.optionURLReflectsImperativeAPIs = true;
 
-  bool errorHandlerRegistered = false;
-
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize Global Error Handlers
+  _initErrorHandlers();
+
+  // Core Service Initialization
   await EasyLocalization.ensureInitialized();
   await Http.init();
 
+  // Step 1: Initialize Database
   await LocalDatabaseService().init();
 
-  //  [新增] 2. 初始化 Firebase
-  try {
-    await Firebase.initializeApp();
+  // Step 2: Initialize Offline Manager (Must happen after DB init)
+  OfflineQueueManager().init();
 
-    //  [新增] 3. 获取并打印 FCM Token
-    final fcmToken = await FirebaseMessaging.instance.getToken();
-    print(" [FCM] Device Token: $fcmToken");
+  // Step 3: Initialize Firebase
+  await _setupFirebase();
 
-  } catch (e) {
-    print("❌ Firebase 初始化失败: $e");
-  }
+  // App State Initialization
+  final prefs = await SharedPreferences.getInstance();
+  final savedThemeMode = prefs.getString('app_theme_mode');
+  final initialThemeMode = ThemeMode.values.firstWhere(
+        (mode) => mode.name == savedThemeMode,
+    orElse: () => ThemeMode.system,
+  );
 
+  final tokenStorage = authInitialTokenStorage();
+  final storedTokens = await tokenStorage.read();
+
+  runApp(
+    riverpod.ProviderScope(
+      overrides: [
+        initialThemeModeProvider.overrideWithValue(initialThemeMode),
+        initialTokensProvider.overrideWithValue(storedTokens),
+      ],
+      child: EasyLocalization(
+        supportedLocales: const [Locale('en'), Locale('tl')],
+        path: 'assets/locales',
+        fallbackLocale: const Locale('en'),
+        child: ScreenUtilInit(
+          designSize: const Size(375, 812),
+          minTextAdapt: true,
+          splitScreenMode: true,
+          builder: (_, __) => const MyApp(),
+        ),
+      ),
+    ),
+  );
+}
+
+void _initErrorHandlers() {
   FlutterError.onError = (details) {
     FlutterError.dumpErrorToConsole(details);
   };
 
+  PlatformDispatcher.instance.onError = (error, stack) {
+    debugPrint("[PlatformError] $error\n$stack");
+    return true;
+  };
+}
 
-  void registerGlobalErrorHandler() {
-    if (errorHandlerRegistered) return;
-    errorHandlerRegistered = true;
-
-    FlutterError.onError = (details) {
-      FlutterError.dumpErrorToConsole(details);
-    };
-
-    PlatformDispatcher.instance.onError = (error, stack) {
-      debugPrint('Platform error: $error\n$stack');
-      return true;
-    };
+Future<void> _setupFirebase() async {
+  try {
+    await Firebase.initializeApp();
+    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+    debugPrint("[Firebase] Core initialized in main.");
+  } catch (e) {
+    debugPrint("[Firebase] Init failed: $e");
   }
-
-  registerGlobalErrorHandler();
-
-  // theme provider
-  final prefs = await SharedPreferences.getInstance();
-  final savedThemeMode = prefs.getString('app_theme_mode');
-
-  final initialThemeMode = ThemeMode.values.firstWhere(
-    (mode) => mode.name == savedThemeMode,
-    orElse: () => ThemeMode.system,
-  );
-
-
-  //auth initial, read token from storage first
-  final tokenStorage = authInitialTokenStorage();
-  final storedTokens = await tokenStorage.read();
-
-
-
-  runApp(
-    riverpod.ProviderScope(
-        overrides: [
-          // 4) 覆盖初始主题模式 provider
-          initialThemeModeProvider.overrideWithValue(initialThemeMode),
-          // 传给 AuthNotifier 的初始 token
-          initialTokensProvider.overrideWithValue(storedTokens),
-        ],
-        child: EasyLocalization(
-          supportedLocales: const [Locale('en'), Locale('tl')],
-          path: 'assets/locales',
-          fallbackLocale: const Locale('en'),
-          child: ScreenUtilInit(
-              designSize: const Size(375, 812),
-              useInheritedMediaQuery: true,
-              minTextAdapt: true,
-              splitScreenMode: true,
-              builder: (_,__){
-                //3) 传给 MaterialApp.router
-                return MyApp();
-              }
-          ),
-        ),
-    )
-
-  );
 }
