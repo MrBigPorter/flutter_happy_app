@@ -63,7 +63,7 @@ class _VoiceRecordButtonState extends ConsumerState<VoiceRecordButton> {
 
     //  核心修复：如果是移动端，且异步回来后发现手指已经松开了，就直接终止，不弹窗
     if (!kIsWeb && !_isPressing) {
-      debugPrint("⛔️ User released too fast, abort recording start.");
+      debugPrint(" User released too fast, abort recording start.");
       return;
     }
 
@@ -113,12 +113,17 @@ class _VoiceRecordButtonState extends ConsumerState<VoiceRecordButton> {
     }
 
     // 4. 停止硬件 (异步)
-    final (path, duration) = await VoiceRecorderService().stop(_recordStartTime ?? DateTime.now());
+    var (path, duration) = await VoiceRecorderService().stop(_recordStartTime ?? DateTime.now());
+
+    //  核心修复：清理路径中的 file:// 前缀 (iOS 常见问题)
+    if (path != null && path.startsWith('file://')) {
+      path = path.replaceFirst('file://', '');
+    }
 
     // 5. 决定是否发送
     // 如果是强行丢弃、或者在取消区域、或者文件为空、或者时长太短(<1秒)
     if (forceDiscard || _isCancelArea || path == null || (duration ?? 0) < 1) {
-      debugPrint("🗑️ Recording discarded. (Cancel=$_isCancelArea, Duration=$duration)");
+      debugPrint(" Recording discarded. (Cancel=$_isCancelArea, Duration=$duration)");
       return;
     }
 
@@ -127,6 +132,8 @@ class _VoiceRecordButtonState extends ConsumerState<VoiceRecordButton> {
       ref.read(chatControllerProvider(widget.conversationId)).sendVoiceMessage(path, duration ?? 0);
     }
   }
+
+
 
   // ===========================================================================
   //  Overlay Logic
@@ -170,7 +177,7 @@ class _VoiceRecordButtonState extends ConsumerState<VoiceRecordButton> {
       onLongPressMoveUpdate: kIsWeb
           ? null
           : (details) {
-        // 🔥 补全：检测手指上滑取消
+        //  补全：检测手指上滑取消
         // 当手指向上移动超过一定距离（比如 -50）时，判定为取消区域
         final offset = details.localPosition.dy;
         final isCancel = offset < -50;

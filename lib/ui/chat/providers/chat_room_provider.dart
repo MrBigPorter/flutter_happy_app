@@ -225,11 +225,18 @@ class ChatRoomController with WidgetsBindingObserver {
     );
   }
 
+  ///
   Future<void> sendVoiceMessage(String path, int duration) async {
+    // A. 预处理：将语音从临时目录搬到持久化目录，获取文件名
+    final processed = await _processLocalAudio(path);
+    final msgId = const Uuid().v4();
+
+    _sessionPathCache[msgId] = processed.absolutePath; // 内存缓存存绝对路径防止闪烁
+
     final msg = _createBaseMessage(
       content: "[Voice]",
       type: MessageType.audio,
-      localPath: path,
+      localPath: processed.relativePath, // 存入 DB 的是文件名
       duration: duration,
     );
     await _handleOptimisticSend(
@@ -237,7 +244,7 @@ class ChatRoomController with WidgetsBindingObserver {
       networkTask: () async {
         final cdnUrl = await _uploadService.uploadFile(
           file: XFile(
-            path,
+            processed.absolutePath,
             name: '${const Uuid().v4()}.m4a',
             mimeType: 'audio/mp4',
           ),
@@ -298,8 +305,8 @@ class ChatRoomController with WidgetsBindingObserver {
     await _handleOptimisticSend(
       msg,
       networkTask: () async {
+        final appDir = await getApplicationDocumentsDirectory();
         if (target.type == MessageType.image && target.localPath != null) {
-          final appDir = await getApplicationDocumentsDirectory();
           final absPath = p.join(appDir.path, 'chat_images', target.localPath!);
           final cdnUrl = await _uploadService.uploadFile(
             file: XFile(absPath),
@@ -314,6 +321,14 @@ class ChatRoomController with WidgetsBindingObserver {
             width: (target.meta?['w'] as num?)?.toInt(),
             height: (target.meta?['h'] as num?)?.toInt(),
           );
+        }else if(target.type == MessageType.audio && target.localPath != null) {
+          final absPath = p.join(appDir.path, 'chat_audio', target.localPath!);
+          final cdnUrl = await _uploadService.uploadFile(
+            file: XFile(absPath, mimeType: 'audio/mp4'),
+            module: UploadModule.chat,
+            onProgress: (_) {},
+          );
+          return Api.sendMessage(msgId, conversationId, cdnUrl, MessageType.audio.value, duration: target.duration);
         }
         return Api.sendMessage(
           msgId,
@@ -372,7 +387,7 @@ class ChatRoomController with WidgetsBindingObserver {
     }
   }
 
-  // 🔥 修复 Record 类型错误
+  //  修复 Record 类型错误
   Future<
     ({
       String relativePath,
@@ -416,6 +431,27 @@ class ChatRoomController with WidgetsBindingObserver {
     );
   }
 
+  /// 语音预处理：实现“永久居住证”
+  Future<({String relativePath, String absolutePath})> _processLocalAudio(String tempPath) async {
+    if (kIsWeb) return (relativePath: tempPath, absolutePath: tempPath);
+
+    // 创建持久化目录
+    final appDir = await getApplicationDocumentsDirectory();
+    // chat_audio 目录
+    final audioDir = Directory(p.join(appDir.path, 'chat_audio'));
+    // 确保目录存在
+    if (!await audioDir.exists()) await audioDir.create(recursive: true);
+
+    // 生成文件名和绝对路径
+    final fileName = p.basename(tempPath);
+    // 绝对路径
+    final absolutePath = p.join(audioDir.path, fileName);
+
+    // 执行物理搬家
+    await File(tempPath).copy(absolutePath);
+
+    return (relativePath: fileName, absolutePath: absolutePath);
+  }
   // --- Socket Handlers & Mapping ---
   void _onSocketMessage(Map<String, dynamic> data) async {
     if (!_mounted) return;

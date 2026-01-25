@@ -7,8 +7,10 @@ import 'package:flutter_app/ui/chat/components/voice_bubble.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:intl/intl.dart';
+import 'package:path/path.dart' as p;
 
 import 'package:flutter_app/ui/img/app_image.dart';
+import 'package:path_provider/path_provider.dart';
 import '../models/chat_ui_model.dart';
 import '../photo_preview_page.dart';
 import '../providers/chat_room_provider.dart';
@@ -206,63 +208,81 @@ class ChatBubble extends ConsumerWidget {
     final bool canTryLocal = activeLocalPath != null && activeLocalPath.isNotEmpty;
     final timeStr = DateFormat('HH:mm').format(DateTime.fromMillisecondsSinceEpoch(message.createdAt));
 
-    Widget buildNetworkImage() {
-      return AppCachedImage(
-        message.content,
-        width: bubbleSize,
-        height: bubbleSize,
-        fit: BoxFit.cover,
-        enablePreview: true,
-        heroTag: null, // Fixed: Remove internal Hero to prevent nesting error
-      );
-    }
 
-    // Fixed: Hero lifted to wrap the entire image bubble container
-    return Hero(
-      tag: message.id,
-      child: Container(
-        width: bubbleSize,
-        height: bubbleSize,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(12.r),
-          border: Border.all(color: Colors.grey.withOpacity(0.1)),
-          color: Colors.grey[50],
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(12.r),
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              if (canTryLocal)
-                _buildLocalImage(
-                  context: context,
-                  path: activeLocalPath!,
-                  width: bubbleSize,
-                  height: bubbleSize,
-                  cacheW: cacheW,
-                  fallback: buildNetworkImage,
-                )
-              else
-                buildNetworkImage(),
-              if (message.status == MessageStatus.sending)
-                Container(
-                  color: Colors.black38,
-                  child: const Center(child: CircularProgressIndicator(color: Colors.white, strokeWidth: 3)),
-                ),
-              Positioned(
-                right: 6.w,
-                bottom: 6.h,
-                child: Container(
-                  padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
-                  decoration: BoxDecoration(color: Colors.black.withOpacity(0.4), borderRadius: BorderRadius.circular(10.r)),
-                  child: Text(timeStr, style: TextStyle(color: Colors.white, fontSize: 9.sp, fontWeight: FontWeight.w500)),
-                ),
+   //核心修复：通过 FutureBuilder 动态解析当前沙盒绝对路径
+    return FutureBuilder(
+      future: getApplicationDocumentsDirectory(),
+      builder: (context,snapshot){
+        // 1. 还原绝对路径逻辑
+        String? activeLocalPath = sessionPath; // 优先使用内存中的绝对路径 (零抖动)
+
+        if (activeLocalPath == null && snapshot.hasData && message.localPath != null) {
+          // 如果内存没中，且有数据库记录，拼接当前沙盒路径
+          activeLocalPath = p.join(snapshot.data!.path, 'chat_images', message.localPath!);
+        }
+
+        final bool canTryLocal = activeLocalPath != null && activeLocalPath.isNotEmpty;
+
+        Widget buildNetworkImage() {
+          return AppCachedImage(
+            message.content,
+            width: bubbleSize,
+            height: bubbleSize,
+            fit: BoxFit.cover,
+            enablePreview: true,
+            heroTag: null, // Fixed: Remove internal Hero to prevent nesting error
+          );
+        }
+
+        // Fixed: Hero lifted to wrap the entire image bubble container
+        return Hero(
+          tag: message.id,
+          child: Container(
+            width: bubbleSize,
+            height: bubbleSize,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12.r),
+              border: Border.all(color: Colors.grey.withOpacity(0.1)),
+              color: Colors.grey[50],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(12.r),
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  if (canTryLocal)
+                    _buildLocalImage(
+                      context: context,
+                      path: activeLocalPath,
+                      width: bubbleSize,
+                      height: bubbleSize,
+                      cacheW: cacheW,
+                      fallback: buildNetworkImage,
+                    )
+                  else
+                    buildNetworkImage(),
+                  if (message.status == MessageStatus.sending)
+                    Container(
+                      color: Colors.black38,
+                      child: const Center(child: CircularProgressIndicator(color: Colors.white, strokeWidth: 3)),
+                    ),
+                  Positioned(
+                    right: 6.w,
+                    bottom: 6.h,
+                    child: Container(
+                      padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
+                      decoration: BoxDecoration(color: Colors.black.withOpacity(0.4), borderRadius: BorderRadius.circular(10.r)),
+                      child: Text(timeStr, style: TextStyle(color: Colors.white, fontSize: 9.sp, fontWeight: FontWeight.w500)),
+                    ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
+
   }
 
   Widget _buildLocalImage({

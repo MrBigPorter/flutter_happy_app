@@ -12,7 +12,6 @@ import 'package:flutter_app/utils/upload/global_upload_service.dart';
 import 'package:flutter_app/utils/upload/upload_types.dart';
 import 'package:flutter_app/ui/chat/models/chat_ui_model.dart';
 import 'package:flutter_app/ui/chat/services/database/local_database_service.dart';
-import 'package:path_provider/path_provider.dart';
 
 
 class OfflineQueueManager with WidgetsBindingObserver {
@@ -119,8 +118,14 @@ class OfflineQueueManager with WidgetsBindingObserver {
           //核心修复：动态获取当前的 Documents 目录，并拼接文件名
           if(msg.localPath != null) {
             final appDir = await getApplicationDocumentsDirectory();
+
+            //根据类型分流目录
+            String subDir = 'chat_images';
+            if (msg.type == MessageType.audio) {
+              subDir = 'chat_audio';
+            }
             // 假设你存入的是文件名，这里拼成完整路径
-            fullPath = p.join(appDir.path, 'chat_images', msg.localPath!);
+            fullPath = p.join(appDir.path, subDir, msg.localPath!);
             canUpload = File(fullPath).existsSync();
           }
         }
@@ -136,7 +141,10 @@ class OfflineQueueManager with WidgetsBindingObserver {
           debugPrint("[OfflineQueue] Uploading resource for ${msg.id}...");
           contentToSend = await _uploadService.uploadFile(
             //核心修复：使用动态生成的 fullPath
-            file: XFile(fullPath ?? ""),
+            file: XFile(
+                fullPath ?? "",
+                mimeType: msg.type == MessageType.audio ? 'audio/mp4' : null,
+            ),
             module: UploadModule.chat,
             onProgress: (p) => debugPrint("[OfflineQueue] Progress: $p"),
           );
