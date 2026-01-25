@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:flutter_app/core/store/auth/auth_provider.dart';
 import 'package:flutter_app/ui/chat/providers/conversation_provider.dart';
 
+import '../../components/network_status_bar.dart';
 import 'components/conversation_item.dart';
 import 'components/create_group_dialog.dart';
 
@@ -39,7 +40,17 @@ class ConversationListPage extends ConsumerWidget {
         scrolledUnderElevation: 0,
         actions: isLoggedIn ? const [_AddMenuButton()] : null, // 提取菜单按钮
       ),
-      body: isLoggedIn ? const _ConversationListView() : const _GuestView(),
+      body:Column(
+        children: [
+          // A. 放入网络状态条 (放在最顶部)
+          const NetworkStatusBar(),
+
+          // B. 放入原来的内容 (必须用 Expanded 撑开，否则 ListView 会报错)
+          Expanded(
+            child: isLoggedIn ? const _ConversationListView() : const _GuestView(),
+          ),
+        ],
+      ),
     );
   }
 }

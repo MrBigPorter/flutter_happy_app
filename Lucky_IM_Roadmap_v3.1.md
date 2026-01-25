@@ -1,63 +1,80 @@
+
+
 # 🚦 Lucky IM Roadmap & Next Steps (v3.1+)
 
-> **当前阶段**：v3.0 基础架构已稳固，进入 **v3.1 体验与业务突围** 阶段。
-> **核心目标**：完善异常状态反馈，扩展群聊业务。
+> **当前阶段**：v3.0 核心架构（AssetManager/离线队列/跨平台存储）已彻底稳固。
+> **v3.1 目标**：**用户体验感知 (UX)** 与 **群聊基础建设**。
 
 ---
 
-## 1. 🔥 近期冲刺 (Immediate Priorities - v3.1)
+## 1. 🔥 v3.1 近期冲刺 (Immediate Priorities)
 
-这些是 v3.0 功能的“最后一公里”，必须优先完成，让用户感知到功能的完整性。
+完善 App 对环境的感知能力，并补齐群聊体验的短板。
 
-### [P0] 发送失败 UI 反馈 (Failure Feedback)
-**现状**：`OfflineQueueManager` 会在后台静默重试 5 次，如果最终失败，DB 状态变为 `failed`，但 UI 上没有任何提示，用户不知道消息丢了。
-* [ ] **气泡改噪**: 在 `ChatBubble` 的 `_buildStatusPrefix` 中添加红色感叹号图标 ❗️。
-* [ ] **交互逻辑**: 点击感叹号 -> 弹窗确认 -> 触发 `chatController.resendMessage(msg.id)`。
-* [ ] **列表提示**: 在会话列表页 (`ConversationItem`) 显示“发送失败”字样或红色图标。
+### [P0] 全局网络状态感知 (Network Awareness)
 
-### [P1] 网络状态感知 (Network Awareness)
-**现状**：用户不知道当前是否断网。
-* [ ] **全局提示条**: 在 `ConversationListPage` 顶部添加一个可折叠的红色提示条：“当前网络不可用 / 正在连接...”。
-* [ ] **Socket 状态联动**: 监听 `SocketService.connectionState`，实时更新 UI。
+**现状**：`OfflineQueueManager` 内部知道断网了，但用户不知道（只看到消息转圈）。
 
----
+* [ ] **全局提示条**: 在 `ConversationListPage` 顶部添加可折叠的红色/橙色提示条：“当前网络不可用” / “收取中...”。
+* [ ] **Socket 状态联动**: 监听 `SocketService.connectionState`，在断线重连时给予用户视觉反馈。
 
-## 2. 🚀 中期规划 (Mid-term Goals - v3.2)
+### [P1] 群聊体验补全 (Group Chat Basic)
 
-业务功能的横向扩展，从单聊走向群聊。
+**现状**：群聊目前和单聊 UI 一样，无法区分是谁发的消息。
 
-### [P2] 群聊业务闭环 (Group Chat)
-**现状**：API 已有 `createGroup`，但 UI 层面还很简陋。
-* [ ] **群成员展示**: 在群聊气泡上方显示发送者昵称 (`senderName`)。
-* [ ] **群头像**: 简单的九宫格头像合成，或允许上传群封面。
-* [ ] **群管理**: 加人/踢人/解散群聊的设置页。
+* [ ] **群成员昵称**: 在 `ChatBubble` 上方（气泡外）增加显示 `senderName`（仅在群聊且非己方消息时显示）。
+* [ ] **群头像逻辑**:
+* **Web/App**: 默认显示群组通用头像。
+* **进阶**: 实现“九宫格”合成头像逻辑（取群内前 4-9 人头像拼合）。
 
-### [P3] 消息类型扩展 (Rich Media)
-* [ ] **视频消息**:
-    * 发送：选择视频 -> 压缩 -> 获取封面图 -> 上传。
-    * 展示：播放器组件 (VideoPlayer)。
-* [ ] **文件消息**: 发送 PDF/Doc 等通用文件。
+
+
+### [P2] 会话列表细节 (List Polish)
+
+**现状**：发送失败虽然气泡有红点，但退回到列表页后看不出哪条失败了。
+
+* [ ] **列表失败标记**: `ConversationItem` 需要支持 `MessageStatus.failed` 状态，显示红色小图标或文字提示。
 
 ---
 
-## 3. 🔮 远期展望 (Long-term Vision - v4.0)
+## 2. 🚀 v3.2 中期规划 (Rich Media)
 
-这一阶段将涉及更复杂的实时通讯技术。
+媒体类型的横向扩展。基于 `AssetManager` 架构，扩展新类型将非常容易。
 
-* **[P4] 音视频通话 (WebRTC)**:
-    * 1v1 语音/视频通话。
-    * 集成 CallKit (iOS) / ConnectionService (Android) 实现原生来电体验。
-* **[P5] 全局搜索**:
-    * 本地数据库全文检索 (FTS)。
-* **[P6] 端到端加密 (E2EE)**:
-    * Signal Protocol 集成 (可选)。
+### [P3] 视频消息 (Video Message)
+
+* [ ] **架构扩展**:
+* `AssetManager` 增加 `MessageType.video` 支持 (`chat_video` 目录)。
+* `AssetStore` 适配视频后缀 `.mp4`。
+
+
+* [ ] **功能实现**:
+* 发送：选择视频 -> 获取第一帧做封面 -> 压缩 -> 上传。
+* 展示：气泡显示封面 + 播放按钮 -> 点击全屏播放 (VideoPlayer)。
+
+
+
+### [P4] 文件消息 (File Message)
+
+* [ ] **通用文件**: 支持发送 PDF, DOC, ZIP 等。
+* [ ] **Web 适配**: 利用 `File Saver` API 实现 Web 端文件下载。
 
 ---
 
-## 📝 下一步行动指令 (Action Item)
+## 3. 🔮 v4.0 远期展望 (Real-time & Security)
 
-**基于 Project Master Log v3.0 的基石，我们立刻开始 v3.1 的冲刺：**
+* **[P5] 音视频通话 (WebRTC)**: 1v1 及多人通话。
+* **[P6] 全局搜索 (FTS)**: 基于本地数据库的聊天记录全文检索。
+* **[P7] 端到端加密 (E2EE)**: Signal Protocol 集成。
 
-👉 **任务**: 实现 **[P0] 发送失败 UI 反馈**。
-1.  修改 `ChatBubble`，增加失败状态图标。
-2.  实现点击重发逻辑。
+---
+
+## 📝 下一步行动指令 (Next Action)
+
+**既然失败重发 UI 已经完成，我们直接进入 [P0] 网络感知 的开发：**
+
+👉 **任务**: 实现 **全局网络提示条**。
+
+1. 在 `ConversationListPage` 监听 `Connectivity` 或 `Socket` 状态。
+2. 当状态为 `disconnected` 时，在 AppBar 下方滑出一个红色 Warning Bar。
+
