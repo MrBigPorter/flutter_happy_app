@@ -19,6 +19,7 @@ import 'package:flutter_app/core/store/lucky_store.dart';
 import '../../../utils/upload/global_upload_service.dart';
 import '../../../utils/upload/upload_types.dart';
 import '../models/conversation.dart';
+import '../services/compression/image_compression_service.dart';
 import '../services/database/local_database_service.dart';
 import 'conversation_provider.dart';
 
@@ -193,18 +194,32 @@ class ChatRoomController with WidgetsBindingObserver {
   }
 
   Future<void> sendImage(XFile file) async {
-    final processed = await _processLocalImage(file);
     final msgId = const Uuid().v4();
+
+    // 1. 并发处理：生成微缩图 + 物理搬家
+    final results = await Future.wait([
+     ImageCompressionService.getTinyThumbnail(file),// 生成 <50KB 字节流
+     _processLocalImage(file)// 物理落户 chat_images/
+    ]);
+
+
+    // 2. 等待微缩图生成 (极快)，用于首屏渲染
+    final Uint8List previewBytes = results[0] as Uint8List;
+    final processed = results[1] as dynamic; // 包含 relativePath, absolutePath, meta
+    // 3. 缓存绝对路径
     _sessionPathCache[msgId] = processed.absolutePath; // 内存缓存存绝对路径防止闪烁
 
+    // 4. 创建消息模型并乐观发送
     final msg = _createBaseMessage(
       id: msgId,
       content: "[Image]",
       type: MessageType.image,
       localPath: processed.relativePath,
+      previewBytes: previewBytes, //  写入数据库的关键字节
       meta: processed.meta,
     );
 
+    // 5. 处理乐观发送逻辑
     await _handleOptimisticSend(
       msg,
       networkTask: () async {
@@ -346,6 +361,7 @@ class ChatRoomController with WidgetsBindingObserver {
     required String content,
     required MessageType type,
     String? localPath,
+    Uint8List? previewBytes,
     Map<String, dynamic>? meta,
     int? duration,
   }) {

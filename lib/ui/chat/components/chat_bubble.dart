@@ -8,9 +8,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:intl/intl.dart';
 import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
+import 'dart:typed_data'; // 必须加这一行，解决 Uint8List 报错
 
 import 'package:flutter_app/ui/img/app_image.dart';
-import 'package:path_provider/path_provider.dart';
 import '../models/chat_ui_model.dart';
 import '../photo_preview_page.dart';
 import '../providers/chat_room_provider.dart';
@@ -24,15 +25,20 @@ class ChatBubble extends ConsumerWidget {
     super.key,
     required this.message,
     this.onRetry,
-    this.showReadStatus = false
+    this.showReadStatus = false,
   });
 
   void _showContextMenu(BuildContext context, WidgetRef ref, bool isMe) {
     final bool isText = message.type == MessageType.text;
-    final bool canRecall = isMe &&
-        DateTime.now().difference(
-          DateTime.fromMillisecondsSinceEpoch(message.createdAt),
-        ).inMinutes < 2;
+    // Allow recall within 2 minutes
+    final bool canRecall =
+        isMe &&
+        DateTime.now()
+                .difference(
+                  DateTime.fromMillisecondsSinceEpoch(message.createdAt),
+                )
+                .inMinutes <
+            2;
 
     showCupertinoModalPopup(
       context: context,
@@ -52,7 +58,8 @@ class ChatBubble extends ConsumerWidget {
               isDestructiveAction: true,
               onPressed: () {
                 Navigator.pop(context);
-                ref.read(chatControllerProvider(message.conversationId))
+                ref
+                    .read(chatControllerProvider(message.conversationId))
                     .recallMessage(message.id);
               },
               child: const Text("Unsend for Everyone"),
@@ -61,7 +68,8 @@ class ChatBubble extends ConsumerWidget {
             isDestructiveAction: true,
             onPressed: () {
               Navigator.pop(context);
-              ref.read(chatControllerProvider(message.conversationId))
+              ref
+                  .read(chatControllerProvider(message.conversationId))
                   .deleteMessage(message.id);
             },
             child: const Text("Remove for You"),
@@ -83,7 +91,9 @@ class ChatBubble extends ConsumerWidget {
     return Container(
       margin: EdgeInsets.symmetric(vertical: 8.h, horizontal: 12.w),
       child: Row(
-        mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
+        mainAxisAlignment: isMe
+            ? MainAxisAlignment.end
+            : MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (!isMe) ...[
@@ -92,14 +102,19 @@ class ChatBubble extends ConsumerWidget {
           ],
           Flexible(
             child: Column(
-              crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+              crossAxisAlignment: isMe
+                  ? CrossAxisAlignment.end
+                  : CrossAxisAlignment.start,
               children: [
                 if (!isMe && message.senderName != null)
                   Padding(
                     padding: EdgeInsets.only(bottom: 4.h, left: 4.w),
                     child: Text(
                       message.senderName!,
-                      style: TextStyle(fontSize: 11.sp, color: Colors.grey[600]),
+                      style: TextStyle(
+                        fontSize: 11.sp,
+                        color: Colors.grey[600],
+                      ),
                     ),
                   ),
                 Row(
@@ -116,19 +131,16 @@ class ChatBubble extends ConsumerWidget {
                     child: Text(
                       "Read",
                       style: TextStyle(
-                          fontSize: 10.sp,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.grey[400]
+                        fontSize: 10.sp,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.grey[400],
                       ),
                     ),
                   ),
               ],
             ),
           ),
-          if (isMe) ...[
-            SizedBox(width: 8.w),
-            _buildAvatar(null),
-          ],
+          if (isMe) ...[SizedBox(width: 8.w), _buildAvatar(null)],
         ],
       ),
     );
@@ -144,8 +156,14 @@ class ChatBubble extends ConsumerWidget {
           border: Border.all(color: Colors.grey.withOpacity(0.3), width: 1),
         ),
         child: Text(
-          message.isMe ? "You unsent a message" : "${message.senderName ?? 'Someone'} unsent a message",
-          style: TextStyle(fontSize: 12.sp, color: Colors.grey[500], fontStyle: FontStyle.italic),
+          message.isMe
+              ? "You unsent a message"
+              : "${message.senderName ?? 'Someone'} unsent a message",
+          style: TextStyle(
+            fontSize: 12.sp,
+            color: Colors.grey[500],
+            fontStyle: FontStyle.italic,
+          ),
         ),
       ),
     );
@@ -172,7 +190,9 @@ class ChatBubble extends ConsumerWidget {
   }
 
   Widget _buildTextBubble(BuildContext context, bool isMe) {
-    final timeStr = DateFormat('HH:mm').format(DateTime.fromMillisecondsSinceEpoch(message.createdAt));
+    final timeStr = DateFormat(
+      'HH:mm',
+    ).format(DateTime.fromMillisecondsSinceEpoch(message.createdAt));
     return Container(
       padding: EdgeInsets.fromLTRB(12.w, 10.h, 12.w, 8.h),
       decoration: BoxDecoration(
@@ -183,46 +203,79 @@ class ChatBubble extends ConsumerWidget {
           bottomLeft: Radius.circular(isMe ? 12.r : 2.r),
           bottomRight: Radius.circular(isMe ? 2.r : 12.r),
         ),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), offset: const Offset(0, 1), blurRadius: 4)],
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            offset: const Offset(0, 1),
+            blurRadius: 4,
+          ),
+        ],
       ),
       constraints: BoxConstraints(maxWidth: 0.72.sw),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.end,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(message.content, style: TextStyle(color: Colors.black87, fontSize: 16.sp, height: 1.4)),
+          Text(
+            message.content,
+            style: TextStyle(
+              color: Colors.black87,
+              fontSize: 16.sp,
+              height: 1.4,
+            ),
+          ),
           SizedBox(height: 2.h),
-          Text(timeStr, style: TextStyle(fontSize: 9.sp, color: isMe ? Colors.black.withOpacity(0.4) : Colors.grey[400])),
+          Text(
+            timeStr,
+            style: TextStyle(
+              fontSize: 9.sp,
+              color: isMe ? Colors.black.withOpacity(0.4) : Colors.grey[400],
+            ),
+          ),
         ],
       ),
     );
   }
 
+  // ---  Core Architecture: Tiered Image Rendering Pipeline ---
   Widget _buildImageBubble(BuildContext context, bool isMe) {
     final double bubbleSize = 0.60.sw;
     final double dpr = MediaQuery.of(context).devicePixelRatio;
     final int cacheW = (bubbleSize * dpr).toInt();
+    final timeStr = DateFormat(
+      'HH:mm',
+    ).format(DateTime.fromMillisecondsSinceEpoch(message.createdAt));
 
+    // L1: Memory Cache (Zero Jitter for sending state)
     final String? sessionPath = ChatRoomController.getPathFromCache(message.id);
-    final String? activeLocalPath = sessionPath ?? message.localPath;
-    final bool canTryLocal = activeLocalPath != null && activeLocalPath.isNotEmpty;
-    final timeStr = DateFormat('HH:mm').format(DateTime.fromMillisecondsSinceEpoch(message.createdAt));
 
-
-   //核心修复：通过 FutureBuilder 动态解析当前沙盒绝对路径
-    return FutureBuilder(
+    // Use FutureBuilder to dynamically resolve absolute path on iOS
+    return FutureBuilder<Directory>(
       future: getApplicationDocumentsDirectory(),
-      builder: (context,snapshot){
-        // 1. 还原绝对路径逻辑
-        String? activeLocalPath = sessionPath; // 优先使用内存中的绝对路径 (零抖动)
-
-        if (activeLocalPath == null && snapshot.hasData && message.localPath != null) {
-          // 如果内存没中，且有数据库记录，拼接当前沙盒路径
-          activeLocalPath = p.join(snapshot.data!.path, 'chat_images', message.localPath!);
+      builder: (context, snapshot) {
+        // 1. Path Reconstruction: Combine sandbox root with relative filename
+        String? activeLocalPath = sessionPath;
+        if (activeLocalPath == null &&
+            snapshot.hasData &&
+            message.localPath != null) {
+          activeLocalPath = p.join(
+            snapshot.data!.path,
+            'chat_images',
+            message.localPath!,
+          );
         }
 
-        final bool canTryLocal = activeLocalPath != null && activeLocalPath.isNotEmpty;
+        // 2. Physical Validation: Ensure file exists to prevent rendering errors
+        final bool hasLocalFile =
+            activeLocalPath != null &&
+            !kIsWeb &&
+            File(activeLocalPath).existsSync();
 
+        // 3. Persistent Preview: Check for tiny thumbnail bytes (Web refresh safety)
+        // 使用 length > 0 是最稳的，绝对不会报 getter missing
+        final bool hasPreviewBytes = message.previewBytes != null && (message.previewBytes as Uint8List).isNotEmpty;
+
+        // L4: CDN Fallback Widget
         Widget buildNetworkImage() {
           return AppCachedImage(
             message.content,
@@ -230,11 +283,12 @@ class ChatBubble extends ConsumerWidget {
             height: bubbleSize,
             fit: BoxFit.cover,
             enablePreview: true,
-            heroTag: null, // Fixed: Remove internal Hero to prevent nesting error
+            heroTag:
+                null, // Fixed: Remove internal Hero to prevent nesting error
           );
         }
 
-        // Fixed: Hero lifted to wrap the entire image bubble container
+        // Fixed: Lift Hero to the top-level container
         return Hero(
           tag: message.id,
           child: Container(
@@ -249,30 +303,59 @@ class ChatBubble extends ConsumerWidget {
               borderRadius: BorderRadius.circular(12.r),
               child: Stack(
                 alignment: Alignment.center,
+                fit: StackFit.expand, // Ensure children fill the container
                 children: [
-                  if (canTryLocal)
+                  // L4: Network Image (Base Layer)
+                  buildNetworkImage(),
+
+                  // L2: Persistent Preview Bytes (Visual Placeholder)
+                  if (hasPreviewBytes)
+                    Image.memory(message.previewBytes! as Uint8List, fit: BoxFit.cover),
+
+                  // L3/L1: High-Res Local File (Physical Source)
+                  if (hasLocalFile || (kIsWeb && sessionPath != null))
                     _buildLocalImage(
                       context: context,
-                      path: activeLocalPath,
+                      path: activeLocalPath ?? sessionPath!,
                       width: bubbleSize,
                       height: bubbleSize,
                       cacheW: cacheW,
-                      fallback: buildNetworkImage,
-                    )
-                  else
-                    buildNetworkImage(),
+                      fallback: buildNetworkImage, // Pass fallback correctly
+                    ),
+
+                  // Status: Sending Overlay
                   if (message.status == MessageStatus.sending)
                     Container(
-                      color: Colors.black38,
-                      child: const Center(child: CircularProgressIndicator(color: Colors.white, strokeWidth: 3)),
+                      color: Colors.black26,
+                      child: const Center(
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 3,
+                        ),
+                      ),
                     ),
+
+                  // Timestamp
                   Positioned(
                     right: 6.w,
                     bottom: 6.h,
                     child: Container(
-                      padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
-                      decoration: BoxDecoration(color: Colors.black.withOpacity(0.4), borderRadius: BorderRadius.circular(10.r)),
-                      child: Text(timeStr, style: TextStyle(color: Colors.white, fontSize: 9.sp, fontWeight: FontWeight.w500)),
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 6.w,
+                        vertical: 2.h,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.4),
+                        borderRadius: BorderRadius.circular(10.r),
+                      ),
+                      child: Text(
+                        timeStr,
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 9.sp,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
                     ),
                   ),
                 ],
@@ -282,7 +365,6 @@ class ChatBubble extends ConsumerWidget {
         );
       },
     );
-
   }
 
   Widget _buildLocalImage({
@@ -296,13 +378,21 @@ class ChatBubble extends ConsumerWidget {
     Widget imageWidget;
     if (kIsWeb) {
       imageWidget = Image.network(
-        path, width: width, height: height, fit: BoxFit.cover,
+        path,
+        width: width,
+        height: height,
+        fit: BoxFit.cover,
         errorBuilder: (context, error, stack) => fallback(),
       );
     } else {
       imageWidget = Image.file(
-        File(path), width: width, height: height, fit: BoxFit.cover,
-        cacheWidth: cacheW, gaplessPlayback: true, key: ValueKey("${message.id}_local"),
+        File(path),
+        width: width,
+        height: height,
+        fit: BoxFit.cover,
+        cacheWidth: cacheW,
+        gaplessPlayback: true,
+        key: ValueKey("${message.id}_local"),
         errorBuilder: (context, error, stack) => fallback(),
       );
     }
@@ -310,14 +400,22 @@ class ChatBubble extends ConsumerWidget {
     return GestureDetector(
       onTap: () {
         String finalSource = path;
+
+        // Validate source before opening viewer
         if (kIsWeb) {
-          if (message.status == MessageStatus.success && message.content.isNotEmpty) finalSource = message.content;
+          if (message.status == MessageStatus.success &&
+              message.content.isNotEmpty)
+            finalSource = message.content;
         } else {
-          if (!File(path).existsSync() && message.content.isNotEmpty) finalSource = message.content;
+          // Fallback to CDN if local file is missing (e.g., cleared cache)
+          if (!File(path).existsSync() && message.content.isNotEmpty)
+            finalSource = message.content;
         }
 
         if (finalSource.isEmpty) {
-          debugPrint("[ChatBubble] Cannot preview: Local file missing and no CDN URL found.");
+          debugPrint(
+            "[ChatBubble] Cannot preview: Local file missing and no CDN URL found.",
+          );
           return;
         }
 
@@ -330,34 +428,45 @@ class ChatBubble extends ConsumerWidget {
               imageSource: finalSource,
               thumbnailSource: finalSource,
             ),
-            transitionsBuilder: (_, animation, __, child) => FadeTransition(opacity: animation, child: child),
+            transitionsBuilder: (_, animation, __, child) =>
+                FadeTransition(opacity: animation, child: child),
           ),
         );
       },
-      child: imageWidget, // Fixed: Removed internal Hero here
+      child: imageWidget,
     );
   }
 
   Widget _buildStatusPrefix() {
-    // New: Optimized Pending UI (Offline Queue)
+    // Pending: Show Clock Icon (Offline Queue)
     if (message.status == MessageStatus.pending) {
       return Padding(
         padding: EdgeInsets.only(right: 8.w, bottom: 4.h),
-        child: Icon(Icons.access_time_rounded, size: 16.sp, color: Colors.grey[400]),
+        child: Icon(
+          Icons.access_time_rounded,
+          size: 16.sp,
+          color: Colors.grey[400],
+        ),
       );
     }
 
+    // Sending: Show Spinner (or hidden for images as they have internal spinners)
     if (message.status == MessageStatus.sending) {
       if (message.type == MessageType.image) return const SizedBox.shrink();
       return Padding(
         padding: EdgeInsets.only(right: 8.w, bottom: 4.h),
         child: SizedBox(
-          width: 14.w, height: 14.w,
-          child: const CircularProgressIndicator(strokeWidth: 2, color: Colors.grey),
+          width: 14.w,
+          height: 14.w,
+          child: const CircularProgressIndicator(
+            strokeWidth: 2,
+            color: Colors.grey,
+          ),
         ),
       );
     }
 
+    // Failed: Show Red Warning (Tap to Retry)
     if (message.status == MessageStatus.failed) {
       return GestureDetector(
         onTap: onRetry,
@@ -372,13 +481,18 @@ class ChatBubble extends ConsumerWidget {
 
   Widget _buildAvatar(String? url) {
     return Container(
-      width: 40.w, height: 40.w,
+      width: 40.w,
+      height: 40.w,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(6.r),
         color: Colors.grey[200],
-        image: url != null && url.isNotEmpty ? DecorationImage(image: NetworkImage(url), fit: BoxFit.cover) : null,
+        image: url != null && url.isNotEmpty
+            ? DecorationImage(image: NetworkImage(url), fit: BoxFit.cover)
+            : null,
       ),
-      child: url == null || url.isEmpty ? Icon(Icons.person, color: Colors.grey[400], size: 24.sp) : null,
+      child: url == null || url.isEmpty
+          ? Icon(Icons.person, color: Colors.grey[400], size: 24.sp)
+          : null,
     );
   }
 }

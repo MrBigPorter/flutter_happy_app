@@ -130,6 +130,7 @@ dependencies:
   record: ^5.1.0 # 建议使用最新稳定版
   just_audio: ^0.10.5
   connectivity_plus: ^7.0.0
+  image: ^4.7.2
 
 
 dev_dependencies:

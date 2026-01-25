@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:json_annotation/json_annotation.dart';
 import 'package:flutter_app/ui/chat/models/conversation.dart';
 
@@ -43,6 +45,8 @@ class ChatUiModel {
   final String? senderName;
   final String conversationId;
 
+  // Thumbnail bytes for images
+  final Uint8List? previewBytes;
   // Local file path for images/audio
   final String? localPath;
 
@@ -72,8 +76,10 @@ class ChatUiModel {
     this.senderName,
     this.seqId,
     this.localPath,
+    this.previewBytes,
     this.duration,
     this.meta,
+
   });
 
   factory ChatUiModel.fromJson(Map<String, dynamic> json) =>
