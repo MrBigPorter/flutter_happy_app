@@ -4,12 +4,15 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:camera/camera.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:path/path.dart' as p;
 
 import 'package:flutter_app/core/api/lucky_api.dart';
 import 'package:flutter_app/utils/upload/global_upload_service.dart';
 import 'package:flutter_app/utils/upload/upload_types.dart';
 import 'package:flutter_app/ui/chat/models/chat_ui_model.dart';
 import 'package:flutter_app/ui/chat/services/database/local_database_service.dart';
+import 'package:path_provider/path_provider.dart';
 
 
 class OfflineQueueManager with WidgetsBindingObserver {
@@ -107,12 +110,22 @@ class OfflineQueueManager with WidgetsBindingObserver {
 
       if (msg.type != MessageType.text) {
         bool canUpload = false;
+        // 用于存储动态拼接后的完整路径
+        String? fullPath; // 用于存储动态拼接后的完整路径
+
         if (kIsWeb) {
           canUpload = msg.content.startsWith('http') || (msg.localPath != null);
         } else {
-          canUpload = (msg.localPath != null && File(msg.localPath!).existsSync());
+          //核心修复：动态获取当前的 Documents 目录，并拼接文件名
+          if(msg.localPath != null) {
+            final appDir = await getApplicationDocumentsDirectory();
+            // 假设你存入的是文件名，这里拼成完整路径
+            fullPath = p.join(appDir.path, 'chat_images', msg.localPath!);
+            canUpload = File(fullPath).existsSync();
+          }
         }
 
+        // 如果本地没找到文件且也不是 URL，说明真的丢了
         if (!canUpload && !msg.content.startsWith('http')) {
           debugPrint("[OfflineQueue] File not found for ${msg.id}. Marking failed.");
           await LocalDatabaseService().updateMessageStatus(msg.id, MessageStatus.failed);
@@ -122,7 +135,8 @@ class OfflineQueueManager with WidgetsBindingObserver {
         if (!msg.content.startsWith('http')) {
           debugPrint("[OfflineQueue] Uploading resource for ${msg.id}...");
           contentToSend = await _uploadService.uploadFile(
-            file: XFile(msg.localPath ?? ""),
+            //核心修复：使用动态生成的 fullPath
+            file: XFile(fullPath ?? ""),
             module: UploadModule.chat,
             onProgress: (p) => debugPrint("[OfflineQueue] Progress: $p"),
           );
