@@ -51,8 +51,35 @@ class LocalDatabaseService {
   // Sembast 会根据 Key (msg.id) 自动判断是 Insert 还是 Update
   Future<void> saveMessage(ChatUiModel msg) async {
     final db = await database;
-    // 使用 msg.id 作为主键
-    await _messageStore.record(msg.id).put(db, msg.toJson());
+    final record = _messageStore.record(msg.id);
+
+    // 1. 先把新数据转成 Map
+    Map<String, dynamic> dataToSave = msg.toJson();
+
+    // 2.  关键操作：查一下旧数据
+    final oldSnapshot = await record.getSnapshot(db);
+
+    if (oldSnapshot != null) {
+      final oldData = oldSnapshot.value;
+
+      //  防御 1：如果新数据里 previewBytes 是 null，但旧数据里有，赶紧把旧的拿回来！
+      if (dataToSave['previewBytes'] == null && oldData['previewBytes'] != null) {
+        dataToSave['previewBytes'] = oldData['previewBytes'];
+      }
+
+      //  防御 2：localPath 同理（防止上传成功后，服务器回包把本地路径抹了）
+      if (dataToSave['localPath'] == null && oldData['localPath'] != null) {
+        dataToSave['localPath'] = oldData['localPath'];
+      }
+
+      //  防御 3：duration 同理
+      if (dataToSave['duration'] == null && oldData['duration'] != null) {
+        dataToSave['duration'] = oldData['duration'];
+      }
+    }
+
+    // 3. 保存最终合并后的数据
+    await record.put(db, dataToSave);
   }
 
   //  批量保存 (性能优化版，适合初次加载历史记录)

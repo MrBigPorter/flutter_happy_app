@@ -425,8 +425,9 @@ class ChatBubble extends ConsumerWidget {
             opaque: false,
             pageBuilder: (_, animation, __) => PhotoPreviewPage(
               heroTag: message.id,
-              imageSource: finalSource,
-              thumbnailSource: finalSource,
+              imageSource: finalSource,// High-res source for viewer
+              thumbnailSource: finalSource,// Use same source for thumbnail
+              previewBytes: message.previewBytes, // Pass preview bytes
             ),
             transitionsBuilder: (_, animation, __, child) =>
                 FadeTransition(opacity: animation, child: child),

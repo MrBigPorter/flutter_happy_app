@@ -5,6 +5,7 @@ import 'package:camera/camera.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_app/ui/chat/services/network/offline_queue_manager.dart';
+import 'package:flutter_app/utils/helper.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
@@ -385,14 +386,13 @@ class ChatRoomController with WidgetsBindingObserver {
     required Future<ChatMessage> Function() networkTask,
   }) async {
     try {
-      print("📤 Sending message optimistically: ${msg.previewBytes}");
       await LocalDatabaseService().saveMessage(msg);
       _updateConversationList(msg.content, msg.createdAt);
       final serverMsg = await networkTask();
       await LocalDatabaseService().updateMessage(msg.id, {
         'status': MessageStatus.success.name,
         'seqId': serverMsg.seqId,
-        'createdAt': serverMsg.createdAt,
+        'createdAt': timeToInt(serverMsg.createdAt),
         if (serverMsg.meta != null) 'meta': serverMsg.meta,
         if (msg.type != MessageType.text) 'content': serverMsg.content,
       });
@@ -483,7 +483,9 @@ class ChatRoomController with WidgetsBindingObserver {
       _processedMsgIds.remove(_processedMsgIds.first);
     if (WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed)
       _readReceiptSubject.add(null);
-    final uiMsg = ChatUiModel.fromApiModel(
+
+
+    var uiMsg = ChatUiModel.fromApiModel(
       ChatMessage(
         id: msg.id,
         content: msg.content,
@@ -496,6 +498,17 @@ class ChatRoomController with WidgetsBindingObserver {
       conversationId,
       _currentUserId,
     );
+    //  核心修复：防止 Socket 数据把本地的微缩图覆盖成 null
+    // 1. 先查一下本地有没有这条消息
+    final localMsg = await LocalDatabaseService().getMessageById(uiMsg.id);
+
+    // 2. 如果本地有图，把它“移植”到新消息上
+    if (localMsg != null && localMsg.previewBytes != null && localMsg.previewBytes!.isNotEmpty) {
+      uiMsg = uiMsg.copyWith(previewBytes: localMsg.previewBytes);
+      debugPrint(" Socket更新: 成功保住图片 Bytes! ID: ${uiMsg.id}");
+    }
+
+    // 3. 再保存 (这时候 uiMsg 里已经带上本地的 bytes 了)
     await LocalDatabaseService().saveMessage(uiMsg);
   }
 

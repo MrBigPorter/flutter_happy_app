@@ -67,7 +67,12 @@ class PhotoPreviewPage extends StatelessWidget {
                 if (previewBytes != null && previewBytes!.isNotEmpty) {
                   return Image.memory(
                     previewBytes!,
+                    //  核心修改：加上这两行，强制撑满屏幕！
+                    width: double.infinity,
+                    height: double.infinity,
                     fit: BoxFit.contain,
+                    // 可选：加个抗锯齿，让拉伸后的马赛克稍微柔和一点点
+                    filterQuality: FilterQuality.low,
                     gaplessPlayback: true,
                   );
                 }
@@ -75,6 +80,8 @@ class PhotoPreviewPage extends StatelessWidget {
                 // 2. 第二优先级：加载缩略图 Provider
                 return Image(
                   image: thumbnailProvider,
+                  width: double.infinity,
+                  height: double.infinity,
                   fit: BoxFit.contain,
                   gaplessPlayback: true,
                   // 如果缩略图本身也在加载(极少情况)，显示微弱的转圈

@@ -4,6 +4,7 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:camera/camera.dart';
+import 'package:flutter_app/utils/helper.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 
@@ -170,7 +171,7 @@ class OfflineQueueManager with WidgetsBindingObserver {
       await LocalDatabaseService().updateMessage(msg.id, {
         'status': MessageStatus.success.name,
         'seqId': serverMsg.seqId,
-        'createdAt': serverMsg.createdAt,
+        'createdAt': timeToInt(serverMsg.createdAt),
         if (serverMsg.meta != null) 'meta': serverMsg.meta,
         if (msg.type != MessageType.text) 'content': contentToSend,
       });

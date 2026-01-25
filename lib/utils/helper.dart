@@ -235,3 +235,18 @@ bool hasMore(int total, int page, int pageSize){
   final pages = totalPages(total, pageSize);
   return page < pages;
 }
+
+int timeToInt(dynamic v) {
+  if (v == null) return DateTime.now().millisecondsSinceEpoch;
+  if (v is int) return v;
+  if (v is num) return v.toInt();
+  if (v is DateTime) return v.millisecondsSinceEpoch;
+  if (v is String) {
+    final n = int.tryParse(v);
+    if (n != null) return n;
+    final dt = DateTime.tryParse(v);
+    if (dt != null) return dt.millisecondsSinceEpoch;
+  }
+  // 兜底：别把奇怪对象写进 DB
+  return DateTime.now().millisecondsSinceEpoch;
+}
