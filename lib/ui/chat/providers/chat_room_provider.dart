@@ -374,6 +374,7 @@ class ChatRoomController with WidgetsBindingObserver {
       status: MessageStatus.sending,
       createdAt: DateTime.now().millisecondsSinceEpoch,
       localPath: localPath,
+      previewBytes: previewBytes,
       meta: meta,
       duration: duration,
     );
@@ -384,6 +385,7 @@ class ChatRoomController with WidgetsBindingObserver {
     required Future<ChatMessage> Function() networkTask,
   }) async {
     try {
+      print("📤 Sending message optimistically: ${msg.previewBytes}");
       await LocalDatabaseService().saveMessage(msg);
       _updateConversationList(msg.content, msg.createdAt);
       final serverMsg = await networkTask();
