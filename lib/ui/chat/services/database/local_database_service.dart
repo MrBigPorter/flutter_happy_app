@@ -219,7 +219,7 @@ class LocalDatabaseService {
   Future<List<ChatUiModel>> getPendingMessages() async {
     final db = await database;
     final finder = Finder(
-      filter: Filter.equals('status', MessageStatus.pending),
+      filter: Filter.equals('status', MessageStatus.pending.name),
       sortOrders: [SortOrder('createdAt', true)], // 先发的先重试,正序
     );
 
