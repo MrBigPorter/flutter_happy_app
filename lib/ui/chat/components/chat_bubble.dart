@@ -19,12 +19,14 @@ class ChatBubble extends ConsumerWidget {
   final ChatUiModel message;
   final VoidCallback? onRetry;
   final bool showReadStatus;
+  final bool isGroup; //  1. 新增参数
 
   const ChatBubble({
     super.key,
     required this.message,
     this.onRetry,
     this.showReadStatus = false,
+    this.isGroup = false, //  默认为 false
   });
 
   void _showContextMenu(BuildContext context, WidgetRef ref, bool isMe) {
@@ -105,7 +107,8 @@ class ChatBubble extends ConsumerWidget {
                   ? CrossAxisAlignment.end
                   : CrossAxisAlignment.start,
               children: [
-                if (!isMe && message.senderName != null)
+                //  2. 修改判断逻辑：只有在群聊 (isGroup) 且有名字时才显示
+                if (!isMe && isGroup && message.senderName != null)
                   Padding(
                     padding: EdgeInsets.only(bottom: 4.h, left: 4.w),
                     child: Text(

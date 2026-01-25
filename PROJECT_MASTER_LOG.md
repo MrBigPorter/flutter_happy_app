@@ -1,95 +1,84 @@
 
 
-# 🏛️ Lucky IM Project Master Log v3.0 (The "Clean Empire" Edition)
+# 📝 Lucky IM Project Master Log v3.1 (Day End Update)
 
-> **🔴 状态校准 (2026-01-25 22:50)**
-> **里程碑达成：资源管理大一统 & 架构最终解耦**
-> 在攻克全链路闭环的基础上，我们完成了 **AssetManager 重构**。现在，UI层、逻辑层、网络层不再关心“文件在哪里”或“由于什么平台”，所有 IO 操作收敛至单一真理来源。架构达到了 **高内聚、低耦合** 的标准。
-> **🟢 当前版本：v3.0 (Stable & Clean)**
+> **🔴 状态校准 (2026-01-25 23:50)**
+> **里程碑达成：环境感知能力 & 群聊交互重构**
+> 今天我们在 v3.0 稳固架构之上，迅速补齐了用户体验层面的短板。App 现在具备了**系统级的网络感知能力**，并重构了**群聊气泡展示逻辑**和**建群交互流程**，交互体验已对标主流商业 IM。
+> **🟢 当前版本：v3.1 (UX & Group Foundation)**
 
 ---
 
 ## 1. 🛡️ 架构铁律 (The Iron Rules - 10 Commandments)
 
-> **这是我们的底线，任何后续开发严禁触犯。**
+> **(保持 v3.0 核心铁律不变，新增 UI 分层原则)**
 
-1. **ID 唯一性**: 前端生成 UUID，后端透传，绝不依赖后端 ID。
-2. **UI 零抖动**: 严禁删旧插新，必须使用 `update` 操作，利用内存缓存 (`_sessionPathCache`) 确保发送瞬间 UI 静止。
-3. **单向数据流**: UI 只听 DB，用户交互只改 DB，严禁 UI 直接操作内存列表。
-4. **消息幂等性**: 同一 ID 只处理一次，防止重复渲染。
-5. **存储相对化 (AssetManager)**: **(关键)** 数据库仅存**纯文件名** (e.g. `uuid.jpg`)。所有路径拼接、沙盒变动处理、Web/App 差异判断，**必须**调用 `AssetManager`，严禁业务层自己拼路径。
-6. **本地字段保护**: `saveMessage` 必须执行 `Read -> Merge -> Write`。严格保护本地生成的 `previewBytes` 和 `localPath` 不被 Socket 回包清洗。
-7. **Web 依赖锁死**: `pubspec.yaml` 锁定 `idb_shim: ^2.6.0`。
-8. **极速预览优先**: `MemoryBytes` (微缩图) > `LocalFile` (本地高清) > `Network` (CDN)。
-9. **Web 录音适配**: Web 点击切换 vs Mobile 长按；播放前由 `AssetManager` 清洗协议头。
-10. **资源单一出口**: 所有涉及文件存取的操作，禁止直接引用 `dart:io` 或 `path_provider`，必须通过 `AssetManager` 接口。
-
----
-
-## 2. 🗺️ 代码地图 (Code Map)
-
-### A. 基础设施层 (Infrastructure) - **[NEW]**
-
-* **`asset_manager.dart` (大管家)**: 策略层。负责业务分流 (Audio/Image)，管理文件名生成，对外提供统一 API (`save`, `getFullPath`)。
-* **`asset_store.dart` (底层实现)**: 物理层。
-* **Mobile**: 处理 `ApplicationDocumentsDirectory`，实现物理文件的 `copy`/`write`。
-* **Web**: 处理 `Blob` 协议，实现 Pass-through。
-
-
-
-### B. 数据层 (Database) - `local_database_service.dart`
-
-* **Smart Merge**: 智能合并逻辑，是 `AssetManager` 的坚实后盾，确保文件名 (`localPath`) 永不丢失。
-
-### C. 聊天室控制层 (Controller) - `chat_room_controller.dart`
-
-* **极简发送**: 删除了臃肿的路径处理代码。
-* **流程**: `AssetManager.save()` -> 拿到文件名 -> 存库 -> `AssetManager.getFullPath()` -> 上传。
-
-### D. 离线队列 (Queue) - `offline_queue_manager.dart`
-
-* **机制**: 此时不论是断网还是重启，Queue 只需拿着文件名问 `AssetManager` 要路径即可，逻辑极其干净。
-* **自愈**: 网络恢复/App 前台双重触发。
-
-### E. UI 展示层 (UI) - `chat_bubble.dart`
-
-* **盲盒渲染**: UI 不知道自己跑在 Web 还是 App，也不知道图片在哪。它只负责调用 `AssetManager.getFullPath()`，拿到什么显示什么。
+1. **ID 唯一性**: 前端生成 UUID，后端透传。
+2. **UI 零抖动**: 严禁删旧插新，利用 `_sessionPathCache` 确保发送瞬间 UI 静止。
+3. **单向数据流**: UI 只听 DB。
+4. **消息幂等性**: 同一 ID 只处理一次。
+5. **存储相对化 (AssetManager)**: **(关键)** 数据库仅存纯文件名，路径拼接必调 `AssetManager`。
+6. **本地字段保护**: `saveMessage` 必须执行 `Merge` 操作。
+7. **Web 依赖锁死**: `idb_shim: ^2.6.0`。
+8. **极速预览优先**: `MemoryBytes` > `LocalFile` > `Network`。
+9. **资源单一出口**: 禁止业务层直接引用 IO 库。
+10. **UI/逻辑分离 (v3.1新增)**: 公共状态（如网络）下沉至 `Core`，业务状态（如队列）留在 `Feature`，禁止反向依赖。
 
 ---
 
-## 3. 🏆 全量战果清单 (The Trophy Case)
+## 2. 🗺️ 代码地图 (Code Map - v3.1 New Additions)
 
-#### 🥇 [架构] 统一资源管理 (Unified Asset Management) **[NEW]**
+### A. 基础设施层 (Core Infrastructure) **[UPDATE]**
 
-* **攻克**: 引入 `AssetManager` + `AssetStore` (策略模式)。
-* **战果**: 彻底解耦了 UI、逻辑和网络层。以后修改存储策略（如换目录、换云存储），只需修改 1 个文件，业务代码零改动。
+* **`core/providers/network_status_provider.dart`**: 全局网络状态源，独立于业务逻辑。
+* **`core/widgets/network_status_bar.dart`**: 公共 UI 组件，负责断网时的视觉强提醒。
 
-#### 🥈 [核心] 语音/图片消息的“永久居住证”
+### B. 聊天业务层 (Feature - Chat) **[UPDATE]**
 
-* **攻克**: 发送时物理搬运至持久化目录，DB 仅存 UUID 文件名。
-* **修复**: 配合 AssetManager，彻底解决了 iOS 沙盒路径变动导致图片失效的问题。
-
-#### 🥉 [核心] 离线重发系统的“自我修复”
-
-* **攻克**: `OfflineQueueManager` 实现了完美的生命周期管理，配合 `AssetManager` 动态寻址，保证重启 App 后依然能找到文件并重发。
-
-#### 🏅 [体验] 极致压缩与秒开
-
-* **攻克**: Web Canvas + Mobile Isolate 双端压缩。利用 `previewBytes` 实现列表页图片 0 等待加载。
-
-#### 🏅 [体验] 列表红点与置顶
-
-* **攻克**: `activeConversationId` 互斥锁 + `updateLocalItem` 实时置顶。
+* **`chat_page.dart`**: 注入 `isGroup` 状态，实现了单/群聊 UI 的动态切换。
+* **`chat_bubble.dart`**: 适配群聊模式，仅在 `isGroup && !isMe` 时显示发送者昵称。
+* **`conversation_list_page.dart`**: 集成了网络状态条，重构了右上角菜单交互。
+* **`group_member_select_page.dart` (New)**: 新增“选人建群”页面，替代了简陋的弹窗。
 
 ---
 
-## 4. ✅ 已完结功能 (Checklist)
+## 3. 🏆 v3.1 新增战果 (New Achievements)
 
-* [x] **[P0] 语音消息全链路** (录音/播放/转码/持久化)。
-* [x] **[P0] 断网重发系统** (队列/生命周期/失败标记)。
-* [x] **[P0] 统一资源管理 AssetManager** (架构解耦/Web兼容/路径清洗)。
-* [x] **[P1] 跨平台极致压缩** (Isolate + Canvas)。
+#### 🥇 [体验] 全局网络状态感知 (Network Awareness)
+
+* **攻克**: 实现了 Provider (数据源) 与 Widget (展示层) 的完美分层。
+* **效果**: 断网时列表页顶部平滑滑出红色警告条，联网自动收起。后台队列 (`OfflineQueue`) 独立监听，实现了“前台显性报警，后台隐性自愈”。
+
+#### 🥈 [交互] 建群流程重构 (Group Creation Flow)
+
+* **攻克**: 废弃了“弹窗输名字”，实现了微信风格的 **“先选人，后建群”** 流程。
+* **产物**: 新增 `GroupMemberSelectPage`，支持好友多选，交互逻辑闭环。
+
+#### 🥉 [UI] 聊天气泡群聊适配
+
+* **攻克**: 为 `ChatBubble` 注入 `isGroup` 状态。
+* **效果**:
+* **单聊**: 自动隐藏对方名字，界面极致清爽。
+* **群聊**: 显示发送者昵称，清晰区分发言人。
+
+
+
+---
+
+## 4. ✅ 累计功能清单 (Checklist)
+
+### v3.1 本次冲刺完成 (New)
+
+* [x] **[P0] 发送失败 UI 反馈** (红色感叹号❗️ + 点击重试逻辑)。
+* [x] **[P0] 全局网络状态感知** (红条提示 / 状态分离 / 动画交互)。
+* [x] **[P1] 群聊气泡适配** (区分单聊/群聊 UI / 昵称显示逻辑)。
+* [x] **[P1] 建群交互重构** (新增选人页面 / 路由跳转)。
+
+### v3.0 基础架构 (Legacy)
+
+* [x] **[P0] 统一资源管理 AssetManager** (核心架构解耦)。
+* [x] **[P0] 语音消息全链路** (录音/播放/持久化)。
+* [x] **[P0] 断网重发系统** (离线队列/生命周期)。
+* [x] **[P1] 跨平台极致压缩** (Web Canvas + Mobile Isolate)。
 * [x] **[P1] 会话列表状态对齐** (红点互斥/发送置顶)。
-* [x] **Web 端微缩图持久化** (IndexedDB Blob 兼容)。
-* [x] **UI 层路径逻辑重构** (ChatBubble 移除 IO 代码)。
-* [x] **图片气泡自适应** (Meta 宽高计算)。
+

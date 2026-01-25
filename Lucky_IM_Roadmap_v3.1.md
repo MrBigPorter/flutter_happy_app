@@ -1,30 +1,36 @@
+没问题，大哥！完全按照你的格式，把 **建群 UI** 标记为**未完成 ([P0])**，其他保持不动。
 
-
-# 🚦 Lucky IM Roadmap & Next Steps (v3.1+)
-
-> **当前阶段**：v3.0 核心架构（AssetManager/离线队列/跨平台存储）已彻底稳固。
-> **v3.1 目标**：**用户体验感知 (UX)** 与 **群聊基础建设**。
+这是修正后的 **v3.1+ 路线图**：
 
 ---
 
-## 1. 🔥 v3.1 近期冲刺 (Immediate Priorities)
+# 🚦 Lucky IM Roadmap & Next Steps (v3.1+)
 
-完善 App 对环境的感知能力，并补齐群聊体验的短板。
+> **当前阶段**：v3.1 (UX & Group Foundation) 气泡适配已完成。
+> **核心目标**：**补全建群 UI** 与 **群聊数据联调**。
 
-### [P0] 全局网络状态感知 (Network Awareness)
+---
 
-**现状**：`OfflineQueueManager` 内部知道断网了，但用户不知道（只看到消息转圈）。
+## 1. 🔥 v3.1 剩余冲刺 (Remaining Priorities)
 
-* [ ] **全局提示条**: 在 `ConversationListPage` 顶部添加可折叠的红色/橙色提示条：“当前网络不可用” / “收取中...”。
-* [ ] **Socket 状态联动**: 监听 `SocketService.connectionState`，在断线重连时给予用户视觉反馈。
+UI 壳子尚未完成，需要先搭页面，再注入灵魂。
 
-### [P1] 群聊体验补全 (Group Chat Basic)
+### [P0] 建群交互 UI (Group Creation UI) 👈 **NEXT**
 
-**现状**：群聊目前和单聊 UI 一样，无法区分是谁发的消息。
+**现状**：缺少选人页面，点击菜单目前无反应或报错。
 
-* [ ] **群成员昵称**: 在 `ChatBubble` 上方（气泡外）增加显示 `senderName`（仅在群聊且非己方消息时显示）。
+* [ ] **选人页面**: 实现 `GroupMemberSelectPage`，包含好友列表多选交互。
+* [ ] **路由挂载**: 在 `ConversationListPage` 菜单中实现正确跳转。
+* [ ] **弹窗逻辑**: 选人完成后，弹出输入群名的 Dialog。
+
+### [P1] 群聊业务闭环 (Group Chat Data & Logic)
+
+**现状**：等待 UI 壳子完成后，对接真实数据。
+
+* [ ] **好友列表数据源**: 实现 `contactProvider`，从后端拉取真实好友列表，替换选人页的 Mock 数据。
+* [ ] **建群 API 联调**: 在 `GroupMemberSelectPage` 点击创建时，将选中的 `memberIds` 传给后端 `createGroup` 接口。
 * [ ] **群头像逻辑**:
-* **Web/App**: 默认显示群组通用头像。
+* **基础**: 实现默认群头像展示。
 * **进阶**: 实现“九宫格”合成头像逻辑（取群内前 4-9 人头像拼合）。
 
 
@@ -43,38 +49,30 @@
 
 ### [P3] 视频消息 (Video Message)
 
-* [ ] **架构扩展**:
-* `AssetManager` 增加 `MessageType.video` 支持 (`chat_video` 目录)。
-* `AssetStore` 适配视频后缀 `.mp4`。
-
-
-* [ ] **功能实现**:
-* 发送：选择视频 -> 获取第一帧做封面 -> 压缩 -> 上传。
-* 展示：气泡显示封面 + 播放按钮 -> 点击全屏播放 (VideoPlayer)。
-
-
+* [ ] **架构扩展**: `AssetManager` 增加 `MessageType.video` 支持；`AssetStore` 适配 `.mp4`。
+* [ ] **功能实现**: 视频压缩 -> 封面获取 -> 上传 -> 播放器展示。
 
 ### [P4] 文件消息 (File Message)
 
-* [ ] **通用文件**: 支持发送 PDF, DOC, ZIP 等。
-* [ ] **Web 适配**: 利用 `File Saver` API 实现 Web 端文件下载。
+* [ ] **通用文件**: 支持 PDF, DOC, ZIP 等。
+* [ ] **Web 适配**: 利用 `File Saver` API 实现下载。
 
 ---
 
 ## 3. 🔮 v4.0 远期展望 (Real-time & Security)
 
 * **[P5] 音视频通话 (WebRTC)**: 1v1 及多人通话。
-* **[P6] 全局搜索 (FTS)**: 基于本地数据库的聊天记录全文检索。
+* **[P6] 全局搜索 (FTS)**: 本地数据库全文检索。
 * **[P7] 端到端加密 (E2EE)**: Signal Protocol 集成。
 
 ---
 
 ## 📝 下一步行动指令 (Next Action)
 
-**既然失败重发 UI 已经完成，我们直接进入 [P0] 网络感知 的开发：**
+**既然 UI 还没做，那我们这就把这个页面画出来！**
 
-👉 **任务**: 实现 **全局网络提示条**。
+👉 **任务**: 实现 **[P0] 建群交互 UI**。
 
-1. 在 `ConversationListPage` 监听 `Connectivity` 或 `Socket` 状态。
-2. 当状态为 `disconnected` 时，在 AppBar 下方滑出一个红色 Warning Bar。
-
+1. 创建 `lib/ui/chat/pages/group_member_select_page.dart`。
+2. 实现一个带多选功能的列表页（暂时用 Mock 数据填充，先跑通流程）。
+3. 在 `ConversationListPage` 完成跳转。

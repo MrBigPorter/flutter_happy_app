@@ -9,6 +9,7 @@ import 'package:image_picker/image_picker.dart';
 import 'components/chat_bubble.dart';
 import 'components/chat_input/modern_chat_input_bar.dart';
 import 'models/chat_ui_model.dart';
+import 'models/conversation.dart';
 import 'providers/chat_room_provider.dart';
 
 class ChatPage extends ConsumerStatefulWidget {
@@ -72,6 +73,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
     final asyncMessages = ref.watch(chatStreamProvider(widget.conversationId));
     // 2. 监听详情状态
     final asyncDetail = ref.watch(chatDetailProvider(widget.conversationId));
+    final bool isGroup = asyncDetail.valueOrNull?.type == ConversationType.group;
 
     // 判断是否是静默更新状态 (有数据，但正在刷新)
     final isUpdating = asyncMessages.isLoading && asyncMessages.hasValue;
@@ -205,13 +207,13 @@ class _ChatPageState extends ConsumerState<ChatPage> {
               child: asyncMessages.when(
                 // 只有第一次进且没数据时，才显示大 loading
                 loading: () => asyncMessages.hasValue
-                    ? _buildMessageList(asyncMessages.value!) // 有旧数据就先显示旧的
+                    ? _buildMessageList(asyncMessages.value!, isGroup) // 有旧数据就先显示旧的
                     : const Center(child: CircularProgressIndicator()),
 
                 error: (error, _) => Center(child: Text("Error: $error")),
 
                 // 简单处理错误
-                data: (messages) => _buildMessageList(messages),
+                data: (messages) => _buildMessageList(messages, isGroup),
               ),
             ),
 
@@ -234,7 +236,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
   }
 
   // 抽离 List 构建逻辑，让代码更干净
-  Widget _buildMessageList(List<dynamic> messages) {
+  Widget _buildMessageList(List<dynamic> messages, bool isGroup) {
     if (messages.isEmpty) {
       return Center(
         child: Text("No messages", style: TextStyle(color: Colors.grey[400])),
@@ -283,6 +285,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
         final isLatestRead = (msg.id == latestReadMsgId);
         return ChatBubble(
           key: ValueKey(msg.id),
+          isGroup: isGroup,
           message: msg,
           //  [这里 3] 把 true/false 传进去！
           showReadStatus: isLatestRead,
