@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_app/app/routes/app_router.dart';
 import 'package:flutter_app/ui/chat/components/user_search_dialog.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -70,7 +71,7 @@ class _AddMenuButton extends StatelessWidget {
         onSelected: (value) {
           if (value == 'group') {
             // 建群
-            showDialog(context: context, builder: (_) => const CreateGroupDialog());
+           appRouter.push('/chat/group/select/member');
           } else if (value == 'friend') {
             //  核心修改在这里：
             // 点击 "Add Contact" -> 弹出搜索窗口，而不是输入ID窗口

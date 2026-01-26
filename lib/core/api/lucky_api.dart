@@ -517,21 +517,6 @@ class Api {
     return ConversationIdResponse.fromJson(res);
   }
 
-  // 创建群聊
-  static Future<ConversationIdResponse> chatGroupApi(
-    String name,
-    List<String> memberIds,
-  ) async {
-    final res = await Http.post(
-      '/api/v1/chat/group',
-      data: {
-        'name': name,
-        'members': memberIds, // 注意这里是复数，且是数组
-      },
-    );
-    return ConversationIdResponse.fromJson(res);
-  }
-
   // 5. 获取详情 (进入 ChatPage 时调用)
   // 后端返回: ConversationDetailResponseDto
   static Future<ConversationDetail> chatDetailApi(String conversationId) async {
@@ -545,6 +530,34 @@ class Api {
   ) async {
     final res = await Http.get('/api/v1/chat/messages', query: data.toJson());
     return MessageListResponse.fromJson(res);
+  }
+
+  // 1. 获取好友列表
+  static Future<List<ChatUser>> getContactsApi() async {
+    final res = await Http.get('/api/v1/users/contacts');
+    return parseList(res, (e) => ChatUser.fromJson(e));
+  }
+
+  // 2. 用户搜索
+  static Future<List<ChatUser>> searchUserApi(String keyword) async {
+    final res = await Http.get(
+      '/api/v1/chat/users/search',
+      query: {'keyword': keyword},
+    );
+    return parseList(res, (e) => ChatUser.fromJson(e));
+  }
+
+  // 创建群聊
+  static Future<CreateGroupResponse> createGroupApi(
+    String name,
+    List<String> memberIds,
+  ) async {
+    final request = CreateGroupRequest(name: name, memberIds: memberIds);
+    final res = await Http.post(
+      '/api/v1/chat/create-group',
+      data: request.toJson(),
+    );
+    return CreateGroupResponse.fromJson(res);
   }
 
   // 发送消息

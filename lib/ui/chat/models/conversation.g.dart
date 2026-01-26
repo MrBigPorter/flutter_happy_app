@@ -459,3 +459,61 @@ Map<String, dynamic> _$MessageDeleteResponseToJson(
     <String, dynamic>{
       'messageId': instance.messageId,
     };
+
+ChatUser _$ChatUserFromJson(Map<String, dynamic> json) => $checkedCreate(
+      'ChatUser',
+      json,
+      ($checkedConvert) {
+        final val = ChatUser(
+          id: $checkedConvert('id', (v) => v as String),
+          nickname: $checkedConvert('nickname', (v) => v as String),
+          avatar: $checkedConvert('avatar', (v) => v as String?),
+          phone: $checkedConvert('phone', (v) => v as String?),
+        );
+        return val;
+      },
+    );
+
+Map<String, dynamic> _$ChatUserToJson(ChatUser instance) => <String, dynamic>{
+      'id': instance.id,
+      'nickname': instance.nickname,
+      'avatar': instance.avatar,
+      'phone': instance.phone,
+    };
+
+Map<String, dynamic> _$AddFriendRequestToJson(AddFriendRequest instance) =>
+    <String, dynamic>{
+      'friendId': instance.friendId,
+    };
+
+Map<String, dynamic> _$CreateGroupRequestToJson(CreateGroupRequest instance) =>
+    <String, dynamic>{
+      'name': instance.name,
+      'memberIds': instance.memberIds,
+    };
+
+CreateGroupResponse _$CreateGroupResponseFromJson(Map<String, dynamic> json) =>
+    $checkedCreate(
+      'CreateGroupResponse',
+      json,
+      ($checkedConvert) {
+        final val = CreateGroupResponse(
+          id: $checkedConvert('id', (v) => v as String),
+          name: $checkedConvert('name', (v) => v as String),
+          type: $checkedConvert('type', (v) => v as String),
+          ownerId: $checkedConvert('ownerId', (v) => v as String),
+          createdAt: $checkedConvert('createdAt', (v) => (v as num).toInt()),
+        );
+        return val;
+      },
+    );
+
+Map<String, dynamic> _$CreateGroupResponseToJson(
+        CreateGroupResponse instance) =>
+    <String, dynamic>{
+      'id': instance.id,
+      'name': instance.name,
+      'type': instance.type,
+      'ownerId': instance.ownerId,
+      'createdAt': instance.createdAt,
+    };

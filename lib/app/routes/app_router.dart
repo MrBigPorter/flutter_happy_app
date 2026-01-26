@@ -23,6 +23,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../components/lucky_tab_bar.dart';
 import '../../ui/chat/chat_page.dart';
+import '../../ui/chat/group_member_select_page.dart';
 import '../page/deposit_detail_page.dart';
 import '../page/group_lobby_page.dart';
 import '../page/guide_page.dart';
@@ -72,6 +73,13 @@ class AppRouter {
           builder: (context, state) {
             return ChatPage(conversationId: state.pathParameters['conversationId']!);
           },
+        ),
+        GoRoute(
+            path: '/chat/group/select/member',
+            parentNavigatorKey: NavHub.key,
+            builder: (context, state) {
+              return GroupMemberSelectPage();
+            }
         ),
         GoRoute(
             name:"login",
@@ -262,7 +270,7 @@ class AppRouter {
           // 变成: /product/123?groupId=abc
           final newPath = path.replaceFirst('luckyapp://product/', '/product/');
 
-          print("🔀 自动修正分享链接: $path -> $newPath");
+          print(" 自动修正分享链接: $path -> $newPath");
           return newPath;
         }
 
@@ -290,7 +298,6 @@ class AppRouter {
       },
       errorPageBuilder: (context, state) {
         // 重置全局进度条
-        print("🚨 404 Error: ${state.uri.toString()}");
         Future.microtask(() {
           ref.read(overlayProgressProvider.notifier).state = 0.0;
         });

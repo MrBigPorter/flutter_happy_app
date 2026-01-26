@@ -429,3 +429,77 @@ class MessageDeleteResponse {
   @override
   String toString() => toJson().toString();
 }
+
+// ==========================================
+//  搜索用户/联系人基础模型
+// ==========================================
+@JsonSerializable(checked: true)
+class ChatUser {
+  final String id;
+  final String nickname;
+  final String? avatar;
+  final String? phone; // 搜索时可能返回手机号
+
+  ChatUser({
+    required this.id,
+    required this.nickname,
+    this.avatar,
+    this.phone,
+  });
+
+  factory ChatUser.fromJson(Map<String, dynamic> json) => _$ChatUserFromJson(json);
+  Map<String, dynamic> toJson() => _$ChatUserToJson(this);
+}
+
+// ==========================================
+//  添加好友请求
+// ==========================================
+@JsonSerializable(createFactory: false)
+class AddFriendRequest {
+  final String friendId;
+
+  AddFriendRequest({required this.friendId});
+
+  Map<String, dynamic> toJson() => _$AddFriendRequestToJson(this);
+}
+
+// ==========================================
+//  创建群聊请求参数
+// ==========================================
+@JsonSerializable(createFactory: false)
+class CreateGroupRequest {
+  final String name;
+  final List<String> memberIds; // 选中的好友 ID 列表
+
+  CreateGroupRequest({
+    required this.name,
+    required this.memberIds,
+  });
+
+  Map<String, dynamic> toJson() => _$CreateGroupRequestToJson(this);
+}
+
+// ==========================================
+//  建群成功响应 (通常后端会返回创建成功的会话详情)
+// ==========================================
+@JsonSerializable(checked: true)
+class CreateGroupResponse {
+  final String id;          // 对应 Conversation ID
+  final String name;
+  final String type;        // "GROUP"
+  final String ownerId;
+  final int createdAt;
+
+  CreateGroupResponse({
+    required this.id,
+    required this.name,
+    required this.type,
+    required this.ownerId,
+    required this.createdAt,
+  });
+
+  factory CreateGroupResponse.fromJson(Map<String, dynamic> json) =>
+      _$CreateGroupResponseFromJson(json);
+
+  Map<String, dynamic> toJson() => _$CreateGroupResponseToJson(this);
+}
