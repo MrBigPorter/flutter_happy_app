@@ -21,24 +21,6 @@ final contactListProvider =
 );
 
 typedef _$ContactList = AutoDisposeAsyncNotifier<List<ChatUser>>;
-String _$createGroupControllerHash() =>
-    r'05c609e110392f2ad23204639fadd8c592b01ed5';
-
-/// See also [CreateGroupController].
-@ProviderFor(CreateGroupController)
-final createGroupControllerProvider = AutoDisposeNotifierProvider<
-    CreateGroupController, AsyncValue<CreateGroupResponse?>>.internal(
-  CreateGroupController.new,
-  name: r'createGroupControllerProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$createGroupControllerHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
-
-typedef _$CreateGroupController
-    = AutoDisposeNotifier<AsyncValue<CreateGroupResponse?>>;
 String _$addFriendControllerHash() =>
     r'08f3ed1a8e12e4396764ee72a5e97d20ead6b0cb';
 
@@ -205,5 +187,23 @@ class _AddFriendControllerProviderElement
   @override
   String get userId => (origin as AddFriendControllerProvider).userId;
 }
+
+String _$groupMemberActionControllerHash() =>
+    r'1177bc5a430d0b724c108218d27427218b898f15';
+
+/// See also [GroupMemberActionController].
+@ProviderFor(GroupMemberActionController)
+final groupMemberActionControllerProvider = AutoDisposeNotifierProvider<
+    GroupMemberActionController, AsyncValue<void>>.internal(
+  GroupMemberActionController.new,
+  name: r'groupMemberActionControllerProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$groupMemberActionControllerHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+typedef _$GroupMemberActionController = AutoDisposeNotifier<AsyncValue<void>>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member

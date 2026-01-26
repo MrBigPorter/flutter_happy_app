@@ -15,30 +15,6 @@ class ContactList extends _$ContactList {
 }
 
 @riverpod
-class CreateGroupController extends _$CreateGroupController {
-  @override
-  //  改成同步 Notifier，初始值直接给 AsyncData(null)
-  AsyncValue<CreateGroupResponse?> build() {
-    return const AsyncData(null);
-  }
-
-  Future<CreateGroupResponse?> execute(String name, List<String> memberIds) async {
-    // 1. 设置状态为 loading
-    state = const AsyncLoading();
-
-    // 2. 使用 AsyncValue.guard
-    final result = await AsyncValue.guard(() => Api.createGroupApi(name, memberIds));
-    state = result;
-    if (!state.hasError) {
-      // 3. 成功后，刷新会话列表
-      ref.invalidate(conversationListProvider);
-      return result.value;
-    }
-    return null;
-  }
-}
-
-@riverpod
 class AddFriendController extends _$AddFriendController {
   @override
   //  同上，显式持有 AsyncValue<void>
@@ -59,8 +35,67 @@ class AddFriendController extends _$AddFriendController {
   }
 }
 
+@riverpod
+class GroupMemberActionController extends _$GroupMemberActionController {
+  @override
+  AsyncValue<void> build() {
+    return const AsyncData(null);
+  }
+
+  /// 动作 A: 邀请成员
+  Future<int?> inviteMember({
+    required String groupId,
+    required List<String> memberIds,
+  }) async {
+    state = const AsyncValue.loading();
+
+    final newState = await AsyncValue.guard(
+      () => Api.groupInviteApi(
+        InviteToGroupRequest(groupId: groupId, memberIds: memberIds),
+      ),
+    );
+
+    state = newState;
+    return newState.value?.count;
+  }
+
+  /// 动作 B: 创建群聊
+  Future<String?> createGroup({
+    required String name,
+    required List<String> memberIds,
+  }) async {
+    state = const AsyncValue.loading();
+
+    final newState = await AsyncValue.guard(() async {
+      return await Api.createGroupApi(name, memberIds);
+    });
+
+    state = newState;
+    if(newState.hasValue && newState.value != null) {
+      ref.invalidate(chatDetailProvider(newState.value!.id));
+      return newState.value!.id;
+    }
+    return null;
+  }
+
+  /// leave group
+  Future<bool?> leaveGroup({required String groupId}) async {
+    state = const AsyncValue.loading();
+    final newState = await AsyncValue.guard(() async {
+      return await Api.groupLeaveApi(LeaveGroupRequest(groupId: groupId));
+    });
+    state = newState;
+
+    if(newState.hasValue && newState.value != null) {
+      return newState.value?.success;
+    }
+    return null;
+  }
+}
+
 // --- [读] 搜索结果 (保持 FutureProvider) ---
-final userSearchProvider = FutureProvider.autoDispose.family<List<ChatUser>, String>((ref, keyword) async {
-  if (keyword.isEmpty) return [];
-  return Api.searchUserApi(keyword);
-});
+final userSearchProvider = FutureProvider.autoDispose
+    .family<List<ChatUser>, String>((ref, keyword) async {
+      if (keyword.isEmpty) return [];
+      return Api.searchUserApi(keyword);
+    });

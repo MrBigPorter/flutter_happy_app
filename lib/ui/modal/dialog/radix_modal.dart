@@ -1,4 +1,4 @@
-
+import 'dart:async'; //  1. 必须引入，用于 FutureOr
 import 'package:flutter/material.dart';
 import 'package:flutter_app/ui/modal/base/animation_effects.dart';
 import 'package:flutter_app/ui/modal/dialog/modal_dialog_config.dart';
@@ -10,69 +10,16 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import '../base/animation_policy_resolver.dart';
 
-typedef ModalAction<T> = void Function(void Function([T? result]) close);
+//  2. 修改定义：允许返回 FutureOr<void>
+// 这样外部调用时可以是 async 函数，从而触发 Loading 状态
+typedef ModalAction<T> = FutureOr<void> Function(void Function([T? result]) close);
 
 
 /// Modal
 /// ------------------------------------------------------------------
-/// A utility class for displaying modal dialogs with customizable animations,
-/// themes and behaviors.
-/// 
-/// Features:
-/// - Customizable animations and transitions
-/// - Support for background blur effects
-/// - Built-in confirm/cancel actions
-/// - Backdrop click handling
-/// - Theme integration
-/// - MyAnimationStyleConfig：
-/// - ModalDialogConfig：
-///   - maxWidth: Maximum width of the dialog
-///   - contentPadding: Padding for the dialog content
-///   - customHeader: Custom header widget
-///   - footerBuilder: Function to build custom footer
-///   - headerHeight: Height of the header
-///   - headerActions: Additional actions in the header
-///   - headerBackgroundColor: Background color of the header
-///   - ModalTheme: Theme settings for the dialog
-///   - AnimationStyleConfig: Animation style settings
-///   - borderRadius: Border radius of the dialog
-///   - allowBackgroundCloseOverride: Override for background close behavior
-/// Usage:
-/// ```dart
-/// await Modal.show(
-///  builder: (context, close) => MyDialogContent(onClose: close),
-///  config: ModalDialogConfig(
-///  animationStyleConfig: MyAnimationStyleConfig(),
-///  theme: MyModalTheme(),
-///  ),
-///  onConfirm: (close) {
-///  // Handle confirm action
-///  close();
-///  },
-///  onCancel: (close) {
-///  // Handle cancel action
-///  close();
-///  },
-///  );
-///  ```
-///
-/// ------------------------------------------------------------------
 class RadixModal {
 
   /// Shows a modal dialog with customizable content and behavior
-  ///
-  /// Parameters:
-  /// - [builder] Required callback to build the dialog content
-  /// - [config] Dialog configuration including animation and theme settings
-  /// - [clickBgToClose] Whether clicking backdrop closes the dialog
-  /// - [confirmText] Text for the confirm button
-  /// - [cancelText] Text for the cancel button
-  /// - [onConfirm] Callback when confirm is pressed
-  /// - [onCancel] Callback when cancel is pressed
-  /// - [title] Optional dialog title
-  ///
-  /// Returns a [Future] that completes with an optional result value when
-  /// the dialog is closed.
   static Future<T?> show<T>({
     required Widget Function(BuildContext, void Function([T? res])) builder,
     ModalDialogConfig config = const ModalDialogConfig(),
@@ -98,11 +45,11 @@ class RadixModal {
 
     final allowBgClose =
         (config.allowBackgroundCloseOverride ?? policy.allowBackgroundClose) &&
-        clickBgToClose;
+            clickBgToClose;
 
     final barrierColor =
         config.theme.barrierColor ??
-        theme.colorScheme.scrim.withValues(alpha: 0.5);
+            theme.colorScheme.scrim.withValues(alpha: 0.5);
     final surfaceColor = config.theme.surfaceColor ?? theme.colorScheme.surface;
 
     return showGeneralDialog(
@@ -113,13 +60,13 @@ class RadixModal {
       barrierColor: Colors.transparent,
       transitionBuilder: (ctx, anim, secAnim, child) {
         return buildModalTransition(
-            anim,
-            child,
-            policy.style,
-            allowBgClose: allowBgClose,
-            barrierColor: barrierColor,
-            blurSigma: policy.blurSigma,
-            context: ctx,
+          anim,
+          child,
+          policy.style,
+          allowBgClose: allowBgClose,
+          barrierColor: barrierColor,
+          blurSigma: policy.blurSigma,
+          context: ctx,
         );
       },
       pageBuilder: (ctx, anima1, anima2) {
@@ -147,10 +94,13 @@ class RadixModal {
                   ),
                 ],
               ),
+              // ModalDialogSurface 已经是 Stateful 并支持 FutureOr 了
+              // 这里的 lambda 会自动透传 Future 给 Surface 处理 Loading
               child: ModalDialogSurface<T>(
                 title: title,
                 config: config,
                 onClose: finish,
+                //  3. 这里的逻辑没变，但含义变了：如果 onConfirm 是 async，这里返回的就是 Future
                 onConfirm: ()=> onConfirm != null ? onConfirm(finish) : finish(),
                 onCancel: ()=> onCancel != null ? onCancel(finish) : finish(),
                 confirmText: confirmText,
@@ -166,5 +116,3 @@ class RadixModal {
     );
   }
 }
-
-

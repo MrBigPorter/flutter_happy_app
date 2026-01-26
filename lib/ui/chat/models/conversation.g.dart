@@ -517,3 +517,59 @@ Map<String, dynamic> _$CreateGroupResponseToJson(
       'ownerId': instance.ownerId,
       'createdAt': instance.createdAt,
     };
+
+InviteToGroupRequest _$InviteToGroupRequestFromJson(
+        Map<String, dynamic> json) =>
+    InviteToGroupRequest(
+      groupId: json['groupId'] as String,
+      memberIds:
+          (json['memberIds'] as List<dynamic>).map((e) => e as String).toList(),
+    );
+
+Map<String, dynamic> _$InviteToGroupRequestToJson(
+        InviteToGroupRequest instance) =>
+    <String, dynamic>{
+      'groupId': instance.groupId,
+      'memberIds': instance.memberIds,
+    };
+
+InviteToGroupResponse _$InviteToGroupResponseFromJson(
+        Map<String, dynamic> json) =>
+    $checkedCreate(
+      'InviteToGroupResponse',
+      json,
+      ($checkedConvert) {
+        final val = InviteToGroupResponse(
+          count: $checkedConvert('count', (v) => (v as num).toInt()),
+        );
+        return val;
+      },
+    );
+
+Map<String, dynamic> _$InviteToGroupResponseToJson(
+        InviteToGroupResponse instance) =>
+    <String, dynamic>{
+      'count': instance.count,
+    };
+
+Map<String, dynamic> _$LeaveGroupRequestToJson(LeaveGroupRequest instance) =>
+    <String, dynamic>{
+      'groupId': instance.groupId,
+    };
+
+LeaveGroupResponse _$LeaveGroupResponseFromJson(Map<String, dynamic> json) =>
+    $checkedCreate(
+      'LeaveGroupResponse',
+      json,
+      ($checkedConvert) {
+        final val = LeaveGroupResponse(
+          success: $checkedConvert('success', (v) => v as bool),
+        );
+        return val;
+      },
+    );
+
+Map<String, dynamic> _$LeaveGroupResponseToJson(LeaveGroupResponse instance) =>
+    <String, dynamic>{
+      'success': instance.success,
+    };

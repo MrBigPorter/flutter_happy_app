@@ -75,7 +75,8 @@ class AppRouter {
             path: '/chat/group/select/member',
             parentNavigatorKey: NavHub.key,
             builder: (context, state) {
-              return GroupMemberSelectPage();
+              final groupId = state.uri.queryParameters['groupId'];
+              return GroupMemberSelectPage(existingGroupId: groupId);
             }
         ),
         GoRoute(

@@ -517,6 +517,21 @@ class Api {
     return ConversationIdResponse.fromJson(res);
   }
 
+  /// 邀请成员进群 (强类型版)
+  static Future<InviteToGroupResponse> groupInviteApi(InviteToGroupRequest req) async {
+    final res = await Http.post('/api/v1/chat/group/invite', data: req.toJson());
+
+    // 2. 将返回结果转为 Model
+    return InviteToGroupResponse.fromJson(res);
+  }
+
+  /// 退群 (强类型版)
+  static Future<LeaveGroupResponse> groupLeaveApi(LeaveGroupRequest req) async {
+    final res = await Http.post('/api/v1/chat/group/leave', data: req.toJson());
+
+    return LeaveGroupResponse.fromJson(res);
+  }
+
   // 5. 获取详情 (进入 ChatPage 时调用)
   // 后端返回: ConversationDetailResponseDto
   static Future<ConversationDetail> chatDetailApi(String conversationId) async {

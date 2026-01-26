@@ -503,3 +503,61 @@ class CreateGroupResponse {
 
   Map<String, dynamic> toJson() => _$CreateGroupResponseToJson(this);
 }
+
+
+@JsonSerializable(createFactory: true)
+class InviteToGroupRequest {
+  final String groupId;
+  final List<String> memberIds;
+
+  InviteToGroupRequest({
+    required this.groupId,
+    required this.memberIds,
+  });
+
+  Map<String, dynamic> toJson() => _$InviteToGroupRequestToJson(this);
+
+}
+
+
+@JsonSerializable(checked: true)
+class InviteToGroupResponse {
+  final int count;
+
+  InviteToGroupResponse({required this.count});
+
+  factory InviteToGroupResponse.fromJson(Map<String, dynamic> json) =>
+      _$InviteToGroupResponseFromJson(json);
+
+  Map<String, dynamic> toJson() => _$InviteToGroupResponseToJson(this);
+
+
+  @override
+  String toString() => toJson().toString();
+}
+
+
+@JsonSerializable(createFactory: false)
+class LeaveGroupRequest {
+  final String groupId;
+
+  LeaveGroupRequest({required this.groupId});
+
+  Map<String, dynamic> toJson() => _$LeaveGroupRequestToJson(this);
+}
+
+
+@JsonSerializable(checked: true)
+class LeaveGroupResponse {
+  final bool success;
+
+  LeaveGroupResponse({required this.success});
+
+  factory LeaveGroupResponse.fromJson(Map<String, dynamic> json) =>
+      _$LeaveGroupResponseFromJson(json);
+
+  Map<String, dynamic> toJson() => _$LeaveGroupResponseToJson(this);
+
+  @override
+  String toString() => toJson().toString();
+}
