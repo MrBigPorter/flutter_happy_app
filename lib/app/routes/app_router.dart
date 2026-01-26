@@ -24,6 +24,8 @@ import 'package:go_router/go_router.dart';
 import '../../components/lucky_tab_bar.dart';
 import '../../ui/chat/chat_page.dart';
 import '../../ui/chat/group_member_select_page.dart';
+import '../../ui/chat/group_profile_page.dart';
+import '../../ui/chat/user_profile_page.dart';
 import '../page/deposit_detail_page.dart';
 import '../page/group_lobby_page.dart';
 import '../page/guide_page.dart';
@@ -80,6 +82,20 @@ class AppRouter {
             builder: (context, state) {
               return GroupMemberSelectPage();
             }
+        ),
+        GoRoute(
+          path: '/chat/group/profile/:id',
+          builder: (context, state) {
+            final cid = state.pathParameters['id']!;
+            return GroupProfilePage(conversationId: cid);
+          },
+        ),
+        GoRoute(
+          path: '/chat/direct/profile/:id',
+          builder: (context, state) {
+            final cid = state.pathParameters['id']!;
+            return UserProfilePage(conversationId: cid);
+          },
         ),
         GoRoute(
             name:"login",

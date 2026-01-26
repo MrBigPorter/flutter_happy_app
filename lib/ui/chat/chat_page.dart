@@ -1,5 +1,6 @@
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_app/app/routes/app_router.dart';
 import 'package:flutter_app/common.dart';
 import 'package:flutter_app/ui/chat/providers/conversation_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -34,7 +35,8 @@ class _ChatPageState extends ConsumerState<ChatPage> {
     super.initState();
     Future.microtask(() {
       // 1. 占位：告诉全 App 我正在看这个房间
-      ref.read(activeConversationIdProvider.notifier).state = widget.conversationId;
+      ref.read(activeConversationIdProvider.notifier).state =
+          widget.conversationId;
 
       // 2. 刷新数据
       ref.read(chatControllerProvider(widget.conversationId)).refresh();
@@ -73,11 +75,11 @@ class _ChatPageState extends ConsumerState<ChatPage> {
     final asyncMessages = ref.watch(chatStreamProvider(widget.conversationId));
     // 2. 监听详情状态
     final asyncDetail = ref.watch(chatDetailProvider(widget.conversationId));
-    final bool isGroup = asyncDetail.valueOrNull?.type == ConversationType.group;
+    final bool isGroup =
+        asyncDetail.valueOrNull?.type == ConversationType.group;
 
     // 判断是否是静默更新状态 (有数据，但正在刷新)
     final isUpdating = asyncMessages.isLoading && asyncMessages.hasValue;
-
 
     return GestureDetector(
       onTap: () => FocusScope.of(context).unfocus(),
@@ -197,6 +199,21 @@ class _ChatPageState extends ConsumerState<ChatPage> {
               ),
               onPressed: () {},
             ),
+              IconButton(
+                icon: Icon(
+                  Icons.more_horiz,
+                  color: context.textPrimary900,
+                  size: 24.sp,
+                ),
+                onPressed: (){
+                  if(isGroup){
+                    appRouter.push('/chat/group/profile/${widget.conversationId}');
+                  } else {
+                    appRouter.push('/chat/direct/profile/${widget.conversationId}');
+                  }
+                },
+              ),
+            SizedBox(width: 8.w),
             const SizedBox(width: 5),
           ],
         ),
@@ -207,7 +224,10 @@ class _ChatPageState extends ConsumerState<ChatPage> {
               child: asyncMessages.when(
                 // 只有第一次进且没数据时，才显示大 loading
                 loading: () => asyncMessages.hasValue
-                    ? _buildMessageList(asyncMessages.value!, isGroup) // 有旧数据就先显示旧的
+                    ? _buildMessageList(
+                        asyncMessages.value!,
+                        isGroup,
+                      ) // 有旧数据就先显示旧的
                     : const Center(child: CircularProgressIndicator()),
 
                 error: (error, _) => Center(child: Text("Error: $error")),
@@ -221,13 +241,17 @@ class _ChatPageState extends ConsumerState<ChatPage> {
             ModernChatInputBar(
               onSend: (text) {
                 ref
-                    .read(chatControllerProvider(widget.conversationId)).sendMessage(text);
+                    .read(chatControllerProvider(widget.conversationId))
+                    .sendMessage(text);
               },
               //  绑定发图逻辑
               onSendImage: (XFile file) {
                 // 直接把 file 对象传给 Notifier
-                ref.read(chatControllerProvider(widget.conversationId)).sendImage(file);
-              }, conversationId: widget.conversationId,
+                ref
+                    .read(chatControllerProvider(widget.conversationId))
+                    .sendImage(file);
+              },
+              conversationId: widget.conversationId,
             ),
           ],
         ),
@@ -263,20 +287,27 @@ class _ChatPageState extends ConsumerState<ChatPage> {
         // 1. 检查是否到底 (Visual Top)
         if (index == messages.length) {
           // 1. 获取是否有更多
-          final controller = ref.read(chatControllerProvider(widget.conversationId));
+          final controller = ref.read(
+            chatControllerProvider(widget.conversationId),
+          );
           final hasMore = controller.hasMore;
           // 2. 监听是否正在加载 (关键！)
-          final isLoadingMore = ref.watch(chatLoadingMoreProvider(widget.conversationId));
+          final isLoadingMore = ref.watch(
+            chatLoadingMoreProvider(widget.conversationId),
+          );
           return Container(
             padding: const EdgeInsets.symmetric(vertical: 15),
             alignment: Alignment.center,
             // 只有当“有更多”且“正在加载”时，才显示 Spinner
             child: (hasMore && isLoadingMore)
                 ? const SizedBox(
-              width: 20, height: 20,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            )
-                : (hasMore ? const SizedBox.shrink() : const Text("—— No more history ——")),
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : (hasMore
+                      ? const SizedBox.shrink()
+                      : const Text("—— No more history ——")),
           );
         }
 
@@ -290,11 +321,12 @@ class _ChatPageState extends ConsumerState<ChatPage> {
           //  [这里 3] 把 true/false 传进去！
           showReadStatus: isLatestRead,
           onRetry: () {
-            ref.read(chatControllerProvider(widget.conversationId)).resendMessage(msg.id);
+            ref
+                .read(chatControllerProvider(widget.conversationId))
+                .resendMessage(msg.id);
           },
         );
       },
     );
   }
 }
-
