@@ -468,7 +468,7 @@ class _Avatar extends StatelessWidget {
               // 临时测试：直接跳转到测试聊天室
               // 等做好了“会话列表页”，这里改成 appRouter.push('/conversations');
               const testId = "test_conversation_001";
-              appRouter.push('/chat/$testId');
+              appRouter.push('/chat/room/$testId');
             },
             child: Stack(
               clipBehavior: Clip.none,

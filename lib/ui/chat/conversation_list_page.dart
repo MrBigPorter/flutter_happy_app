@@ -71,13 +71,19 @@ class _AddMenuButton extends StatelessWidget {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.r)),
         color: context.bgPrimary,
         onSelected: (value) {
-          if (value == 'group') {
-            // 建群
-           appRouter.push('/chat/group/select/member');
-          } else if (value == 'friend') {
-            //  核心修改在这里：
-            // 点击 "Add Contact" -> 弹出搜索窗口，而不是输入ID窗口
-            showDialog(context: context, builder: (_) => const UserSearchDialog());
+          print("Selected menu: $value");
+          switch(value) {
+            case 'contacts':
+              // 打开通讯录页面
+              appRouter.push('/chat/contacts');
+              break;
+              case 'group':
+                appRouter.push('/chat/group/select/member');
+              break;
+              case 'friend':
+                // 打开搜索用户对话框
+                showDialog(context: context, builder: (_) => const UserSearchDialog());
+              break;
           }
         },
         itemBuilder: (context) => [
@@ -86,19 +92,35 @@ class _AddMenuButton extends StatelessWidget {
              color: context.borderPrimary,
            ),
           _buildMenuItem(context,'friend', Icons.person_add_alt_1_outlined, 'Add Contact'), // 添加朋友/搜索用户
+          PopupMenuDivider(
+            color: context.borderPrimary,
+          ),
+          _buildMenuItem(context,'contacts', Icons.contacts, 'Contacts'),
         ],
       ),
     );
   }
 
-  PopupMenuItem<String> _buildMenuItem(BuildContext context,String value, IconData icon, String text) {
+  PopupMenuItem<String> _buildMenuItem(
+      BuildContext context,
+      String value,
+      IconData icon,
+      String text,
+      ) {
     return PopupMenuItem<String>(
       value: value,
+      height: 48.h, // 稍微调高一点，手指好点
       child: Row(
         children: [
-          Icon(icon, size: 20.w, color: context.textPrimary900),
+          Icon(icon, color: context.textPrimary900, size: 20.r), // 图标
           SizedBox(width: 12.w),
-          Text(text, style: TextStyle(fontSize: 14.sp, color: context.textPrimary900)),
+          Text(
+            text,
+            style: TextStyle(
+              color: context.textPrimary900,
+              fontSize: 15.sp,
+            ),
+          ),
         ],
       ),
     );

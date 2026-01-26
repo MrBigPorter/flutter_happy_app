@@ -130,7 +130,7 @@ class ConversationItem extends ConsumerWidget {
         // 2. 路由跳转到详情页
         // 传参：ID 和 Title (用于 AppBar 显示)
         context.push(
-          '/chat/${item.id}?title=${Uri.encodeComponent(item.name)}',
+          '/chat/room/${item.id}?title=${Uri.encodeComponent(item.name)}',
         );
       },
     );

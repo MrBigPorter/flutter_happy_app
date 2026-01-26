@@ -82,7 +82,7 @@ class _CreateDirectChatDialogState extends ConsumerState<CreateDirectChatDialog>
 
     if (res != null && mounted) {
       Navigator.pop(context);
-      context.push('/chat/${res.conversationId}');
+      context.push('/chat/room/${res.conversationId}');
     }
   }
 }

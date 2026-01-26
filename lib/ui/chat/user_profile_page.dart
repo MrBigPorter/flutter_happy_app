@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_app/app/routes/app_router.dart';
 import 'package:flutter_app/common.dart';
 import 'package:flutter_app/components/base_scaffold.dart';
 import 'package:flutter_app/components/skeleton.dart'; // 务必导入 Skeleton
@@ -29,7 +30,7 @@ class _UserProfilePageState extends ConsumerState<UserProfilePage> {
   @override
   void initState() {
     super.initState();
-    // 🔥 核心：进入页面强制刷新数据，确保骨架屏出现，且数据最新
+    //  核心：进入页面强制刷新数据，确保骨架屏出现，且数据最新
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.invalidate(chatDetailProvider(widget.conversationId));
     });
@@ -68,7 +69,7 @@ class _UserProfilePageState extends ConsumerState<UserProfilePage> {
           SizedBox(height: 40.h),
           _buildSettingsList(context, detail),
           SizedBox(height: 40.h),
-          _buildFooterButtons(context),
+          _buildFooterButtons(context,detail),
           SizedBox(height: 50.h),
         ],
       ),
@@ -216,11 +217,13 @@ class _UserProfilePageState extends ConsumerState<UserProfilePage> {
     );
   }
 
-  Widget _buildFooterButtons(BuildContext context) {
+  Widget _buildFooterButtons(BuildContext context,ConversationDetail detail) {
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 16.w),
       child: Column(
         children: [
+
+          SizedBox(height: 16.h),
           Button(
             variant: ButtonVariant.ghost,
             width: double.infinity,

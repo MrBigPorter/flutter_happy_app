@@ -203,7 +203,7 @@ class _GroupMemberSelectPageState extends ConsumerState<GroupMemberSelectPage> {
 
     if (createResult != null&& mounted) {
       final gid = createResult.id;
-      appRouter.go('/chat/$gid');
+      appRouter.go('/chat/room/$gid');
       RadixToast.success("Group '$groupName' created successfully");
     }
   }

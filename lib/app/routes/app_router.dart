@@ -23,6 +23,8 @@ import 'package:go_router/go_router.dart';
 
 import '../../components/lucky_tab_bar.dart';
 import '../../ui/chat/chat_page.dart';
+import '../../ui/chat/contact_list_page.dart';
+import '../../ui/chat/contact_profile_page.dart';
 import '../../ui/chat/group_member_select_page.dart';
 import '../../ui/chat/group_profile_page.dart';
 import '../../ui/chat/user_profile_page.dart';
@@ -70,13 +72,6 @@ class AppRouter {
         // 不带底部导航栏的页面 (全屏页)
         // 把 ChatPage 放在这里，和 ShellRoute 平级！
         GoRoute(
-          path: '/chat/:conversationId',
-          parentNavigatorKey: NavHub.key,
-          builder: (context, state) {
-            return ChatPage(conversationId: state.pathParameters['conversationId']!);
-          },
-        ),
-        GoRoute(
             path: '/chat/group/select/member',
             parentNavigatorKey: NavHub.key,
             builder: (context, state) {
@@ -85,16 +80,33 @@ class AppRouter {
         ),
         GoRoute(
           path: '/chat/group/profile/:id',
+          parentNavigatorKey: NavHub.key,
           builder: (context, state) {
             final cid = state.pathParameters['id']!;
             return GroupProfilePage(conversationId: cid);
           },
         ),
         GoRoute(
+          path: '/chat/contacts',
+          parentNavigatorKey: NavHub.key,
+          builder: (context, state) => const ContactListPage(),
+        ),
+        GoRoute(
           path: '/chat/direct/profile/:id',
           builder: (context, state) {
             final cid = state.pathParameters['id']!;
             return UserProfilePage(conversationId: cid);
+          },
+        ),
+        GoRoute(
+          path: '/contact/profile/:userId',
+          builder: (context, state) => ContactProfilePage(userId: state.pathParameters['userId']!),
+        ),
+        GoRoute(
+          path: '/chat/room/:conversationId',
+          parentNavigatorKey: NavHub.key,
+          builder: (context, state) {
+            return ChatPage(conversationId: state.pathParameters['conversationId']!);
           },
         ),
         GoRoute(

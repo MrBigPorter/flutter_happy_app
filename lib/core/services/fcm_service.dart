@@ -137,7 +137,7 @@ class FcmService {
     // 场景 B: 聊天私信 (预留)
       case 'chat':
       // 假设你的聊天路由是 /chat/:id
-      // if (id != null) appRouter.push('/chat/$id');
+      // if (id != null) appRouter.push('/chat/room/$id');
         break;
 
     // 场景 C: 系统公告或默认
