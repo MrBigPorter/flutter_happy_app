@@ -1,43 +1,41 @@
-没问题，大哥！完全按照你的格式，把 **建群 UI** 标记为**未完成 ([P0])**，其他保持不动。
+收到，大哥！既然代码都写完了，功能也跑通了，那这张**作战地图（Roadmap）**必须得实时更新，把拿下的阵地插上旗子！🚩
 
-这是修正后的 **v3.1+ 路线图**：
+我这就把**已完成**的任务项勾选上，并重新整理一下剩余的攻坚目标。
 
 ---
 
-# 🚦 Lucky IM Roadmap & Next Steps (v3.1+)
+# 🚦 Lucky IM Roadmap & Next Steps (v3.1+ Updated)
 
-> **当前阶段**：v3.1 (UX & Group Foundation) 气泡适配已完成。
-> **核心目标**：**补全建群 UI** 与 **群聊数据联调**。
+> **当前阶段**：v3.1 (UX & Group Foundation)
+> **状态更新**：**建群 UI** 与 **核心业务链路** 已闭环，进入收尾打磨阶段。
 
 ---
 
 ## 1. 🔥 v3.1 剩余冲刺 (Remaining Priorities)
 
-UI 壳子尚未完成，需要先搭页面，再注入灵魂。
+### ✅ [P0] 建群交互 UI (Group Creation UI) **[DONE]**
 
-### [P0] 建群交互 UI (Group Creation UI) 👈 **NEXT**
+> **战况**：已全线竣工。
 
-**现状**：缺少选人页面，点击菜单目前无反应或报错。
+* [x] **选人页面**: `GroupMemberSelectPage` 已实现，包含骨架屏与多选逻辑。
+* [x] **路由挂载**: `ConversationListPage` 菜单已集成跳转 `/chat/group/select/member`。
+* [x] **弹窗逻辑**: 选人后弹出 `RadixModal` 输入群名，逻辑已闭环。
 
-* [ ] **选人页面**: 实现 `GroupMemberSelectPage`，包含好友列表多选交互。
-* [ ] **路由挂载**: 在 `ConversationListPage` 菜单中实现正确跳转。
-* [ ] **弹窗逻辑**: 选人完成后，弹出输入群名的 Dialog。
+### 🚧 [P1] 群聊业务闭环 (Group Chat Data & Logic) **[IN PROGRESS]**
 
-### [P1] 群聊业务闭环 (Group Chat Data & Logic)
+> **战况**：核心数据流已通，仅剩头像拼合等视觉细节。
 
-**现状**：等待 UI 壳子完成后，对接真实数据。
-
-* [ ] **好友列表数据源**: 实现 `contactProvider`，从后端拉取真实好友列表，替换选人页的 Mock 数据。
-* [ ] **建群 API 联调**: 在 `GroupMemberSelectPage` 点击创建时，将选中的 `memberIds` 传给后端 `createGroup` 接口。
+* [x] **好友列表数据源**: 已对接 `contactListProvider`，拉取真实好友数据。
+* [x] **建群 API 联调**: `createGroupController` 已实装，成功后返回 `gid` 并跳转。
 * [ ] **群头像逻辑**:
-* **基础**: 实现默认群头像展示。
+* **基础**: 目前使用默认头像或单张头像。
 * **进阶**: 实现“九宫格”合成头像逻辑（取群内前 4-9 人头像拼合）。
 
 
 
-### [P2] 会话列表细节 (List Polish)
+### [P2] 会话列表细节 (List Polish) **[TODO]**
 
-**现状**：发送失败虽然气泡有红点，但退回到列表页后看不出哪条失败了。
+> **战况**：待开发。
 
 * [ ] **列表失败标记**: `ConversationItem` 需要支持 `MessageStatus.failed` 状态，显示红色小图标或文字提示。
 
@@ -67,12 +65,11 @@ UI 壳子尚未完成，需要先搭页面，再注入灵魂。
 
 ---
 
-## 📝 下一步行动指令 (Next Action)
+## 📝 调整后的行动指令 (Next Action)
 
-**既然 UI 还没做，那我们这就把这个页面画出来！**
+**[P0] 和 [P1] 的大头已经拿下，现在最大的“欠债”是 [P2] 和群头像细节。**
 
-👉 **任务**: 实现 **[P0] 建群交互 UI**。
+👉 **下一步建议**:
+既然核心功能都通了，建议先搞定 **[P2] 会话列表失败标记**。
+因为我们之前已经做了“消息发送失败”的红点（在聊天页），但用户退出来在列表页如果不提示“有消息没发出去”，体验会断层。
 
-1. 创建 `lib/ui/chat/pages/group_member_select_page.dart`。
-2. 实现一个带多选功能的列表页（暂时用 Mock 数据填充，先跑通流程）。
-3. 在 `ConversationListPage` 完成跳转。
