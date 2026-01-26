@@ -157,8 +157,24 @@ class _ChatDetailProviderElement
   String get conversationId => (origin as ChatDetailProvider).conversationId;
 }
 
+String _$conversationListHash() => r'3685f40723157193605e42b11be861f9bc3f1886';
+
+/// See also [ConversationList].
+@ProviderFor(ConversationList)
+final conversationListProvider = AutoDisposeAsyncNotifierProvider<
+    ConversationList, List<Conversation>>.internal(
+  ConversationList.new,
+  name: r'conversationListProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$conversationListHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+typedef _$ConversationList = AutoDisposeAsyncNotifier<List<Conversation>>;
 String _$createDirectChatControllerHash() =>
-    r'9aca1d98d65f5b16888ff80fdf559a335813b296';
+    r'd1917cffb85efa129a375c0f1bb0c820f1a072f7';
 
 /// See also [CreateDirectChatController].
 @ProviderFor(CreateDirectChatController)

@@ -12,6 +12,7 @@ import 'package:flutter_app/core/store/auth/auth_provider.dart';
 import 'package:flutter_app/ui/chat/providers/conversation_provider.dart';
 
 import '../../components/network_status_bar.dart';
+import '../../components/skeleton.dart';
 import '../button/variant.dart';
 import 'components/conversation_item.dart';
 
@@ -137,26 +138,99 @@ class _ConversationListView extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final list = ref.watch(conversationListProvider);
-    
-    if (list.isEmpty) {
-      return Center(
+    // 1. 监听会话列表的异步状态
+    final conversationState = ref.watch(conversationListProvider);
+
+    return conversationState.when(
+      //  A. 加载中：显示骨架屏
+      loading: () => _buildSkeletonList(context),
+
+      // B. 出错：显示错误提示与重试按钮
+      error: (err, _) => Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.chat_bubble_outline, size: 48.w, color: context.textPrimary900),
-            SizedBox(height: 10.h),
-            Text("No messages yet", style: TextStyle(color: context.textSecondary700, fontSize: 14.sp)),
+            Text("Failed to load messages: $err"),
+            TextButton(
+              onPressed: () => ref.invalidate(conversationListProvider),
+              child: const Text("Retry"),
+            ),
           ],
         ),
-      );
-    }
+      ),
 
-    return ListView.separated(
-      itemCount: list.length,
-      separatorBuilder: (_, __) =>  Divider(height: 1, indent: 72, color: context.bgPrimary),
+      // C. 数据就绪
+      data: (list) {
+        if (list.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.chat_bubble_outline, size: 48.w, color: context.textPrimary900),
+                SizedBox(height: 10.h),
+                Text("No messages yet", style: TextStyle(color: context.textSecondary700, fontSize: 14.sp)),
+              ],
+            ),
+          );
+        }
+
+        return ListView.separated(
+          itemCount: list.length,
+          separatorBuilder: (_, __) => Divider(height: 1, indent: 72, color: context.bgPrimary),
+          itemBuilder: (context, index) {
+            return ConversationItem(item: list[index]);
+          },
+        );
+      },
+    );
+  }
+
+  //  2. 构建会话列表骨架屏
+  Widget _buildSkeletonList(BuildContext context) {
+    return ListView.builder(
+      itemCount: 10, // 默认显示 10 条占位图
+      physics: const NeverScrollableScrollPhysics(),
       itemBuilder: (context, index) {
-        return ConversationItem(item: list[index]);
+        return Padding(
+          padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+          child: Row(
+            children: [
+              // 头像骨架 (48x48 圆形)
+              Skeleton.react(
+                width: 48.r,
+                height: 48.r,
+                borderRadius: BorderRadius.circular(24.r),
+              ),
+              SizedBox(width: 12.w),
+              // 中间文字骨架
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // 名字
+                    Skeleton.react(width: 100.w, height: 16.h),
+                    SizedBox(height: 8.h),
+                    // 最后一条消息预览
+                    Skeleton.react(width: 180.w, height: 12.h),
+                  ],
+                ),
+              ),
+              // 右侧时间与未读数骨架
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Skeleton.react(width: 40.w, height: 12.h),
+                  SizedBox(height: 8.h),
+                  Skeleton.react(
+                    width: 16.r,
+                    height: 16.r,
+                    borderRadius: BorderRadius.circular(8.r),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
       },
     );
   }

@@ -19,44 +19,55 @@ class LuckyTabBar extends ConsumerWidget {
   static const List<_TabItem> _tabs = [
     _TabItem(
       label: "common.tabbar.home",
-      icon: Icons.home_outlined,       // 首页-未选中
-      activeIcon: Icons.home,          // 首页-选中
+      icon: Icons.home_outlined, // 首页-未选中
+      activeIcon: Icons.home, // 首页-选中
       location: "/home",
     ),
     _TabItem(
       label: "common.tabbar.product",
       icon: Icons.shopping_bag_outlined, // 商品-未选中
-      activeIcon: Icons.shopping_bag,    // 商品-选中
+      activeIcon: Icons.shopping_bag, // 商品-选中
       location: "/product",
     ),
     //  替换 Winners -> Chat (使用气泡图标)
     _TabItem(
       label: "common.tabbar.chat",
       icon: Icons.chat_bubble_outline, // 聊天-未选中
-      activeIcon: Icons.chat_bubble,   // 聊天-选中
+      activeIcon: Icons.chat_bubble, // 聊天-选中
       location: "/conversations",
     ),
     _TabItem(
       label: "common.tabbar.me",
-      icon: Icons.person_outline,      // 我的-未选中
-      activeIcon: Icons.person,        // 我的-选中
+      icon: Icons.person_outline, // 我的-未选中
+      activeIcon: Icons.person, // 我的-选中
       location: "/me",
     ),
   ];
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final isAuthenticated = ref.watch(authProvider.select((value) => value.isAuthenticated));
+    final isAuthenticated = ref.watch(
+      authProvider.select((value) => value.isAuthenticated),
+    );
     final String location = GoRouterState.of(context).uri.toString();
     int currentIndex = _tabs.indexWhere(
-          (tab) => location.startsWith(tab.location),
+      (tab) => location.startsWith(tab.location),
     );
     if (currentIndex == -1) currentIndex = 0;
 
     // 2. 监听总未读数
-    final totalUnread = isAuthenticated ? ref.watch(conversationListProvider.select(
-          (list) => list.fold(0, (sum, item) => sum + item.unreadCount),
-    )) : 0;
+    final totalUnread = isAuthenticated
+        ? ref.watch(
+            conversationListProvider.select(
+              (asyncList) =>
+                  asyncList.valueOrNull?.fold<int>(
+                    0,
+                    (sum, item) => sum + item.unreadCount,
+                  ) ??
+                  0, // 如果正在加载或数据为空，则返回 0
+            ),
+          )
+        : 0;
 
     return Scaffold(
       body: child,
@@ -108,11 +119,17 @@ class LuckyTabBar extends ConsumerWidget {
                     right: -4,
                     top: -4,
                     child: Container(
-                      padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 2.h),
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 4.w,
+                        vertical: 2.h,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.red,
                         borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: context.bgPrimary, width: 1.5),
+                        border: Border.all(
+                          color: context.bgPrimary,
+                          width: 1.5,
+                        ),
                       ),
                       constraints: BoxConstraints(minWidth: 16.w),
                       child: Center(
@@ -146,7 +163,7 @@ class LuckyTabBar extends ConsumerWidget {
 // 5. 修改数据模型：把 String 改为 IconData
 class _TabItem {
   final String label;
-  final IconData icon;       // 改了这里
+  final IconData icon; // 改了这里
   final IconData activeIcon; // 改了这里
   final String location;
 

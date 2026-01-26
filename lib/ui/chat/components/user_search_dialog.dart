@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_app/common.dart';
+import 'package:flutter_app/ui/chat/providers/conversation_provider.dart';
 import 'package:flutter_app/ui/index.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -63,6 +64,7 @@ class _UserSearchDialogState extends ConsumerState<UserSearchDialog> {
                           final success = await ref
                               .read(addFriendControllerProvider(user.id).notifier)
                               .execute();
+                          ref.invalidate(conversationListProvider);
                           if (success && mounted) Navigator.pop(context);
                         },
                         child: const Text("Add"),
