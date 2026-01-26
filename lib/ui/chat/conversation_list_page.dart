@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_app/app/routes/app_router.dart';
+import 'package:flutter_app/common.dart';
+import 'package:flutter_app/components/base_scaffold.dart';
+import 'package:flutter_app/ui/button/button.dart';
 import 'package:flutter_app/ui/chat/components/user_search_dialog.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -9,8 +12,8 @@ import 'package:flutter_app/core/store/auth/auth_provider.dart';
 import 'package:flutter_app/ui/chat/providers/conversation_provider.dart';
 
 import '../../components/network_status_bar.dart';
+import '../button/variant.dart';
 import 'components/conversation_item.dart';
-import 'components/create_group_dialog.dart';
 
 
 
@@ -33,14 +36,11 @@ class ConversationListPage extends ConsumerWidget {
       });
     }
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Chats'),
-        centerTitle: true,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        actions: isLoggedIn ? const [_AddMenuButton()] : null, // 提取菜单按钮
-      ),
+    return BaseScaffold(
+      title: 'Chats',
+      actions: [
+        const _AddMenuButton(),
+      ],
       body:Column(
         children: [
           // A. 放入网络状态条 (放在最顶部)
@@ -65,9 +65,10 @@ class _AddMenuButton extends StatelessWidget {
     return Padding(
       padding: EdgeInsets.only(right: 8.w),
       child: PopupMenuButton<String>(
-        icon: const Icon(Icons.add_circle_outline),
+        icon:  Icon(Icons.add_circle_outline, size: 24.w, color: context.textPrimary900),
         offset: Offset(0, 45.h),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.r)),
+        color: context.bgPrimary,
         onSelected: (value) {
           if (value == 'group') {
             // 建群
@@ -79,22 +80,24 @@ class _AddMenuButton extends StatelessWidget {
           }
         },
         itemBuilder: (context) => [
-          _buildMenuItem('group', Icons.chat_bubble_outline, 'New Chat'), // 发起群聊
-          const PopupMenuDivider(),
-          _buildMenuItem('friend', Icons.person_add_alt_1_outlined, 'Add Contact'), // 添加朋友/搜索用户
+          _buildMenuItem(context,'group', Icons.chat_bubble_outline, 'New Chat'), // 发起群聊
+           PopupMenuDivider(
+             color: context.borderPrimary,
+           ),
+          _buildMenuItem(context,'friend', Icons.person_add_alt_1_outlined, 'Add Contact'), // 添加朋友/搜索用户
         ],
       ),
     );
   }
 
-  PopupMenuItem<String> _buildMenuItem(String value, IconData icon, String text) {
+  PopupMenuItem<String> _buildMenuItem(BuildContext context,String value, IconData icon, String text) {
     return PopupMenuItem<String>(
       value: value,
       child: Row(
         children: [
-          Icon(icon, size: 20.w, color: Colors.black87),
+          Icon(icon, size: 20.w, color: context.textPrimary900),
           SizedBox(width: 12.w),
-          Text(text, style: TextStyle(fontSize: 14.sp)),
+          Text(text, style: TextStyle(fontSize: 14.sp, color: context.textPrimary900)),
         ],
       ),
     );
@@ -111,13 +114,15 @@ class _GuestView extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.lock_outline, size: 64.w, color: Colors.grey[300]),
+          Icon(Icons.lock_outline, size: 64.w, color: context.textBrandPrimary900),
           SizedBox(height: 16.h),
-          Text("Login to view messages", style: TextStyle(fontSize: 14.sp, color: Colors.grey[600])),
+          Text("Login to view messages", style: TextStyle(fontSize: 14.sp, color: context.textPrimary900)),
           SizedBox(height: 24.h),
-          ElevatedButton(
+          Button(
+            width: 150.w,
+            radius: 20.r,
+            variant: ButtonVariant.primary,
             onPressed: () => context.push('/login'),
-            style: ElevatedButton.styleFrom(padding: EdgeInsets.symmetric(horizontal: 32.w, vertical: 12.h)),
             child: const Text("Go to Login"),
           ),
         ],
@@ -139,9 +144,9 @@ class _ConversationListView extends ConsumerWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.chat_bubble_outline, size: 48.w, color: Colors.grey[300]),
+            Icon(Icons.chat_bubble_outline, size: 48.w, color: context.textPrimary900),
             SizedBox(height: 10.h),
-            Text("No messages yet", style: TextStyle(color: Colors.grey[500])),
+            Text("No messages yet", style: TextStyle(color: context.textSecondary700, fontSize: 14.sp)),
           ],
         ),
       );
@@ -149,9 +154,8 @@ class _ConversationListView extends ConsumerWidget {
 
     return ListView.separated(
       itemCount: list.length,
-      separatorBuilder: (_, __) => const Divider(height: 1, indent: 72),
+      separatorBuilder: (_, __) =>  Divider(height: 1, indent: 72, color: context.bgPrimary),
       itemBuilder: (context, index) {
-        // 🔥 使用抽离的 Item 组件
         return ConversationItem(item: list[index]);
       },
     );

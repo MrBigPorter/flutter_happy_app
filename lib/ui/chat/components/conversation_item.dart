@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 
-// 🔥 引入相关 Provider 和 Model
+//  引入相关 Provider 和 Model
 import 'package:flutter_app/ui/chat/providers/conversation_provider.dart';
 import 'package:flutter_app/ui/chat/models/conversation.dart';
 
@@ -27,7 +27,7 @@ class ConversationItem extends ConsumerWidget {
       contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
 
       // ===========================
-      // 🟢 头像区域 (带红点)
+      //  头像区域 (带红点)
       // ===========================
       leading: Stack(
         clipBehavior: Clip.none,
@@ -74,7 +74,7 @@ class ConversationItem extends ConsumerWidget {
       ),
 
       // ===========================
-      // 🔵 标题 (群名/人名)
+      //  标题 (群名/人名)
       // ===========================
       title: Text(
         item.name,
@@ -88,7 +88,7 @@ class ConversationItem extends ConsumerWidget {
       ),
 
       // ===========================
-      // 🟡 摘要 (最后一条消息)
+      //  摘要 (最后一条消息)
       // ===========================
       subtitle: Padding(
         padding: EdgeInsets.only(top: 4.h),
@@ -104,7 +104,7 @@ class ConversationItem extends ConsumerWidget {
       ),
 
       // ===========================
-      // 🟣 时间
+      //  时间
       // ===========================
       trailing: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -121,7 +121,7 @@ class ConversationItem extends ConsumerWidget {
       ),
 
       // ===========================
-      // 🔥 点击事件
+      //  点击事件
       // ===========================
       onTap: () {
         // 1. 调用 Provider 清除本地红点

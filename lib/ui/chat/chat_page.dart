@@ -85,7 +85,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
         backgroundColor: context.bgPrimary, // iOS 风格背景灰
         //  优化 2: Messenger 风格 Header
         appBar: AppBar(
-          backgroundColor: context.bgSecondary,
+          backgroundColor: context.bgPrimary,
           surfaceTintColor: Colors.transparent,
           elevation: 0.5,
           // Messenger 有一条很细的分割线

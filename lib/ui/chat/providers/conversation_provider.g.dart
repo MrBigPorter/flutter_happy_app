@@ -157,24 +157,6 @@ class _ChatDetailProviderElement
   String get conversationId => (origin as ChatDetailProvider).conversationId;
 }
 
-String _$createGroupControllerHash() =>
-    r'080da4c444c0e8e069beb6da404cbe7449e5f90d';
-
-/// See also [CreateGroupController].
-@ProviderFor(CreateGroupController)
-final createGroupControllerProvider = AutoDisposeNotifierProvider<
-    CreateGroupController, AsyncValue<ConversationIdResponse?>>.internal(
-  CreateGroupController.new,
-  name: r'createGroupControllerProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$createGroupControllerHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
-
-typedef _$CreateGroupController
-    = AutoDisposeNotifier<AsyncValue<ConversationIdResponse?>>;
 String _$createDirectChatControllerHash() =>
     r'9aca1d98d65f5b16888ff80fdf559a335813b296';
 

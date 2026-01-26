@@ -219,30 +219,6 @@ final conversationListProvider =
     });
 
 @riverpod
-class CreateGroupController extends _$CreateGroupController {
-  @override
-  AsyncValue<ConversationIdResponse?> build() {
-    return const AsyncData(null);
-  }
-
-  Future<ConversationIdResponse?> createGroup(
-    String groupName,
-    List<String> memberIds,
-  ) async {
-    state = const AsyncValue.loading();
-
-    state = await AsyncValue.guard(() async {
-      return await Api.chatGroupApi(groupName, memberIds);
-    });
-
-    if (state.hasError) {
-      return null;
-    }
-    return state.value;
-  }
-}
-
-@riverpod
 class CreateDirectChatController extends _$CreateDirectChatController {
   @override
   AsyncValue<ConversationIdResponse?> build() {

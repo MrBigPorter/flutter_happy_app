@@ -1,27 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_app/ui/chat/providers/contact_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 
-// 临时定义的简单的用户模型 (后续会被真实的 User Model 替换)
-class SimpleUser {
-  final String id;
-  final String nickname;
-  final String avatar;
-  SimpleUser({required this.id, required this.nickname, required this.avatar});
-}
-
-// 模拟好友数据 Provider (P1 阶段我们会替换成真实的 API 调用)
-final mockFriendsProvider = FutureProvider.autoDispose<List<SimpleUser>>((ref) async {
-  // 模拟网络延迟
-  await Future.delayed(const Duration(milliseconds: 500));
-  // 返回模拟数据
-  return List.generate(15, (index) => SimpleUser(
-    id: 'user_$index',
-    nickname: 'Friend $index',
-    avatar: 'https://i.pravatar.cc/150?u=$index',
-  ));
-});
 
 class GroupMemberSelectPage extends ConsumerStatefulWidget {
   const GroupMemberSelectPage({super.key});
@@ -36,17 +18,17 @@ class _GroupMemberSelectPageState extends ConsumerState<GroupMemberSelectPage> {
 
   @override
   Widget build(BuildContext context) {
-    final asyncFriends = ref.watch(mockFriendsProvider);
+    //  监听真实的联系人列表状态 (AsyncNotifierProvider)
+    final contactState = ref.watch(contactListProvider);
 
     return Scaffold(
       appBar: AppBar(
         title: const Text("Select Members"),
         centerTitle: true,
         actions: [
-          // 右上角 "完成" 按钮
           TextButton(
             onPressed: _selectedIds.isEmpty
-                ? null // 没选人时不可点
+                ? null
                 : () => _showGroupNameDialog(context),
             child: Text(
               "Done (${_selectedIds.length})",
@@ -60,9 +42,21 @@ class _GroupMemberSelectPageState extends ConsumerState<GroupMemberSelectPage> {
           SizedBox(width: 8.w),
         ],
       ),
-      body: asyncFriends.when(
+      //  使用 AsyncValue 的 when 模式处理三种状态
+      body: contactState.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (err, _) => Center(child: Text("Error: $err")),
+        error: (err, _) => Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text("Error: $err"),
+              TextButton(
+                onPressed: () => ref.invalidate(contactListProvider),
+                child: const Text("Retry"),
+              )
+            ],
+          ),
+        ),
         data: (friends) {
           if (friends.isEmpty) {
             return const Center(child: Text("No friends found"));
@@ -77,14 +71,18 @@ class _GroupMemberSelectPageState extends ConsumerState<GroupMemberSelectPage> {
               return CheckboxListTile(
                 contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 4.h),
                 value: isSelected,
-                activeColor: Colors.green, // 微信风格绿
+                activeColor: Colors.green,
                 secondary: CircleAvatar(
                   radius: 20.r,
                   backgroundColor: Colors.grey[200],
-                  backgroundImage: NetworkImage(user.avatar),
+                  // 对接真实字段 avatar
+                  backgroundImage: (user.avatar != null && user.avatar!.isNotEmpty)
+                      ? NetworkImage(user.avatar!)
+                      : null,
+                  child: user.avatar == null ? const Icon(Icons.person) : null,
                 ),
                 title: Text(
-                  user.nickname,
+                  user.nickname, // 对接真实字段 nickname
                   style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w500),
                 ),
                 onChanged: (bool? checked) {
@@ -104,7 +102,6 @@ class _GroupMemberSelectPageState extends ConsumerState<GroupMemberSelectPage> {
     );
   }
 
-  // 选完人后，弹窗输入群名
   void _showGroupNameDialog(BuildContext context) {
     final TextEditingController nameController = TextEditingController();
 
@@ -140,8 +137,8 @@ class _GroupMemberSelectPageState extends ConsumerState<GroupMemberSelectPage> {
             onPressed: () {
               final name = nameController.text.trim();
               if (name.isNotEmpty) {
-                Navigator.pop(ctx); // 关闭弹窗
-                _createGroupSimulation(name);
+                Navigator.pop(ctx);
+                _handleCreateGroup(name); // 调用真实创建逻辑
               }
             },
             child: const Text("Create"),
@@ -151,26 +148,40 @@ class _GroupMemberSelectPageState extends ConsumerState<GroupMemberSelectPage> {
     );
   }
 
-  Future<void> _createGroupSimulation(String groupName) async {
-    // ⬇️ [P1] 这里将来会调用真实的 Api.createGroup
-    debugPrint("🚀 Creating group: '$groupName' with members: $_selectedIds");
+  //  真实的建群逻辑处理
+  Future<void> _handleCreateGroup(String groupName) async {
+    // 1. 显示全局 Loading (防止二次点击)
+    if(mounted) {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => const Center(child: CircularProgressIndicator()),
+      );
+    }
 
-    // 模拟 loading
-    if(mounted) showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => const Center(child: CircularProgressIndicator()),
-    );
+    try {
+      // 2. 调用 AsyncNotifier 中的副作用方法
+      final result = await ref.read(contactListProvider.notifier).createGroup(
+        name: groupName,
+        memberIds: _selectedIds.toList(),
+      );
 
-    await Future.delayed(const Duration(seconds: 1));
+      if (mounted) Navigator.pop(context); // 关闭 Loading
 
-    if (mounted) {
-      Navigator.pop(context); // 关掉 loading
-      context.pop(); // 关掉选人页，返回列表
+      if (result != null && mounted) {
+        // 3. 成功逻辑：跳转到新创建的聊天室
+        // 注意：这里路径要根据你的路由配置来，通常是 /chat/:id
+        context.pushReplacement('/chat/${result.id}');
 
-      // 这里的逻辑将来可以改成：直接跳转到新创建的 ChatPage
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Group '$groupName' created!")),
+        );
+      }
+    } catch (e) {
+      if (mounted) Navigator.pop(context); // 关闭 Loading
+      // 处理错误提示
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Group '$groupName' created!")),
+        SnackBar(content: Text("Failed to create group: $e")),
       );
     }
   }
