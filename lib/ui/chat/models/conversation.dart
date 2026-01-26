@@ -488,14 +488,14 @@ class CreateGroupResponse {
   final String name;
   final String type;        // "GROUP"
   final String ownerId;
-  final int createdAt;
+  final int? createdAt;
 
   CreateGroupResponse({
     required this.id,
     required this.name,
     required this.type,
     required this.ownerId,
-    required this.createdAt,
+     this.createdAt,
   });
 
   factory CreateGroupResponse.fromJson(Map<String, dynamic> json) =>

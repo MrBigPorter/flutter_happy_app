@@ -538,6 +538,11 @@ class Api {
     return parseList(res, (e) => ChatUser.fromJson(e));
   }
 
+  // 1. 获取好友列表
+  static Future<bool> addFriendApi(String friendId) async {
+      return Http.post('/api/v1/users/add-friend', data: {'friendId': friendId});
+  }
+
   // 2. 用户搜索
   static Future<List<ChatUser>> searchUserApi(String keyword) async {
     final res = await Http.get(
@@ -557,6 +562,7 @@ class Api {
       '/api/v1/chat/create-group',
       data: request.toJson(),
     );
+    print('createGroupApi response: $res');
     return CreateGroupResponse.fromJson(res);
   }
 

@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_app/app/routes/app_router.dart';
+import 'package:flutter_app/common.dart';
+import 'package:flutter_app/components/skeleton.dart';
 import 'package:flutter_app/ui/chat/providers/contact_provider.dart';
+import 'package:flutter_app/ui/index.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:go_router/go_router.dart';
 
 
 class GroupMemberSelectPage extends ConsumerStatefulWidget {
@@ -22,9 +25,17 @@ class _GroupMemberSelectPageState extends ConsumerState<GroupMemberSelectPage> {
     final contactState = ref.watch(contactListProvider);
 
     return Scaffold(
+      resizeToAvoidBottomInset: true,
       appBar: AppBar(
-        title: const Text("Select Members"),
+        backgroundColor: context.bgSecondary,
+        title:  Text("Select Members",style: TextStyle(
+          fontSize: 20.sp,
+          fontWeight: FontWeight.bold,
+          color: context.textPrimary900
+        )),
+        surfaceTintColor: context.bgSecondary,
         centerTitle: true,
+
         actions: [
           TextButton(
             onPressed: _selectedIds.isEmpty
@@ -33,7 +44,7 @@ class _GroupMemberSelectPageState extends ConsumerState<GroupMemberSelectPage> {
             child: Text(
               "Done (${_selectedIds.length})",
               style: TextStyle(
-                color: _selectedIds.isEmpty ? Colors.grey : Colors.blue,
+                color: _selectedIds.isEmpty ? context.textDisabled : context.textBrandPrimary900,
                 fontWeight: FontWeight.bold,
                 fontSize: 16.sp,
               ),
@@ -44,7 +55,7 @@ class _GroupMemberSelectPageState extends ConsumerState<GroupMemberSelectPage> {
       ),
       //  使用 AsyncValue 的 when 模式处理三种状态
       body: contactState.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => _buildSkeletonList(context),
         error: (err, _) => Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -71,10 +82,10 @@ class _GroupMemberSelectPageState extends ConsumerState<GroupMemberSelectPage> {
               return CheckboxListTile(
                 contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 4.h),
                 value: isSelected,
-                activeColor: Colors.green,
+                activeColor: context.utilityGreen500,
                 secondary: CircleAvatar(
                   radius: 20.r,
-                  backgroundColor: Colors.grey[200],
+                  backgroundColor: context.bgBrandSecondary,
                   // 对接真实字段 avatar
                   backgroundImage: (user.avatar != null && user.avatar!.isNotEmpty)
                       ? NetworkImage(user.avatar!)
@@ -83,7 +94,7 @@ class _GroupMemberSelectPageState extends ConsumerState<GroupMemberSelectPage> {
                 ),
                 title: Text(
                   user.nickname, // 对接真实字段 nickname
-                  style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w500),
+                  style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w500, color: context.textPrimary900),
                 ),
                 onChanged: (bool? checked) {
                   setState(() {
@@ -102,87 +113,99 @@ class _GroupMemberSelectPageState extends ConsumerState<GroupMemberSelectPage> {
     );
   }
 
-  void _showGroupNameDialog(BuildContext context) {
-    final TextEditingController nameController = TextEditingController();
-
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text("New Group"),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: nameController,
-              decoration: const InputDecoration(
-                hintText: "Enter group name",
-                labelText: "Group Name",
-                border: OutlineInputBorder(),
+  // 抽离骨架屏列表
+  Widget _buildSkeletonList(BuildContext context) {
+    return ListView.builder(
+      itemCount: 20, // 预设显示 8 个占位项
+      physics: const NeverScrollableScrollPhysics(), // 加载时禁止滚动
+      itemBuilder: (context, index) {
+        return Padding(
+          padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+          child: Row(
+            children: [
+              // 1. 头像占位
+              Skeleton.react(width: 20.w, height: 20.h, borderRadius: BorderRadius.circular(20.r)),
+              SizedBox(width: 12.w),
+              // 2. 昵称占位
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Skeleton.react(
+                      width: 180.w,
+                      height: 16.h,
+                      borderRadius: BorderRadius.circular(4.r),
+                    ),
+                  ],
+                ),
               ),
-              autofocus: true,
-            ),
-            SizedBox(height: 10.h),
-            Text(
-              "${_selectedIds.length} members selected",
-              style: TextStyle(color: Colors.grey[600], fontSize: 12.sp),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text("Cancel"),
+              // 3. 复选框占位
+              Skeleton.react(
+                width: 20.w,
+                height: 20.h,
+                borderRadius: BorderRadius.circular(4.r),
+              )
+            ],
           ),
-          ElevatedButton(
-            onPressed: () {
-              final name = nameController.text.trim();
-              if (name.isNotEmpty) {
-                Navigator.pop(ctx);
-                _handleCreateGroup(name); // 调用真实创建逻辑
-              }
-            },
-            child: const Text("Create"),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 
-  //  真实的建群逻辑处理
-  Future<void> _handleCreateGroup(String groupName) async {
-    // 1. 显示全局 Loading (防止二次点击)
-    if(mounted) {
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (_) => const Center(child: CircularProgressIndicator()),
-      );
-    }
+  void _showGroupNameDialog(BuildContext context) {
+    final TextEditingController nameController = TextEditingController();
 
-    try {
-      // 2. 调用 AsyncNotifier 中的副作用方法
-      final result = await ref.read(contactListProvider.notifier).createGroup(
-        name: groupName,
-        memberIds: _selectedIds.toList(),
-      );
-
-      if (mounted) Navigator.pop(context); // 关闭 Loading
-
-      if (result != null && mounted) {
-        // 3. 成功逻辑：跳转到新创建的聊天室
-        // 注意：这里路径要根据你的路由配置来，通常是 /chat/:id
-        context.pushReplacement('/chat/${result.id}');
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Group '$groupName' created!")),
+    RadixModal.show(
+      builder:(ctx,_){
+        return Material(
+          type: MaterialType.transparency,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: nameController,
+                decoration: const InputDecoration(
+                  hintText: "Enter group name",
+                  labelText: "Group Name",
+                  border: OutlineInputBorder(),
+                ),
+                autofocus: true,
+              ),
+              SizedBox(height: 10.h),
+              Text(
+                "${_selectedIds.length} members selected",
+                style: TextStyle(color: Colors.grey[600], fontSize: 12.sp),
+              ),
+            ],
+          ),
         );
+      },
+      confirmText:"Create",
+      cancelText:"Cancel",
+      onConfirm: (_){
+        final name = nameController.text.trim();
+        if (name.isNotEmpty) {
+          _handleCreateGroup(name); // 调用真实创建逻辑
+        }
       }
-    } catch (e) {
-      if (mounted) Navigator.pop(context); // 关闭 Loading
-      // 处理错误提示
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Failed to create group: $e")),
-      );
+
+    );
+  }
+
+
+  Future<void> _handleCreateGroup(String groupName) async {
+    // 1. 调用专门的建群控制器，而不是 ContactList
+   final createResult =  await ref.read(createGroupControllerProvider.notifier).execute(
+        groupName,
+        _selectedIds.toList()
+    );
+
+
+    if (createResult != null&& mounted) {
+      final gid = createResult.id;
+      appRouter.go('/chat/$gid');
+      RadixToast.success("Group '$groupName' created successfully");
     }
   }
+
 }

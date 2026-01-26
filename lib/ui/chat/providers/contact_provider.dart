@@ -1,43 +1,66 @@
 import 'dart:async';
 import 'package:flutter_app/common.dart';
-import 'package:flutter_app/ui/chat/models/conversation.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+
+import '../models/conversation.dart';
+import 'conversation_provider.dart';
 
 part 'contact_provider.g.dart';
 
+// --- [读] 好友列表数据源 ---
 @riverpod
 class ContactList extends _$ContactList {
   @override
-  Future<List<ChatUser>> build() async {
-    return await Api.getContactsApi();
+  Future<List<ChatUser>> build() async => await Api.getContactsApi();
+}
+
+@riverpod
+class CreateGroupController extends _$CreateGroupController {
+  @override
+  //  改成同步 Notifier，初始值直接给 AsyncData(null)
+  AsyncValue<CreateGroupResponse?> build() {
+    return const AsyncData(null);
   }
 
-  /// 搜索功能：可以手动调用来更新状态
-  Future<void> search(String keyword) async {
-    if (keyword.isEmpty) {
-      ref.invalidateSelf(); // 关键：清空搜索时恢复原始列表
-    }
-    return;
-
+  Future<CreateGroupResponse?> execute(String name, List<String> memberIds) async {
+    // 1. 设置状态为 loading
     state = const AsyncLoading();
-    state = await AsyncValue.guard(() async {
-      return await Api.searchUserApi(keyword);
-    });
-  }
 
-  /// 执行建群副作用
-  Future<CreateGroupResponse?> createGroup({
-    required String name,
-    required List<String> memberIds,
-  }) async {
-    // 这是一个副作用操作，不一定会改变当前的联系人列表状态，
-    // 但我们需要捕获这个过程。
-    try {
-      final response = await Api.createGroupApi(name, memberIds);
-      return response;
-    } catch (e, st) {
-      // 可以在这里处理全局错误提示
-      return null;
+    // 2. 使用 AsyncValue.guard
+    final result = await AsyncValue.guard(() => Api.createGroupApi(name, memberIds));
+    state = result;
+    if (!state.hasError) {
+      // 3. 成功后，刷新会话列表
+      ref.invalidate(conversationListProvider);
+      return result.value;
     }
+    return null;
   }
 }
+
+@riverpod
+class AddFriendController extends _$AddFriendController {
+  @override
+  //  同上，显式持有 AsyncValue<void>
+  AsyncValue<void> build(String userId) {
+    return const AsyncData(null);
+  }
+
+  Future<bool> execute() async {
+    state = const AsyncLoading();
+
+    state = await AsyncValue.guard(() => Api.addFriendApi(userId));
+
+    if (!state.hasError) {
+      ref.invalidate(contactListProvider);
+      return true;
+    }
+    return false;
+  }
+}
+
+// --- [读] 搜索结果 (保持 FutureProvider) ---
+final userSearchProvider = FutureProvider.autoDispose.family<List<ChatUser>, String>((ref, keyword) async {
+  if (keyword.isEmpty) return [];
+  return Api.searchUserApi(keyword);
+});

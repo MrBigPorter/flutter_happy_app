@@ -502,7 +502,7 @@ CreateGroupResponse _$CreateGroupResponseFromJson(Map<String, dynamic> json) =>
           name: $checkedConvert('name', (v) => v as String),
           type: $checkedConvert('type', (v) => v as String),
           ownerId: $checkedConvert('ownerId', (v) => v as String),
-          createdAt: $checkedConvert('createdAt', (v) => (v as num).toInt()),
+          createdAt: $checkedConvert('createdAt', (v) => (v as num?)?.toInt()),
         );
         return val;
       },
