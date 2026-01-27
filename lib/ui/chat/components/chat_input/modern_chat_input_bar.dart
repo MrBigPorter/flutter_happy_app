@@ -8,16 +8,22 @@ import 'package:image_picker/image_picker.dart';
 import '../../../../theme/design_tokens.g.dart';
 
 class ModernChatInputBar extends StatefulWidget {
-  //新增：用于语音发送逻辑
   final String conversationId;
   final Function(String) onSend;
   final Function(XFile) onSendImage;
+
+  //  NEW: Video Support
+  final Function(XFile) onSendVideo;
+  //  NEW: Voice Support callback exposed
+  final Function(String, int) onSendVoice;
 
   const ModernChatInputBar({
     super.key,
     required this.conversationId,
     required this.onSend,
     required this.onSendImage,
+    required this.onSendVideo,
+    required this.onSendVoice,
   });
 
   @override
@@ -28,8 +34,8 @@ class _ModernChatInputBarState extends State<ModernChatInputBar> {
   final TextEditingController _controller = TextEditingController();
   final ImagePicker _picker = ImagePicker();
   bool _hasText = false;
-  bool _isVoiceMode = false; //新增：切换语音/文字模式
-  bool _isRecording = false; //  新增：记录子组件的录音状态
+  bool _isVoiceMode = false;
+  bool _isRecording = false;
 
   @override
   void initState() {
@@ -51,33 +57,42 @@ class _ModernChatInputBarState extends State<ModernChatInputBar> {
     _controller.clear();
   }
 
-  //  2. 实现相册逻辑
   Future<void> _handlePickImage() async {
     try {
-      // 这里的 context 最好用 widget 传进来的，或者是 riverpod ref
-      // 因为这是个 State 类，我们需要回调到外面，或者直接在这里读 Provider
-      // 为了代码解耦，建议我们在 widget.onSend 旁边加一个 widget.onSendImage
-
       final XFile? image = await _picker.pickImage(
         source: ImageSource.gallery,
-        imageQuality: 100, // 选原图，让我们的 GlobalUploadService 去压缩
+        imageQuality: 100,
       );
 
       if (image != null) {
-        // 通知父组件发图
-        widget.onSendImage.call(image);
+        widget.onSendImage(image);
       }
     } catch (e) {
       debugPrint("Pick image failed: $e");
     }
   }
 
-  // 示例：处理相机拍照
+  //  NEW: Video Picker Logic
+  Future<void> _handlePickVideo() async {
+    try {
+      final XFile? video = await _picker.pickVideo(
+        source: ImageSource.gallery,
+        maxDuration: const Duration(minutes: 5), // Optional: Limit video length
+      );
+
+      if (video != null) {
+        widget.onSendVideo(video);
+      }
+    } catch (e) {
+      debugPrint("Pick video failed: $e");
+    }
+  }
+
   Future<void> _handleCamera() async {
     try {
       final XFile? image = await _picker.pickImage(source: ImageSource.camera);
       if (image != null) {
-        widget.onSendImage.call(image);
+        widget.onSendImage(image);
       }
     } catch (e) {
       debugPrint("Camera failed: $e");
@@ -99,26 +114,22 @@ class _ModernChatInputBarState extends State<ModernChatInputBar> {
         top: false,
         bottom: true,
         child: Padding(
-          // 左右间距稍微小一点，给图标腾位置
           padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 8.h),
           child: Row(
-            crossAxisAlignment: CrossAxisAlignment.end, // 底部对齐
+            crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               AnimatedOpacity(
                 duration: const Duration(milliseconds: 200),
                 opacity: _isRecording ? 0.0 : 1.0,
                 child: Row(
                   children: [
-                    // ===========================================
-                    //  左侧功能区 (加号、相机、相册、语音)
-                    // ===========================================
+                    // Left Actions
                     _buildActionBtn(Icons.add_circle, isSolid: true),
-                    // 实心加号
                     _buildActionBtn(Icons.camera_alt, onTap: _handleCamera),
-                    // 相机
                     _buildActionBtn(Icons.image, onTap: _handlePickImage),
-                    // 相册
-                    // 修改：麦克风图标点击切换模式
+                    //  NEW: Video Button
+                    _buildActionBtn(Icons.videocam, onTap: _handlePickVideo),
+                    // Mic/Keyboard Toggle
                     _buildActionBtn(
                       _isVoiceMode ? Icons.keyboard : Icons.mic,
                       onTap: () {
@@ -131,34 +142,33 @@ class _ModernChatInputBarState extends State<ModernChatInputBar> {
                 ),
               ),
 
-              SizedBox(width: 4.w), // 图标和输入框的间距
-              // ===========================================
-              //  中间输入框 (Aa)
-              // ===========================================
+              SizedBox(width: 4.w),
+
+              // Middle Input
               Expanded(
                 child: _isVoiceMode
                     ? VoiceRecordButton(
-                        conversationId: widget.conversationId,
-                        onRecordingChange: (recording) {
-                          setState(() {
-                            _isRecording = recording;
-                          });
-                        },
-                      )
+                  conversationId: widget.conversationId,
+                  onRecordingChange: (recording) {
+                    setState(() {
+                      _isRecording = recording;
+                    });
+                  },
+                  //  Pass the callback to VoiceRecordButton if it supports it
+                  // Or modify VoiceRecordButton to call widget.onSendVoice directly
+                  onVoiceSent: widget.onSendVoice,
+                )
                     : _buildTextField(),
               ),
 
               SizedBox(width: 8.w),
 
-              // ===========================================
-              //  右侧：发送 / 点赞
-              // ===========================================
-              // 3. 右侧按钮：录音时完全隐藏
+              // Right Actions (Send/Like)
               AnimatedSwitcher(
                 duration: const Duration(milliseconds: 200),
                 child: _isRecording
-                    ? const SizedBox.shrink() // 录音时占位为空
-                    : _buildRightButton(), // 非录音时显示发送/点赞
+                    ? const SizedBox.shrink()
+                    : _buildRightButton(),
               ),
             ],
           ),
@@ -167,7 +177,6 @@ class _ModernChatInputBarState extends State<ModernChatInputBar> {
     );
   }
 
-  // 抽离出来的输入框组件
   Widget _buildTextField() {
     return Container(
       constraints: const BoxConstraints(maxHeight: 100),
@@ -194,33 +203,26 @@ class _ModernChatInputBarState extends State<ModernChatInputBar> {
     );
   }
 
-  //  封装一个小组件，减少重复代码
   Widget _buildActionBtn(
-    IconData icon, {
-    bool isSolid = false,
-    VoidCallback? onTap,
-  }) {
-    // 如果是实心加号，通常颜色更深一点，或者一样
+      IconData icon, {
+        bool isSolid = false,
+        VoidCallback? onTap,
+      }) {
     final color = context.textBrandPrimary900;
-
     return Container(
-      margin: EdgeInsets.only(right: 2.w), // 按钮之间的微小间距
+      margin: EdgeInsets.only(right: 2.w),
       child: IconButton(
         onPressed: onTap ?? () {},
         icon: Icon(icon, color: color, size: 25.sp),
-        // 25sp 大小比较适中
-
-        // 关键：收紧按钮的点击区域，防止一行放不下
         padding: EdgeInsets.all(6.w),
         constraints: const BoxConstraints(),
         style: const ButtonStyle(
-          tapTargetSize: MaterialTapTargetSize.shrinkWrap, // 去除多余的点击边距
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
         ),
       ),
     );
   }
 
-  // 抽离出来的右侧按钮
   Widget _buildRightButton() {
     return AnimatedSwitcher(
       duration: const Duration(milliseconds: 200),
@@ -228,27 +230,27 @@ class _ModernChatInputBarState extends State<ModernChatInputBar> {
           ScaleTransition(scale: anim, child: child),
       child: _hasText
           ? IconButton(
-              key: const ValueKey('send'),
-              onPressed: _handleSend,
-              icon: Icon(
-                Icons.send,
-                color: context.textBrandPrimary900,
-                size: 24.sp,
-              ),
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(),
-            )
+        key: const ValueKey('send'),
+        onPressed: _handleSend,
+        icon: Icon(
+          Icons.send,
+          color: context.textBrandPrimary900,
+          size: 24.sp,
+        ),
+        padding: EdgeInsets.zero,
+        constraints: const BoxConstraints(),
+      )
           : IconButton(
-              key: const ValueKey('like'),
-              onPressed: _handleLike,
-              icon: Icon(
-                Icons.thumb_up_rounded,
-                color: context.textBrandPrimary900,
-                size: 26.sp,
-              ),
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(),
-            ),
+        key: const ValueKey('like'),
+        onPressed: _handleLike,
+        icon: Icon(
+          Icons.thumb_up_rounded,
+          color: context.textBrandPrimary900,
+          size: 26.sp,
+        ),
+        padding: EdgeInsets.zero,
+        constraints: const BoxConstraints(),
+      ),
     );
   }
 }

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_app/app/routes/app_router.dart';
 import 'package:flutter_app/common.dart';
 import 'package:flutter_app/ui/chat/providers/conversation_provider.dart';
+import 'package:flutter_app/ui/chat/services/chat_sync_manager.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
@@ -34,14 +35,13 @@ class _ChatPageState extends ConsumerState<ChatPage> {
   void initState() {
     super.initState();
     Future.microtask(() {
-      // 1. 占位：告诉全 App 我正在看这个房间
-      ref.read(activeConversationIdProvider.notifier).state =
-          widget.conversationId;
+      // 1. Placeholder: Tell the whole app I'm viewing this room
+      ref.read(activeConversationIdProvider.notifier).state = widget.conversationId;
 
-      // 2. 刷新数据
+      // 2. Refresh data (Delegate to SyncManager)
       ref.read(chatControllerProvider(widget.conversationId)).refresh();
 
-      // 3. 进门消红
+      // 3. Clear red dot (Delegate to EventHandler)
       ref.read(chatControllerProvider(widget.conversationId)).markAsRead();
     });
 
@@ -51,7 +51,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
   @override
   void dispose() {
     _scrollController.dispose();
-    // 如果不清空，你回到列表页，新消息还是不会有红点！
+    // Clear active room state so red dots can reappear on list page
     try {
       ref.read(activeConversationIdProvider.notifier).state = null;
     } catch (_) {}
@@ -59,7 +59,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
   }
 
   void _onScroll() {
-    // 触发加载更多
+    // Trigger load more when reaching the top
     if (_scrollController.hasClients &&
         _scrollController.position.pixels >=
             _scrollController.position.maxScrollExtent - 50) {
@@ -69,33 +69,31 @@ class _ChatPageState extends ConsumerState<ChatPage> {
 
   @override
   Widget build(BuildContext context) {
-    // 只要这行代码在，页面不关，Controller 就不会死，就不会反复 Join Room
+    // Keep controller alive
     ref.watch(chatControllerProvider(widget.conversationId));
-    // 1. 监听消息状态
-    final asyncMessages = ref.watch(chatStreamProvider(widget.conversationId));
-    // 2. 监听详情状态
-    final asyncDetail = ref.watch(chatDetailProvider(widget.conversationId));
-    final bool isGroup =
-        asyncDetail.valueOrNull?.type == ConversationType.group;
 
-    // 判断是否是静默更新状态 (有数据，但正在刷新)
+    // 1. Listen to messages stream (from Local Database)
+    final asyncMessages = ref.watch(chatStreamProvider(widget.conversationId));
+
+    // 2. Listen to detail stream (Avatar, Title)
+    final asyncDetail = ref.watch(chatDetailProvider(widget.conversationId));
+    final bool isGroup = asyncDetail.valueOrNull?.type == ConversationType.group;
+
+    // Is updating silently? (Has data but fetching new ones)
     final isUpdating = asyncMessages.isLoading && asyncMessages.hasValue;
 
     return GestureDetector(
       onTap: () => FocusScope.of(context).unfocus(),
       child: Scaffold(
-        backgroundColor: context.bgPrimary, // iOS 风格背景灰
-        //  优化 2: Messenger 风格 Header
+        backgroundColor: context.bgPrimary,
+        //  UI Polish: Messenger Style Header
         appBar: AppBar(
           backgroundColor: context.bgPrimary,
           surfaceTintColor: Colors.transparent,
           elevation: 0.5,
-          // Messenger 有一条很细的分割线
           shadowColor: Colors.black.withValues(alpha: 0.1),
           titleSpacing: 0,
-          // 关键：移除标题左侧的默认间距，让头像紧贴返回键
           leadingWidth: 40,
-          // 调整返回键宽度，更紧凑
           leading: IconButton(
             icon: Icon(
               Icons.arrow_back_ios_new,
@@ -103,20 +101,16 @@ class _ChatPageState extends ConsumerState<ChatPage> {
               size: 22.sp,
             ),
             onPressed: () {
-              //  修复 Web 刷新后报错的问题
               if (context.canPop()) {
                 context.pop();
               } else {
-                // 如果没有上一页（比如网页刷新进来的），强行去列表页
-                // 注意：这里请填你路由配置里列表页的 path，通常是 '/conversations' 或 '/'
                 context.go('/conversations');
               }
             },
           ),
-          // 优化 1: 标题栏显示状态
+          // Title Row (Avatar + Name)
           title: Row(
             children: [
-              // 1. 头像 (模拟)
               CircleAvatar(
                 radius: 18.r,
                 backgroundColor: Colors.grey[200],
@@ -124,11 +118,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
                     ? NetworkImage(asyncDetail.value!.avatar!)
                     : null,
                 child: asyncDetail.valueOrNull?.avatar == null
-                    ? Icon(
-                        Icons.person,
-                        color: context.textSecondary700,
-                        size: 20.sp,
-                      )
+                    ? Icon(Icons.person, color: context.textSecondary700, size: 20.sp)
                     : null,
               ),
               SizedBox(width: 10.w),
@@ -136,7 +126,6 @@ class _ChatPageState extends ConsumerState<ChatPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // 第一行：显示群名
                     asyncDetail.when(
                       data: (detail) => Text(
                         detail.name,
@@ -146,33 +135,16 @@ class _ChatPageState extends ConsumerState<ChatPage> {
                           color: context.textPrimary900,
                         ),
                       ),
-                      loading: () => Text(
-                        widget.title,
-                        style: TextStyle(color: context.textPrimary900),
-                      ),
-                      error: (_, __) => Text(
-                        widget.title,
-                        style: TextStyle(color: context.textPrimary900),
-                      ),
+                      loading: () => Text(widget.title, style: TextStyle(color: context.textPrimary900)),
+                      error: (_, __) => Text(widget.title, style: TextStyle(color: context.textPrimary900)),
                     ),
-
-                    // 第二行：显示 "Updating..." 或 人数
                     if (isUpdating)
-                      Text(
-                        "Updating...",
-                        style: TextStyle(
-                          fontSize: 12.sp,
-                          color: context.textPrimary900,
-                        ),
-                      )
+                      Text("Updating...", style: TextStyle(fontSize: 12.sp, color: context.textPrimary900))
                     else
                       asyncDetail.maybeWhen(
                         data: (detail) => Text(
                           'Active now',
-                          style: TextStyle(
-                            fontSize: 12.sp,
-                            color: context.textSecondary700,
-                          ),
+                          style: TextStyle(fontSize: 12.sp, color: context.textSecondary700),
                         ),
                         orElse: () => const SizedBox.shrink(),
                       ),
@@ -181,77 +153,61 @@ class _ChatPageState extends ConsumerState<ChatPage> {
               ),
             ],
           ),
-          // 3. 右侧功能键 (电话、视频、信息)
           actions: [
             IconButton(
-              icon: Icon(
-                Icons.call,
-                color: context.textBrandPrimary900,
-                size: 24.sp,
-              ),
+              icon: Icon(Icons.call, color: context.textBrandPrimary900, size: 24.sp),
               onPressed: () {},
             ),
             IconButton(
-              icon: Icon(
-                Icons.videocam,
-                color: context.textBrandPrimary900,
-                size: 26.sp,
-              ),
+              icon: Icon(Icons.videocam, color: context.textBrandPrimary900, size: 26.sp),
               onPressed: () {},
             ),
-              IconButton(
-                icon: Icon(
-                  Icons.more_horiz,
-                  color: context.textPrimary900,
-                  size: 24.sp,
-                ),
-                onPressed: (){
-                  if(isGroup){
-                    appRouter.push('/chat/group/profile/${widget.conversationId}');
-                  } else {
-                    appRouter.push('/chat/direct/profile/${widget.conversationId}');
-                  }
-                },
-              ),
+            IconButton(
+              icon: Icon(Icons.more_horiz, color: context.textPrimary900, size: 24.sp),
+              onPressed: (){
+                if(isGroup){
+                  appRouter.push('/chat/group/profile/${widget.conversationId}');
+                } else {
+                  appRouter.push('/chat/direct/profile/${widget.conversationId}');
+                }
+              },
+            ),
             SizedBox(width: 8.w),
-            const SizedBox(width: 5),
           ],
         ),
         body: Column(
           children: [
-            // 优化 2: 移除全局 Loading，改用数据优先逻辑
+            // Message List Area
             Expanded(
               child: asyncMessages.when(
-                // 只有第一次进且没数据时，才显示大 loading
                 loading: () => asyncMessages.hasValue
-                    ? _buildMessageList(
-                        asyncMessages.value!,
-                        isGroup,
-                      ) // 有旧数据就先显示旧的
+                    ? _buildMessageList(asyncMessages.value!, isGroup)
                     : const Center(child: CircularProgressIndicator()),
-
                 error: (error, _) => Center(child: Text("Error: $error")),
-
-                // 简单处理错误
                 data: (messages) => _buildMessageList(messages, isGroup),
               ),
             ),
 
-            //  优化 3: 使用美化后的输入框
+            // Input Bar Area
             ModernChatInputBar(
-              onSend: (text) {
-                ref
-                    .read(chatControllerProvider(widget.conversationId))
-                    .sendMessage(text);
-              },
-              //  绑定发图逻辑
-              onSendImage: (XFile file) {
-                // 直接把 file 对象传给 Notifier
-                ref
-                    .read(chatControllerProvider(widget.conversationId))
-                    .sendImage(file);
-              },
               conversationId: widget.conversationId,
+              // 1. Send Text
+              onSend: (text) {
+                ref.read(chatControllerProvider(widget.conversationId)).sendMessage(text);
+              },
+              // 2. Send Image (Delegated to ActionService)
+              onSendImage: (XFile file) {
+                ref.read(chatControllerProvider(widget.conversationId)).sendImage(file);
+              },
+              // 3.  NEW: Send Video (Delegated to ActionService)
+              // (Ensure ModernChatInputBar exposes this callback)
+              onSendVideo: (XFile file) {
+                ref.read(chatControllerProvider(widget.conversationId)).sendVideo(file);
+              },
+              // 4. Send Voice
+              onSendVoice: (String path, int duration) {
+                ref.read(chatControllerProvider(widget.conversationId)).sendVoiceMessage(path, duration);
+              },
             ),
           ],
         ),
@@ -259,15 +215,12 @@ class _ChatPageState extends ConsumerState<ChatPage> {
     );
   }
 
-  // 抽离 List 构建逻辑，让代码更干净
   Widget _buildMessageList(List<dynamic> messages, bool isGroup) {
     if (messages.isEmpty) {
-      return Center(
-        child: Text("No messages", style: TextStyle(color: Colors.grey[400])),
-      );
+      return Center(child: Text("No messages", style: TextStyle(color: Colors.grey[400])));
     }
 
-    //  [这里 1] 先算出谁是最新已读 ID
+    // Determine the latest read message ID for the "Seen" indicator
     String? latestReadMsgId;
     for (final msg in messages) {
       if (msg is ChatUiModel && msg.isMe && msg.status == MessageStatus.read) {
@@ -279,51 +232,37 @@ class _ChatPageState extends ConsumerState<ChatPage> {
     return ListView.builder(
       controller: _scrollController,
       reverse: true,
-      // 最新消息在底部
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      // item count + 1 是为了给顶部的 "Loading / End" 留位置
       itemCount: messages.length + 1,
       itemBuilder: (context, index) {
-        // 1. 检查是否到底 (Visual Top)
+        // Loading Spinner at the top (visually bottom in reverse list)
         if (index == messages.length) {
-          // 1. 获取是否有更多
-          final controller = ref.read(
-            chatControllerProvider(widget.conversationId),
-          );
+          final controller = ref.read(chatControllerProvider(widget.conversationId));
+          // Use the property from SyncManager via Controller getter
           final hasMore = controller.hasMore;
-          // 2. 监听是否正在加载 (关键！)
-          final isLoadingMore = ref.watch(
-            chatLoadingMoreProvider(widget.conversationId),
-          );
+          // Watch the separate loading state provider from SyncManager
+          final isLoadingMore = ref.watch(chatLoadingMoreProvider(widget.conversationId));
+
           return Container(
             padding: const EdgeInsets.symmetric(vertical: 15),
             alignment: Alignment.center,
-            // 只有当“有更多”且“正在加载”时，才显示 Spinner
             child: (hasMore && isLoadingMore)
-                ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : (hasMore
-                      ? const SizedBox.shrink()
-                      : const Text("—— No more history ——")),
+                ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                : (hasMore ? const SizedBox.shrink() : const Text("—— No more history ——", style: TextStyle(color: Colors.grey, fontSize: 12))),
           );
         }
 
-        // 2. 渲染气泡
         final msg = messages[index];
         final isLatestRead = (msg.id == latestReadMsgId);
+
         return ChatBubble(
           key: ValueKey(msg.id),
           isGroup: isGroup,
           message: msg,
-          //  [这里 3] 把 true/false 传进去！
           showReadStatus: isLatestRead,
           onRetry: () {
-            ref
-                .read(chatControllerProvider(widget.conversationId))
-                .resendMessage(msg.id);
+            // Call resend via ActionService
+            ref.read(chatControllerProvider(widget.conversationId)).resendMessage(msg.id);
           },
         );
       },
