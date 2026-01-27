@@ -4,9 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 
-//  引入相关 Provider 和 Model
 import 'package:flutter_app/ui/chat/providers/conversation_provider.dart';
 import 'package:flutter_app/ui/chat/models/conversation.dart';
+import 'package:flutter_app/ui/chat/models/chat_ui_model.dart';
 
 class ConversationItem extends ConsumerWidget {
   final Conversation item;
@@ -18,16 +18,18 @@ class ConversationItem extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // 1. 时间格式化 (简单版：HH:mm)
-    // 如果需要 "昨天"、"星期几" 这种复杂格式，建议写个扩展函数
+    // 1. 时间格式化
     final date = DateTime.fromMillisecondsSinceEpoch(item.lastMsgTime);
     final timeStr = "${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}";
+
+    // 直接比较枚举，代码清晰易读
+    final isSendFailed = item.lastMsgStatus == MessageStatus.failed;
 
     return ListTile(
       contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
 
       // ===========================
-      //  头像区域 (带红点)
+      //  头像区域 (带红点) - 保持不变
       // ===========================
       leading: Stack(
         clipBehavior: Clip.none,
@@ -74,7 +76,7 @@ class ConversationItem extends ConsumerWidget {
       ),
 
       // ===========================
-      //  标题 (群名/人名)
+      //  标题 (群名/人名) - 保持不变
       // ===========================
       title: Text(
         item.name,
@@ -88,23 +90,41 @@ class ConversationItem extends ConsumerWidget {
       ),
 
       // ===========================
-      //  摘要 (最后一条消息)
+      //  摘要 (最后一条消息) - 核心修改
       // ===========================
       subtitle: Padding(
         padding: EdgeInsets.only(top: 4.h),
-        child: Text(
-          item.lastMsgContent ?? '', // 如果没有消息显示空
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(
-            color: context.textSecondary700,
-            fontSize: 13.sp,
-          ),
+        child: Row(
+          children: [
+            //  失败图标 (只在失败时显示)
+            if (isSendFailed) ...[
+              Icon(
+                Icons.error, // 红色感叹号
+                size: 16.sp,
+                color: Colors.red,
+              ),
+              SizedBox(width: 4.w), // 图标和文字的间距
+            ],
+
+            // 消息预览文字
+            Expanded(
+              child: Text(
+                item.lastMsgContent ?? '',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  // 失败时文字稍微变红(可选)，正常时显示灰色
+                  color: isSendFailed ? Colors.red.withOpacity(0.8) : context.textSecondary700,
+                  fontSize: 13.sp,
+                ),
+              ),
+            ),
+          ],
         ),
       ),
 
       // ===========================
-      //  时间
+      //  时间 - 保持不变
       // ===========================
       trailing: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -116,19 +136,17 @@ class ConversationItem extends ConsumerWidget {
               fontSize: 12.sp,
             ),
           ),
-          // 这里以后可以扩展：比如显示免打扰图标
         ],
       ),
 
       // ===========================
-      //  点击事件
+      //  点击事件 - 保持不变
       // ===========================
       onTap: () {
         // 1. 调用 Provider 清除本地红点
         ref.read(conversationListProvider.notifier).clearUnread(item.id);
 
         // 2. 路由跳转到详情页
-        // 传参：ID 和 Title (用于 AppBar 显示)
         context.push(
           '/chat/room/${item.id}?title=${Uri.encodeComponent(item.name)}',
         );

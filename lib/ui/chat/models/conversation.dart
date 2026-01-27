@@ -1,5 +1,7 @@
 import 'package:json_annotation/json_annotation.dart';
 
+import 'chat_ui_model.dart';
+
 part 'conversation.g.dart';
 
 // 1. 优化：统一枚举命名风格 (Dart 推荐小驼峰)
@@ -21,6 +23,9 @@ class Conversation {
   final int unreadCount;
   final bool isPinned;
   final bool isMuted;
+  // unknownEnumValue: 防止后端返回了无法识别的状态时报错，默认回退到 success
+  @JsonKey(unknownEnumValue: MessageStatus.success)
+  final MessageStatus lastMsgStatus;
 
   Conversation({
     required this.id,
@@ -32,6 +37,7 @@ class Conversation {
     this.unreadCount = 0,
     this.isPinned = false,
     this.isMuted = false,
+    this.lastMsgStatus = MessageStatus.success,
   });
 
   Conversation copyWith({
@@ -44,6 +50,7 @@ class Conversation {
     int? unreadCount,
     bool? isPinned,
     bool? isMuted,
+    MessageStatus? lastMsgStatus,
   }) {
     return Conversation(
       id: id ?? this.id,
@@ -55,6 +62,7 @@ class Conversation {
       unreadCount: unreadCount ?? this.unreadCount,
       isPinned: isPinned ?? this.isPinned,
       isMuted: isMuted ?? this.isMuted,
+      lastMsgStatus: lastMsgStatus ?? this.lastMsgStatus,
     );
   }
 

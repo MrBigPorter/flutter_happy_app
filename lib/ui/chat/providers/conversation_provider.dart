@@ -85,6 +85,7 @@ class ConversationList extends _$ConversationList {
         lastMsgContent: _getPreviewContent(msg.type, msg.content),
         lastMsgTime: DateTime.now().millisecondsSinceEpoch,
         unreadCount: newUnreadCount,
+        lastMsgStatus: MessageStatus.success,
       );
 
       final newList = [...currentList];
@@ -103,6 +104,7 @@ class ConversationList extends _$ConversationList {
     required String conversationId,
     String? lastMsgContent,
     int? lastMsgTime,
+    MessageStatus? lastMsgStatus,
   }) {
     if (!state.hasValue) return;
 
@@ -115,6 +117,7 @@ class ConversationList extends _$ConversationList {
         lastMsgContent: lastMsgContent,
         lastMsgTime: lastMsgTime,
         unreadCount: 0,
+        lastMsgStatus: lastMsgStatus,
       );
       final newList = [...currentList];
       newList.removeAt(index);
