@@ -21,12 +21,14 @@ class GroupProfilePage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // 监听群详情数据
     final asyncDetail = ref.watch(chatDetailProvider(conversationId));
 
     return BaseScaffold(
-      title: "Group Info",
-      backgroundColor: context.bgSecondary,
+      // 微信风格：标题通常显示 "Chat Info" 或 "Group Chat(N)"
+      title: asyncDetail.valueOrNull != null
+          ? "Group Chat (${asyncDetail.value!.memberCount})"
+          : "Group Info",
+      backgroundColor: context.bgSecondary, // 灰色背景
       body: asyncDetail.when(
         loading: () => _buildSkeleton(context),
         error: (err, _) => Center(child: Text("Error: $err")),
@@ -50,11 +52,21 @@ class GroupProfilePage extends ConsumerWidget {
       physics: const AlwaysScrollableScrollPhysics(),
       child: Column(
         children: [
-          SizedBox(height: 12.h),
-          _buildGroupHeader(context, detail),
-          SizedBox(height: 12.h),
-          _buildMemberGrid(context, detail),
+          // 1. 微信风格：成员网格直接置顶 (背景为白色)
+          Container(
+            color: context.bgPrimary, // 白色背景
+            padding: EdgeInsets.only(top: 12.h, bottom: 20.h),
+            child: _buildMemberGrid(context, detail),
+          ),
+
+          SizedBox(height: 12.h), // 灰色间隔
+
+          // 2. 菜单区域 (群名、ID)
+          _buildMenuSection(context, detail),
+
           SizedBox(height: 30.h),
+
+          // 3. 底部按钮
           _buildFooterButtons(context, ref, conversationId),
           SizedBox(height: 50.h),
         ],
@@ -62,294 +74,233 @@ class GroupProfilePage extends ConsumerWidget {
     );
   }
 
-  // --- 1. 头部信息 ---
-  Widget _buildGroupHeader(BuildContext context, ConversationDetail detail) {
-    return Container(
-      color: context.bgPrimary,
-      padding: EdgeInsets.symmetric(vertical: 20.h, horizontal: 16.w),
-      child: Row(
-        children: [
-          Container(
-            width: 60.r,
-            height: 60.r,
-            decoration: BoxDecoration(
-              color: context.bgBrandSecondary,
-              borderRadius: BorderRadius.circular(8.r),
-              image: detail.avatar != null
-                  ? DecorationImage(
-                image: NetworkImage(detail.avatar!),
-                fit: BoxFit.cover,
-              )
-                  : null,
-            ),
-            alignment: Alignment.center,
-            child: detail.avatar == null
-                ? Icon(
-              Icons.groups,
-              size: 30.r,
-              color: context.textBrandPrimary900,
-            )
-                : null,
-          ),
-          SizedBox(width: 16.w),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  detail.name,
-                  style: TextStyle(
-                    fontSize: 18.sp,
-                    fontWeight: FontWeight.bold,
-                    color: context.textPrimary900,
-                  ),
-                ),
-                SizedBox(height: 4.h),
-                Text(
-                  "ID: ${detail.id.substring(0, 8)}...",
-                  style: TextStyle(
-                    fontSize: 12.sp,
-                    color: context.textSecondary700,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // --- 2. 成员网格 (含拉人入口) ---
+  // --- 1. 成员网格 (保持原有逻辑，去除外层 Container 的多余 padding) ---
   Widget _buildMemberGrid(BuildContext context, ConversationDetail detail) {
     final members = detail.members ?? [];
     final displayCount = members.length;
 
-    return Container(
-      color: context.bgPrimary,
-      padding: EdgeInsets.all(16.w),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            "Members ($displayCount)",
-            style: TextStyle(
-              fontSize: 14.sp,
-              color: context.textSecondary700,
-              fontWeight: FontWeight.w500,
+    // 微信逻辑：
+    // 如果成员很多，通常只显示前 15-20 个，后面加个 "查看更多"
+    // 这里暂时不做限制，直接全部展示
+
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: 16.w),
+      child: GridView.builder(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 5,
+          mainAxisSpacing: 12.h,
+          crossAxisSpacing: 12.w,
+          childAspectRatio: 0.7, // 调整比例适配头像+名字
+        ),
+        // +1 是添加按钮
+        itemCount: displayCount + 1,
+        itemBuilder: (context, index) {
+          // A. 添加按钮 (+)
+          if (index == displayCount) {
+            return Column(
+              children: [
+                InkWell(
+                  onTap: () {
+                    context.push('/chat/group/select/member?groupId=${detail.id}');
+                  },
+                  child: Container(
+                    width: 48.r,
+                    height: 48.r,
+                    decoration: BoxDecoration(
+                      border: Border.all(color: context.borderPrimary),
+                      borderRadius: BorderRadius.circular(4.r), // 微信是微圆角
+                    ),
+                    child: Icon(Icons.add, color: context.textSecondary700),
+                  ),
+                ),
+                // 占位，保持对齐
+                SizedBox(height: 4.h),
+              ],
+            );
+          }
+
+          // B. 成员头像
+          final member = members[index];
+          final shortName = member.nickname.isNotEmpty
+              ? member.nickname[0].toUpperCase()
+              : "?";
+
+          return Column(
+            children: [
+              // 头像
+              Container(
+                width: 48.r,
+                height: 48.r,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(4.r), // 微信风格头像圆角较小
+                  color: context.bgSecondary,
+                  image: member.avatar != null
+                      ? DecorationImage(image: NetworkImage(member.avatar!), fit: BoxFit.cover)
+                      : null,
+                ),
+                alignment: Alignment.center,
+                child: member.avatar == null
+                    ? Text(shortName, style: TextStyle(color: context.textSecondary700))
+                    : null,
+              ),
+              SizedBox(height: 6.h),
+              // 昵称
+              Text(
+                member.nickname,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 11.sp,
+                  color: context.textSecondary700,
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  // --- 2. 菜单区域 (仿微信 Group Name, QR Code, etc) ---
+  Widget _buildMenuSection(BuildContext context, ConversationDetail detail) {
+    return Column(
+      children: [
+        _buildMenuItem(
+          context,
+          label: "Group Name",
+          value: detail.name,
+          onTap: () {
+            // TODO: 跳转修改群名
+            RadixToast.info("Edit Group Name");
+          },
+        ),
+        _buildMenuItem(
+          context,
+          label: "Group ID",
+          // ID 通常截取一下显示
+          value: detail.id.substring(0, 8).toUpperCase(),
+          showArrow: false, // ID 不可修改，不显示箭头
+          isLast: true, // 最后一项去掉分割线
+        ),
+        // 这里可以继续加 "My Alias in Group", "Mute Notifications" 等
+      ],
+    );
+  }
+
+  // 通用菜单项组件
+  Widget _buildMenuItem(
+      BuildContext context, {
+        required String label,
+        required String value,
+        VoidCallback? onTap,
+        bool showArrow = true,
+        bool isLast = false,
+      }) {
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        color: context.bgPrimary, // 白色背景
+        padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 16.h),
+        child: Row(
+          children: [
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 16.sp,
+                color: context.textPrimary900,
+              ),
             ),
-          ),
-          SizedBox(height: 12.h),
-          GridView.builder(
+            SizedBox(width: 16.w),
+            Expanded(
+              child: Text(
+                value,
+                textAlign: TextAlign.right,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 15.sp,
+                  color: context.textSecondary700,
+                ),
+              ),
+            ),
+            if (showArrow) ...[
+              SizedBox(width: 8.w),
+              Icon(Icons.arrow_forward_ios, size: 14.sp, color: Colors.grey[400]),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  // --- 3. 底部按钮 (保持不变) ---
+  Widget _buildFooterButtons(BuildContext context, WidgetRef ref, String conversationId) {
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: 16.w),
+      child: Button(
+        variant: ButtonVariant.error, // 红色按钮
+        width: double.infinity,
+        // 样式微调：微信的退群按钮通常是白底红字 (Outline) 或 红底白字，这里保持原来的
+        child: const Text("Delete and Leave"),
+        onPressed: () {
+          RadixModal.show(
+            title: "Leave Group",
+            builder: (ctx, close) => Padding(
+              padding: EdgeInsets.symmetric(horizontal: 8.w),
+              child: Text(
+                "Delete and leave this group?",
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 14.sp, color: context.textSecondary700),
+              ),
+            ),
+            confirmText: 'Leave',
+            onConfirm: (close) async {
+              final success = await ref
+                  .read(groupMemberActionControllerProvider.notifier)
+                  .leaveGroup(groupId: conversationId);
+              if (success == true) {
+                close();
+                if (context.mounted) {
+                  RadixToast.success("Left group");
+                  ref.invalidate(conversationListProvider);
+                  context.go('/conversations');
+                }
+              }
+            },
+          );
+        },
+      ),
+    );
+  }
+
+  // --- 4. 骨架屏 (适配新布局) ---
+  Widget _buildSkeleton(BuildContext context) {
+    return Column(
+      children: [
+        Container(
+          color: context.bgPrimary,
+          padding: EdgeInsets.all(16.w),
+          child: GridView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 5,
-              mainAxisSpacing: 16.h,
-              crossAxisSpacing: 16.w,
-              childAspectRatio: 0.75,
+              mainAxisSpacing: 12.h,
+              crossAxisSpacing: 12.w,
             ),
-            // +1 是为了显示末尾的“添加”按钮
-            itemCount: displayCount + 1,
-            itemBuilder: (context, index) {
-              //  A. 添加按钮逻辑
-              if (index == displayCount) {
-                return Column(
-                  children: [
-                    InkWell(
-                      onTap: () {
-                        // 跳转到选人页面，并传递 groupId，触发“邀请模式”
-                        context.push(
-                          '/chat/group/select/member?groupId=${detail.id}',
-                        );
-                      },
-                      child: Container(
-                        width: 48.r,
-                        height: 48.r,
-                        decoration: BoxDecoration(
-                          border: Border.all(color: context.borderPrimary),
-                          borderRadius: BorderRadius.circular(4.r),
-                        ),
-                        child: Icon(Icons.add, color: context.textSecondary700),
-                      ),
-                    ),
-                    SizedBox(height: 4.h),
-                    Text(
-                      "Invite",
-                      style: TextStyle(
-                        fontSize: 11.sp,
-                        color: context.textSecondary700,
-                      ),
-                    ),
-                  ],
-                );
-              }
-
-              //  B. 成员展示逻辑
-              final member = members[index];
-              final shortName = member.nickname.isNotEmpty
-                  ? member.nickname[0].toUpperCase()
-                  : "?";
-
-              return Column(
-                children: [
-                  CircleAvatar(
-                    radius: 24.r,
-                    backgroundColor: context.bgSecondary,
-                    backgroundImage: member.avatar != null
-                        ? NetworkImage(member.avatar!)
-                        : null,
-                    child: member.avatar == null
-                        ? Text(
-                      shortName,
-                      style: TextStyle(
-                        fontSize: 14.sp,
-                        color: context.textSecondary700,
-                      ),
-                    )
-                        : null,
-                  ),
-                  SizedBox(height: 4.h),
-                  Text(
-                    member.nickname,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 11.sp,
-                      color: context.textSecondary700,
-                    ),
-                  ),
-                ],
-              );
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
-  // --- 3. 底部按钮 (含退群逻辑) ---
-  Widget _buildFooterButtons(
-      BuildContext context,
-      WidgetRef ref,
-      String conversationId,
-      ) {
-    // 提示：此处不需要 watch state，因为 loading 状态由 Modal 内部托管
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 16.w),
-      child: Button(
-        variant: ButtonVariant.error, // 红色警告按钮
-        width: double.infinity,
-        onPressed: () {
-          RadixModal.show(
-            title: "Leave Group", // 弹窗标题
-            builder: (ctx, close) {
-              return Padding(
-                padding: EdgeInsets.symmetric(horizontal: 8.w),
-                child: Text(
-                  "Are you sure you want to delete and leave this group? This action cannot be undone.",
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 14.sp, color: context.textSecondary700),
-                ),
-              );
-            },
-            confirmText: 'Leave',
-            //  使用 async 回调，Modal 会自动处理 Loading
-            onConfirm: (close) async {
-              // 1. 调用 API
-              final success = await ref
-                  .read(groupMemberActionControllerProvider.notifier)
-                  .leaveGroup(groupId: conversationId);
-
-              // 2. 成功才关闭弹窗并跳转
-              if (success == true) {
-                close();
-                if (context.mounted) {
-                  RadixToast.success("You have left the group.");
-                  // 刷新列表缓存
-                  ref.invalidate(conversationListProvider);
-                  // 返回首页
-                  context.go('/conversations');
-                }
-              }
-              // 3. 失败则 Modal 自动恢复可点击状态，用户可重试
-            },
-          );
-        },
-        child: const Text("Delete and Leave"),
-      ),
-    );
-  }
-
-  // --- 5. 骨架屏 ---
-  Widget _buildSkeleton(BuildContext context) {
-    return SingleChildScrollView(
-      physics: const NeverScrollableScrollPhysics(),
-      child: Column(
-        children: [
-          SizedBox(height: 12.h),
-          // 头部
-          Container(
-            color: context.bgPrimary,
-            padding: EdgeInsets.symmetric(vertical: 20.h, horizontal: 16.w),
-            child: Row(
-              children: [
-                Skeleton.react(
-                  width: 60.r,
-                  height: 60.r,
-                  borderRadius: BorderRadius.circular(8.r),
-                ),
-                SizedBox(width: 16.w),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Skeleton.react(width: 150.w, height: 20.h),
-                      SizedBox(height: 8.h),
-                      Skeleton.react(width: 100.w, height: 14.h),
-                    ],
-                  ),
-                ),
-              ],
+            itemCount: 10,
+            itemBuilder: (_, __) => Skeleton.react(
+                width: 48.r, height: 48.r, borderRadius: BorderRadius.circular(4.r)
             ),
           ),
-          SizedBox(height: 12.h),
-          // 网格
-          Container(
-            color: context.bgPrimary,
-            padding: EdgeInsets.all(16.w),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Skeleton.react(width: 80.w, height: 16.h),
-                SizedBox(height: 16.h),
-                GridView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 5,
-                    mainAxisSpacing: 16.h,
-                    crossAxisSpacing: 16.w,
-                    childAspectRatio: 0.75,
-                  ),
-                  itemCount: 10,
-                  itemBuilder: (_, __) => Column(
-                    children: [
-                      Skeleton.react(
-                        width: 48.r,
-                        height: 48.r,
-                        borderRadius: BorderRadius.circular(24.r),
-                      ),
-                      SizedBox(height: 8.h),
-                      Skeleton.react(width: 40.w, height: 10.h),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
+        ),
+        SizedBox(height: 12.h),
+        Container(color: context.bgPrimary, height: 50.h, width: double.infinity),
+        SizedBox(height: 1.h),
+        Container(color: context.bgPrimary, height: 50.h, width: double.infinity),
+      ],
     );
   }
 }

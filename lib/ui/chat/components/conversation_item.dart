@@ -8,6 +8,8 @@ import 'package:flutter_app/ui/chat/providers/conversation_provider.dart';
 import 'package:flutter_app/ui/chat/models/conversation.dart';
 import 'package:flutter_app/ui/chat/models/chat_ui_model.dart';
 
+import 'group_avatar.dart';
+
 class ConversationItem extends ConsumerWidget {
   final Conversation item;
 
@@ -24,6 +26,17 @@ class ConversationItem extends ConsumerWidget {
 
     // 直接比较枚举，代码清晰易读
     final isSendFailed = item.lastMsgStatus == MessageStatus.failed;
+    // 1. 准备头像列表
+    List<String?> avatarList = [];
+
+    if (item.type == ConversationType.group) {
+      if (item.avatar != null) {
+        avatarList = [item.avatar];
+      }
+    } else {
+      // 私聊直接用对方头像
+      avatarList = [item.avatar];
+    }
 
     return ListTile(
       contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
@@ -34,18 +47,11 @@ class ConversationItem extends ConsumerWidget {
       leading: Stack(
         clipBehavior: Clip.none,
         children: [
-          // 头像
-          CircleAvatar(
-            radius: 24.r,
-            backgroundColor: Colors.grey[200],
-            backgroundImage: (item.avatar != null && item.avatar!.isNotEmpty)
-                ? NetworkImage(item.avatar!)
-                : null,
-            child: (item.avatar == null || item.avatar!.isEmpty)
-                ? Icon(Icons.person, color: Colors.grey[500], size: 24.r)
-                : null,
+          //  使用新组件
+          GroupAvatar(
+            memberAvatars: avatarList,
+            size: 48.r, // 对应 radius 24
           ),
-
           // 红点 Badge
           if (item.unreadCount > 0)
             Positioned(
