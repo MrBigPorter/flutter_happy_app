@@ -581,15 +581,12 @@ class Api {
     return CreateGroupResponse.fromJson(res);
   }
 
-  // 发送消息
-  static Future<ChatMessage> sendMessage(
-    String id,
-    String conversationId,
-    String content,
-    int type, {
-    int? duration,
-    int? width,
-    int? height,
+  static Future<ChatMessage> sendMessage({
+    required String id,
+    required String conversationId,
+    required String content,
+    required int type,
+    Map<String, dynamic>? meta,
   }) async {
     final res = await Http.post(
       '/api/v1/chat/message',
@@ -598,12 +595,9 @@ class Api {
         'conversationId': conversationId,
         'content': content,
         'type': type,
-        if (duration != null) 'duration': duration,
-        if (width != null) 'width': width,
-        if (height != null) 'height': height,
+        if (meta != null) 'meta': meta,
       },
     );
-
     return ChatMessage.fromJson(res);
   }
 

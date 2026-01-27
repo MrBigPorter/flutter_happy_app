@@ -344,11 +344,12 @@ class MessageMarkReadRequest {
 
 @JsonSerializable(checked: true)
 class MessageMarkReadResponse {
+  @JsonKey(name: 'unreadCount', defaultValue: 0)
   final int unreadCount;
   final int lastReadSeqId;
 
   MessageMarkReadResponse({
-    required this.unreadCount,
+     this.unreadCount = 0,
     required this.lastReadSeqId,
   });
 

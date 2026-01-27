@@ -292,7 +292,7 @@ MessageMarkReadResponse _$MessageMarkReadResponseFromJson(
       ($checkedConvert) {
         final val = MessageMarkReadResponse(
           unreadCount:
-              $checkedConvert('unreadCount', (v) => (v as num).toInt()),
+              $checkedConvert('unreadCount', (v) => (v as num?)?.toInt() ?? 0),
           lastReadSeqId:
               $checkedConvert('lastReadSeqId', (v) => (v as num).toInt()),
         );

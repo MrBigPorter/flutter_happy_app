@@ -1,22 +1,20 @@
 import 'dart:async';
-import 'dart:io';
 import 'dart:ui' as ui;
-import 'package:camera/camera.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
-import 'package:flutter_app/ui/chat/services/network/offline_queue_manager.dart';
-import 'package:flutter_app/utils/helper.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
 import 'package:rxdart/rxdart.dart';
-import 'package:path/path.dart' as p;
+import 'package:cross_file/cross_file.dart';
 
 import 'package:flutter_app/common.dart';
 import 'package:flutter_app/core/services/socket_service.dart';
 import 'package:flutter_app/core/providers/socket_provider.dart';
 import 'package:flutter_app/ui/chat/models/chat_ui_model.dart';
 import 'package:flutter_app/core/store/lucky_store.dart';
+import 'package:flutter_app/ui/chat/services/media/video_processor.dart';
+import 'package:flutter_app/ui/chat/services/network/offline_queue_manager.dart';
+
 import '../../../utils/asset/asset_manager.dart';
 import '../../../utils/upload/global_upload_service.dart';
 import '../../../utils/upload/upload_types.dart';
@@ -25,7 +23,8 @@ import '../services/compression/image_compression_service.dart';
 import '../services/database/local_database_service.dart';
 import 'conversation_provider.dart';
 
-// --- Providers ---
+// --- Riverpod Providers ---
+
 final chatStreamProvider = StreamProvider.family
     .autoDispose<List<ChatUiModel>, String>((ref, conversationId) {
       return LocalDatabaseService().watchMessages(conversationId);
@@ -63,9 +62,11 @@ class ChatRoomController with WidgetsBindingObserver {
   bool _isLoadingMore = false;
   int _maxReadSeqId = 0;
 
-  bool get hasMore => _nextCursor != null;
+  // --- Fixed Missing Getters & Helpers ---
 
-  String get _currentUserId => _ref.read(luckyProvider).userInfo?.id ?? "";
+  bool get hasMore => _nextCursor != null; //
+
+  String get _currentUserId => _ref.read(luckyProvider).userInfo?.id ?? ""; //
 
   static final Map<String, String> _sessionPathCache = {};
 
@@ -93,7 +94,254 @@ class ChatRoomController with WidgetsBindingObserver {
     _readReceiptSubject.close();
   }
 
-  // --- Initialization & Socket ---
+  // ===========================================================================
+  // CORE PIPELINE
+  // ===========================================================================
+
+  Future<void> _sendPipeline({
+    required ChatUiModel msg,
+    required Future<String> Function() getContentTask,
+    Map<String, dynamic>? extraMeta,
+  }) async {
+    try {
+      await LocalDatabaseService().saveMessage(msg);
+      _updateConversationList(msg.content, msg.createdAt);
+
+      final finalContent = await getContentTask();
+
+      // Fix: Explicitly typed Map for metadata merging
+      final Map<String, dynamic> combinedMeta = <String, dynamic>{
+        if (msg.meta != null) ...msg.meta!,
+        if (extraMeta != null) ...extraMeta,
+      };
+
+      final serverMsg = await Api.sendMessage(
+        id: msg.id,
+        conversationId: conversationId,
+        content: finalContent,
+        type: msg.type.value,
+        meta: combinedMeta.isEmpty ? null : combinedMeta,
+      );
+
+      await LocalDatabaseService().updateMessage(msg.id, {
+        'status': MessageStatus.success.name,
+        'seqId': serverMsg.seqId,
+        'createdAt': timeToInt(serverMsg.createdAt),
+        if (serverMsg.meta != null) 'meta': serverMsg.meta,
+        if (msg.type != MessageType.text) 'content': serverMsg.content,
+      });
+    } catch (e) {
+      debugPrint("Send Pipeline Error: $e");
+      await LocalDatabaseService().updateMessageStatus(
+        msg.id,
+        MessageStatus.pending,
+      );
+      OfflineQueueManager().startFlush();
+    }
+  }
+
+  Future<String> _uploadAttachment(
+    String? localName,
+    MessageType type, {
+    String? fallbackPath,
+  }) async {
+    if (localName == null && fallbackPath == null) return "";
+    final fullPath = await AssetManager.getFullPath(localName, type);
+    final uploadPath = fullPath ?? fallbackPath;
+    if (uploadPath == null) throw Exception("Local asset not found");
+
+    return await _uploadService.uploadFile(
+      file: XFile(uploadPath),
+      module: UploadModule.chat,
+      onProgress: (_) {},
+    );
+  }
+
+  // ===========================================================================
+  //  MESSAGE ACTIONS
+  // ===========================================================================
+
+  Future<void> sendMessage(String text) async {
+    if (text.trim().isEmpty) return;
+    final msg = _createBaseMessage(content: text, type: MessageType.text);
+    await _sendPipeline(msg: msg, getContentTask: () async => text);
+  }
+
+  Future<void> sendImage(XFile file) async {
+    final msgId = const Uuid().v4();
+    final results = await Future.wait([
+      ImageCompressionService.getTinyThumbnail(file),
+      AssetManager.save(file, MessageType.image),
+      _calculateImageSize(file),
+    ]);
+
+    final fileName = results[1] as String;
+    final meta = results[2] as Map<String, dynamic>;
+
+    final absPath = await AssetManager.getFullPath(fileName, MessageType.image);
+    if (absPath != null) _sessionPathCache[msgId] = absPath;
+
+    final msg = _createBaseMessage(
+      id: msgId,
+      content: "[Image]",
+      type: MessageType.image,
+      localPath: fileName,
+      previewBytes: results[0] as Uint8List,
+      meta: meta,
+    );
+
+    await _sendPipeline(
+      msg: msg,
+      getContentTask: () => _uploadAttachment(
+        fileName,
+        MessageType.image,
+        fallbackPath: file.path,
+      ),
+    );
+  }
+
+  Future<void> sendVoiceMessage(String path, int duration) async {
+    final msgId = const Uuid().v4();
+    final fileName = await AssetManager.save(XFile(path), MessageType.audio);
+
+    final absPath = await AssetManager.getFullPath(fileName, MessageType.audio);
+    if (absPath != null) _sessionPathCache[msgId] = absPath;
+
+    final msg = _createBaseMessage(
+      id: msgId,
+      content: "[Voice]",
+      type: MessageType.audio,
+      localPath: fileName,
+      duration: duration,
+      meta: {'duration': duration},
+    );
+
+    await _sendPipeline(
+      msg: msg,
+      getContentTask: () =>
+          _uploadAttachment(fileName, MessageType.audio, fallbackPath: path),
+    );
+  }
+
+  Future<void> sendVideo(XFile file) async {
+    final msgId = const Uuid().v4();
+    final result = await VideoProcessor.process(file);
+    if (result == null) return;
+
+    final videoName = await AssetManager.save(
+      result.videoFile,
+      MessageType.video,
+    );
+    final thumbName = await AssetManager.save(
+      XFile(result.thumbnailFile.path),
+      MessageType.image,
+    );
+
+    final absPath = await AssetManager.getFullPath(
+      videoName,
+      MessageType.video,
+    );
+    if (absPath != null) _sessionPathCache[msgId] = absPath;
+
+    final Map<String, dynamic> videoMeta = {
+      'thumb': thumbName,
+      'w': result.width,
+      'h': result.height,
+      'duration': result.duration,
+    };
+
+    final msg = _createBaseMessage(
+      id: msgId,
+      content: "[Video]",
+      type: MessageType.video,
+      localPath: videoName,
+      meta: videoMeta,
+    );
+
+    await _sendPipeline(
+      msg: msg,
+      getContentTask: () async {
+        final thumbUrl = await _uploadService.uploadFile(
+          file: XFile(result.thumbnailFile.path),
+          module: UploadModule.chat,
+          onProgress: (_) {},
+        );
+        videoMeta['thumb'] = thumbUrl;
+        return await _uploadAttachment(videoName, MessageType.video);
+      },
+      extraMeta: videoMeta,
+    );
+  }
+
+  Future<void> resendMessage(String msgId) async {
+    final target = await LocalDatabaseService().getMessageById(msgId);
+    if (target == null) return;
+
+    final msg = target.copyWith(
+      status: MessageStatus.sending,
+      createdAt: DateTime.now().millisecondsSinceEpoch,
+    );
+
+    await _sendPipeline(
+      msg: msg,
+      getContentTask: () async {
+        if (msg.type == MessageType.text) return msg.content;
+        if (!msg.content.startsWith('http')) {
+          return await _uploadAttachment(msg.localPath, msg.type);
+        }
+        return msg.content;
+      },
+    );
+  }
+
+  // ===========================================================================
+  //  HELPERS
+  // ===========================================================================
+
+  ChatUiModel _createBaseMessage({
+    String? id,
+    required String content,
+    required MessageType type,
+    String? localPath,
+    Uint8List? previewBytes,
+    Map<String, dynamic>? meta,
+    int? duration,
+  }) {
+    return ChatUiModel(
+      id: id ?? const Uuid().v4(),
+      conversationId: conversationId,
+      content: content,
+      type: type,
+      isMe: true,
+      status: MessageStatus.sending,
+      createdAt: DateTime.now().millisecondsSinceEpoch,
+      localPath: localPath,
+      previewBytes: previewBytes,
+      meta: meta,
+      duration: duration,
+    );
+  }
+
+  int timeToInt(dynamic value) {
+    if (value is int) return value;
+    if (value is DateTime) return value.millisecondsSinceEpoch;
+    if (value is String) return DateTime.parse(value).millisecondsSinceEpoch;
+    return DateTime.now().millisecondsSinceEpoch;
+  }
+
+  Future<Map<String, dynamic>> _calculateImageSize(XFile file) async {
+    try {
+      final bytes = await file.readAsBytes();
+      final codec = await ui.instantiateImageCodec(bytes);
+      final frameInfo = await codec.getNextFrame();
+      return {'w': frameInfo.image.width, 'h': frameInfo.image.height};
+    } catch (_) {
+      return {};
+    }
+  }
+
+  // --- Socket & State Logic ---
+
   Future<void> _setup() async {
     _connectionSub = _socketService.onSyncNeeded.listen((_) => _joinRoom());
     if (_socketService.isConnected) _joinRoom();
@@ -108,7 +356,6 @@ class ChatRoomController with WidgetsBindingObserver {
     if (_socketService.isConnected) _socketService.joinChatRoom(conversationId);
   }
 
-  // --- Read Receipts ---
   void _setupReadReceiptDebounce() {
     _readReceiptSubject.debounceTime(const Duration(milliseconds: 500)).listen((
       _,
@@ -134,20 +381,14 @@ class ChatRoomController with WidgetsBindingObserver {
     );
   }
 
-  // --- Data Refresh & Pagination (修复丢失的方法) ---
   Future<void> refresh() async {
     try {
       markAsRead();
       final response = await Api.chatMessagesApi(
-        MessageHistoryRequest(
-          conversationId: conversationId,
-          pageSize: 20,
-          cursor: null,
-        ),
+        MessageHistoryRequest(conversationId: conversationId, pageSize: 20),
       );
       _maxReadSeqId = response.partnerLastReadSeqId;
       _nextCursor = response.nextCursor;
-
       final uiMsgs = _applyReadStatusLocally(
         _mapToUiModels(response.list),
         _maxReadSeqId,
@@ -176,109 +417,12 @@ class ChatRoomController with WidgetsBindingObserver {
         _maxReadSeqId,
       );
       await LocalDatabaseService().saveMessages(uiMsgs);
-    } catch (e) {
-      debugPrint("Load More Error: $e");
     } finally {
       _isLoadingMore = false;
       _ref.read(chatLoadingMoreProvider(conversationId).notifier).state = false;
     }
   }
 
-  // --- Message Sending (修复丢失的方法) ---
-  Future<void> sendMessage(String text) async {
-    if (text.trim().isEmpty) return;
-    final msg = _createBaseMessage(content: text, type: MessageType.text);
-    await _handleOptimisticSend(
-      msg,
-      networkTask: () async =>
-          Api.sendMessage(msg.id, conversationId, text, MessageType.text.value),
-    );
-  }
-
-  Future<void> sendImage(XFile file) async {
-    final msgId = const Uuid().v4();
-
-    // 1. 并发处理：生成微缩图 + 物理搬家
-    final results = await Future.wait([
-     ImageCompressionService.getTinyThumbnail(file),// 生成 <50KB 字节流
-      AssetManager.save(file, MessageType.image),
-      _calculateImageSize(file), // (下面会补这个辅助方法)
-    ]);
-
-
-    final Uint8List previewBytes = results[0] as Uint8List;
-    final String fileName = results[1] as String; // 拿到纯文件名
-    final Map<String, dynamic> meta = results[2] as Map<String, dynamic>;
-
-    // 2. 缓存绝对路径 (用于 UI 零抖动)
-    // 问管家要绝对路径，管家会自动处理 Web/Mobile 差异
-    final absPath = await AssetManager.getFullPath(fileName, MessageType.image);
-    if (absPath != null) _sessionPathCache[msgId] = absPath;
-
-    // 3. 创建消息 (存入 DB 的是纯文件名)
-    final msg = _createBaseMessage(
-      id: msgId,
-      content: "[Image]",
-      type: MessageType.image,
-      localPath: fileName, // 数据库里只存 abc.jpg
-      previewBytes: previewBytes,
-      meta: meta,
-    );
-
-    // 4. 乐观发送
-    await _handleOptimisticSend(msg, networkTask: () async {
-      // 上传时，问管家要物理路径
-      final fullPath = await AssetManager.getFullPath(fileName, MessageType.image);
-      // 兜底：如果万一管家找不到(极罕见)，用原文件路径
-      final uploadPath = fullPath ?? file.path;
-
-      final cdnUrl = await _uploadService.uploadFile(
-        file: XFile(uploadPath),
-        module: UploadModule.chat,
-        onProgress: (_) {},
-      );
-
-      return Api.sendMessage(
-        msg.id, conversationId, cdnUrl, MessageType.image.value,
-        width: (meta['w'] as num?)?.toInt(),
-        height: (meta['h'] as num?)?.toInt(),
-      );
-    });
-  }
-
-  Future<void> sendVoiceMessage(String path, int duration) async {
-    final msgId = const Uuid().v4();
-
-    // 1. 管家帮忙搬家
-    final fileName = await AssetManager.save(XFile(path), MessageType.audio);
-
-    // 2. 缓存路径
-    final absPath = await AssetManager.getFullPath(fileName, MessageType.audio);
-    if (absPath != null) _sessionPathCache[msgId] = absPath;
-
-    final msg = _createBaseMessage(
-      id: msgId,
-      content: "[Voice]",
-      type: MessageType.audio,
-      localPath: fileName, //  只存文件名
-      duration: duration,
-    );
-
-    await _handleOptimisticSend(msg, networkTask: () async {
-      final fullPath = await AssetManager.getFullPath(fileName, MessageType.audio) ?? path;
-      final cdnUrl = await _uploadService.uploadFile(
-        file: XFile(fullPath, name: '$msgId.m4a', mimeType: 'audio/mp4'),
-        module: UploadModule.chat,
-        onProgress: (_) {},
-      );
-      return Api.sendMessage(
-        msg.id, conversationId, cdnUrl, MessageType.audio.value,
-        duration: duration,
-      );
-    });
-  }
-
-  // --- Message Recall & Delete (修复丢失的方法) ---
   Future<void> recallMessage(String messageId) async {
     try {
       final res = await Api.messageRecallApi(
@@ -292,9 +436,7 @@ class ChatRoomController with WidgetsBindingObserver {
         "[message recalled]",
         DateTime.now().millisecondsSinceEpoch,
       );
-    } catch (e) {
-      debugPrint("Recall Error: $e");
-    }
+    } catch (_) {}
   }
 
   Future<void> deleteMessage(String messageId) async {
@@ -306,120 +448,9 @@ class ChatRoomController with WidgetsBindingObserver {
           conversationId: conversationId,
         ),
       );
-    } catch (e) {
-      debugPrint("Delete Error: $e");
-    }
-  }
-
-  Future<void> resendMessage(String msgId) async {
-    final target = await LocalDatabaseService().getMessageById(msgId);
-    if (target == null) return;
-    final msg = target.copyWith(
-      status: MessageStatus.sending,
-      createdAt: DateTime.now().millisecondsSinceEpoch,
-    );
-    await _handleOptimisticSend(
-      msg,
-      networkTask: () async {
-        final appDir = await getApplicationDocumentsDirectory();
-        if (target.type == MessageType.image && target.localPath != null) {
-          final absPath = p.join(appDir.path, 'chat_images', target.localPath!);
-          final cdnUrl = await _uploadService.uploadFile(
-            file: XFile(absPath),
-            module: UploadModule.chat,
-            onProgress: (_) {},
-          );
-          return Api.sendMessage(
-            msgId,
-            conversationId,
-            cdnUrl,
-            MessageType.image.value,
-            width: (target.meta?['w'] as num?)?.toInt(),
-            height: (target.meta?['h'] as num?)?.toInt(),
-          );
-        }else if(target.type == MessageType.audio && target.localPath != null) {
-          final absPath = p.join(appDir.path, 'chat_audio', target.localPath!);
-          final cdnUrl = await _uploadService.uploadFile(
-            file: XFile(absPath, mimeType: 'audio/mp4'),
-            module: UploadModule.chat,
-            onProgress: (_) {},
-          );
-          return Api.sendMessage(msgId, conversationId, cdnUrl, MessageType.audio.value, duration: target.duration);
-        }
-        return Api.sendMessage(
-          msgId,
-          conversationId,
-          target.content,
-          target.type.value,
-        );
-      },
-    );
-  }
-
-  // --- Helpers & Internal Engine ---
-  ChatUiModel _createBaseMessage({
-    String? id,
-    required String content,
-    required MessageType type,
-    String? localPath,
-    Uint8List? previewBytes,
-    Map<String, dynamic>? meta,
-    int? duration,
-  }) {
-    return ChatUiModel(
-      id: id ?? const Uuid().v4(),
-      conversationId: conversationId,
-      content: content,
-      type: type,
-      isMe: true,
-      status: MessageStatus.sending,
-      createdAt: DateTime.now().millisecondsSinceEpoch,
-      localPath: localPath,
-      previewBytes: previewBytes,
-      meta: meta,
-      duration: duration,
-    );
-  }
-
-  // 计算图片宽高的辅助方法
-  Future<Map<String, dynamic>> _calculateImageSize(XFile file) async {
-    int w = 0, h = 0;
-    try {
-      final bytes = await file.readAsBytes();
-      final codec = await ui.instantiateImageCodec(bytes);
-      final frameInfo = await codec.getNextFrame();
-      w = frameInfo.image.width;
-      h = frameInfo.image.height;
     } catch (_) {}
-    return w > 0 ? {'w': w, 'h': h} : {};
   }
 
-  Future<void> _handleOptimisticSend(
-    ChatUiModel msg, {
-    required Future<ChatMessage> Function() networkTask,
-  }) async {
-    try {
-      await LocalDatabaseService().saveMessage(msg);
-      _updateConversationList(msg.content, msg.createdAt);
-      final serverMsg = await networkTask();
-      await LocalDatabaseService().updateMessage(msg.id, {
-        'status': MessageStatus.success.name,
-        'seqId': serverMsg.seqId,
-        'createdAt': timeToInt(serverMsg.createdAt),
-        if (serverMsg.meta != null) 'meta': serverMsg.meta,
-        if (msg.type != MessageType.text) 'content': serverMsg.content,
-      });
-    } catch (e) {
-      await LocalDatabaseService().updateMessageStatus(
-        msg.id,
-        MessageStatus.pending,
-      );
-      OfflineQueueManager().startFlush();
-    }
-  }
-
-  /// 语音预处理：实现“永久居住证”
-  // --- Socket Handlers & Mapping ---
   void _onSocketMessage(Map<String, dynamic> data) async {
     if (!_mounted) return;
     final msg = SocketMessage.fromJson(data);
@@ -427,12 +458,12 @@ class ChatRoomController with WidgetsBindingObserver {
         _processedMsgIds.contains(msg.id) ||
         msg.sender?.id == _currentUserId)
       return;
+
     _processedMsgIds.add(msg.id);
     if (_processedMsgIds.length > 50)
       _processedMsgIds.remove(_processedMsgIds.first);
     if (WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed)
       _readReceiptSubject.add(null);
-
 
     var uiMsg = ChatUiModel.fromApiModel(
       ChatMessage(
@@ -447,17 +478,13 @@ class ChatRoomController with WidgetsBindingObserver {
       conversationId,
       _currentUserId,
     );
-    //  核心修复：防止 Socket 数据把本地的微缩图覆盖成 null
-    // 1. 先查一下本地有没有这条消息
+
     final localMsg = await LocalDatabaseService().getMessageById(uiMsg.id);
-
-    // 2. 如果本地有图，把它“移植”到新消息上
-    if (localMsg != null && localMsg.previewBytes != null && localMsg.previewBytes!.isNotEmpty) {
+    if (localMsg != null &&
+        localMsg.previewBytes != null &&
+        localMsg.previewBytes!.isNotEmpty) {
       uiMsg = uiMsg.copyWith(previewBytes: localMsg.previewBytes);
-      debugPrint(" Socket更新: 成功保住图片 Bytes! ID: ${uiMsg.id}");
     }
-
-    // 3. 再保存 (这时候 uiMsg 里已经带上本地的 bytes 了)
     await LocalDatabaseService().saveMessage(uiMsg);
   }
 
@@ -516,5 +543,10 @@ class ChatRoomController with WidgetsBindingObserver {
             lastMsgTime: time,
           );
     } catch (_) {}
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) markAsRead();
   }
 }
