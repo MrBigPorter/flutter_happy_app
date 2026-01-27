@@ -1,45 +1,36 @@
-import 'dart:io';
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_app/ui/chat/components/voice_bubble.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:intl/intl.dart';
-import 'dart:typed_data'; // 必须加这一行，解决 Uint8List 报错
 
-import 'package:flutter_app/ui/img/app_image.dart';
-import '../../../utils/asset/asset_manager.dart';
 import '../models/chat_ui_model.dart';
-import '../photo_preview_page.dart';
 import '../providers/chat_room_provider.dart';
+
+import 'bubbles/image_msg_bubble.dart';
+import 'bubbles/text_msg_bubble.dart';
+import 'bubbles/video_msg_bubble.dart';
+import 'bubbles/voice_bubble.dart';
 
 class ChatBubble extends ConsumerWidget {
   final ChatUiModel message;
   final VoidCallback? onRetry;
   final bool showReadStatus;
-  final bool isGroup; //  1. 新增参数
+  final bool isGroup;
 
   const ChatBubble({
     super.key,
     required this.message,
     this.onRetry,
     this.showReadStatus = false,
-    this.isGroup = false, //  默认为 false
+    this.isGroup = false,
   });
 
+  // 长按菜单逻辑 (保持不变)
   void _showContextMenu(BuildContext context, WidgetRef ref, bool isMe) {
     final bool isText = message.type == MessageType.text;
-    // Allow recall within 2 minutes
-    final bool canRecall =
-        isMe &&
-        DateTime.now()
-                .difference(
-                  DateTime.fromMillisecondsSinceEpoch(message.createdAt),
-                )
-                .inMinutes <
-            2;
+    final bool canRecall = isMe &&
+        DateTime.now().difference(DateTime.fromMillisecondsSinceEpoch(message.createdAt)).inMinutes < 2;
 
     showCupertinoModalPopup(
       context: context,
@@ -59,9 +50,7 @@ class ChatBubble extends ConsumerWidget {
               isDestructiveAction: true,
               onPressed: () {
                 Navigator.pop(context);
-                ref
-                    .read(chatControllerProvider(message.conversationId))
-                    .recallMessage(message.id);
+                ref.read(chatControllerProvider(message.conversationId)).recallMessage(message.id);
               },
               child: const Text("Unsend for Everyone"),
             ),
@@ -69,9 +58,7 @@ class ChatBubble extends ConsumerWidget {
             isDestructiveAction: true,
             onPressed: () {
               Navigator.pop(context);
-              ref
-                  .read(chatControllerProvider(message.conversationId))
-                  .deleteMessage(message.id);
+              ref.read(chatControllerProvider(message.conversationId)).deleteMessage(message.id);
             },
             child: const Text("Remove for You"),
           ),
@@ -92,61 +79,81 @@ class ChatBubble extends ConsumerWidget {
     return Container(
       margin: EdgeInsets.symmetric(vertical: 8.h, horizontal: 12.w),
       child: Row(
-        mainAxisAlignment: isMe
-            ? MainAxisAlignment.end
-            : MainAxisAlignment.start,
+        mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // 对方头像
           if (!isMe) ...[
             _buildAvatar(message.senderAvatar),
             SizedBox(width: 8.w),
           ],
+
           Flexible(
             child: Column(
-              crossAxisAlignment: isMe
-                  ? CrossAxisAlignment.end
-                  : CrossAxisAlignment.start,
+              crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
               children: [
-                //  2. 修改判断逻辑：只有在群聊 (isGroup) 且有名字时才显示
+                // 群聊昵称
                 if (!isMe && isGroup && message.senderName != null)
                   Padding(
                     padding: EdgeInsets.only(bottom: 4.h, left: 4.w),
                     child: Text(
                       message.senderName!,
-                      style: TextStyle(
-                        fontSize: 11.sp,
-                        color: Colors.grey[600],
-                      ),
+                      style: TextStyle(fontSize: 11.sp, color: Colors.grey[600]),
                     ),
                   ),
+
+                // 消息内容行 (状态 + 气泡)
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
+                    // 我发送的消息，状态在左边
                     if (isMe) _buildStatusPrefix(),
-                    Flexible(child: _buildContentFactory(context, ref, isMe)),
+
+                    // 气泡本体 (包裹 GestureDetector 处理长按)
+                    Flexible(
+                      child: GestureDetector(
+                        onLongPress: () => _showContextMenu(context, ref, isMe),
+                        child: _buildContentFactory(context),
+                      ),
+                    ),
                   ],
                 ),
+
+                // 已读状态
                 if (isMe && showReadStatus)
                   Padding(
                     padding: EdgeInsets.only(top: 2.h, right: 2.w),
                     child: Text(
                       "Read",
-                      style: TextStyle(
-                        fontSize: 10.sp,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.grey[400],
-                      ),
+                      style: TextStyle(fontSize: 10.sp, fontWeight: FontWeight.bold, color: Colors.grey[400]),
                     ),
                   ),
               ],
             ),
           ),
+
+          // 我的头像
           if (isMe) ...[SizedBox(width: 8.w), _buildAvatar(null)],
         ],
       ),
     );
   }
+
+  Widget _buildContentFactory(BuildContext context) {
+    switch (message.type) {
+      case MessageType.image:
+        return ImageMsgBubble(message: message);
+      case MessageType.audio:
+        return VoiceBubble(message: message, isMe: message.isMe);
+      case MessageType.video:
+        return VideoMsgBubble(message: message);
+      case MessageType.text:
+      default:
+        return TextMsgBubble(message: message);
+    }
+  }
+
 
   Widget _buildRecalledSystemTip() {
     return Center(
@@ -158,322 +165,33 @@ class ChatBubble extends ConsumerWidget {
           border: Border.all(color: Colors.grey.withOpacity(0.3), width: 1),
         ),
         child: Text(
-          message.isMe
-              ? "You unsent a message"
-              : "${message.senderName ?? 'Someone'} unsent a message",
-          style: TextStyle(
-            fontSize: 12.sp,
-            color: Colors.grey[500],
-            fontStyle: FontStyle.italic,
-          ),
+          message.isMe ? "You unsent a message" : "${message.senderName ?? 'Someone'} unsent a message",
+          style: TextStyle(fontSize: 12.sp, color: Colors.grey[500], fontStyle: FontStyle.italic),
         ),
       ),
-    );
-  }
-
-  Widget _buildContentFactory(BuildContext context, WidgetRef ref, bool isMe) {
-    Widget content;
-    switch (message.type) {
-      case MessageType.image:
-        content = _buildImageBubble(context, isMe);
-        break;
-      case MessageType.audio:
-        content = VoiceBubble(message: message, isMe: isMe);
-        break;
-      case MessageType.text:
-      default:
-        content = _buildTextBubble(context, isMe);
-        break;
-    }
-    return GestureDetector(
-      onLongPress: () => _showContextMenu(context, ref, isMe),
-      child: content,
-    );
-  }
-
-  Widget _buildTextBubble(BuildContext context, bool isMe) {
-    final timeStr = DateFormat(
-      'HH:mm',
-    ).format(DateTime.fromMillisecondsSinceEpoch(message.createdAt));
-    return Container(
-      padding: EdgeInsets.fromLTRB(12.w, 10.h, 12.w, 8.h),
-      decoration: BoxDecoration(
-        color: isMe ? const Color(0xFF95EC69) : Colors.white,
-        borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(12.r),
-          topRight: Radius.circular(12.r),
-          bottomLeft: Radius.circular(isMe ? 12.r : 2.r),
-          bottomRight: Radius.circular(isMe ? 2.r : 12.r),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            offset: const Offset(0, 1),
-            blurRadius: 4,
-          ),
-        ],
-      ),
-      constraints: BoxConstraints(maxWidth: 0.72.sw),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            message.content,
-            style: TextStyle(
-              color: Colors.black87,
-              fontSize: 16.sp,
-              height: 1.4,
-            ),
-          ),
-          SizedBox(height: 2.h),
-          Text(
-            timeStr,
-            style: TextStyle(
-              fontSize: 9.sp,
-              color: isMe ? Colors.black.withOpacity(0.4) : Colors.grey[400],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ---  Core Architecture: Tiered Image Rendering Pipeline ---
-  Widget _buildImageBubble(BuildContext context, bool isMe) {
-    final double bubbleSize = 0.60.sw;
-    final double dpr = MediaQuery.of(context).devicePixelRatio;
-    final int cacheW = (bubbleSize * dpr).toInt();
-    final timeStr = DateFormat('HH:mm').format(
-        DateTime.fromMillisecondsSinceEpoch(message.createdAt)
-    );
-
-    // L1: Memory Cache (内存缓存，用于发送瞬间防抖动)
-    final String? sessionPath = ChatRoomController.getPathFromCache(message.id);
-
-    //  核心修改：不再自己获取 Directory 拼路径，而是直接问 AssetManager
-    return FutureBuilder<String?>(
-      future: AssetManager.getFullPath(message.localPath, MessageType.image),
-      builder: (context, snapshot) {
-
-        // 1. 获取物理路径 (Mobile 是绝对路径，Web 是 null 或 Blob)
-        final String? managerPath = snapshot.data;
-
-        // 2. 决策：优先用 sessionPath (内存)，其次用 AssetManager 找到的路径
-        //    注意：如果 managerPath 不为空，说明本地文件一定存在 (AssetManager 内部已 check exists)
-        final activeLocalPath = sessionPath ?? managerPath;
-
-        // 3. 标记是否有本地文件
-        final bool hasLocalFile = activeLocalPath != null;
-
-        // Persistent Preview (微缩图)
-        final bool hasPreviewBytes = message.previewBytes != null &&
-            (message.previewBytes as Uint8List).isNotEmpty;
-
-        // L4: CDN Fallback Widget
-        Widget buildNetworkImage() {
-          return AppCachedImage(
-            message.content,
-            width: bubbleSize,
-            height: bubbleSize,
-            fit: BoxFit.cover,
-            enablePreview: true,
-          );
-        }
-
-        return Hero(
-          tag: message.id,
-          child: Container(
-            width: bubbleSize,
-            height: bubbleSize,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12.r),
-              border: Border.all(color: Colors.grey.withOpacity(0.1)),
-              color: Colors.grey[50],
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(12.r),
-              child: Stack(
-                alignment: Alignment.center,
-                fit: StackFit.expand,
-                children: [
-                  // L4: Network Image (Base Layer - 最底层兜底)
-                  buildNetworkImage(),
-
-                  // L2: Persistent Preview Bytes (中间层 - 模糊预览)
-                  if (hasPreviewBytes)
-                    Image.memory(
-                      message.previewBytes! as Uint8List,
-                      fit: BoxFit.cover,
-                      gaplessPlayback: true,
-                    ),
-
-                  // L3/L1: High-Res Local File (顶层 - 本地高清图)
-                  //  这里不需要再判断 kIsWeb 了，因为 activeLocalPath 是由 AssetManager 保证可用的
-                  if (hasLocalFile)
-                    _buildLocalImage(
-                      context: context,
-                      path: activeLocalPath!,
-                      width: bubbleSize,
-                      height: bubbleSize,
-                      cacheW: cacheW,
-                      fallback: buildNetworkImage,
-                    ),
-
-                  // Status: Sending Overlay
-                  if (message.status == MessageStatus.sending)
-                    Container(
-                      color: Colors.black26,
-                      child: const Center(
-                        child: CircularProgressIndicator(
-                          color: Colors.white,
-                          strokeWidth: 3,
-                        ),
-                      ),
-                    ),
-
-                  // Timestamp
-                  Positioned(
-                    right: 6.w,
-                    bottom: 6.h,
-                    child: Container(
-                      padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.4),
-                        borderRadius: BorderRadius.circular(10.r),
-                      ),
-                      child: Text(
-                        timeStr,
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 9.sp,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildLocalImage({
-    required BuildContext context,
-    required String path,
-    required double width,
-    required double height,
-    required int cacheW,
-    required Widget Function() fallback,
-  }) {
-    Widget imageWidget;
-    if (kIsWeb) {
-      //  优化：如果路径不是 http 开头，也不是 blob 开头，说明是无效路径
-      // 直接显示 fallback，不要去请求网络，连 404 都不让它报
-      if (!path.startsWith('http') && !path.startsWith('blob:')) {
-        return fallback();
-      }
-      imageWidget = Image.network(
-        path,
-        width: width,
-        height: height,
-        fit: BoxFit.cover,
-        errorBuilder: (context, error, stack) => fallback(),
-      );
-    } else {
-      imageWidget = Image.file(
-        File(path),
-        width: width,
-        height: height,
-        fit: BoxFit.cover,
-        cacheWidth: cacheW,
-        gaplessPlayback: true,
-        key: ValueKey("${message.id}_local"),
-        errorBuilder: (context, error, stack) => fallback(),
-      );
-    }
-
-    return GestureDetector(
-      onTap: () {
-        String finalSource = path;
-
-        // Validate source before opening viewer
-        if (kIsWeb) {
-          if (message.status == MessageStatus.success &&
-              message.content.isNotEmpty)
-            finalSource = message.content;
-        } else {
-          // Fallback to CDN if local file is missing (e.g., cleared cache)
-          if (!File(path).existsSync() && message.content.isNotEmpty)
-            finalSource = message.content;
-        }
-
-        if (finalSource.isEmpty) {
-          debugPrint(
-            "[ChatBubble] Cannot preview: Local file missing and no CDN URL found.",
-          );
-          return;
-        }
-
-        Navigator.push(
-          context,
-          PageRouteBuilder(
-            opaque: false,
-            pageBuilder: (_, animation, __) => PhotoPreviewPage(
-              heroTag: message.id,
-              imageSource: finalSource,// High-res source for viewer
-              thumbnailSource: finalSource,// Use same source for thumbnail
-              previewBytes: message.previewBytes, // Pass preview bytes
-            ),
-            transitionsBuilder: (_, animation, __, child) =>
-                FadeTransition(opacity: animation, child: child),
-          ),
-        );
-      },
-      child: imageWidget,
     );
   }
 
   Widget _buildStatusPrefix() {
-    // Pending: Show Clock Icon (Offline Queue)
     if (message.status == MessageStatus.pending) {
       return Padding(
         padding: EdgeInsets.only(right: 8.w, bottom: 4.h),
-        child: Icon(
-          Icons.access_time_rounded,
-          size: 16.sp,
-          color: Colors.grey[400],
-        ),
+        child: Icon(Icons.access_time_rounded, size: 16.sp, color: Colors.grey[400]),
       );
     }
-
-    // Sending: Show Spinner (or hidden for images as they have internal spinners)
     if (message.status == MessageStatus.sending) {
-      if (message.type == MessageType.image) return const SizedBox.shrink();
+      // 图片和视频自己有遮罩，不需要外面的转圈圈
+      if (message.type == MessageType.image || message.type == MessageType.video) return const SizedBox.shrink();
       return Padding(
         padding: EdgeInsets.only(right: 8.w, bottom: 4.h),
-        child: SizedBox(
-          width: 14.w,
-          height: 14.w,
-          child: const CircularProgressIndicator(
-            strokeWidth: 2,
-            color: Colors.grey,
-          ),
-        ),
+        child: SizedBox(width: 14.w, height: 14.w, child: const CircularProgressIndicator(strokeWidth: 2, color: Colors.grey)),
       );
     }
-
-    // Failed: Show Red Warning (Tap to Retry)
     if (message.status == MessageStatus.failed) {
       return GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: () {
-          // 防止连点
           if (onRetry != null) {
-            // 震动反馈 (提升体验)
             HapticFeedback.lightImpact();
             onRetry!();
           }
@@ -494,13 +212,9 @@ class ChatBubble extends ConsumerWidget {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(6.r),
         color: Colors.grey[200],
-        image: url != null && url.isNotEmpty
-            ? DecorationImage(image: NetworkImage(url), fit: BoxFit.cover)
-            : null,
+        image: url != null && url.isNotEmpty ? DecorationImage(image: NetworkImage(url), fit: BoxFit.cover) : null,
       ),
-      child: url == null || url.isEmpty
-          ? Icon(Icons.person, color: Colors.grey[400], size: 24.sp)
-          : null,
+      child: url == null || url.isEmpty ? Icon(Icons.person, color: Colors.grey[400], size: 24.sp) : null,
     );
   }
 }

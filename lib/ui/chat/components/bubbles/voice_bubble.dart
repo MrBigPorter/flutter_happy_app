@@ -6,7 +6,7 @@ import 'package:flutter_app/ui/chat/providers/chat_room_provider.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:path_provider/path_provider.dart';
-import '../services/voice/audio_player_manager.dart';
+import '../../services/voice/audio_player_manager.dart';
 import 'package:path/path.dart' as p;
 
 class VoiceBubble extends StatefulWidget {
