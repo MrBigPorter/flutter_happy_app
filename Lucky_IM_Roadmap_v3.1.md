@@ -1,69 +1,64 @@
 
----
+# 🚦 Lucky IM Roadmap (Next Steps) - v3.7 Media & Performance
 
-# 🚦 Lucky IM Roadmap (Next Steps) - Updated v3.6
-
-> **🚀 当前阶段**：v3.6 Initial (多媒体与性能突破)
-> **🎯 核心目标**：实现群头像本地合成算法，由“UI 视觉对齐”转向“流媒体能力构建”。
+> **🚀 当前阶段**：v3.7 Media Breakthrough (流媒体突破)
+> **🎯 核心目标**：从“图文 IM”跨越到“多媒体 IM”，构建**原生级流媒体处理全链路**。
 
 ---
 
-## 1. 🎨 v3.6 体验巅峰 (UX & Performance)
+## 1. 🎬 v3.7 媒体引擎 (Rich Media Engine) —— **当前优先级：最高**
 
-### 🚧 [P1] 群聊九宫格头像合成 (Group Avatar Synthesis)
+### 🚧 [P1] 视频消息：Messenger 级非全屏播放 (Inline Video)
 
-> **现状**：群功能逻辑已满分，UI 布局已对齐微信。目前列表页头像依赖后端或默认图，需改为本地动态合成以达到原生级质感。
+> **现状**：图片发送已稳固。目标是实现 Messenger/Telegram 风格的“气泡内即时预览”。
 
-* **合成算法**:
-* **逻辑**: 自动提取 `ConversationDetail.members` 中的前 9 位（或 4 位）成员头像。
-* **绘制**: 利用 `CustomPainter` 或 `ImageEditor` 在内存中完成九宫格拼接。
-* **缓存策略**: 深度集成 `AssetManager`，合成图持久化存储，仅在成员增减时触发重绘，确保列表滚动零压力。
+* **发送全链路 (The Engine)**:
+* **智能压缩**: 集成 `video_compress` 实现分级压缩（适配带宽）。
+* **首帧与元数据**: 提取封面图的同时，**必须记录视频宽高比 (Aspect Ratio)** 并存入消息 `meta` 字段，确保气泡在视频加载前布局不抖动。
+* **双通异步上传**: 封面图（极速）+ 视频文件（断点续传）。
 
 
+* **交互表现 (The UI)**:
+* **气泡内预览**: 自动循环静音播放。集成 `visibility_detector` 实现“滑入播放，滑出暂停”，严格控制 CPU/内存占用。
+* **生命周期管理**: 建立 **视频控制器池 (Controller Pool)**，确保列表滑动时旧气泡的 `VideoPlayerController` 被及时 `dispose`。
+* **无感切换**: 点击气泡仅触发“解除静音”或弹出轻量级控制条，非必要不打断聊天流跳转全屏。
+
+
+
+### 🚧 [P2] 文件消息 (File Message)
+
+* **渲染逻辑**: 根据后缀名自动匹配对应的 UI 图标库（PDF, DOCX, ZIP 等）。
+* **传输管理**: 实现气泡内下载进度展示，通过 `open_file` 调用系统应用打开。
 
 ---
 
-## 2. 🎬 v3.6 媒体扩展 (Rich Media Expansion)
+## 2. ⚡ 性能与存储优化 (Optimization)
 
-### [P3] 视频消息 (Video Message)
+### 🛠️ [P3] 离线头像持久化 (Group Avatar Caching)
 
-* **引擎适配**: `AssetManager` 扩展支持 `.mp4` 容器与流式读取。
-* **发送全链路**:
-* 选取 -> **FFmpeg/Native 提取首帧缩略图** -> 视频分级压缩。
-* 双通道上传：优先上传缩略图（秒见预览），后台上传视频原文件。
+> **逻辑**: 将九宫格布局从“内存实时排版”升级为“本地物理存储”。
 
-
-* **交互表现**:
-* 气泡渲染：封面占位 + 居中播放 Icon。
-* 全屏沉浸：集成高级播放器，支持进度条拖动与静音切换。
-
-
-
-### [P4] 文件消息 (File Message)
-
-* **渲染引擎**: 针对 PDF, DOC, ZIP 等主流格式实现图标自动化匹配。
-* **传输管理**: 实现分段下载进度条，调用系统 `Share Sheet` 或 `Open With` 实现跨 App 文件交互。
+* **Canvas 合成**: 后台线程绘制 9 张头像到 Canvas。
+* **本地化路径**: 合成 PNG 文件并存入 Sembast `localAvatarPath` 字段，实现 **Offline-First** 秒开。
+* **收益**: 列表滑动帧率维持在 60fps，即便无网也能看到高清合成头像。
 
 ---
 
 ## 3. 🔮 v4.0 远期展望 (Advanced Features)
 
-* **[P5] 音视频通话 (WebRTC)**: 实现 1v1 实时语音/视频对讲。
-* **[P6] 全局搜索 (FTS)**: 基于 Sembast 或 SQLite 实现本地消息全量检索。
-* **[P7] 端到端加密 (E2EE)**: 集成 Signal Protocol，确保通信隐私。
+* **[P5] 音视频通话 (WebRTC)**: 1v1 实时通话与群组对讲。
+* **[P6] 全局搜索 (FTS)**: 基于本地数据库的消息/联系人全文本检索。
 
 ---
 
 ## 📝 指挥官指令 (Action Plan)
 
-**UI 的地基已经打好，现在的 Lucky IM 已经“看起来”像微信了。**
+**现在的 Lucky IM 即将告别“静态时代”，拥抱“动态流媒体”。**
 
-👉 **当前最高优先级**：
-**攻克 [P1] 群聊头像合成。**
+👉 **接下来的具体执行步骤**：
 
-**理由**：
+1. **扩展 `AssetManager**`：增加对视频文件及其关联缩略图的路径管理逻辑。
+2. **编写视频预处理工具类**：封装一个 `MediaProcessor`，一键实现 **“视频选取 -> 提取首帧 -> 获取宽高比 -> 返回 DTO”** 的流程。
+3. **构建 `InlineVideoBubble**`：实现基于 `visibility_detector` 的控制器自动管理组件。
 
-1. **逻辑闭环**：你刚刚在 `LocalDatabaseService` 里实现了成员列表缓存，这为本地合成头像提供了完美的数据源。
-2. **性能优势**：本地合成可以大幅减少网络请求，让你的列表页在离线状态下依然能显示完整的九宫格，真正实现 **Offline-First** 的承诺。
-
-**准备好开启 Canvas 绘图之旅了吗？** 🎨
+**你想让我先帮你写出这个核心的 `MediaProcessor` 工具类，还是先搭好 `InlineVideoBubble` 的生命周期框架？**
