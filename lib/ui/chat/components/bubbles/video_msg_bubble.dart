@@ -4,9 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:video_player/video_player.dart';
 
+// 请确保这些 import 路径对应你项目的实际位置
 import '../../models/chat_ui_model.dart';
 import '../../../../utils/asset/asset_manager.dart';
-import '../../../img/app_image.dart';
+import '../../../img/app_image.dart'; // 你的 AppCachedImage 组件
 import '../../services/media/video_playback_service.dart';
 import '../../video_player_page.dart';
 
@@ -23,20 +24,23 @@ class _VideoMsgBubbleState extends State<VideoMsgBubble> {
   VideoPlayerController? _controller;
   bool _isPlaying = false;
   bool _isInitializing = false;
-  bool _isMuted = false; // 默认有声，可以做成静音开关
+  bool _isMuted = false;
 
   // 获取服务实例
   final _playbackService = VideoPlaybackService();
 
   @override
   void dispose() {
-    _controller?.dispose(); // 记得销毁，防止内存泄漏
+    // 页面销毁时，如果正在播放则暂停
+    if (_controller != null && _isPlaying) {
+      _controller!.pause();
+    }
     super.dispose();
   }
 
   /// 核心逻辑：初始化并播放
   Future<void> _playVideo() async {
-    // 1. 如果已经初始化，直接切状态
+    // 1. 如果已经初始化，直接切换状态
     if (_controller != null && _controller!.value.isInitialized) {
       setState(() {
         if (_controller!.value.isPlaying) {
@@ -56,12 +60,10 @@ class _VideoMsgBubbleState extends State<VideoMsgBubble> {
     setState(() => _isInitializing = true);
 
     final source = _playbackService.getPlayableSource(widget.message);
-
     if (source.isEmpty) {
       setState(() => _isInitializing = false);
-      return; // 或者显示个错误 Toast
+      return;
     }
-
 
     try {
       // 3. 使用 Service 创建控制器
@@ -72,17 +74,19 @@ class _VideoMsgBubbleState extends State<VideoMsgBubble> {
       _playbackService.requestPlay(_controller!);
       await _controller!.play();
 
-      setState(() {
-        _isInitializing = false;
-        _isPlaying = true;
-      });
+      if (mounted) {
+        setState(() {
+          _isInitializing = false;
+          _isPlaying = true;
+        });
+      }
 
       // 监听播放结束，恢复按钮状态
       _controller!.addListener(() {
-        if (_controller!.value.position >= _controller!.value.duration) {
+        if (!mounted) return;
+        if (_controller!.value.position >= _controller!.value.duration && _isPlaying) {
           setState(() {
             _isPlaying = false;
-            // 播放完回到开头，方便重播
             _controller!.seekTo(Duration.zero);
             _controller!.pause();
           });
@@ -91,35 +95,33 @@ class _VideoMsgBubbleState extends State<VideoMsgBubble> {
 
     } catch (e) {
       debugPrint("Inline video play failed: $e");
-      setState(() => _isInitializing = false);
+      if (mounted) {
+        setState(() => _isInitializing = false);
+      }
     }
   }
 
-  /// 跳转全屏 (双击或点击全屏按钮)
+  /// 跳转全屏
   void _openFullScreen() {
-    // 暂停当前小窗
     _controller?.pause();
-    setState(() => _isPlaying = false);
+    if (mounted) setState(() => _isPlaying = false);
 
-    // 直接用 Service 解析好的路径去全屏页
     final source = _playbackService.getPlayableSource(widget.message);
-    // 获取封面图路径，用于传递给全屏页做 Hero 占位
     final meta = widget.message.meta ?? {};
     final String thumbSource = meta['thumb'] ?? "";
-    
+
     if (source.isNotEmpty) {
       Navigator.of(context).push(
         PageRouteBuilder(
-          // 使用 FadeTransition 让背景渐变，配合 Hero 效果更好
           transitionDuration: const Duration(milliseconds: 300),
-          pageBuilder: (_,_,_)=> VideoPlayerPage(
+          pageBuilder: (_, __, ___) => VideoPlayerPage(
             videoSource: source,
             heroTag: widget.message.id,
             thumbSource: thumbSource,
           ),
-          transitionsBuilder: (_,animation,__,child)=>
+          transitionsBuilder: (_, animation, __, child) =>
               FadeTransition(opacity: animation, child: child),
-        )
+        ),
       );
     }
   }
@@ -139,169 +141,198 @@ class _VideoMsgBubbleState extends State<VideoMsgBubble> {
     final String durationStr = _formatDuration(durationSec);
     final String thumbSource = meta['thumb'] ?? "";
 
+    // 关键状态提取：是否正在发送
+    final bool isSending = widget.message.status == MessageStatus.sending;
+
     return Hero(
       tag: widget.message.id,
-      transitionOnUserGestures: true,
-      // 飞行过程中只显示封面，避免播放器闪烁
-      flightShuttleBuilder: (flightContext, animation, direction, fromContext, toContext) {
-        return ClipRRect(
-          borderRadius: BorderRadius.circular(12.r),
-          child: _buildThumbnail(thumbSource, maxWidth, height),
-        );
-      },
       child: Material(
-        // 使用 material 避免 Hero 动画时缺少材质感
         color: Colors.transparent,
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(12.r),
-            child: Container(
-              width: maxWidth,
-              height: height,
-              color: Colors.black12,
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  // ============================================
-                  // Layer 1: 封面图 (永远在底部垫着)
-                  // ============================================
-                  _buildThumbnail(thumbSource, maxWidth, height),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(12.r),
+          child: Container(
+            width: maxWidth,
+            height: height,
+            color: Colors.black12, // 占位底色
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                // ============================================
+                // Layer 1: 封面图 (Web兼容版)
+                // ============================================
+                _buildThumbnail(thumbSource, maxWidth, height),
 
-                  // ============================================
-                  // Layer 2: 视频层 (只有初始化成功才显示)
-                  // ============================================
-                  if (_controller != null && _controller!.value.isInitialized)
-                    AspectRatio(
-                      aspectRatio: _controller!.value.aspectRatio,
-                      child: VideoPlayer(_controller!),
-                    ),
+                // ============================================
+                // Layer 2: 视频层 (只有初始化成功才显示)
+                // ============================================
+                if (_controller != null && _controller!.value.isInitialized)
+                  AspectRatio(
+                    aspectRatio: _controller!.value.aspectRatio,
+                    child: VideoPlayer(_controller!),
+                  ),
 
-                  // ============================================
-                  // Layer 3: 交互遮罩 (点击播放/暂停)
-                  // ============================================
-                  GestureDetector(
-                    // 单击：原地播放/暂停
-                    onTap: _playVideo,
-                    // 双击：进入全屏
-                    onDoubleTap: _openFullScreen,
-                    child: Container(
-                      color: Colors.transparent, // 必须有颜色(哪怕透明)才能响应点击
+                // ============================================
+                // Layer 3: 交互遮罩 (处理点击)
+                // ============================================
+                GestureDetector(
+                  // 发送中禁止点击播放，防止逻辑冲突
+                  onTap: isSending ? null : _playVideo,
+                  onDoubleTap: isSending ? null : _openFullScreen,
+                  child: Container(
+                    color: Colors.transparent, // 必须有颜色才能响应点击
+                  ),
+                ),
+
+                // ============================================
+                // Layer 4: UI 状态展示 (严格互斥)
+                // ============================================
+
+                // A. 发送中状态 (遮罩 + Loading)
+                if (isSending)
+                  Container(
+                    color: Colors.black26,
+                    child: Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          SizedBox(
+                            width: 24.w,
+                            height: 24.w,
+                            child: const CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
 
-                  // ============================================
-                  // Layer 4: UI 控件层 (播放按钮、Loading、角标)
-                  // ============================================
-
-                  // A. 中间的大播放按钮 (未播放 && 未加载时显示)
-                  if (!_isPlaying && !_isInitializing)
-                    Center(
-                      child: IgnorePointer( // 让点击事件穿透到下面的 GestureDetector
-                        child: Container(
-                          padding: EdgeInsets.all(12.r),
-                          decoration: BoxDecoration(
-                            color: Colors.black54,
-                            shape: BoxShape.circle,
-                            border: Border.all(color: Colors.white, width: 2),
-                          ),
-                          child: Icon(Icons.play_arrow, color: Colors.white, size: 30.sp),
-                        ),
-                      ),
-                    ),
-
-                  // B. Loading 转圈 (正在初始化时)
-                  if (_isInitializing || widget.message.status == MessageStatus.sending)
-                    Center(
-                      child: SizedBox(
-                        width: 30.w,
-                        height: 30.w,
-                        child: const CircularProgressIndicator(color: Colors.white, strokeWidth: 3),
-                      ),
-                    ),
-
-                  // C. 只有在暂停或者没初始化时，才显示时长 (播放时隐藏，让画面更干净)
-                  if (!_isPlaying)
-                    Positioned(
-                      bottom: 8.h,
-                      right: 8.w,
+                // B. 播放按钮 (非发送、非播放、非初始化时显示)
+                if (!isSending && !_isPlaying && !_isInitializing)
+                  Center(
+                    child: IgnorePointer(
                       child: Container(
-                        padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
+                        padding: EdgeInsets.all(12.r),
                         decoration: BoxDecoration(
-                          color: Colors.black.withOpacity(0.7),
+                          color: Colors.black54,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 2),
+                        ),
+                        child: Icon(Icons.play_arrow, color: Colors.white, size: 30.sp),
+                      ),
+                    ),
+                  ),
+
+                // C. 视频缓冲 Loading (初始化中且非发送)
+                if (_isInitializing && !isSending)
+                  Center(
+                    child: SizedBox(
+                      width: 30.w,
+                      height: 30.w,
+                      child: const CircularProgressIndicator(color: Colors.white, strokeWidth: 3),
+                    ),
+                  ),
+
+                // D. 时长角标
+                if (!_isPlaying && !isSending)
+                  Positioned(
+                    bottom: 8.h,
+                    right: 8.w,
+                    child: Container(
+                      padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.7),
+                        borderRadius: BorderRadius.circular(4.r),
+                      ),
+                      child: Text(
+                        durationStr,
+                        style: TextStyle(color: Colors.white, fontSize: 10.sp),
+                      ),
+                    ),
+                  ),
+
+                // E. 全屏/静音按钮 (仅播放状态显示)
+                if (_isPlaying && _controller != null) ...[
+                  Positioned(
+                    top: 8.h,
+                    right: 8.w,
+                    child: GestureDetector(
+                      onTap: _openFullScreen,
+                      child: Container(
+                        padding: EdgeInsets.all(4.r),
+                        decoration: BoxDecoration(
+                          color: Colors.black45,
                           borderRadius: BorderRadius.circular(4.r),
                         ),
-                        child: Text(
-                          durationStr,
-                          style: TextStyle(color: Colors.white, fontSize: 10.sp),
+                        child: Icon(Icons.fullscreen, color: Colors.white, size: 20.sp),
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    bottom: 8.h,
+                    left: 8.w,
+                    child: GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          _isMuted = !_isMuted;
+                          _controller!.setVolume(_isMuted ? 0 : 1.0);
+                        });
+                      },
+                      child: Container(
+                        padding: EdgeInsets.all(4.r),
+                        decoration: BoxDecoration(
+                          color: Colors.black45,
+                          borderRadius: BorderRadius.circular(20.r),
+                        ),
+                        child: Icon(
+                          _isMuted ? Icons.volume_off : Icons.volume_up,
+                          color: Colors.white,
+                          size: 16.sp,
                         ),
                       ),
                     ),
-
-                  // D. 全屏按钮 (右上角，方便用户发现)
-                  if (_controller != null && _controller!.value.isInitialized)
-                    Positioned(
-                      top: 8.h,
-                      right: 8.w,
-                      child: GestureDetector(
-                        onTap: _openFullScreen,
-                        child: Container(
-                          padding: EdgeInsets.all(4.r),
-                          decoration: BoxDecoration(
-                            color: Colors.black45,
-                            borderRadius: BorderRadius.circular(4.r),
-                          ),
-                          child: Icon(Icons.fullscreen, color: Colors.white, size: 20.sp),
-                        ),
-                      ),
-                    ),
-
-                  // E. 静音按钮 (左下角，可选)
-                  if (_isPlaying)
-                    Positioned(
-                      bottom: 8.h,
-                      left: 8.w,
-                      child: GestureDetector(
-                        onTap: () {
-                          setState(() {
-                            _isMuted = !_isMuted;
-                            _controller!.setVolume(_isMuted ? 0 : 1.0);
-                          });
-                        },
-                        child: Container(
-                          padding: EdgeInsets.all(4.r),
-                          decoration: BoxDecoration(
-                            color: Colors.black45,
-                            borderRadius: BorderRadius.circular(20.r),
-                          ),
-                          child: Icon(
-                              _isMuted ? Icons.volume_off : Icons.volume_up,
-                              color: Colors.white,
-                              size: 16.sp
-                          ),
-                        ),
-                      ),
-                    ),
+                  ),
                 ],
-              ),
+              ],
             ),
           ),
+        ),
       ),
     );
   }
 
-  // 下面的辅助方法保持不变 (缩略图、时长格式化)
+  // 🔥 修复版封面构建器：完美兼容 Web 和 Mobile
   Widget _buildThumbnail(String source, double w, double h) {
     if (source.isEmpty) return const SizedBox.shrink();
-    if (source.startsWith('http')) {
+
+    // 1. 网络图片/Blob (Web 和 Mobile 通用)
+    if (source.startsWith('http') || source.startsWith('blob:')) {
       return AppCachedImage(source, width: w, height: h, fit: BoxFit.cover);
     }
+
+    // 2. 本地文件同步检查 ( 仅限 Mobile，修复 Web 崩溃)
+    if (!kIsWeb) {
+      final File localFile = File(source);
+      if (localFile.existsSync()) {
+        return Image.file(localFile, width: w, height: h, fit: BoxFit.cover);
+      }
+    }
+
+    // 3. 异步兜底 (Web/Mobile 通用)
     return FutureBuilder<String?>(
       future: AssetManager.getFullPath(source, MessageType.image),
       builder: (context, snapshot) {
         if (snapshot.hasData && snapshot.data != null) {
-          if (kIsWeb) {
-            return Image.network(snapshot.data!, width: w, height: h, fit: BoxFit.cover);
+          final path = snapshot.data!;
+
+          // 如果是 Web 环境，或者路径是网络地址，强制使用 network
+          if (kIsWeb || path.startsWith('http') || path.startsWith('blob:')) {
+            return Image.network(path, width: w, height: h, fit: BoxFit.cover);
           }
-          return Image.file(File(snapshot.data!), width: w, height: h, fit: BoxFit.cover);
+
+          // 仅 Mobile 允许使用 Image.file
+          return Image.file(File(path), width: w, height: h, fit: BoxFit.cover);
         }
         return const SizedBox.shrink();
       },

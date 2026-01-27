@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:ui' as ui;
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -13,8 +14,9 @@ import 'package:flutter_app/utils/asset/asset_manager.dart';
 import 'package:flutter_app/utils/upload/global_upload_service.dart';
 import 'package:flutter_app/utils/upload/upload_types.dart';
 import 'package:flutter_app/core/api/lucky_api.dart';
+import 'package:video_compress/video_compress.dart';
 
-import '../services/media/video_processor.dart';
+import 'media/video_processor.dart';
 import '../services/compression/image_compression_service.dart';
 
 class ChatActionService {
@@ -39,6 +41,7 @@ class ChatActionService {
   }) async {
     try {
       // 1. 本地乐观保存 & 更新会话列表
+      // (注意：如果是 sendVideo，这一步已经在外部做过了，但重复 saveMessage 问题不大，merge 即可)
       await LocalDatabaseService().saveMessage(msg);
       _updateConversationSnapshot(msg.content, msg.createdAt);
 
@@ -136,46 +139,93 @@ class ChatActionService {
     );
   }
 
+  //  核心修改：sendVideo 乐观 UI 改造
   Future<void> sendVideo(XFile file) async {
+    // 1.  极速体验：先只取个封面，马上让用户看到！
+    // 这一步非常快 (<500ms)，用户感觉是“秒发”
+    // 注意：用 VideoCompress 取封面比较快
+    final File tempThumb = await VideoCompress.getFileThumbnail(
+        file.path,
+        quality: 30 // 质量不用太高，只为了占位
+    );
+
     final msgId = const Uuid().v4();
-    final result = await VideoProcessor.process(file);
-    if (result == null) return; // 处理失败
 
-    final videoName = await AssetManager.save(result.videoFile, MessageType.video);
-    final thumbName = await AssetManager.save(XFile(result.thumbnailFile.path), MessageType.image);
+    // 缓存原视频路径，让 VideoMsgBubble 可以直接本地播放
+    _sessionPathCache[msgId] = file.path;
 
-    _cacheLocalPath(msgId, videoName, MessageType.video);
-
-    final Map<String, dynamic> videoMeta = {
-      'thumb': thumbName,
-      'w': result.width,
-      'h': result.height,
-      'duration': result.duration,
-    };
-
-    final msg = _createBaseMessage(
+    // 2. 乐观上屏：造一个“假消息”插入数据库
+    // 此时状态是 sending，UI 已经显示气泡了
+    final tempMsg = _createBaseMessage(
       id: msgId,
       content: "[Video]",
       type: MessageType.video,
-      localPath: videoName,
-      meta: videoMeta,
+      localPath: file.path, // 先用原片路径
+      meta: {
+        'thumb': tempThumb.path, // 临时封面路径
+        'w': 1080, // 暂时给个默认宽高，防止UI抖动
+        'h': 1920,
+        'duration': 0,
+      },
     );
 
+    // 保存到数据库，UI 瞬间刷新！
+    await LocalDatabaseService().saveMessage(tempMsg);
+    _updateConversationSnapshot("[Video]", tempMsg.createdAt);
+
+    // ==========================================
+    // 3.  后台慢任务：现在才开始压缩和上传
+    // 用户已经看到气泡了，心里不慌，我们慢慢搞
+    // ==========================================
+
     await _sendPipeline(
-      msg: msg,
+      msg: tempMsg,
       getContentTask: () async {
-        // 双重上传：先封面，后视频
+        // A. 调用 VideoProcessor 进行智能压缩
+        // 如果视频小，它会直接返回原片；如果大，会 FFmpeg 压缩
+        final result = await VideoProcessor.process(file);
+
+        if (result == null) throw Exception("Video Processing Failed");
+
+        // B. 压缩完了，把真正的小文件存到 AssetManager
+        final videoName = await AssetManager.save(result.videoFile, MessageType.video);
+        final thumbName = await AssetManager.save(XFile(result.thumbnailFile.path), MessageType.image);
+
+        // 更新缓存路径指向新的 Asset 文件（可选，但推荐）
+        _cacheLocalPath(msgId, videoName, MessageType.video);
+
+        // C. 关键一步：更新数据库里的元数据
+        // 因为压缩后，宽高、大小、甚至时长都可能变了
+        final realMeta = {
+          'thumb': thumbName, // 现在是 AssetManager 的文件名了
+          'w': result.width,
+          'h': result.height,
+          'duration': result.duration,
+        };
+
+        // 悄悄更新本地数据库，不打扰用户
+        await LocalDatabaseService().updateMessage(msgId, {'meta': realMeta});
+
+        // D. 双重上传：先封面，后视频
+        // 1. 上传封面
+        // (注意：这里需获取全路径)
+        final fullThumbPath = await AssetManager.getFullPath(thumbName, MessageType.image);
         final thumbUrl = await _uploadService.uploadFile(
-          file: XFile(result.thumbnailFile.path),
+          file: XFile(fullThumbPath ?? result.thumbnailFile.path),
           module: UploadModule.chat,
-          onProgress: (double p1) {  },
+          onProgress: (p) {},
         );
-        videoMeta['thumb'] = thumbUrl; // 更新 meta 为网络地址
+
+        realMeta['thumb'] = thumbUrl; // 更新 meta 为网络地址
+
+        // 2. 上传视频
+        // pipeline 会把这个返回值作为 content 发给后端
         return await _uploadAttachment(videoName, MessageType.video);
       },
-      extraMeta: videoMeta,
+      // 注意：这里不用传 extraMeta 了，因为我们在 getContentTask 内部已经动态更新了 meta
+      // 但为了保险起见，或者如果 sendPipeline 内部逻辑需要，可以传 null
+      extraMeta: null,
     );
-    VideoProcessor.clearCache();
   }
 
   Future<void> resend(String msgId) async {
