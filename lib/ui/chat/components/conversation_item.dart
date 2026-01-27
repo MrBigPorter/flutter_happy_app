@@ -23,15 +23,21 @@ class ConversationItem extends ConsumerWidget {
     // 1. 时间格式化
     final date = DateTime.fromMillisecondsSinceEpoch(item.lastMsgTime);
     final timeStr = "${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}";
-
+    final asyncDetail = ref.watch(chatDetailProvider(item.id));
     // 直接比较枚举，代码清晰易读
     final isSendFailed = item.lastMsgStatus == MessageStatus.failed;
-    // 1. 准备头像列表
     List<String?> avatarList = [];
-
     if (item.type == ConversationType.group) {
-      if (item.avatar != null) {
+      // 1. 如果群组本身有设置专用大头像，优先用它
+      if (item.avatar != null && item.avatar!.isNotEmpty) {
         avatarList = [item.avatar];
+      } else {
+        // 2. 如果没有专用头像，从缓存的详情里拿前 9 个成员的头像
+        // asyncDetail.valueOrNull 在 SWR 模式下会瞬间返回本地缓存的数据
+        final cachedMembers = asyncDetail.valueOrNull?.members;
+        if (cachedMembers != null) {
+          avatarList = cachedMembers.map((m) => m.avatar).toList();
+        }
       }
     } else {
       // 私聊直接用对方头像
