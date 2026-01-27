@@ -1,16 +1,19 @@
 
-# 📝 Lucky IM Project Master Log v3.5 (Polished)
-
-> **🔴 状态校准 (2026-01-27 09:35)**
-> **历史必须完整，战绩必须确凿。
-> **里程碑达成：多媒体生态 & 深度交互 & 状态一致性**
-> **最新战绩**：刚刚攻克了 **会话列表的失败状态同步**。现在发送失败的消息不仅在聊天页有提示，退回列表页也能看到醒目的红色感叹号，彻底消除了信息断层。
-> 同时，我们对 `Conversation` 模型进行了 **枚举化重构 (Clean Code)**，拒绝了 Magic Number。
-> **🟢 当前版本：v3.5 (Feature-Rich + UX Consistent)**
 
 ---
 
-## 1. 🛡️ 架构铁律 (The Iron Rules - 13 Commandments)
+# 📝 Lucky IM Project Master Log v3.6 (Instant-Open Edition)
+
+> **🔴 状态校准 (2026-01-27 14:55)**
+> **历史必须完整，战绩必须确凿。**
+> **里程碑达成：本地优先架构 (SWR) & 微信 UI 像素级对齐 & 跨页面逻辑闭环**
+> **最新战绩**：成功上线了 **会话详情秒开系统**。通过 `StreamProvider` 配合 Sembast 的 `_detailStore`，实现了“缓存先行，网络热更”。
+> 同时，完成了 `GroupProfile` 与 `UserProfile` 的 **WeChat Style 统一重构**，并打通了从私聊到建群的 **Pre-Selection (预选中)** 逻辑。
+> **🟢 当前版本：v3.6 (Local-First + UI Unified)**
+
+---
+
+## 1. 🛡️ 架构铁律 (The Iron Rules - 14 Commandments)
 
 1. **ID 唯一性**: 前端生成 UUID，后端透传。
 2. **UI 零抖动**: 利用 `_sessionPathCache` 确保发送瞬间 UI 静止。
@@ -25,35 +28,43 @@
 11. **异步标准化**: 列表状态必须 `when(loading/error/data)`。
 12. **桥接原则**: 通讯录发起必须走 `Bridge API`。
 13. **交互承诺**: 耗时弹窗必须返回 `Future`，由组件接管 Loading。
+14. **SWR 逻辑**: **缓存优先推送 (`yield cache`)，网络异步更新 (`yield network`)**，杜绝详情页白屏。
 
 ---
 
-## 2. 🗺️ 代码地图 (Code Map - v3.5 Scope)
+## 2. 🗺️ 代码地图 (Code Map - v3.6 Scope)
 
-### A. 核心交互 (Interaction) **[✓]**
+### A. 数据持久化 (Storage) **[✓]**
 
-* `ui/chat/widgets/conversation_item.dart`: **[✓] 列表状态透传** (失败红标/枚举判断)。
-* `ui/chat/widgets/chat_bubble.dart`: **[✓] 长按手势识别**。
-* `ui/chat/widgets/chat_popup_menu.dart`: **[✓] 气泡菜单** (Copy/Delete/Recall)。
-* `ui/chat/controllers/message_action_controller.dart`: **[✓] 消息操作逻辑** (API调用 + 本地库更新)。
+* `ui/chat/services/database/local_database_service.dart`: **[✓] 新增 `_detailStore**`，支持 `ConversationDetail` 缓存与清理。
+* `ui/chat/models/conversation.dart`: **[✓] 嵌套对象序列化修复** (`explicitToJson`)，支持枚举/字符串双向映射。
 
-### B. 多媒体引擎 (Media Engine) **[✓]**
+### B. 核心交互与流 (Interaction & Streams) **[✓]**
 
-* `common/media/asset_manager.dart`: **[✓] 统一资源管理**。
-* `common/media/compressor.dart`: **[✓] 智能压缩** (图片分级压缩)。
-* `ui/chat/widgets/upload_progress.dart`: **[✓] 环形进度条**。
-* `common/permission/permission_handler.dart`: **[✓] 相册/相机权限收口**。
+* `ui/chat/providers/conversation_provider.dart`: **[✓] `chatDetail` 改造为 `StreamProvider**`，实现 SWR 策略。
+* `ui/chat/pages/group_member_select_page.dart`: **[✓] 多模式选人逻辑** (支持 `preSelectedId` 预选中)。
 
-### C. 群组与异步 (Group & Async) **[✓]**
+### C. UI 表现层 (Presentation) **[✓]**
 
-* `ui/chat/models/conversation.dart`: **[✓] 模型枚举化** (拒绝 int 魔法数字)。
-* `ui/modal/radix_modal.dart`: **[✓] 异步自动 Loading**。
-* `ui/chat/providers/conversation_provider.dart`: **[✓] 200条预加载**。
-* `ui/chat/pages/group_profile_page.dart`: **[✓] 完整群管理**。
+* `ui/chat/pages/group_profile_page.dart`: **[✓] 微信风格重构** (成员网格置顶，去 Header 化)。
+* `ui/chat/pages/user_profile_page.dart`: **[✓] 逻辑对齐** (新增“加号”建群入口)。
 
 ---
 
 ## 3. ✅ 完整功能清单 (The Grand Checklist)
+
+### 🚀 v3.6 本地优先与性能 (Local-First)
+
+* [✓] **[P0] 详情页秒开系统** (本地缓存 0ms 渲染)。
+* [✓] **[P0] 脏缓存防御** (加载中状态智能拦截旧数据闪烁)。
+* [✓] **[P0] 嵌套序列化** (解决 `ChatMember` 不支持直接存入 Sembast 的问题)。
+* [✓] **[P1] 数据库彻底清理** (退出登录时联动清空消息与详情缓存)。
+
+### 🎨 v3.6 微信化 UI 打磨 (WeChat Style)
+
+* [✓] **[P0] 群详情页重构** (GridView 成员列表优先，菜单折叠)。
+* [✓] **[P0] 私聊详情页重构** (快捷建群入口，UI 与群详情高度一致)。
+* [✓] **[P0] 路由参数穿透** (通过 `preSelectedId` 实现跨页面状态传递)。
 
 ### 💎 v3.5 细节打磨 (Polish)
 
@@ -64,34 +75,7 @@
 
 * [✓] **[P0] 图片发送** (相册选取 / 预览)。
 * [✓] **[P0] 智能压缩** (根据网络环境自动压缩体积)。
-* [✓] **[P0] 上传进度条** (实时各种状态反馈)。
 * [✓] **[P0] 权限管理** (Android/iOS 相册权限动态申请)。
-
-### 👆 v3.5 消息交互 (Interaction)
-
-* [✓] **[P0] 长按弹出菜单** (位置自适应)。
-* [✓] **[P0] 消息撤回 (Recall)** (双端同步撤回状态 / "Re-edit" 功能)。
-* [✓] **[P0] 消息删除 (Delete)** (本地删除 / 数据库同步)。
-* [✓] **[P0] 文本复制 (Copy)** (剪贴板操作)。
-
-### 👥 v3.4 群管理闭环 (Group)
-
-* [✓] **[P0] 群邀请 (Invite)** (UI/API 闭环)。
-* [✓] **[P0] 退群 (Leave)** (异步 Modal 自动交互)。
-* [✓] **[P0] 建群流程** (选人 -> 命名 -> 跳转)。
-
-### 🚀 v3.2 极致体验 (UX)
-
-* [✓] **[P0] 列表页骨架屏** (Skeleton)。
-* [✓] **[P0] 200条大容量预加载** (AsyncNotifier)。
-* [✓] **[P0] 异步状态标准化** (Ref.watch.when)。
-
-### 🧱 v3.0 基础建设 (Infra)
-
-* [✓] **[P0] 统一资源管理 AssetManager**。
-* [✓] **[P0] 语音消息全链路**。
-* [✓] **[P0] 断网重发系统**。
-* [✓] **[P0] 发送失败红色感叹号** (聊天页)。
 
 ---
 
