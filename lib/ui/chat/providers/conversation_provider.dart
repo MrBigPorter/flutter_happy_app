@@ -191,13 +191,7 @@ class CreateDirectChatController extends _$CreateDirectChatController {
   }
 }
 
-@riverpod
-Future<ConversationDetail> chatDetail(
-    ChatDetailRef ref,
-    String conversationId,
-    ) async {
-  return Api.chatDetailApi(conversationId);
-}
+
 
 @riverpod
 class UserSearchController extends _$UserSearchController {
@@ -213,4 +207,40 @@ class UserSearchController extends _$UserSearchController {
       return await Api.chatUsersSearchApi(keyword);
     });
   }
+}
+
+// [核心修改部分] SWR 策略：缓存优先，网络更新
+// 改为 async* 生成器流
+@riverpod
+Stream<ConversationDetail> chatDetail(
+    ChatDetailRef ref,
+    String conversationId,
+    ) async*{
+  final db = LocalDatabaseService();
+
+  // 1. [缓存层] 尝试先查本地，如果有直接发射 (秒开)
+  ConversationDetail? localData;
+  try{
+    localData = await db.getConversationDetail(conversationId);
+    if(localData != null){
+      yield localData;
+    }
+  }catch(e){
+    debugPrint(" [chatDetail] Local DB Fetch Error: $e");
+  }
+
+  // 2. [网络层] 再去网络拉取最新数据，发射更新 (后台更新)
+  try{
+    final networkData = await Api.chatDetailApi(conversationId);
+
+    // 3. [持久化] 存入本地，供下次使用
+    await db.saveConversationDetail(networkData);
+    // 4. [更新 UI] 发射最新数据
+    // Riverpod 内部会自动对比，如果 networkData 和 localData 一样，不会触发多余的重建
+    yield networkData;
+  }catch(e){
+    debugPrint(" [chatDetail] Network Fetch Error: $e");
+    throw e;
+  }
+
 }

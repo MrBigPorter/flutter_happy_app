@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:json_annotation/json_annotation.dart';
 
 import 'chat_ui_model.dart';
@@ -150,38 +152,57 @@ class ChatMember {
 // ==========================================
 // 详情模型
 // ==========================================
-@JsonSerializable(checked: true)
+// lib/ui/chat/models/conversation.dart
+
 class ConversationDetail {
   final String id;
   final String name;
-
-  // 新增：头像字段 (允许为空)
   final String? avatar;
-
-  @JsonKey(unknownEnumValue: ConversationType.group)
   final ConversationType type;
-
-  @JsonKey(defaultValue: [])
   final List<ChatMember> members;
 
   ConversationDetail({
     required this.id,
     required this.name,
-    this.avatar, //  记得加到构造函数里
+    this.avatar,
     required this.type,
     required this.members,
   });
 
-  factory ConversationDetail.fromJson(Map<String, dynamic> json) =>
-      _$ConversationDetailFromJson(json);
+  factory ConversationDetail.fromJson(Map<String, dynamic> json) {
+    // 后端返回的是 "GROUP", "DIRECT" 等字符串
+    final typeStr = json['type']?.toString().toUpperCase() ?? 'GROUP';
 
-  Map<String, dynamic> toJson() => _$ConversationDetailToJson(this);
+    final typeEnum = ConversationType.values.firstWhere(
+          (e) => e.name.toUpperCase() == typeStr,
+      orElse: () => ConversationType.group, // 匹配不到默认为群聊
+    );
 
-  // 你的 getter 保持不变，继续用成员列表长度即可
+    return ConversationDetail(
+      id: json['id'],
+      name: json['name'],
+      avatar: json['avatar'],
+      type: typeEnum,
+      members: (json['members'] as List<dynamic>?)
+          ?.map((e) => ChatMember.fromJson(e))
+          .toList() ?? [],
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'name': name,
+      'avatar': avatar,
+
+      // 这样本地数据库存的就是 "GROUP" 而不是 0 或 1，更直观且不怕枚举顺序改变
+      'type': type.name.toUpperCase(),
+
+      'members': members.map((m) => m.toJson()).toList(),
+    };
+  }
+
   int get memberCount => members.length;
-
-  @override
-  String toString() => toJson().toString();
 }
 
 @JsonSerializable(checked: true)

@@ -189,7 +189,7 @@ class _AddFriendControllerProviderElement
 }
 
 String _$groupMemberActionControllerHash() =>
-    r'1177bc5a430d0b724c108218d27427218b898f15';
+    r'c28331e760e19ac412bb6a925f8be483c2159e3d';
 
 /// See also [GroupMemberActionController].
 @ProviderFor(GroupMemberActionController)

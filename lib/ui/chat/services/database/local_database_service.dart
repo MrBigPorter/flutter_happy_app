@@ -7,13 +7,15 @@ import 'package:sembast/sembast_io.dart'; // 手机端
 import 'package:sembast_web/sembast_web.dart';
 
 import '../../models/chat_ui_model.dart';
-
-
+import '../../models/conversation.dart';
 
 class LocalDatabaseService {
   // 单例模式
-  static final LocalDatabaseService _instance = LocalDatabaseService._internal();
+  static final LocalDatabaseService _instance =
+      LocalDatabaseService._internal();
+
   factory LocalDatabaseService() => _instance;
+
   LocalDatabaseService._internal();
 
   Database? _db;
@@ -21,6 +23,9 @@ class LocalDatabaseService {
   // 定义 Store (相当于 SQL 里的表)
   // key 是 String (用 msgId), value 是 Map
   final _messageStore = stringMapStoreFactory.store('messages');
+
+  // 1. Define the new Store for Conversation Details
+  final _detailStore = stringMapStoreFactory.store('conversation_details');
 
   // 获取数据库实例
   Future<Database> get database async {
@@ -63,7 +68,8 @@ class LocalDatabaseService {
       final oldData = oldSnapshot.value;
 
       //  防御 1：如果新数据里 previewBytes 是 null，但旧数据里有，赶紧把旧的拿回来！
-      if (dataToSave['previewBytes'] == null && oldData['previewBytes'] != null) {
+      if (dataToSave['previewBytes'] == null &&
+          oldData['previewBytes'] != null) {
         dataToSave['previewBytes'] = oldData['previewBytes'];
       }
 
@@ -86,7 +92,9 @@ class LocalDatabaseService {
   Future<void> saveMessages(List<ChatUiModel> msgs) async {
     if (msgs.isEmpty) return;
 
-    debugPrint("📦 [存库检查] 正在存入 ${msgs.length} 条。conv=${msgs.first.conversationId}");
+    debugPrint(
+      "📦 [存库检查] 正在存入 ${msgs.length} 条。conv=${msgs.first.conversationId}",
+    );
 
     final db = await database;
     await db.transaction((txn) async {
@@ -131,13 +139,14 @@ class LocalDatabaseService {
       await _messageStore.record(newMsg.id).put(txn, newMsg.toJson());
     });
   }
-  Future<void> updateMessageStatus(String msgId, MessageStatus newStatus) async {
 
+  Future<void> updateMessageStatus(
+    String msgId,
+    MessageStatus newStatus,
+  ) async {
     final db = await database;
     //仅仅更新状态字段
-    await _messageStore.record(msgId).update(db, {
-      'status': newStatus.name,
-    });
+    await _messageStore.record(msgId).update(db, {'status': newStatus.name});
   }
 
   // 作用：只更新消息的特定字段（如 status, seqId, createdAt），不删旧记录，不改 ID
@@ -156,7 +165,7 @@ class LocalDatabaseService {
         Filter.equals('conversationId', conversationId),
         Filter.equals('isMe', true), // 只更新我自己发的
         Filter.lessThanOrEquals('seqId', maxSeqId), // 小于等于对方读到的位置
-        Filter.notEquals('status', 'read') // 还没变成已读的
+        Filter.notEquals('status', 'read'), // 还没变成已读的
       ]),
     );
 
@@ -182,7 +191,7 @@ class LocalDatabaseService {
       content: tip,
       type: MessageType.system,
       isRecalled: true,
-      status: MessageStatus.success
+      status: MessageStatus.success,
     );
 
     // 3. 覆盖存入数据库 -> UI 自动监听到变化并刷新
@@ -197,12 +206,13 @@ class LocalDatabaseService {
       return ChatUiModel.fromJson(recordSnapshot.value);
     }
     return null;
-
   }
 
   //  获取特定会话的所有消息
   // 必须传入 conversationId，否则会把所有人的消息都查出来
-  Future<List<ChatUiModel>> getMessagesByConversation(String conversationId) async {
+  Future<List<ChatUiModel>> getMessagesByConversation(
+    String conversationId,
+  ) async {
     final db = await database;
     print("📥 获取会话 $conversationId 的消息");
 
@@ -214,15 +224,18 @@ class LocalDatabaseService {
     );
 
     final snapshots = await _messageStore.find(db, finder: finder);
-    return snapshots.map((snapshot) => ChatUiModel.fromJson(snapshot.value)).toList();
+    return snapshots
+        .map((snapshot) => ChatUiModel.fromJson(snapshot.value))
+        .toList();
   }
 
   // 监听特定会话的消息流 (Riverpod 用)
   // 只要这个会话有新消息存入，UI 会自动刷新
   Stream<List<ChatUiModel>> watchMessages(String conversationId) async* {
-
     //  [埋点 1] 打印正在查询的 ID，看看是否有空格或类型不对
-    debugPrint(" [DB] 正在监听会话 ID: '$conversationId' (长度: ${conversationId.length})");
+    debugPrint(
+      " [DB] 正在监听会话 ID: '$conversationId' (长度: ${conversationId.length})",
+    );
 
     // 确保数据库已初始化
     final db = await database;
@@ -242,6 +255,7 @@ class LocalDatabaseService {
       }).toList();
     });
   }
+
   // 即使重启 App，这些消息也能被捞出来重发
   Future<List<ChatUiModel>> getPendingMessages() async {
     final db = await database;
@@ -251,14 +265,15 @@ class LocalDatabaseService {
     );
 
     final snapshots = await _messageStore.find(db, finder: finder);
-    return snapshots.map((snapshot) => ChatUiModel.fromJson(snapshot.value)).toList();
+    return snapshots
+        .map((snapshot) => ChatUiModel.fromJson(snapshot.value))
+        .toList();
   }
 
   ////  [新增] 专门用于更新状态的方法 (比 updateMessage 更安全)
   Future<void> markMessageAsPending(String msgId) async {
     await updateMessageStatus(msgId, MessageStatus.pending);
   }
-
 
   //  删除单条消息
   Future<void> deleteMessage(String msgId) async {
@@ -269,8 +284,24 @@ class LocalDatabaseService {
   //  清空某个会话的记录
   Future<void> clearConversation(String conversationId) async {
     final db = await database;
-    final finder = Finder(filter: Filter.equals('conversationId', conversationId));
+    final finder = Finder(
+      filter: Filter.equals('conversationId', conversationId),
+    );
     await _messageStore.delete(db, finder: finder);
+  }
+
+  /// Save ConversationDetail to local DB
+  Future<void> saveConversationDetail(ConversationDetail detail) async {
+    final db = await database;
+    await _detailStore.record(detail.id).put(db, detail.toJson());
+  }
+
+  /// Retrieve ConversationDetail from local DB
+  Future<ConversationDetail?> getConversationDetail(String id) async {
+    final db = await database;
+    final json = await _detailStore.record(id).get(db);
+    if (json == null) return null;
+    return ConversationDetail.fromJson(json);
   }
 
   //  彻底清库 (退出登录用)

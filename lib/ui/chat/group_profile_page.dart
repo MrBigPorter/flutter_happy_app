@@ -22,6 +22,7 @@ class GroupProfilePage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final asyncDetail = ref.watch(chatDetailProvider(conversationId));
+    
 
     return BaseScaffold(
       // 微信风格：标题通常显示 "Chat Info" 或 "Group Chat(N)"
@@ -135,7 +136,7 @@ class GroupProfilePage extends ConsumerWidget {
                 height: 48.r,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(4.r), // 微信风格头像圆角较小
-                  color: context.bgSecondary,
+                  color: context.borderPrimary,
                   image: member.avatar != null
                       ? DecorationImage(image: NetworkImage(member.avatar!), fit: BoxFit.cover)
                       : null,

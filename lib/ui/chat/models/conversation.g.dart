@@ -25,6 +25,12 @@ Conversation _$ConversationFromJson(Map<String, dynamic> json) =>
               $checkedConvert('unreadCount', (v) => (v as num?)?.toInt() ?? 0),
           isPinned: $checkedConvert('isPinned', (v) => v as bool? ?? false),
           isMuted: $checkedConvert('isMuted', (v) => v as bool? ?? false),
+          lastMsgStatus: $checkedConvert(
+              'lastMsgStatus',
+              (v) =>
+                  $enumDecodeNullable(_$MessageStatusEnumMap, v,
+                      unknownValue: MessageStatus.success) ??
+                  MessageStatus.success),
         );
         return val;
       },
@@ -41,6 +47,7 @@ Map<String, dynamic> _$ConversationToJson(Conversation instance) =>
       'unreadCount': instance.unreadCount,
       'isPinned': instance.isPinned,
       'isMuted': instance.isMuted,
+      'lastMsgStatus': _$MessageStatusEnumMap[instance.lastMsgStatus]!,
     };
 
 const _$ConversationTypeEnumMap = {
@@ -48,6 +55,14 @@ const _$ConversationTypeEnumMap = {
   ConversationType.group: 'GROUP',
   ConversationType.business: 'BUSINESS',
   ConversationType.support: 'SUPPORT',
+};
+
+const _$MessageStatusEnumMap = {
+  MessageStatus.sending: 'sending',
+  MessageStatus.success: 'success',
+  MessageStatus.failed: 'failed',
+  MessageStatus.read: 'read',
+  MessageStatus.pending: 'pending',
 };
 
 ChatSender _$ChatSenderFromJson(Map<String, dynamic> json) => $checkedCreate(
@@ -126,41 +141,6 @@ Map<String, dynamic> _$ChatMemberToJson(ChatMember instance) =>
       'nickname': instance.nickname,
       'avatar': instance.avatar,
       'role': instance.role,
-    };
-
-ConversationDetail _$ConversationDetailFromJson(Map<String, dynamic> json) =>
-    $checkedCreate(
-      'ConversationDetail',
-      json,
-      ($checkedConvert) {
-        final val = ConversationDetail(
-          id: $checkedConvert('id', (v) => v as String),
-          name: $checkedConvert('name', (v) => v as String),
-          avatar: $checkedConvert('avatar', (v) => v as String?),
-          type: $checkedConvert(
-              'type',
-              (v) => $enumDecode(_$ConversationTypeEnumMap, v,
-                  unknownValue: ConversationType.group)),
-          members: $checkedConvert(
-              'members',
-              (v) =>
-                  (v as List<dynamic>?)
-                      ?.map(
-                          (e) => ChatMember.fromJson(e as Map<String, dynamic>))
-                      .toList() ??
-                  []),
-        );
-        return val;
-      },
-    );
-
-Map<String, dynamic> _$ConversationDetailToJson(ConversationDetail instance) =>
-    <String, dynamic>{
-      'id': instance.id,
-      'name': instance.name,
-      'avatar': instance.avatar,
-      'type': _$ConversationTypeEnumMap[instance.type]!,
-      'members': instance.members,
     };
 
 ConversationIdResponse _$ConversationIdResponseFromJson(

@@ -6,7 +6,7 @@ part of 'conversation_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$chatDetailHash() => r'0d52ccc26e0f89cb17c7647435bfae0aa7a1ddfa';
+String _$chatDetailHash() => r'5022ac39cd1c9666b0451262ada6f171b9ee2532';
 
 /// Copied from Dart SDK
 class _SystemHash {
@@ -72,7 +72,7 @@ class ChatDetailFamily extends Family<AsyncValue<ConversationDetail>> {
 }
 
 /// See also [chatDetail].
-class ChatDetailProvider extends AutoDisposeFutureProvider<ConversationDetail> {
+class ChatDetailProvider extends AutoDisposeStreamProvider<ConversationDetail> {
   /// See also [chatDetail].
   ChatDetailProvider(
     String conversationId,
@@ -107,7 +107,7 @@ class ChatDetailProvider extends AutoDisposeFutureProvider<ConversationDetail> {
 
   @override
   Override overrideWith(
-    FutureOr<ConversationDetail> Function(ChatDetailRef provider) create,
+    Stream<ConversationDetail> Function(ChatDetailRef provider) create,
   ) {
     return ProviderOverride(
       origin: this,
@@ -124,7 +124,7 @@ class ChatDetailProvider extends AutoDisposeFutureProvider<ConversationDetail> {
   }
 
   @override
-  AutoDisposeFutureProviderElement<ConversationDetail> createElement() {
+  AutoDisposeStreamProviderElement<ConversationDetail> createElement() {
     return _ChatDetailProviderElement(this);
   }
 
@@ -143,13 +143,13 @@ class ChatDetailProvider extends AutoDisposeFutureProvider<ConversationDetail> {
   }
 }
 
-mixin ChatDetailRef on AutoDisposeFutureProviderRef<ConversationDetail> {
+mixin ChatDetailRef on AutoDisposeStreamProviderRef<ConversationDetail> {
   /// The parameter `conversationId` of this provider.
   String get conversationId;
 }
 
 class _ChatDetailProviderElement
-    extends AutoDisposeFutureProviderElement<ConversationDetail>
+    extends AutoDisposeStreamProviderElement<ConversationDetail>
     with ChatDetailRef {
   _ChatDetailProviderElement(super.provider);
 
@@ -157,7 +157,7 @@ class _ChatDetailProviderElement
   String get conversationId => (origin as ChatDetailProvider).conversationId;
 }
 
-String _$conversationListHash() => r'3685f40723157193605e42b11be861f9bc3f1886';
+String _$conversationListHash() => r'a2db82de851bc09772896614c1effe4ccc55a9ac';
 
 /// See also [ConversationList].
 @ProviderFor(ConversationList)
