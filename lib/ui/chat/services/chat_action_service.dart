@@ -175,6 +175,7 @@ class ChatActionService {
       },
       extraMeta: videoMeta,
     );
+    VideoProcessor.clearCache();
   }
 
   Future<void> resend(String msgId) async {

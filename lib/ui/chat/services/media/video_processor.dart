@@ -45,9 +45,11 @@ class VideoProcessor {
       );
     } catch (e) {
       return null;
-    } finally {
-      // 清理 video_compress 临时文件
-      VideoCompress.deleteAllCache();
     }
+  }
+
+  // 可选：提供一个手动清理的方法，在 ChatActionService 存完后再调用
+  static Future<void> clearCache() async {
+    await VideoCompress.deleteAllCache();
   }
 }
