@@ -1,11 +1,24 @@
+import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
-import 'services/media/video_playback_service.dart'; // 引入我们刚写的服务
+import '../img/app_image.dart';
+import 'services/media/video_playback_service.dart';
+
+import '../../../utils/asset/asset_manager.dart';
+import 'models/chat_ui_model.dart';
 
 class VideoPlayerPage extends StatefulWidget {
-  final String videoSource; // 接收处理好的路径 (本地或网络)
+  final String videoSource;
+  final String heroTag;
+  final String thumbSource;
 
-  const VideoPlayerPage({super.key, required this.videoSource});
+  const VideoPlayerPage({
+    super.key,
+    required this.videoSource,
+    required this.heroTag,
+    required this.thumbSource,
+  });
 
   @override
   State<VideoPlayerPage> createState() => _VideoPlayerPageState();
@@ -14,10 +27,9 @@ class VideoPlayerPage extends StatefulWidget {
 class _VideoPlayerPageState extends State<VideoPlayerPage> {
   late VideoPlayerController _controller;
 
-  // 状态变量
   bool _isInitialized = false;
-  bool _isPlaying = true;       // 默认进入就播放
-  bool _showControls = false;   // 控制条显隐状态
+  bool _isPlaying = true;
+  bool _showControls = false;
 
   @override
   void initState() {
@@ -26,15 +38,13 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
   }
 
   Future<void> _initVideo() async {
-    // 1.  使用 Service 创建控制器 (核心修改)
-    // Service 会自动判断是 file(...) 还是 networkUrl(...)
+    // 1. 使用 Service 创建控制器
     _controller = VideoPlaybackService().createController(widget.videoSource);
 
     try {
       await _controller.initialize();
 
-      // 2.  停止列表里的气泡播放 (核心修改)
-      // 进入全屏后，为了防止声音冲突，强制暂停外部的小窗播放
+      // 2. 停止列表里的小窗播放
       VideoPlaybackService().stopAll();
 
       await _controller.play();
@@ -51,7 +61,6 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
 
   @override
   void dispose() {
-    // 退出全屏时销毁控制器
     _controller.dispose();
     super.dispose();
   }
@@ -61,11 +70,11 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
       if (_controller.value.isPlaying) {
         _controller.pause();
         _isPlaying = false;
-        _showControls = true; // 暂停时强制显示控制条
+        _showControls = true;
       } else {
         _controller.play();
         _isPlaying = true;
-        _showControls = false; // 播放时隐藏，沉浸式体验
+        _showControls = false;
       }
     });
   }
@@ -79,28 +88,47 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black, // 沉浸式黑色背景
+      backgroundColor: Colors.black,
       body: SafeArea(
         child: Stack(
           alignment: Alignment.center,
           children: [
             // ===========================================
-            // Layer 1: 视频渲染层 + 点击交互
+            // Layer 1: 核心渲染层 (Hero 占位 + VideoPlayer)
             // ===========================================
             GestureDetector(
-              onTap: _toggleControls, // 点击屏幕任意位置切换控制条
+              onTap: _toggleControls,
               child: Center(
-                child: _isInitialized
-                    ? AspectRatio(
-                  aspectRatio: _controller.value.aspectRatio,
-                  child: VideoPlayer(_controller),
-                )
-                    : const CircularProgressIndicator(color: Colors.white),
+                // 核心修改：使用 Stack 叠加 Hero 占位图和真实播放器
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    // 1. Hero 占位图层 (始终存在，作为背景)
+                    // 当 _isInitialized 为 false 时，用户看到的是这个 Hero 飞过来的动画
+                    Positioned.fill(
+                      child: Hero(
+                        tag: widget.heroTag,
+                        // 占位图构建逻辑
+                        child: _buildPlaceholderThumbnail(),
+                      ),
+                    ),
+
+                    // 2. 真实视频层 (初始化完成后覆盖在上面)
+                    if (_isInitialized)
+                      AspectRatio(
+                        aspectRatio: _controller.value.aspectRatio,
+                        child: VideoPlayer(_controller),
+                      ),
+
+                    // 注意：这里不需要再写 Loading 了，因为有 Hero 封面图垫底，
+                    // 用户会觉得是在看封面，体验比转圈圈好得多。
+                  ],
+                ),
               ),
             ),
 
             // ===========================================
-            // Layer 2: 返回按钮 (始终显示)
+            // Layer 2: 返回按钮
             // ===========================================
             Positioned(
               top: 10,
@@ -112,26 +140,22 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
             ),
 
             // ===========================================
-            // Layer 3: 中间的大播放图标 (暂停时显示)
+            // Layer 3: 大播放图标
             // ===========================================
             if (_isInitialized && !_isPlaying)
-              IgnorePointer( // 让点击穿透，方便用户点击任意位置恢复播放
+              IgnorePointer(
                 child: Container(
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
                     color: Colors.black45,
                     borderRadius: BorderRadius.circular(50),
                   ),
-                  child: const Icon(
-                    Icons.play_arrow,
-                    color: Colors.white,
-                    size: 50,
-                  ),
+                  child: const Icon(Icons.play_arrow, color: Colors.white, size: 50),
                 ),
               ),
 
             // ===========================================
-            // Layer 4: 底部进度条控制栏
+            // Layer 4: 底部进度条
             // ===========================================
             if (_isInitialized && (_showControls || !_isPlaying))
               Positioned(
@@ -141,12 +165,11 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   decoration: BoxDecoration(
-                    color: Colors.black54, // 半透明底，看字幕更清楚
+                    color: Colors.black54,
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Row(
                     children: [
-                      // 左侧小播放/暂停按钮
                       GestureDetector(
                         onTap: _togglePlay,
                         child: Icon(
@@ -155,12 +178,10 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
                         ),
                       ),
                       const SizedBox(width: 10),
-
-                      // 进度条 (支持拖拽)
                       Expanded(
                         child: VideoProgressIndicator(
                           _controller,
-                          allowScrubbing: true, // 允许拖动进度条
+                          allowScrubbing: true,
                           colors: const VideoProgressColors(
                             playedColor: Colors.white,
                             bufferedColor: Colors.white24,
@@ -176,6 +197,51 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
           ],
         ),
       ),
+    );
+  }
+
+  //  新增：构建 Hero 占位缩略图
+  // (逻辑与气泡里的一致，确保 Hero 动画平滑)
+  Widget _buildPlaceholderThumbnail() {
+    Widget imageWidget;
+
+    // 1. 无封面
+    if (widget.thumbSource.isEmpty) {
+      imageWidget = const SizedBox.shrink();
+    }
+    // 2. 网络封面
+    else if (widget.thumbSource.startsWith('http')) {
+      imageWidget = AppCachedImage(
+        widget.thumbSource,
+        fit: BoxFit.contain, // 全屏展示时用 contain，保证完整性
+      );
+    }
+    // 3. 本地封面
+    else {
+      return FutureBuilder<String?>(
+        future: AssetManager.getFullPath(widget.thumbSource, MessageType.image),
+        builder: (context, snapshot) {
+          if (snapshot.hasData && snapshot.data != null) {
+            final file = File(snapshot.data!);
+            // 简单的检查
+            if (!kIsWeb && !file.existsSync()) return const SizedBox.shrink();
+
+            if (kIsWeb) {
+              return Image.network(snapshot.data!, fit: BoxFit.contain);
+            }
+            return Image.file(file, fit: BoxFit.contain);
+          }
+          return const SizedBox.shrink();
+        },
+      );
+    }
+
+    // 包装在居中容器里
+    return Container(
+      width: double.infinity,
+      height: double.infinity,
+      alignment: Alignment.center,
+      child: imageWidget,
     );
   }
 }
