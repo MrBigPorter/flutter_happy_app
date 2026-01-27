@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_app/app/routes/app_router.dart';
 import 'package:flutter_app/common.dart';
 import 'package:flutter_app/components/base_scaffold.dart';
 import 'package:flutter_app/components/skeleton.dart';
@@ -8,6 +9,8 @@ import 'package:flutter_app/ui/chat/providers/conversation_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
+// 🔥 [新增] 引入 LuckyStore 获取当前用户 ID
+import 'package:flutter_app/core/store/lucky_store.dart';
 
 import '../toast/radix_toast.dart';
 import 'models/conversation.dart';
@@ -22,8 +25,8 @@ class UserProfilePage extends ConsumerWidget {
     final asyncDetail = ref.watch(chatDetailProvider(conversationId));
 
     return BaseScaffold(
-      title: "Chat Info", // 微信风格标题
-      backgroundColor: context.bgSecondary, // 灰色背景
+      title: "Chat Info",
+      backgroundColor: context.bgSecondary,
       body: asyncDetail.when(
         loading: () => _buildSkeleton(context),
         error: (err, _) => Center(child: Text("Error: $err")),
@@ -31,41 +34,32 @@ class UserProfilePage extends ConsumerWidget {
           if (detail.type == ConversationType.group) {
             return const Center(child: Text("This is a group chat."));
           }
-          return _buildContent(context, detail);
+          return _buildContent(context, ref, detail);
         },
       ),
     );
   }
 
-  Widget _buildContent(BuildContext context, ConversationDetail detail) {
+  Widget _buildContent(BuildContext context, WidgetRef ref, ConversationDetail detail) {
     return SingleChildScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
       child: Column(
         children: [
-          // 1. 头部：单个成员+加号 (模拟微信私聊详情的"创建群聊"入口)
           Container(
             color: context.bgPrimary,
             padding: EdgeInsets.only(top: 12.h, bottom: 20.h, left: 16.w, right: 16.w),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // 对方头像
                 _buildAvatarItem(context, detail.name, detail.avatar),
                 SizedBox(width: 20.w),
-                // 加号 (Create Group)
-                _buildAddButton(context, detail),
+                _buildAddButton(context, ref, detail),
               ],
             ),
           ),
-
           SizedBox(height: 12.h),
-
-          // 2. 菜单列表
           _buildSettingsList(context, detail),
-
           SizedBox(height: 30.h),
-
-          // 3. 底部危险操作 (清空/删除)
           _buildFooterButtons(context, detail),
           SizedBox(height: 50.h),
         ],
@@ -73,7 +67,6 @@ class UserProfilePage extends ConsumerWidget {
     );
   }
 
-  // --- 1. 头像组件 (对方) ---
   Widget _buildAvatarItem(BuildContext context, String name, String? avatar) {
     return Column(
       children: [
@@ -81,7 +74,7 @@ class UserProfilePage extends ConsumerWidget {
           width: 48.r,
           height: 48.r,
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(4.r), // 微信方形圆角
+            borderRadius: BorderRadius.circular(4.r),
             color: context.bgSecondary,
             image: avatar != null
                 ? DecorationImage(image: NetworkImage(avatar), fit: BoxFit.cover)
@@ -93,7 +86,7 @@ class UserProfilePage extends ConsumerWidget {
         ),
         SizedBox(height: 6.h),
         SizedBox(
-          width: 50.w, // 限制宽度防止昵称过长
+          width: 50.w,
           child: Text(
             name,
             maxLines: 1,
@@ -109,17 +102,26 @@ class UserProfilePage extends ConsumerWidget {
     );
   }
 
-  // --- 2. 加号按钮 (建群入口) ---
-  Widget _buildAddButton(BuildContext context, ConversationDetail detail) {
+  // --- 2. 加号按钮 (核心逻辑修改) ---
+  Widget _buildAddButton(BuildContext context, WidgetRef ref, ConversationDetail detail) {
     return Column(
       children: [
         InkWell(
           onTap: () {
-            // 点击加号，通常是创建一个包含对方的新群
-            // 逻辑：跳转选人页面，并预选中对方
-            // 路由传参：preSelectedUserId
-            // TODO: 需要在选人页面支持这个参数
-            context.push('/chat/group/create');
+            // 1. 获取当前登录用户的 ID
+            final myId = ref.read(luckyProvider).userInfo?.id;
+
+            // 2. 找到对方 (排除自己)
+            // 如果只有2个人，且我知道我的ID，剩下的那个就是对方
+            // 容错：如果找不到(理论上不可能)，就返回第一个
+            final partner = detail.members.firstWhere(
+                    (m) => m.userId != myId,
+                orElse: () => detail.members.first
+            );
+
+            // 3. 跳转建群选人页，并把对方 ID 传过去
+            appRouter.push('/chat/group/select/member?preSelectedId=${partner.userId}');
+
           },
           child: Container(
             width: 48.r,
@@ -131,12 +133,14 @@ class UserProfilePage extends ConsumerWidget {
             child: Icon(Icons.add, color: context.textSecondary700),
           ),
         ),
-        SizedBox(height: 6.h), // 占位保持对齐
+        SizedBox(height: 6.h),
       ],
     );
   }
 
-  // --- 3. 菜单列表 (仿微信) ---
+  // ... 后面部分保持不变 (_buildSettingsList, _buildFooterButtons, _buildSkeleton) ...
+  // 为节省篇幅，省略了未修改的下方代码，请保留原文件中的这些部分
+
   Widget _buildSettingsList(BuildContext context, ConversationDetail detail) {
     return Column(
       children: [
@@ -145,21 +149,20 @@ class UserProfilePage extends ConsumerWidget {
           label: "Search Chat History",
           onTap: () => RadixToast.info("Search pending"),
         ),
-        SizedBox(height: 12.h), // 分割块
+        SizedBox(height: 12.h),
         _buildMenuItem(
           context,
           label: "Mute Notifications",
           isSwitch: true,
-          switchValue: false, // TODO: 绑定真实状态
+          switchValue: false,
           onSwitchChanged: (v) => RadixToast.info("Mute API pending"),
         ),
-        // 分割线逻辑：如果是连续的列表项，中间加 Divider；如果是分块的，用 SizedBox
         Container(height: 1, color: context.bgSecondary, margin: EdgeInsets.only(left: 16.w)),
         _buildMenuItem(
           context,
           label: "Pin to Top",
           isSwitch: true,
-          switchValue: false, // TODO: 绑定真实状态
+          switchValue: false,
           onSwitchChanged: (v) => RadixToast.info("Pin API pending"),
         ),
       ],
@@ -204,10 +207,7 @@ class UserProfilePage extends ConsumerWidget {
     );
   }
 
-  // --- 4. 底部按钮 ---
   Widget _buildFooterButtons(BuildContext context, ConversationDetail detail) {
-    // 微信风格：没有 Block User，通常是 "Clear Chat History"
-    // Block User 通常藏在个人资料页里，而不是聊天详情页
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 16.w),
       child: Button(
@@ -222,7 +222,6 @@ class UserProfilePage extends ConsumerWidget {
     );
   }
 
-  // --- 5. 骨架屏 (适配新布局) ---
   Widget _buildSkeleton(BuildContext context) {
     return Column(
       children: [

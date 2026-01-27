@@ -15,9 +15,13 @@ class GroupMemberSelectPage extends ConsumerStatefulWidget {
   // 核心参数：有 ID = 邀请模式；无 ID = 建群模式
   final String? existingGroupId;
 
+  //  [新增] 预选中成员 ID (用于从私聊详情页发起建群)
+  final String? preSelectedId;
+
   const GroupMemberSelectPage({
     super.key,
     this.existingGroupId,
+    this.preSelectedId, 
   });
 
   @override
@@ -29,6 +33,15 @@ class _GroupMemberSelectPageState extends ConsumerState<GroupMemberSelectPage> {
 
   // 辅助 getter
   bool get isInviteMode => widget.existingGroupId != null;
+
+  @override
+  void initState() {
+    super.initState();
+    //  [核心逻辑] 如果有预选人，进页面直接勾上
+    if (widget.preSelectedId != null && widget.preSelectedId!.isNotEmpty) {
+      _selectedIds.add(widget.preSelectedId!);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -65,6 +78,7 @@ class _GroupMemberSelectPageState extends ConsumerState<GroupMemberSelectPage> {
         actions: [
           // 右上角按钮：根据 Loading 状态 禁用/变身
           TextButton(
+            // 注意：如果是建群模式，至少要选一个人 (通常包括自己至少2人，前端限制选1人即可)
             onPressed: (_selectedIds.isEmpty || actionState.isLoading)
                 ? null
                 : _handleDoneAction,
@@ -105,6 +119,9 @@ class _GroupMemberSelectPageState extends ConsumerState<GroupMemberSelectPage> {
             itemBuilder: (context, index) {
               final user = friends[index];
               final isSelected = _selectedIds.contains(user.id);
+
+              // 💡 视觉优化：如果是预选中的人，可以加粗或者稍微灰色底色提示用户
+              // 但为了简单，这里保持统一的 Checkbox 逻辑
 
               return CheckboxListTile(
                 contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 4.h),
@@ -164,8 +181,6 @@ class _GroupMemberSelectPageState extends ConsumerState<GroupMemberSelectPage> {
     );
 
     // 2. 检查是否有错误
-    // 如果 Controller 发生了 error，ref.listen 里的逻辑会弹报错 Toast
-    // 我们这里直接 return，不要执行后面的 pop
     if (ref.read(groupMemberActionControllerProvider).hasError) {
       return;
     }
@@ -174,13 +189,10 @@ class _GroupMemberSelectPageState extends ConsumerState<GroupMemberSelectPage> {
 
     // 3. 处理业务结果
     if (count != null && count > 0) {
-      // A. 成功邀请了新人
       RadixToast.success("Successfully invited $count members");
       ref.invalidate(chatDetailProvider(widget.existingGroupId!));
       context.pop();
     } else {
-      // B. 没邀请新人 (count == 0)，比如选的人已经在群里了
-      // 这种情况不应该报错，给个提示并关闭即可，或者不关闭让用户重选
       RadixToast.info("Selected members are already in the group");
       context.pop();
     }
@@ -200,7 +212,6 @@ class _GroupMemberSelectPageState extends ConsumerState<GroupMemberSelectPage> {
     if (newGroupId != null && mounted) {
       RadixToast.success("Group created!");
       // 跳转到新群
-      // 使用 go 而不是 push，避免用户按返回键回到选人页
       appRouter.go('/chat/room/$newGroupId');
     }
   }

@@ -76,7 +76,8 @@ class AppRouter {
             parentNavigatorKey: NavHub.key,
             builder: (context, state) {
               final groupId = state.uri.queryParameters['groupId'];
-              return GroupMemberSelectPage(existingGroupId: groupId);
+              final preSelectedId = state.uri.queryParameters['preSelectedId'];
+              return GroupMemberSelectPage(existingGroupId: groupId, preSelectedId: preSelectedId,);
             }
         ),
         GoRoute(
