@@ -1,11 +1,9 @@
 import 'dart:io';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:video_player/video_player.dart';
 
 import '../../models/chat_ui_model.dart';
-import '../../../../utils/asset/asset_manager.dart';
 import '../../../img/app_image.dart';
 import '../../services/media/video_playback_service.dart';
 import '../../video_player_page.dart';
@@ -23,7 +21,6 @@ class _VideoMsgBubbleState extends State<VideoMsgBubble> {
   VideoPlayerController? _controller;
   bool _isPlaying = false;
   bool _isInitializing = false;
-  bool _isMuted = false;
 
   final _playbackService = VideoPlaybackService();
 
@@ -37,7 +34,6 @@ class _VideoMsgBubbleState extends State<VideoMsgBubble> {
 
   /// 计算降采样宽度：根据屏占比和DPR计算真实的物理像素需求
   int _getCacheWidth(BuildContext context) {
-    // 气泡最大宽度是 0.6.sw，乘以设备像素比得到真实物理像素
     final double screenWidth = MediaQuery.of(context).size.width;
     final double dpr = MediaQuery.of(context).devicePixelRatio;
     return (screenWidth * 0.6 * dpr).toInt();
@@ -103,8 +99,11 @@ class _VideoMsgBubbleState extends State<VideoMsgBubble> {
     if (mounted) setState(() => _isPlaying = false);
 
     final source = await _playbackService.getPlayableSource(widget.message);
-    final meta = widget.message.meta ?? {};
-    String thumbSource = meta['thumb'] ?? meta['remote_thumb'] ?? "";
+
+    // 全屏页也可以优先尝试用 resolvedThumbPath，没有再用 meta
+    final String thumbSource = widget.message.resolvedThumbPath ??
+        widget.message.meta?['thumb'] ??
+        widget.message.meta?['remote_thumb'] ?? "";
 
     if (source.isNotEmpty) {
       Navigator.of(context).push(
@@ -132,12 +131,10 @@ class _VideoMsgBubbleState extends State<VideoMsgBubble> {
     final double height = maxWidth / aspectRatio;
     final String durationStr = _formatDuration(_parseInt(meta['duration']) ?? 0);
 
-    String thumbSource = meta['thumb'] ?? "";
-    if (thumbSource.isEmpty) thumbSource = meta['remote_thumb'] ?? "";
-
     final bool isSending = widget.message.status == MessageStatus.sending;
 
-    return RepaintBoundary( //  性能优化：隔离重绘区域
+    //  性能优化：RepaintBoundary 隔离重绘
+    return RepaintBoundary(
       child: Hero(
         tag: widget.message.id,
         child: Material(
@@ -151,9 +148,9 @@ class _VideoMsgBubbleState extends State<VideoMsgBubble> {
               fit: StackFit.expand,
               children: [
                 // ============================================
-                // Layer 1: 三级封面逻辑 (同步预览 -> 异步本地 -> 网络兜底)
+                // Layer 1: 封面渲染 ( 彻底移除了 FutureBuilder)
                 // ============================================
-                _buildThumbnail(thumbSource, maxWidth, height),
+                _buildThumbnail(maxWidth, height),
 
                 // ============================================
                 // Layer 2: 视频渲染层
@@ -188,67 +185,57 @@ class _VideoMsgBubbleState extends State<VideoMsgBubble> {
     );
   }
 
-  /// 封面构建器：实现三级视觉缓冲
-  Widget _buildThumbnail(String source, double w, double h) {
-    final cacheWidth = _getCacheWidth(context);
-    
+  ///  核心修改：同步构建封面 (No FutureBuilder) 
+  Widget _buildThumbnail(double w, double h) {
+    final msg = widget.message;
+    final int cacheWidth = _getCacheWidth(context);
 
     return Stack(
       fit: StackFit.expand,
       children: [
-        // Level 1: 同步内存缩略图 (解决瞬间黑屏的关键)
-        if (widget.message.previewBytes != null)
+        // ------------------------------------------------
+        // Level 1: 同步内存缩略图 (极速响应，解决黑屏)
+        // ------------------------------------------------
+        if (msg.previewBytes != null)
           Image.memory(
-            widget.message.previewBytes!,
+            msg.previewBytes!,
             width: w,
             height: h,
-            cacheWidth: cacheWidth, //  内存降准优化
+            cacheWidth: cacheWidth, // 内存降准
             fit: BoxFit.cover,
+            gaplessPlayback: true,
           ),
 
-        // Level 2 & 3: 异步/网络封面
-        _buildAsyncImageLayer(source, w, h, cacheWidth),
+        // ------------------------------------------------
+        // Level 2 & 3: 预热好的物理路径 (同步读取，拒绝 IO 等待)
+        // ------------------------------------------------
+        if (msg.resolvedThumbPath != null && msg.resolvedThumbPath!.isNotEmpty)
+          _buildResolvedImage(msg.resolvedThumbPath!, w, h, cacheWidth),
       ],
     );
   }
 
-  Widget _buildAsyncImageLayer(String source, double w, double h, int cacheWidth) {
-    if (source.isEmpty) return const SizedBox.shrink();
-
-    // 网络源处理
-    if (source.startsWith('http') || source.startsWith('blob:')) {
-      return AppCachedImage(source, width: w, height: h, fit: BoxFit.cover);
+  /// 辅助方法：构建本地或网络图 (纯同步)
+  Widget _buildResolvedImage(String path, double w, double h, int cacheWidth) {
+    // A. 网络图
+    if (path.startsWith('http') || path.startsWith('blob:')) {
+      return AppCachedImage(path, width: w, height: h, fit: BoxFit.cover);
     }
 
-    // 本地源异步解析
-    return FutureBuilder<String?>(
-      future: AssetManager.getFullPath(source, MessageType.image),
-      builder: (context, snapshot) {
-        if (snapshot.hasData && snapshot.data != null) {
-          final path = snapshot.data!;
-          if (kIsWeb || path.startsWith('http')) {
-            return AppCachedImage(path, width: w, height: h, fit: BoxFit.cover);
-          }
-
-          final file = File(path);
-          if (file.existsSync()) {
-            return Image.file(
-              file,
-              width: w,
-              height: h,
-              cacheWidth: cacheWidth, //  内存降准优化
-              fit: BoxFit.cover,
-              gaplessPlayback: true, // 防止路径切换时闪烁
-              errorBuilder: (_, __, ___) => const SizedBox.shrink(),
-            );
-          }
-        }
-        // 解析中返回 shrink，因为底层有 Image.memory 垫着，不会黑屏
-        return const SizedBox.shrink();
-      },
+    // B. 本地文件 (Service 已经确认过文件存在了，直接读)
+    // 这里不再需要 FutureBuilder 去 AssetManager 查，因为 resolvedThumbPath 已经是查好的结果
+    return Image.file(
+      File(path),
+      width: w,
+      height: h,
+      cacheWidth: cacheWidth, // 内存降准
+      fit: BoxFit.cover,
+      gaplessPlayback: true, // 防止重绘闪烁
+      errorBuilder: (_, __, ___) => const SizedBox.shrink(),
     );
   }
 
+  // --- UI 覆盖层 (保持原样) ---
   Widget _buildUIOverlays(bool isSending, String durationStr) {
     return Stack(
       children: [

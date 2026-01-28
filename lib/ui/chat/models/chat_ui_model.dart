@@ -43,6 +43,11 @@ class ChatUiModel {
   final String? senderName;
   final String conversationId;
 
+  // ---  新增：预热后的物理路径 (Memory Only) ---
+  // 这两个字段不由数据库存取，而是由 Service 层运行时填充
+  final String? resolvedPath;      // 主文件物理路径
+  final String? resolvedThumbPath; // 封面物理路径
+
   //  核心：微缩图字节流 (存入数据库的关键)
   final Uint8List? previewBytes;
 
@@ -78,6 +83,9 @@ class ChatUiModel {
     this.previewBytes, //  构造函数接收
     this.duration,
     this.meta,
+
+    this.resolvedPath,
+    this.resolvedThumbPath,
   });
 
   // ---  手动实现序列化 (100% 可控) ---
@@ -143,6 +151,10 @@ class ChatUiModel {
       duration: json['duration'] as int?,
       isRecalled: json['isRecalled'] as bool? ?? false,
       meta: json['meta'] as Map<String, dynamic>?,
+
+      //  读库时，这两个字段永远是 null，等待 Service 层填充
+      resolvedPath: null,
+      resolvedThumbPath: null,
     );
   }
 
@@ -163,6 +175,9 @@ class ChatUiModel {
     int? duration,
     bool? isRecalled,
     Map<String, dynamic>? meta,
+
+    String? resolvedPath,
+    String? resolvedThumbPath,
   }) {
     return ChatUiModel(
       id: id ?? this.id,
@@ -175,11 +190,13 @@ class ChatUiModel {
       senderAvatar: senderAvatar ?? this.senderAvatar,
       senderName: senderName ?? this.senderName,
       conversationId: conversationId ?? this.conversationId,
-      previewBytes: previewBytes ?? this.previewBytes, // ✅ 支持 copyWith 更新
+      previewBytes: previewBytes ?? this.previewBytes,
       localPath: localPath ?? this.localPath,
       duration: duration ?? this.duration,
       isRecalled: isRecalled ?? this.isRecalled,
       meta: meta ?? this.meta,
+      resolvedPath: resolvedPath ?? this.resolvedPath,
+      resolvedThumbPath: resolvedThumbPath ?? this.resolvedThumbPath,
     );
   }
 
