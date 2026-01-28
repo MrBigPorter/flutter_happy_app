@@ -34,6 +34,8 @@ class ImageMsgBubble extends StatelessWidget {
         final bool hasLocalFile = activeLocalPath != null;
         final bool hasPreviewBytes = message.previewBytes != null && (message.previewBytes as Uint8List).isNotEmpty;
 
+        print('message.previewBytes=>:${message.previewBytes}');
+
         Widget buildNetworkImage() {
           return AppCachedImage(
             message.content,
