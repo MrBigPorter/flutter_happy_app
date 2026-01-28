@@ -27,12 +27,27 @@ class _VideoMsgBubbleState extends State<VideoMsgBubble> {
 
   final _playbackService = VideoPlaybackService();
 
+  // 新增：本地封面“记忆锁”
+  String? _latchedLocalThumb;
+
   @override
   void dispose() {
     if (_controller != null && _isPlaying) {
       _controller!.pause();
     }
     super.dispose();
+  }
+
+  //  核心逻辑：一旦发现有本地路径，立刻锁死
+  void _checkLocalThumb() {
+    final meta = widget.message.meta ?? {};
+    final String current = meta['thumb'] ?? "";
+
+    // 如果当前 thumb 是有效的本地路径（非 http），就把它缓存起来
+    // 注意：blob: 是 Web 端的本地路径，也要算在内
+    if (current.isNotEmpty && !current.startsWith('http')) {
+      _latchedLocalThumb = current;
+    }
   }
 
   Future<void> _playVideo() async {
@@ -96,6 +111,7 @@ class _VideoMsgBubbleState extends State<VideoMsgBubble> {
 
     final source = _playbackService.getPlayableSource(widget.message);
     final meta = widget.message.meta ?? {};
+
     final String thumbSource = meta['thumb'] ?? "";
 
     if (source.isNotEmpty) {
@@ -129,11 +145,12 @@ class _VideoMsgBubbleState extends State<VideoMsgBubble> {
     //  优化2：安全解析时长
     final int durationSec = _parseInt(meta['duration']) ?? 0;
     final String durationStr = _formatDuration(durationSec);
+    //  关键修改：优先使用“记忆”中的本地路径
+    // 即使数据库被 socket 改成了 http，只要 _latchedLocalThumb 有值，我们依然显示本地文件
+    final String thumbSource = _latchedLocalThumb ?? meta['thumb'] ?? "";
 
-    final String thumbSource = meta['thumb'] ?? "";
     final bool isSending = widget.message.status == MessageStatus.sending;
     
-    print("VideoMsgBubble build: thumbSource:$thumbSource");
 
     return Hero(
       tag: widget.message.id,
