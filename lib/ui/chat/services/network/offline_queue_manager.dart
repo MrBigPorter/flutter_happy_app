@@ -1,18 +1,12 @@
 import 'dart:async';
-import 'dart:io' show File;
 import 'package:connectivity_plus/connectivity_plus.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
-import 'package:camera/camera.dart';
-import 'package:flutter_app/utils/helper.dart';
+import 'package:flutter/material.dart';
 
-import 'package:flutter_app/core/api/lucky_api.dart';
-import 'package:flutter_app/utils/upload/global_upload_service.dart';
-import 'package:flutter_app/utils/upload/upload_types.dart';
 import 'package:flutter_app/ui/chat/models/chat_ui_model.dart';
 import 'package:flutter_app/ui/chat/services/database/local_database_service.dart';
-
-import '../../../../utils/asset/asset_manager.dart';
+import 'package:flutter_app/ui/chat/services/chat_action_service.dart';
+import 'package:flutter_app/utils/upload/global_upload_service.dart';
 
 class OfflineQueueManager with WidgetsBindingObserver {
   static final OfflineQueueManager _instance = OfflineQueueManager._internal();
@@ -21,19 +15,21 @@ class OfflineQueueManager with WidgetsBindingObserver {
 
   bool _isProcessing = false;
   StreamSubscription? _connectivitySubscription;
+  late dynamic _ref; //  这里改为 dynamic
 
   final GlobalUploadService _uploadService = GlobalUploadService();
   final Map<String, int> _retryRegistry = {};
   static const int maxRetries = 5;
 
-  /// Initializes the manager and starts monitoring network connectivity.
-  void init() {
+  /// 初始化并监听网络
+  void init(dynamic ref) {
+    _ref = ref;
     debugPrint("[OfflineQueue] Manager initialized.");
 
     _connectivitySubscription = Connectivity().onConnectivityChanged.listen((results) {
       final result = results.isNotEmpty ? results.first : ConnectivityResult.none;
       if (result != ConnectivityResult.none) {
-        debugPrint("[OfflineQueue] Network restored. Flushing queue...");
+        debugPrint("[OfflineQueue] 网络恢复，开始清理队列...");
         startFlush();
       }
     });
@@ -45,12 +41,12 @@ class OfflineQueueManager with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      debugPrint("[OfflineQueue] App resumed. Checking for pending tasks.");
+      debugPrint("[OfflineQueue] App 回到前台，检查未完成任务.");
       startFlush();
     }
   }
 
-  /// Entry point to trigger the queue processing.
+  /// 触发清理
   Future<void> startFlush() async {
     if (_isProcessing) return;
     _isProcessing = true;
@@ -62,115 +58,61 @@ class OfflineQueueManager with WidgetsBindingObserver {
     }
   }
 
-  /// Loops through all messages currently marked as 'pending' in the local database.
+  /// 循环重发所有 Pending 消息
   Future<void> _doFlush() async {
     final pendingMessages = await LocalDatabaseService().getPendingMessages();
     if (pendingMessages.isEmpty) return;
 
-    debugPrint("[OfflineQueue] Resending ${pendingMessages.length} items.");
+    debugPrint("[OfflineQueue] 准备重发 ${pendingMessages.length} 条消息.");
 
     for (var msg in pendingMessages) {
+      // 实时检查网络
       final connectivity = await Connectivity().checkConnectivity();
       if (connectivity.contains(ConnectivityResult.none)) {
-        debugPrint("[OfflineQueue] Flush aborted: Connection lost.");
+        debugPrint("[OfflineQueue] 清理中断：网络连接丢失.");
         break;
       }
 
+      // 检查重试次数
       final retries = _retryRegistry[msg.id] ?? 0;
       if (retries >= maxRetries) {
-        debugPrint("[OfflineQueue] Max retries hit for ${msg.id}. Failing permanently.");
+        debugPrint("[OfflineQueue] 消息 ${msg.id} 达到最大重试次数，标记失败.");
         await LocalDatabaseService().updateMessageStatus(msg.id, MessageStatus.failed);
         _retryRegistry.remove(msg.id);
         continue;
       }
 
-      bool success = await _resend(msg);
+      //  核心调用：收编“游击队”，统一走管道
+      bool success = await _resendViaPipeline(msg);
+
       if (!success) {
         _retryRegistry[msg.id] = retries + 1;
       } else {
         _retryRegistry.remove(msg.id);
       }
 
+      // 避免请求过快
       await Future.delayed(const Duration(milliseconds: 500));
     }
   }
 
-  /// Handles the actual re-upload and API re-submission for a single message.
-  Future<bool> _resend(ChatUiModel msg) async {
+  /// 内部方法：通过 Pipeline 重新发送
+  Future<bool> _resendViaPipeline(ChatUiModel msg) async {
     try {
-      await LocalDatabaseService().updateMessageStatus(msg.id, MessageStatus.sending);
+      debugPrint("[OfflineQueue] 正在通过管道重发消息: ${msg.id}");
 
-      String contentToSend = msg.content;
+      // 构造 Service 实例
+      final service = ChatActionService(msg.conversationId, _ref, _uploadService);
 
-      // --- Media Handling Logic ---
-      if (msg.type != MessageType.text) {
-        String? fullPath;
-
-        // Use AssetManager to resolve the physical path for the media file.
-        if (msg.localPath != null) {
-          fullPath = await AssetManager.getFullPath(msg.localPath, msg.type);
-        }
-
-        bool canUpload = (fullPath != null);
-
-        // If the file is missing locally and we don't have a server URL, we cannot proceed.
-        if (!canUpload && !msg.content.startsWith('http')) {
-          debugPrint("❌ [OfflineQueue] File lost, cannot resend ID: ${msg.id}");
-          await LocalDatabaseService().updateMessageStatus(msg.id, MessageStatus.failed);
-          return false;
-        }
-
-        // Re-upload the file if the content field doesn't contain a valid URL yet.
-        if (!msg.content.startsWith('http')) {
-          debugPrint("[OfflineQueue] Re-uploading media for ${msg.id}...");
-
-          contentToSend = await _uploadService.uploadFile(
-            file: XFile(
-              fullPath!,
-              mimeType: msg.type == MessageType.audio ? 'audio/mp4' : null,
-            ),
-            module: UploadModule.chat,
-            onProgress: (p) => debugPrint("[OfflineQueue] Upload Progress: $p"),
-          );
-        }
-      }
-
-      // --- API Synchronization ---
-      debugPrint("[OfflineQueue] Syncing with server: ${msg.id}");
-
-      // Use the new named parameter signature.
-      final serverMsg = await Api.sendMessage(
-        id: msg.id,
-        conversationId: msg.conversationId,
-        content: contentToSend,
-        type: msg.type.value,
-        meta: msg.meta, // Pass the consolidated meta map.
-      );
-
-      // Update local database with server confirmation data.
-      await LocalDatabaseService().updateMessage(msg.id, {
-        'status': MessageStatus.success.name,
-        'seqId': serverMsg.seqId,
-        'createdAt': timeToInt(serverMsg.createdAt),
-        if (serverMsg.meta != null) 'meta': serverMsg.meta,
-        if (msg.type != MessageType.text) 'content': contentToSend,
-      });
+      // 调用我们在 ChatActionService 里写好的重发管道
+      // 它会自动执行：RecoverStep -> UploadStep -> SyncStep
+      await service.resend(msg.id);
 
       return true;
-
     } catch (e) {
-      debugPrint("[OfflineQueue] Error resending ${msg.id}: $e");
-      await LocalDatabaseService().updateMessageStatus(msg.id, MessageStatus.pending);
+      debugPrint("[OfflineQueue] 管道重发失败 ${msg.id}: $e");
       return false;
     }
-  }
-
-  /// Helper to ensure timestamp consistency.
-  int timeToInt(dynamic value) {
-    if (value is int) return value;
-    if (value is DateTime) return value.millisecondsSinceEpoch;
-    if (value is String) return DateTime.parse(value).millisecondsSinceEpoch;
-    return DateTime.now().millisecondsSinceEpoch;
   }
 
   void dispose() {
