@@ -1,7 +1,9 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:video_player/video_player.dart';
+import '../../../../utils/asset/asset_manager.dart';
 import '../../models/chat_ui_model.dart';
+import '../../providers/chat_room_provider.dart';
 
 class VideoPlaybackService {
   // 单例模式
@@ -11,18 +13,23 @@ class VideoPlaybackService {
 
   VideoPlayerController? _activeController;
 
-  /// 1. 核心逻辑：获取可播放的源路径 (解析本地/网络兜底)
-  String getPlayableSource(ChatUiModel message) {
-    // 优先用本地路径
+  ///  核心重构：异步获取可播放源
+  /// 支持从 Asset ID、内存缓存以及网络 URL 中进行三级解析
+  Future<String> getPlayableSource(ChatUiModel message) async {
+    // A. 优先查内存缓存 (秒开原片，为了发送瞬间的极致体验)
+    final cachePath = ChatRoomController.getPathFromCache(message.id);
+    if (cachePath != null && File(cachePath).existsSync()) return cachePath;
+
+    // B. 解析本地 Asset ID
+    // 无论 iOS 沙盒路径如何变化，通过相对文件名 ID 永远能找回物理文件
     if (!kIsWeb && message.localPath != null) {
-      final file = File(message.localPath!);
-      // 如果本地文件存在，直接返回
-      if (file.existsSync()) {
-        return message.localPath!;
+      final String? absPath = await AssetManager.getFullPath(message.localPath!, message.type);
+      if (absPath != null && File(absPath).existsSync()) {
+        return absPath;
       }
     }
 
-    // 本地没了，或者是在 Web 端，用网络链接兜底
+    // C. 兜底使用网络 URL (content)
     if (message.content.startsWith('http')) {
       return message.content;
     }
@@ -30,18 +37,17 @@ class VideoPlaybackService {
     return ""; // 无效路径
   }
 
-  /// 2. 核心逻辑：创建控制器 (统一入口)
+  /// 2. 统一创建控制器
   VideoPlayerController createController(String source) {
-    if (source.startsWith('http')) {
+    if (source.startsWith('http') || source.startsWith('blob:')) {
       return VideoPlayerController.networkUrl(Uri.parse(source));
     } else {
       return VideoPlayerController.file(File(source));
     }
   }
 
-  /// 3. 核心逻辑：请求独占播放 (暂停其他人)
+  /// 3. 请求独占播放 (自动暂停当前正在播放的其他视频)
   void requestPlay(VideoPlayerController newController) {
-    // 如果当前有别的在播，且不是同一个，先暂停旧的
     if (_activeController != null &&
         _activeController != newController &&
         _activeController!.value.isPlaying) {
@@ -50,7 +56,6 @@ class VideoPlaybackService {
     _activeController = newController;
   }
 
-  /// (可选) 停止所有播放
   void stopAll() {
     _activeController?.pause();
     _activeController = null;

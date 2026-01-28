@@ -9,7 +9,7 @@ import 'package:flutter_app/ui/chat/providers/conversation_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
-// 🔥 [新增] 引入 LuckyStore 获取当前用户 ID
+//  [新增] 引入 LuckyStore 获取当前用户 ID
 import 'package:flutter_app/core/store/lucky_store.dart';
 
 import '../toast/radix_toast.dart';

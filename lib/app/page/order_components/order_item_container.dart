@@ -188,7 +188,7 @@ class _OrderItemStatusHeader extends StatelessWidget {
     Color statusColor = context.textBrandSecondary700;
     Color statusBg = context.textBrandSecondary700.withOpacity(0.1);
 
-    // 🔥 1. 优先判断退款状态
+    //  1. 优先判断退款状态
     if (item.refundStatus == 1) {
       // 审核中
       return _buildContainer(
@@ -526,7 +526,7 @@ class _OrderItemRefundInfoState extends State<_OrderItemRefundInfo> {
 
   @override
   Widget build(BuildContext context) {
-    // 🔥 动态样式逻辑
+    //  动态样式逻辑
     String title = 'Refund Details';
     Color titleColor = context.textSecondary700;
     Color iconColor = context.textSecondary700;

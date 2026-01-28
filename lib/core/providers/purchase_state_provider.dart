@@ -16,11 +16,11 @@ import '../store/lucky_store.dart';
 class PurchaseState {
   final int entries;
 
-  // 🔥 unitAmount 现在表示“当前生效的单价” (可能是拼团价，也可能是单买价)
+  //  unitAmount 现在表示“当前生效的单价” (可能是拼团价，也可能是单买价)
   // 用于计算 subtotal
   final double unitAmount;
 
-  // 🔥 新增：分别缓存两种价格，以便切换
+  //  新增：分别缓存两种价格，以便切换
   final double baseGroupPrice;
   final double baseSoloPrice;
   final bool isGroupBuy; // 当前是否为拼团模式

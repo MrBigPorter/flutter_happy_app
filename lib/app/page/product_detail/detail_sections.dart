@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:easy_localization/easy_localization.dart'; // 🔥 必须引入
+import 'package:easy_localization/easy_localization.dart'; //  必须引入
 import 'package:flutter/material.dart';
 import 'package:flutter_app/ui/img/app_image.dart';
 import 'package:flutter_countdown_timer/flutter_countdown_timer.dart';

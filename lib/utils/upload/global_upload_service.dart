@@ -214,8 +214,8 @@ class GlobalUploadService {
   // 🆔 3. KYC 提交 (支持 Web & Mobile)
   // ===========================================================================
   Future<dynamic> submitKyc({
-    required XFile frontImage, // 🔥 改动点：传 XFile
-    required XFile? backImage, // 🔥 改动点：传 XFile
+    required XFile frontImage, //  改动点：传 XFile
+    required XFile? backImage, //  改动点：传 XFile
     required Map<String, dynamic> bodyData,
   }) async {
     final Map<String, dynamic> map = Map.from(bodyData);

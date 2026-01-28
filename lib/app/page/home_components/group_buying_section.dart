@@ -1,4 +1,4 @@
-// 🔥 必须引入
+//  必须引入
 import 'package:easy_localization/easy_localization.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
@@ -214,7 +214,7 @@ class GroupBuyingCard extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
                             AvatarStack(avatars: displayAvatars, total: totalJoins),
-                            // 🔥 传入加入状态
+                            //  传入加入状态
                             _buildJoinButton(context, isJoined),
                           ],
                         ),

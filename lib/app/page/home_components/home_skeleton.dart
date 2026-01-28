@@ -268,7 +268,7 @@ class _HomeFutureSkeleton extends StatelessWidget {
                         left: 6.w,
                         right: 6.w,
                         child: Container(
-                          // 🔥 修复点：移除固定 height: 110.h，改用 padding 撑开
+                          //  修复点：移除固定 height: 110.h，改用 padding 撑开
                           // height: 110.h, <--- 删掉这行
                           padding: EdgeInsets.all(8.w),
                           decoration: BoxDecoration(

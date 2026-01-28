@@ -68,7 +68,7 @@ class HomePage extends ConsumerWidget {
 
                 return SliverToBoxAdapter(
                   child: GroupBuyingSection(
-                    title: "🔥 Hot Group Buy",
+                    title: " Hot Group Buy",
                     list: data,
                   ),
                 );

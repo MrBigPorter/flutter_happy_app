@@ -192,7 +192,7 @@ mixin SocketNotificationMixin on _SocketBase {
 }
 
 // ==========================================
-// 🧩 Mixin 3: 拼团大厅能力 (Lobby Capability) 🔥 [新增]
+// 🧩 Mixin 3: 拼团大厅能力 (Lobby Capability)  [新增]
 // ==========================================
 mixin SocketLobbyMixin on _SocketBase {
   /// 加入大厅 (订阅实时更新)

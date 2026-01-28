@@ -4,9 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:video_player/video_player.dart';
 
+// 请确保这些 import 路径对应你项目的实际位置
 import '../../models/chat_ui_model.dart';
 import '../../../../utils/asset/asset_manager.dart';
-import '../../../img/app_image.dart';
+import '../../../img/app_image.dart'; // 你的 AppCachedImage 组件
 import '../../services/media/video_playback_service.dart';
 import '../../video_player_page.dart';
 
@@ -25,10 +26,11 @@ class _VideoMsgBubbleState extends State<VideoMsgBubble> {
   bool _isInitializing = false;
   bool _isMuted = false;
 
+  // 获取服务实例
   final _playbackService = VideoPlaybackService();
 
-  // 新增：本地封面“记忆锁”
-  String? _latchedLocalThumb;
+  //  注意：这里删除了之前添加的 _latchedLocalThumb 状态锁
+  // 声明式架构下不再需要它。
 
   @override
   void dispose() {
@@ -38,25 +40,16 @@ class _VideoMsgBubbleState extends State<VideoMsgBubble> {
     super.dispose();
   }
 
-  //  核心逻辑：一旦发现有本地路径，立刻锁死
-  void _checkLocalThumb() {
-    final meta = widget.message.meta ?? {};
-    final String current = meta['thumb'] ?? "";
-
-    // 如果当前 thumb 是有效的本地路径（非 http），就把它缓存起来
-    // 注意：blob: 是 Web 端的本地路径，也要算在内
-    if (current.isNotEmpty && !current.startsWith('http')) {
-      _latchedLocalThumb = current;
-    }
-  }
-
+  /// 核心逻辑：初始化并播放
   Future<void> _playVideo() async {
+    // 1. 如果已经初始化，直接切换状态
     if (_controller != null && _controller!.value.isInitialized) {
       setState(() {
         if (_controller!.value.isPlaying) {
           _controller!.pause();
           _isPlaying = false;
         } else {
+          // 请求独占播放
           _playbackService.requestPlay(_controller!);
           _controller!.play();
           _isPlaying = true;
@@ -65,17 +58,22 @@ class _VideoMsgBubbleState extends State<VideoMsgBubble> {
       return;
     }
 
+    // 2. 如果没初始化，开始加载
     setState(() => _isInitializing = true);
 
-    final source = _playbackService.getPlayableSource(widget.message);
+    final source = await _playbackService.getPlayableSource(widget.message);
     if (source.isEmpty) {
       setState(() => _isInitializing = false);
+      debugPrint("Video source is empty, cannot play.");
       return;
     }
 
     try {
+      // 3. 使用 Service 创建控制器
       _controller = _playbackService.createController(source);
+
       await _controller!.initialize();
+      // 4. 使用 Service 请求独占
       _playbackService.requestPlay(_controller!);
       await _controller!.play();
 
@@ -86,9 +84,12 @@ class _VideoMsgBubbleState extends State<VideoMsgBubble> {
         });
       }
 
+      // 监听播放结束，恢复按钮状态
       _controller!.addListener(() {
         if (!mounted) return;
-        if (_controller!.value.position >= _controller!.value.duration && _isPlaying) {
+        if (_controller!.value.isInitialized &&
+            _controller!.value.position >= _controller!.value.duration &&
+            _isPlaying) {
           setState(() {
             _isPlaying = false;
             _controller!.seekTo(Duration.zero);
@@ -105,14 +106,20 @@ class _VideoMsgBubbleState extends State<VideoMsgBubble> {
     }
   }
 
-  void _openFullScreen() {
+  /// 跳转全屏
+  void _openFullScreen() async {
     _controller?.pause();
     if (mounted) setState(() => _isPlaying = false);
 
-    final source = _playbackService.getPlayableSource(widget.message);
+    final source = await _playbackService.getPlayableSource(widget.message);
     final meta = widget.message.meta ?? {};
 
-    final String thumbSource = meta['thumb'] ?? "";
+    // 获取用于全屏预览的封面源 (逻辑与气泡渲染一致)
+    String thumbSource = meta['thumb'] ?? "";
+    final String remoteThumb = meta['remote_thumb'] ?? "";
+    if (thumbSource.isEmpty && remoteThumb.isNotEmpty) {
+      thumbSource = remoteThumb;
+    }
 
     if (source.isNotEmpty) {
       Navigator.of(context).push(
@@ -134,7 +141,6 @@ class _VideoMsgBubbleState extends State<VideoMsgBubble> {
   Widget build(BuildContext context) {
     final meta = widget.message.meta ?? {};
 
-    //  优化1：使用安全解析，防止 double/string 导致的类型崩溃
     final int w = _parseInt(meta['w']) ?? 16;
     final int h = _parseInt(meta['h']) ?? 9;
 
@@ -142,214 +148,225 @@ class _VideoMsgBubbleState extends State<VideoMsgBubble> {
     final double maxWidth = 0.6.sw;
     final double height = maxWidth / aspectRatio;
 
-    //  优化2：安全解析时长
     final int durationSec = _parseInt(meta['duration']) ?? 0;
     final String durationStr = _formatDuration(durationSec);
-    //  关键修改：优先使用“记忆”中的本地路径
-    // 即使数据库被 socket 改成了 http，只要 _latchedLocalThumb 有值，我们依然显示本地文件
-    final String thumbSource = _latchedLocalThumb ?? meta['thumb'] ?? "";
+
+    //  核心重构点：声明式源选择逻辑
+    // 1. 优先尝试 'thumb' (它现在应该是本地 AssetID 或旧数据的 URL)
+    String thumbSource = meta['thumb'] ?? "";
+    // 2. 如果 'thumb' 为空，说明没有本地封面，尝试用 'remote_thumb' 兜底
+    // (这种情况常见于：用户清除了缓存，或者这是接收到的消息)
+    final String remoteThumb = meta['remote_thumb'] ?? "";
+
+    if (thumbSource.isEmpty && remoteThumb.isNotEmpty) {
+      thumbSource = remoteThumb;
+    }
 
     final bool isSending = widget.message.status == MessageStatus.sending;
-    
 
     return Hero(
       tag: widget.message.id,
+      // 使用 Material 包裹以支持墨水波纹效果，并设置底色防穿透
       child: Material(
-        color: Colors.transparent,
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(12.r),
-          child: Container(
-            width: maxWidth,
-            height: height,
-            color: Colors.black12,
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                _buildThumbnail(thumbSource, maxWidth, height),
+        color: Colors.black12,
+        borderRadius: BorderRadius.circular(12.r),
+        clipBehavior: Clip.antiAlias,
+        child: Container(
+          width: maxWidth,
+          height: height,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              // ============================================
+              // Layer 1: 封面图 (接入声明式构建器)
+              // ============================================
+              _buildThumbnail(thumbSource, maxWidth, height),
 
-                if (_controller != null && _controller!.value.isInitialized)
-                  AspectRatio(
-                    aspectRatio: _controller!.value.aspectRatio,
-                    child: VideoPlayer(_controller!),
-                  ),
+              // ============================================
+              // Layer 2: 视频层 (只有初始化成功才显示)
+              // ============================================
+              if (_controller != null && _controller!.value.isInitialized)
+                AspectRatio(
+                  aspectRatio: _controller!.value.aspectRatio,
+                  child: VideoPlayer(_controller!),
+                ),
 
-                GestureDetector(
-                  onTap: isSending ? null : _playVideo,
-                  onDoubleTap: isSending ? null : _openFullScreen,
-                  child: Container(
-                    color: Colors.transparent,
+              // ============================================
+              // Layer 3: 交互遮罩 (处理点击)
+              // ============================================
+              GestureDetector(
+                behavior: HitTestBehavior.opaque, // 确保透明区域也能响应点击
+                onTap: isSending ? null : _playVideo,
+                onDoubleTap: isSending ? null : _openFullScreen,
+                child: Container(color: Colors.transparent),
+              ),
+
+              // ============================================
+              // Layer 4: UI 状态展示 (严格互斥)
+              // ============================================
+
+              // A. 发送中状态 (遮罩 + Loading)
+              if (isSending)
+                Container(
+                  color: Colors.black26,
+                  child: Center(
+                    child: SizedBox(
+                      width: 24.w,
+                      height: 24.w,
+                      child: const CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
+                    ),
                   ),
                 ),
 
-                if (isSending)
-                  Container(
-                    color: Colors.black26,
-                    child: Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          SizedBox(
-                            width: 24.w,
-                            height: 24.w,
-                            child: const CircularProgressIndicator(
-                              color: Colors.white,
-                              strokeWidth: 2,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                if (!isSending && !_isPlaying && !_isInitializing)
-                  Center(
-                    child: IgnorePointer(
-                      child: Container(
-                        padding: EdgeInsets.all(12.r),
-                        decoration: BoxDecoration(
-                          color: Colors.black54,
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 2),
-                        ),
-                        child: Icon(Icons.play_arrow, color: Colors.white, size: 30.sp),
-                      ),
-                    ),
-                  ),
-
-                if (_isInitializing && !isSending)
-                  Center(
-                    child: SizedBox(
-                      width: 30.w,
-                      height: 30.w,
-                      child: const CircularProgressIndicator(color: Colors.white, strokeWidth: 3),
-                    ),
-                  ),
-
-                if (!_isPlaying && !isSending)
-                  Positioned(
-                    bottom: 8.h,
-                    right: 8.w,
+              // B. 播放按钮 (非发送、非播放、非初始化时显示)
+              if (!isSending && !_isPlaying && !_isInitializing)
+                Center(
+                  child: IgnorePointer(
                     child: Container(
-                      padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
+                      padding: EdgeInsets.all(12.r),
                       decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.7),
+                        color: Colors.black54,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 2),
+                      ),
+                      child: Icon(Icons.play_arrow, color: Colors.white, size: 30.sp),
+                    ),
+                  ),
+                ),
+
+              // C. 视频缓冲 Loading (初始化中且非发送)
+              if (_isInitializing && !isSending)
+                Center(
+                  child: SizedBox(
+                    width: 30.w,
+                    height: 30.w,
+                    child: const CircularProgressIndicator(color: Colors.white, strokeWidth: 3),
+                  ),
+                ),
+
+              // D. 时长角标
+              if (!_isPlaying && !isSending)
+                Positioned(
+                  bottom: 8.h,
+                  right: 8.w,
+                  child: Container(
+                    padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.7),
+                      borderRadius: BorderRadius.circular(4.r),
+                    ),
+                    child: Text(
+                      durationStr,
+                      style: TextStyle(color: Colors.white, fontSize: 10.sp),
+                    ),
+                  ),
+                ),
+
+              // E. 全屏/静音按钮 (仅播放状态显示)
+              if (_isPlaying && _controller != null) ...[
+                Positioned(
+                  top: 8.h,
+                  right: 8.w,
+                  child: GestureDetector(
+                    onTap: _openFullScreen,
+                    child: Container(
+                      padding: EdgeInsets.all(4.r),
+                      decoration: BoxDecoration(
+                        color: Colors.black45,
                         borderRadius: BorderRadius.circular(4.r),
                       ),
-                      child: Text(
-                        durationStr,
-                        style: TextStyle(color: Colors.white, fontSize: 10.sp),
+                      child: Icon(Icons.fullscreen, color: Colors.white, size: 20.sp),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  bottom: 8.h,
+                  left: 8.w,
+                  child: GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        _isMuted = !_isMuted;
+                        _controller!.setVolume(_isMuted ? 0 : 1.0);
+                      });
+                    },
+                    child: Container(
+                      padding: EdgeInsets.all(4.r),
+                      decoration: BoxDecoration(
+                        color: Colors.black45,
+                        borderRadius: BorderRadius.circular(20.r),
+                      ),
+                      child: Icon(
+                        _isMuted ? Icons.volume_off : Icons.volume_up,
+                        color: Colors.white,
+                        size: 16.sp,
                       ),
                     ),
                   ),
-
-                if (_isPlaying && _controller != null) ...[
-                  Positioned(
-                    top: 8.h,
-                    right: 8.w,
-                    child: GestureDetector(
-                      onTap: _openFullScreen,
-                      child: Container(
-                        padding: EdgeInsets.all(4.r),
-                        decoration: BoxDecoration(
-                          color: Colors.black45,
-                          borderRadius: BorderRadius.circular(4.r),
-                        ),
-                        child: Icon(Icons.fullscreen, color: Colors.white, size: 20.sp),
-                      ),
-                    ),
-                  ),
-                  Positioned(
-                    bottom: 8.h,
-                    left: 8.w,
-                    child: GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          _isMuted = !_isMuted;
-                          _controller!.setVolume(_isMuted ? 0 : 1.0);
-                        });
-                      },
-                      child: Container(
-                        padding: EdgeInsets.all(4.r),
-                        decoration: BoxDecoration(
-                          color: Colors.black45,
-                          borderRadius: BorderRadius.circular(20.r),
-                        ),
-                        child: Icon(
-                          _isMuted ? Icons.volume_off : Icons.volume_up,
-                          color: Colors.white,
-                          size: 16.sp,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
+                ),
               ],
-            ),
+            ],
           ),
         ),
       ),
     );
   }
 
+  //  核心重构点：声明式封面构建器
+  // 不再依赖 Stack 遮挡，而是根据传入的 source 类型直接决定渲染方式
   Widget _buildThumbnail(String source, double w, double h) {
-    // 1. 定义网络图 (垫底用)
-    // 如果 source 是网络地址，它就是主角；如果 source 是本地文件，它作为兜底（虽然本地文件不需要兜底）
-    Widget networkLayer = const SizedBox.shrink();
-    if (source.startsWith('http')) {
-      networkLayer = AppCachedImage(source, width: w, height: h, fit: BoxFit.cover);
+    if (source.isEmpty) return const SizedBox.shrink();
+
+    // 1. 如果是网络 URL (包括 blob:) -> 直接使用缓存网络图组件
+    if (source.startsWith('http') || source.startsWith('blob:')) {
+      return AppCachedImage(source, width: w, height: h, fit: BoxFit.cover);
     }
 
-    // 2. 定义本地图 (覆盖用)
-    Widget? localLayer;
+    // 2. 如果是本地 Asset ID -> 异步解析绝对路径后渲染
+    // 注意：这里不再需要 Stack，因为源已经确定
+    return FutureBuilder<String?>(
+      future: AssetManager.getFullPath(source, MessageType.image),
+      builder: (context, snapshot) {
+        if (snapshot.hasData && snapshot.data != null) {
+          final path = snapshot.data!;
 
-    // 尝试解析是否为本地文件
-    // 注意：这里我们假设 source 可能是本地路径，也可能是 URL
-    // 如果是 URL，localLayer 保持 null
-    if (!kIsWeb && !source.startsWith('http') && source.isNotEmpty) {
-      final File file = File(source);
-      if (file.existsSync()) {
-        localLayer = Image.file(
-          file,
-          width: w,
-          height: h,
-          fit: BoxFit.cover,
-          gaplessPlayback: true, // 防止重绘闪烁的关键参数
-        );
-      }
-    }
+          // 双重检查：万一 AssetManager 解析出的是 Web URL
+          if (kIsWeb || path.startsWith('http')) {
+            return AppCachedImage(path, width: w, height: h, fit: BoxFit.cover);
+          }
 
-    // 3. 异步查找 AssetManager (终极本地兜底)
-    // 如果 source 是相对路径 (如 "chat/video_thumb.jpg")，需要异步转绝对路径
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        // 层级 1: 网络图 (如果是 URL，显示这个；如果是本地路径，这层是空的)
-        networkLayer,
+          // 移动端物理文件检查
+          final file = File(path);
+          if (file.existsSync()) {
+            return Image.file(
+              file,
+              width: w,
+              height: h,
+              fit: BoxFit.cover,
+              gaplessPlayback: true, // 避免重绘闪烁
+              errorBuilder: (_, __, ___) => const SizedBox.shrink(), // 错误兜底
+            );
+          }
+        }
 
-        // 层级 2: 同步本地文件 (最快，这就是你图片气泡不闪的原因)
-        if (localLayer != null) localLayer,
+        // 3. 终极兜底：如果本地 Asset ID 解析失败（例如文件被删），尝试显示 remote_thumb
+        // 这是一个额外的安全措施
+        if (widget.message.meta?['remote_thumb'] != null) {
+          final remote = widget.message.meta!['remote_thumb'];
+          if (remote.startsWith('http')) {
+            return AppCachedImage(remote, width: w, height: h, fit: BoxFit.cover);
+          }
+        }
 
-        // 层级 3: 异步 AssetManager (处理相对路径的情况)
-        if (localLayer == null && !source.startsWith('http') && source.isNotEmpty)
-          FutureBuilder<String?>(
-            future: AssetManager.getFullPath(source, MessageType.image),
-            builder: (context, snapshot) {
-              if (snapshot.hasData && snapshot.data != null) {
-                final path = snapshot.data!;
-                // 再次检查是本地还是网络 (防止 AssetManager 返回 URL)
-                if (kIsWeb || path.startsWith('http')) {
-                  return AppCachedImage(path, width: w, height: h, fit: BoxFit.cover);
-                }
-                return Image.file(File(path), width: w, height: h, fit: BoxFit.cover);
-              }
-              return const SizedBox.shrink();
-            },
-          ),
-      ],
+        // 如果都没有，显示占位
+        return const SizedBox.shrink();
+      },
     );
   }
 
-  //  辅助方法：安全解析 int (防止 double/string 报错)
+  // 辅助方法：安全解析 int
   int? _parseInt(dynamic value) {
     if (value is int) return value;
     if (value is double) return value.toInt();

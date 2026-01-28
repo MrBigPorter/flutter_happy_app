@@ -140,7 +140,7 @@ class ChatBubble extends ConsumerWidget {
     );
   }
 
-  // 🔥 核心工厂方法：根据类型分发给子组件
+  //  核心工厂方法：根据类型分发给子组件
   Widget _buildContentFactory(BuildContext context) {
     switch (message.type) {
       case MessageType.image:

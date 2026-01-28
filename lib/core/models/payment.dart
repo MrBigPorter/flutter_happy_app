@@ -23,7 +23,7 @@ class OrdersCheckoutParams {
   final int paymentMethod;
   final String? addressId;
 
-  // 🔥 新增：告诉后端是否为拼团订单 (影响价格计算)
+  //  新增：告诉后端是否为拼团订单 (影响价格计算)
   // true = 拼团 (开团或参团)
   // false/null = 单独购买
   final bool? isGroup;
@@ -35,7 +35,7 @@ class OrdersCheckoutParams {
     this.couponId,
     required this.paymentMethod,
     this.addressId,
-    this.isGroup, // 🔥 构造函数加入
+    this.isGroup, //  构造函数加入
   });
 
   factory OrdersCheckoutParams.fromJson(Map<String, dynamic> json) =>

@@ -136,7 +136,7 @@ class _WithdrawPageState extends ConsumerState<WithdrawPage> {
                   SizedBox(height: 20.h),
 
                   if (isPageLoading)
-                  // 🔥 使用全新的骨架屏加载器
+                  //  使用全新的骨架屏加载器
                     _buildSkeletonLoader()
                   else if (channelsAsync.hasError)
                     _buildErrorState()
@@ -174,7 +174,7 @@ class _WithdrawPageState extends ConsumerState<WithdrawPage> {
 
   // --- UI Components ---
 
-  // 🔥 优化后的骨架屏加载器
+  //  优化后的骨架屏加载器
   Widget _buildSkeletonLoader() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
