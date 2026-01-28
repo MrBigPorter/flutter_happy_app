@@ -4,10 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:video_player/video_player.dart';
 
-// 请确保这些 import 路径对应你项目的实际位置
 import '../../models/chat_ui_model.dart';
 import '../../../../utils/asset/asset_manager.dart';
-import '../../../img/app_image.dart'; // 你的 AppCachedImage 组件
+import '../../../img/app_image.dart';
 import '../../services/media/video_playback_service.dart';
 import '../../video_player_page.dart';
 
@@ -26,28 +25,23 @@ class _VideoMsgBubbleState extends State<VideoMsgBubble> {
   bool _isInitializing = false;
   bool _isMuted = false;
 
-  // 获取服务实例
   final _playbackService = VideoPlaybackService();
 
   @override
   void dispose() {
-    // 页面销毁时，如果正在播放则暂停
     if (_controller != null && _isPlaying) {
       _controller!.pause();
     }
     super.dispose();
   }
 
-  /// 核心逻辑：初始化并播放
   Future<void> _playVideo() async {
-    // 1. 如果已经初始化，直接切换状态
     if (_controller != null && _controller!.value.isInitialized) {
       setState(() {
         if (_controller!.value.isPlaying) {
           _controller!.pause();
           _isPlaying = false;
         } else {
-          // 请求独占播放
           _playbackService.requestPlay(_controller!);
           _controller!.play();
           _isPlaying = true;
@@ -56,7 +50,6 @@ class _VideoMsgBubbleState extends State<VideoMsgBubble> {
       return;
     }
 
-    // 2. 如果没初始化，开始加载
     setState(() => _isInitializing = true);
 
     final source = _playbackService.getPlayableSource(widget.message);
@@ -66,11 +59,8 @@ class _VideoMsgBubbleState extends State<VideoMsgBubble> {
     }
 
     try {
-      // 3. 使用 Service 创建控制器
       _controller = _playbackService.createController(source);
-
       await _controller!.initialize();
-      // 4. 使用 Service 请求独占
       _playbackService.requestPlay(_controller!);
       await _controller!.play();
 
@@ -81,7 +71,6 @@ class _VideoMsgBubbleState extends State<VideoMsgBubble> {
         });
       }
 
-      // 监听播放结束，恢复按钮状态
       _controller!.addListener(() {
         if (!mounted) return;
         if (_controller!.value.position >= _controller!.value.duration && _isPlaying) {
@@ -101,7 +90,6 @@ class _VideoMsgBubbleState extends State<VideoMsgBubble> {
     }
   }
 
-  /// 跳转全屏
   void _openFullScreen() {
     _controller?.pause();
     if (mounted) setState(() => _isPlaying = false);
@@ -128,21 +116,24 @@ class _VideoMsgBubbleState extends State<VideoMsgBubble> {
 
   @override
   Widget build(BuildContext context) {
-    // 1. 获取元数据
     final meta = widget.message.meta ?? {};
-    final int w = meta['w'] ?? 16;
-    final int h = meta['h'] ?? 9;
+
+    //  优化1：使用安全解析，防止 double/string 导致的类型崩溃
+    final int w = _parseInt(meta['w']) ?? 16;
+    final int h = _parseInt(meta['h']) ?? 9;
 
     final double aspectRatio = (w / h).clamp(0.6, 1.8);
     final double maxWidth = 0.6.sw;
     final double height = maxWidth / aspectRatio;
 
-    final int durationSec = meta['duration'] ?? 0;
+    //  优化2：安全解析时长
+    final int durationSec = _parseInt(meta['duration']) ?? 0;
     final String durationStr = _formatDuration(durationSec);
-    final String thumbSource = meta['thumb'] ?? "";
 
-    // 关键状态提取：是否正在发送
+    final String thumbSource = meta['thumb'] ?? "";
     final bool isSending = widget.message.status == MessageStatus.sending;
+    
+    print("VideoMsgBubble build: thumbSource:$thumbSource");
 
     return Hero(
       tag: widget.message.id,
@@ -153,41 +144,26 @@ class _VideoMsgBubbleState extends State<VideoMsgBubble> {
           child: Container(
             width: maxWidth,
             height: height,
-            color: Colors.black12, // 占位底色
+            color: Colors.black12,
             child: Stack(
               fit: StackFit.expand,
               children: [
-                // ============================================
-                // Layer 1: 封面图 (Web兼容版)
-                // ============================================
                 _buildThumbnail(thumbSource, maxWidth, height),
 
-                // ============================================
-                // Layer 2: 视频层 (只有初始化成功才显示)
-                // ============================================
                 if (_controller != null && _controller!.value.isInitialized)
                   AspectRatio(
                     aspectRatio: _controller!.value.aspectRatio,
                     child: VideoPlayer(_controller!),
                   ),
 
-                // ============================================
-                // Layer 3: 交互遮罩 (处理点击)
-                // ============================================
                 GestureDetector(
-                  // 发送中禁止点击播放，防止逻辑冲突
                   onTap: isSending ? null : _playVideo,
                   onDoubleTap: isSending ? null : _openFullScreen,
                   child: Container(
-                    color: Colors.transparent, // 必须有颜色才能响应点击
+                    color: Colors.transparent,
                   ),
                 ),
 
-                // ============================================
-                // Layer 4: UI 状态展示 (严格互斥)
-                // ============================================
-
-                // A. 发送中状态 (遮罩 + Loading)
                 if (isSending)
                   Container(
                     color: Colors.black26,
@@ -208,7 +184,6 @@ class _VideoMsgBubbleState extends State<VideoMsgBubble> {
                     ),
                   ),
 
-                // B. 播放按钮 (非发送、非播放、非初始化时显示)
                 if (!isSending && !_isPlaying && !_isInitializing)
                   Center(
                     child: IgnorePointer(
@@ -224,7 +199,6 @@ class _VideoMsgBubbleState extends State<VideoMsgBubble> {
                     ),
                   ),
 
-                // C. 视频缓冲 Loading (初始化中且非发送)
                 if (_isInitializing && !isSending)
                   Center(
                     child: SizedBox(
@@ -234,7 +208,6 @@ class _VideoMsgBubbleState extends State<VideoMsgBubble> {
                     ),
                   ),
 
-                // D. 时长角标
                 if (!_isPlaying && !isSending)
                   Positioned(
                     bottom: 8.h,
@@ -252,7 +225,6 @@ class _VideoMsgBubbleState extends State<VideoMsgBubble> {
                     ),
                   ),
 
-                // E. 全屏/静音按钮 (仅播放状态显示)
                 if (_isPlaying && _controller != null) ...[
                   Positioned(
                     top: 8.h,
@@ -302,41 +274,70 @@ class _VideoMsgBubbleState extends State<VideoMsgBubble> {
     );
   }
 
-  // 🔥 修复版封面构建器：完美兼容 Web 和 Mobile
   Widget _buildThumbnail(String source, double w, double h) {
-    if (source.isEmpty) return const SizedBox.shrink();
-
-    // 1. 网络图片/Blob (Web 和 Mobile 通用)
-    if (source.startsWith('http') || source.startsWith('blob:')) {
-      return AppCachedImage(source, width: w, height: h, fit: BoxFit.cover);
+    // 1. 定义网络图 (垫底用)
+    // 如果 source 是网络地址，它就是主角；如果 source 是本地文件，它作为兜底（虽然本地文件不需要兜底）
+    Widget networkLayer = const SizedBox.shrink();
+    if (source.startsWith('http')) {
+      networkLayer = AppCachedImage(source, width: w, height: h, fit: BoxFit.cover);
     }
 
-    // 2. 本地文件同步检查 ( 仅限 Mobile，修复 Web 崩溃)
-    if (!kIsWeb) {
-      final File localFile = File(source);
-      if (localFile.existsSync()) {
-        return Image.file(localFile, width: w, height: h, fit: BoxFit.cover);
+    // 2. 定义本地图 (覆盖用)
+    Widget? localLayer;
+
+    // 尝试解析是否为本地文件
+    // 注意：这里我们假设 source 可能是本地路径，也可能是 URL
+    // 如果是 URL，localLayer 保持 null
+    if (!kIsWeb && !source.startsWith('http') && source.isNotEmpty) {
+      final File file = File(source);
+      if (file.existsSync()) {
+        localLayer = Image.file(
+          file,
+          width: w,
+          height: h,
+          fit: BoxFit.cover,
+          gaplessPlayback: true, // 防止重绘闪烁的关键参数
+        );
       }
     }
 
-    // 3. 异步兜底 (Web/Mobile 通用)
-    return FutureBuilder<String?>(
-      future: AssetManager.getFullPath(source, MessageType.image),
-      builder: (context, snapshot) {
-        if (snapshot.hasData && snapshot.data != null) {
-          final path = snapshot.data!;
+    // 3. 异步查找 AssetManager (终极本地兜底)
+    // 如果 source 是相对路径 (如 "chat/video_thumb.jpg")，需要异步转绝对路径
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        // 层级 1: 网络图 (如果是 URL，显示这个；如果是本地路径，这层是空的)
+        networkLayer,
 
-          // 如果是 Web 环境，或者路径是网络地址，强制使用 network
-          if (kIsWeb || path.startsWith('http') || path.startsWith('blob:')) {
-            return Image.network(path, width: w, height: h, fit: BoxFit.cover);
-          }
+        // 层级 2: 同步本地文件 (最快，这就是你图片气泡不闪的原因)
+        if (localLayer != null) localLayer,
 
-          // 仅 Mobile 允许使用 Image.file
-          return Image.file(File(path), width: w, height: h, fit: BoxFit.cover);
-        }
-        return const SizedBox.shrink();
-      },
+        // 层级 3: 异步 AssetManager (处理相对路径的情况)
+        if (localLayer == null && !source.startsWith('http') && source.isNotEmpty)
+          FutureBuilder<String?>(
+            future: AssetManager.getFullPath(source, MessageType.image),
+            builder: (context, snapshot) {
+              if (snapshot.hasData && snapshot.data != null) {
+                final path = snapshot.data!;
+                // 再次检查是本地还是网络 (防止 AssetManager 返回 URL)
+                if (kIsWeb || path.startsWith('http')) {
+                  return AppCachedImage(path, width: w, height: h, fit: BoxFit.cover);
+                }
+                return Image.file(File(path), width: w, height: h, fit: BoxFit.cover);
+              }
+              return const SizedBox.shrink();
+            },
+          ),
+      ],
     );
+  }
+
+  //  辅助方法：安全解析 int (防止 double/string 报错)
+  int? _parseInt(dynamic value) {
+    if (value is int) return value;
+    if (value is double) return value.toInt();
+    if (value is String) return int.tryParse(value);
+    return null;
   }
 
   String _formatDuration(int seconds) {
