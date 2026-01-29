@@ -32,7 +32,7 @@ final fcmInitProvider = FutureProvider<void>((ref) async {
         platform: Platform.isAndroid ? 'android' : 'ios',
       );
 
-      print("🚀 [FCM] 上传 Token 到后端: ${dto.toJson()}");
+      print(" [FCM] 上传 Token 到后端: ${dto.toJson()}");
       // 假设 Api 是静态类可以直接调，如果 Api 也是 Provider，需要 ref.read(apiProvider)
       await Api.fcmNotificationDeviceRegisterApi(dto);
     } catch (e) {

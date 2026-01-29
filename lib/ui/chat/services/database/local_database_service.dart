@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'package:flutter/foundation.dart'; // 用于 kIsWeb
+import 'package:flutter/foundation.dart'; // kIsWeb, kDebugMode, kReleaseMode
 import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:sembast/sembast.dart';
@@ -8,42 +8,31 @@ import 'package:sembast_web/sembast_web.dart';
 
 import '../../models/chat_ui_model.dart';
 import '../../models/conversation.dart';
-import '../../../../utils/asset/asset_manager.dart'; // 引入 AssetManager
+import '../../../../utils/asset/asset_manager.dart';
+import '../../../../utils/image_url.dart'; // 必须引入，用于处理 uploads/
 
 class LocalDatabaseService {
-  // 单例模式
-  static final LocalDatabaseService _instance =
-  LocalDatabaseService._internal();
+  static final LocalDatabaseService _instance = LocalDatabaseService._internal();
 
   factory LocalDatabaseService() => _instance;
 
   LocalDatabaseService._internal();
 
   Database? _db;
-
-  // 定义 Store (相当于 SQL 里的表)
-  // key 是 String (用 msgId), value 是 Map
   final _messageStore = stringMapStoreFactory.store('messages');
-
-  // 1. Define the new Store for Conversation Details
   final _detailStore = stringMapStoreFactory.store('conversation_details');
 
-  // 获取数据库实例
   Future<Database> get database async {
     if (_db != null) return _db!;
     await init();
     return _db!;
   }
 
-  // 初始化
   Future<void> init() async {
-    if (_db != null) return; // 防止重复初始化
-
+    if (_db != null) return;
     if (kIsWeb) {
-      // Web 端：直接打开，无路径困扰
       _db = await databaseFactoryWeb.openDatabase('chat_app_v1.db');
     } else {
-      //  手机端
       final appDir = await getApplicationDocumentsDirectory();
       await appDir.create(recursive: true);
       final dbPath = join(appDir.path, 'chat_app_v1.db');
@@ -51,59 +40,38 @@ class LocalDatabaseService {
     }
   }
 
-  // ================= 业务方法 =================
+  // ================= 业务方法 (CRUD) =================
 
-  //  保存或更新消息
   Future<void> saveMessage(ChatUiModel msg) async {
     final db = await database;
     final record = _messageStore.record(msg.id);
-
-    // 1. 先把新数据转成 Map
     Map<String, dynamic> dataToSave = msg.toJson();
 
-    // 2. 查一下旧数据，做防御性合并
+    // 防御性合并：防止覆盖关键字段 (如本地预览图、时长)
     final oldSnapshot = await record.getSnapshot(db);
-
     if (oldSnapshot != null) {
       final oldData = oldSnapshot.value;
-
-      // 防御 1：如果新数据 previewBytes 没了，把旧的拿回来
-      if (dataToSave['previewBytes'] == null &&
-          oldData['previewBytes'] != null) {
+      if (dataToSave['previewBytes'] == null && oldData['previewBytes'] != null) {
         dataToSave['previewBytes'] = oldData['previewBytes'];
       }
-
-      // 防御 2：localPath
       if (dataToSave['localPath'] == null && oldData['localPath'] != null) {
         dataToSave['localPath'] = oldData['localPath'];
       }
-
-      // 防御 3：duration
       if (dataToSave['duration'] == null && oldData['duration'] != null) {
         dataToSave['duration'] = oldData['duration'];
       }
     }
-
-    // 3. 保存
     await record.put(db, dataToSave);
   }
 
-  //  批量保存 (性能优化版)
   Future<void> saveMessages(List<ChatUiModel> msgs) async {
     if (msgs.isEmpty) return;
-
-    debugPrint(
-      "📦 [存库检查] 正在存入 ${msgs.length} 条。conv=${msgs.first.conversationId}",
-    );
-
     final db = await database;
     await db.transaction((txn) async {
       for (final msg in msgs) {
         try {
           if (msg.id.trim().isEmpty) continue;
-
-          final json = msg.toJson();
-          await _messageStore.record(msg.id).put(txn, json);
+          await _messageStore.record(msg.id).put(txn, msg.toJson());
         } catch (e) {
           debugPrint("❌ [存库炸了] id=${msg.id} err=$e");
         }
@@ -111,7 +79,6 @@ class LocalDatabaseService {
     });
   }
 
-  //  原子替换
   Future<void> replaceMessage(String oldId, ChatUiModel newMsg) async {
     final db = await database;
     await db.transaction((txn) async {
@@ -120,34 +87,27 @@ class LocalDatabaseService {
     });
   }
 
-  Future<void> updateMessageStatus(
-      String msgId,
-      MessageStatus newStatus,
-      ) async {
+  Future<void> updateMessageStatus(String msgId, MessageStatus newStatus) async {
     final db = await database;
     await _messageStore.record(msgId).update(db, {'status': newStatus.name});
   }
 
-  // 只更新特定字段
   Future<void> updateMessage(String id, Map<String, dynamic> updates) async {
     final db = await database;
     await _messageStore.record(id).update(db, updates);
   }
 
-  /// 批量将消息标记为已读
   Future<void> markMessagesAsRead(String conversationId, int maxSeqId) async {
     final db = await database;
     final finder = Finder(
       filter: Filter.and([
         Filter.equals('conversationId', conversationId),
-        Filter.equals('isMe', true), // 只更新我自己发的
-        Filter.lessThanOrEquals('seqId', maxSeqId), // 小于等于对方读到的位置
-        Filter.notEquals('status', 'read'), // 还没变成已读的
+        Filter.equals('isMe', true),
+        Filter.lessThanOrEquals('seqId', maxSeqId),
+        Filter.notEquals('status', 'read'),
       ]),
     );
-
     final records = await _messageStore.find(db, finder: finder);
-
     for (var record in records) {
       var map = Map<String, dynamic>.from(record.value);
       map['status'] = 'read';
@@ -158,14 +118,12 @@ class LocalDatabaseService {
   Future<void> doLocalRecall(String messageId, String tip) async {
     final existingMsg = await getMessageById(messageId);
     if (existingMsg == null) return;
-
     final recalledMsg = existingMsg.copyWith(
       content: tip,
       type: MessageType.system,
       isRecalled: true,
       status: MessageStatus.success,
     );
-
     await saveMessage(recalledMsg);
   }
 
@@ -173,110 +131,126 @@ class LocalDatabaseService {
     final db = await database;
     final recordSnapshot = await _messageStore.record(msgId).getSnapshot(db);
     if (recordSnapshot != null) {
-      return ChatUiModel.fromJson(recordSnapshot.value);
+      // 单条查询也要过一遍预热，保证数据结构一致
+      final raw = ChatUiModel.fromJson(recordSnapshot.value);
+      final list = await _prewarmMessages([raw]);
+      return list.first;
     }
     return null;
   }
 
-  //  获取特定会话的所有消息 (一次性拉取，不支持流监听)
-  //  注：如果你需要这里也预热，可以手动调用 _prewarmMessages
-  Future<List<ChatUiModel>> getMessagesByConversation(
-      String conversationId,
-      ) async {
-    final db = await database;
-    final finder = Finder(
-      filter: Filter.equals('conversationId', conversationId),
-      sortOrders: [SortOrder('createdAt', false)],
-    );
-
-    final snapshots = await _messageStore.find(db, finder: finder);
-    final rawList = snapshots
-        .map((snapshot) => ChatUiModel.fromJson(snapshot.value))
-        .toList();
-
-    //  如果列表页也需要缩略图，建议这里也加上 await _prewarmMessages(rawList);
-    // 但通常列表只显示文本，这里为了性能暂且保留原样
-    return rawList;
-  }
-
   // ========================================================================
-  // 核心重构：监听消息流 (带自动预热)
+  //  核心重构 A：监听消息流 (带 Limit 分页 + 自动预热)
   // ========================================================================
-  Stream<List<ChatUiModel>> watchMessages(String conversationId) async* {
-    // 这里需要先获取 database，因为 onSnapshots 需要 database 实例
-    // 但 stream 不能 await，所以需要一种技巧，通常 database 会在 init 阶段保证有了
-    // 更好的做法是让 database 属性同步化，或者用 await for
-
+  /// [limit]: 默认 50，核心性能优化点。
+  /// UI 层通过 ChatViewModel 动态增加这个值来实现"无感加载更多"。
+  Stream<List<ChatUiModel>> watchMessages(String conversationId, {int limit = 50}) async* {
     final db = await database;
 
     final finder = Finder(
       filter: Filter.equals('conversationId', conversationId),
-      sortOrders: [SortOrder('createdAt', false)], // 倒序
-      // limit: 50, //  P0-2.4 阶段建议开启分页
+      sortOrders: [SortOrder('createdAt', false)], // 倒序：最新的在前面
+      limit: limit, //  关键：限制数量，防止大群卡死
     );
 
-    // 将 stream 转换为 BroadcastStream 可能会更安全，取决于 UI 怎么用
+    // 使用 asyncMap 将预热逻辑注入到流中
     yield* _messageStore
         .query(finder: finder)
         .onSnapshots(db)
         .asyncMap((snapshots) async {
-      // 1. Raw Data -> Model List
+      // 1. 转为原始 Model
       final rawModels = snapshots
           .map((snapshot) => ChatUiModel.fromJson(snapshot.value))
           .toList();
 
-      // 2. 并行预热：计算绝对路径
-      // 此时是在 IO 线程池里跑，不阻塞 UI
+      // 2. 并行预热 (路径计算、Gateway拼接、HTTPS升级)
+      // 这一步完成后，UI 拿到的就是"热数据"，直接渲染即可
       return await _prewarmMessages(rawModels);
     });
   }
 
   // ========================================================================
-  // ⚙️ 内部引擎：批量路径解析器 (Batch Resolver)
+  //  核心重构 B：分页拉取旧消息 (供上拉加载使用)
   // ========================================================================
+  Future<List<ChatUiModel>> getHistoryMessages({
+    required String conversationId,
+    int offset = 0,
+    int limit = 50,
+  }) async {
+    final db = await database;
+    final finder = Finder(
+      filter: Filter.equals('conversationId', conversationId),
+      sortOrders: [SortOrder('createdAt', false)],
+      limit: limit,
+      offset: offset,
+    );
+
+    final snapshots = await _messageStore.find(db, finder: finder);
+    final rawList = snapshots.map((e) => ChatUiModel.fromJson(e.value)).toList();
+
+    // 同样需要预热
+    return await _prewarmMessages(rawList);
+  }
+
+  // ========================================================================
+  // 内部引擎：批量数据预热 (Pre-warming Service)
+  // ========================================================================
+  // 这一步彻底解放了 UI 线程。UI 组件不需要做任何 IO 或逻辑判断。
   Future<List<ChatUiModel>> _prewarmMessages(List<ChatUiModel> models) async {
     if (models.isEmpty) return [];
 
-    // 使用 Future.wait 实现并行处理 (Parallel Processing)
+    // 1. 提前获取网关 (根据环境判断 dev/prod)
+    final gw = ImageUrl.gateway(useProd: kReleaseMode);
+
+    // 2. 并行处理所有消息
     final futures = models.map((msg) async {
       String? absPath;
       String? thumbPath;
       bool needsUpdate = false;
 
-      // --- A. 解析主文件路径 ---
+      // --- A. 预处理主文件路径 ---
       if (msg.localPath != null && msg.localPath!.isNotEmpty) {
+        // 如果已经是网络路径或Blob，只做 HTTPS 检查
         if (msg.localPath!.startsWith('http') || msg.localPath!.startsWith('blob:')) {
-          absPath = msg.localPath;
+          absPath = _ensureHttps(msg.localPath!);
         } else {
-          // 耗时 IO：查 AssetID
+          // 如果是 AssetID，进行 IO 解析 (最耗时的一步，在这里做完)
           absPath = await AssetManager.getFullPath(msg.localPath!, msg.type);
         }
-        if (absPath != null) needsUpdate = true;
+      } else {
+        // 没有本地路径，看 content
+        if (msg.content.startsWith('http')) {
+          absPath = _ensureHttps(msg.content);
+        } else if (msg.content.startsWith('uploads/')) {
+          // 自动补全 Gateway
+          absPath = _ensureHttps('$gw/${msg.content}');
+        }
       }
 
-      // --- B. 解析封面路径 ---
+      if (absPath != null) needsUpdate = true;
+
+      // --- B. 预处理封面路径 ---
       if (msg.meta != null) {
-        final dynamic t = msg.meta!['thumb'];
-        if (t != null && t is String && t.isNotEmpty) {
+        String? t = msg.meta!['thumb'];
+        if (t == null || t.isEmpty) {
+          t = msg.meta!['remote_thumb'];
+        }
+
+        if (t != null && t.isNotEmpty) {
           if (t.startsWith('http')) {
-            thumbPath = t;
+            thumbPath = _ensureHttps(t);
+          } else if (t.startsWith('uploads/')) {
+            thumbPath = _ensureHttps('$gw/$t');
           } else {
             thumbPath = await AssetManager.getFullPath(t, MessageType.image);
           }
         }
-
-        // 兜底：如果本地 thumb 解析失败，尝试 remote_thumb
-        if (thumbPath == null && msg.meta!['remote_thumb'] != null) {
-          final String rt = msg.meta!['remote_thumb'];
-          if (rt.isNotEmpty) thumbPath = rt;
-        }
-
         if (thumbPath != null) needsUpdate = true;
       }
 
       // --- C. 组装成品 ---
       if (needsUpdate) {
-        // 使用刚刚在 Model 里修复的 copyWith 注入内存字段
+        // 注入到内存字段 resolvedPath/resolvedThumbPath 中
         return msg.copyWith(
           resolvedPath: absPath,
           resolvedThumbPath: thumbPath,
@@ -288,6 +262,24 @@ class LocalDatabaseService {
     return await Future.wait(futures);
   }
 
+  //  辅助：环境感知 HTTPS 转换 (解决 iOS 播放报错)
+  String _ensureHttps(String url) {
+    // 1. 本地开发模式 (Debug) -> 允许 HTTP，不做处理，方便调试
+    if (kDebugMode) {
+      return url;
+    }
+
+    // 2. 线上发布模式 (Release) -> 强制 HTTPS (满足 iOS ATS)
+    // 如果是 http://dev.joyminis.com... 强制转 https://
+    if (url.startsWith('http://')) {
+      return url.replaceFirst('http://', 'https://');
+    }
+
+    return url;
+  }
+
+  // ========================================================================
+  // 其他基础方法
   // ========================================================================
 
   Future<List<ChatUiModel>> getPendingMessages() async {
@@ -296,11 +288,8 @@ class LocalDatabaseService {
       filter: Filter.equals('status', MessageStatus.pending.name),
       sortOrders: [SortOrder('createdAt', true)],
     );
-
     final snapshots = await _messageStore.find(db, finder: finder);
-    return snapshots
-        .map((snapshot) => ChatUiModel.fromJson(snapshot.value))
-        .toList();
+    return snapshots.map((s) => ChatUiModel.fromJson(s.value)).toList();
   }
 
   Future<void> markMessageAsPending(String msgId) async {
@@ -314,9 +303,7 @@ class LocalDatabaseService {
 
   Future<void> clearConversation(String conversationId) async {
     final db = await database;
-    final finder = Finder(
-      filter: Filter.equals('conversationId', conversationId),
-    );
+    final finder = Finder(filter: Filter.equals('conversationId', conversationId));
     await _messageStore.delete(db, finder: finder);
   }
 

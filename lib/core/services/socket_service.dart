@@ -235,7 +235,7 @@ abstract class _SocketBase {
 }
 
 // ==========================================
-// 🚀 主服务类 (The Service)
+//  主服务类 (The Service)
 // ==========================================
 class SocketService extends _SocketBase
     with SocketChatMixin, SocketNotificationMixin, SocketLobbyMixin {

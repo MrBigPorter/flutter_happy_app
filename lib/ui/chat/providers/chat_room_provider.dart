@@ -1,44 +1,29 @@
 import 'dart:async';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:cross_file/cross_file.dart';
-
-import 'package:flutter_app/common.dart';
 import 'package:flutter_app/core/providers/socket_provider.dart';
-import 'package:flutter_app/ui/chat/models/chat_ui_model.dart';
+import 'package:flutter_app/core/store/lucky_store.dart';
 import 'package:flutter_app/ui/chat/services/database/local_database_service.dart';
-import 'package:flutter_app/utils/upload/global_upload_service.dart';
 import 'package:flutter_app/core/api/lucky_api.dart';
+import 'package:flutter_app/ui/chat/models/conversation.dart';
 
 import '../../../core/services/socket_service.dart';
-import '../../../core/store/lucky_store.dart';
-import '../models/conversation.dart';
-import '../services/chat_action_service.dart';
-import '../services/chat_sync_manager.dart';
 import '../handlers/chat_event_handler.dart';
 
 
-// --- Providers ---
-
-// 确保 chatStreamProvider 只在这里定义，其他旧文件里的要删掉
-final chatStreamProvider = StreamProvider.family.autoDispose<List<ChatUiModel>, String>((ref, conversationId) {
-  return LocalDatabaseService().watchMessages(conversationId);
-});
-
-// 确保 chatControllerProvider 只在这里定义
+// 控制器 Provider：现在非常轻量，只负责会话的生命周期 (Socket 监听、红点消除)
 final chatControllerProvider = Provider.family.autoDispose<ChatRoomController, String>((ref, conversationId) {
   final socketService = ref.read(socketServiceProvider);
-  final uploadService = ref.read(uploadServiceProvider);
   final currentUserId = ref.read(luckyProvider).userInfo?.id ?? "";
 
   final controller = ChatRoomController(
       socketService,
-      uploadService,
       conversationId,
       ref,
       currentUserId
   );
 
+  // 页面销毁时，自动断开事件监听
   ref.onDispose(() => controller.dispose());
   return controller;
 });
@@ -47,24 +32,20 @@ class ChatRoomController with WidgetsBindingObserver {
   final String conversationId;
   final Ref _ref;
 
-  //  类型使用我们刚改名的 ChatActionService
-  final ChatActionService _sender;
+  // 只保留事件处理器 (负责监听 Socket 消息入库)
   final ChatEventHandler _eventHandler;
-  final ChatSyncManager _syncManager;
 
   ChatRoomController(
       SocketService socketService,
-      GlobalUploadService uploadService,
       this.conversationId,
       this._ref,
       String currentUserId,
-      ) :
-  //  构造函数使用 ChatActionService
-        _sender = ChatActionService(conversationId, _ref, uploadService),
-        _eventHandler = ChatEventHandler(conversationId, _ref, socketService, currentUserId),
-        _syncManager = ChatSyncManager(conversationId, _ref, currentUserId)
+      ) : _eventHandler = ChatEventHandler(conversationId, _ref, socketService, currentUserId)
   {
+    // 1. 初始化 Socket 监听 (收消息入库、对方已读通知等)
     _eventHandler.init();
+
+    // 2. 监听 App 前后台切换 (回到前台自动标已读)
     WidgetsBinding.instance.addObserver(this);
   }
 
@@ -74,45 +55,50 @@ class ChatRoomController with WidgetsBindingObserver {
   }
 
   // ===========================================================================
-  // UI 调用的接口
+  // 核心功能：会话状态管理
   // ===========================================================================
 
-  // 1. 发送 (委托给 ChatActionService)
-  Future<void> sendMessage(String text) => _sender.sendText(text);
-  Future<void> sendImage(XFile file) => _sender.sendImage(file);
-  Future<void> sendVideo(XFile file) => _sender.sendVideo(file);
-  Future<void> sendVoiceMessage(String path, int duration) => _sender.sendVoiceMessage(path, duration);
-  Future<void> resendMessage(String msgId) => _sender.resend(msgId);
+  // 标记当前会话已读 (进入页面、App回到前台时调用)
+  void markAsRead() {
+    _eventHandler.markAsRead();
+  }
 
-  // 2. 加载 (委托给 SyncManager)
-  bool get hasMore => _syncManager.hasMore;
-  Future<void> loadMore() => _syncManager.loadMore();
-  Future<void> refresh() => _syncManager.refresh(markAsRead);
+  // ===========================================================================
+  // 辅助功能 (撤回/删除)
+  // ===========================================================================
 
-  // 3. 状态 (委托给 EventHandler)
-  void markAsRead() => _eventHandler.markAsRead();
-
-  // 4. 其他操作
   Future<void> recallMessage(String messageId) async {
     try {
-      final res = await Api.messageRecallApi(MessageRecallRequest(conversationId: conversationId, messageId: messageId));
+      // 1. 调接口通知服务器
+      final res = await Api.messageRecallApi(MessageRecallRequest(
+          conversationId: conversationId,
+          messageId: messageId
+      ));
+      // 2. 改本地库 (Sembast 更新后，ViewModel 会自动通知 UI 刷新)
       await LocalDatabaseService().doLocalRecall(messageId, res.tip);
-    } catch (_) {}
+    } catch (e) {
+      debugPrint("Recall failed: $e");
+    }
   }
 
   Future<void> deleteMessage(String messageId) async {
     try {
+      // 1. 删本地 (UI 立刻消失)
       await LocalDatabaseService().deleteMessage(messageId);
-      await Api.messageDeleteApi(MessageDeleteRequest(messageId: messageId, conversationId: conversationId));
-    } catch (_) {}
+      // 2. 告服务器
+      await Api.messageDeleteApi(MessageDeleteRequest(
+          messageId: messageId,
+          conversationId: conversationId
+      ));
+    } catch (e) {
+      debugPrint("Delete failed: $e");
+    }
   }
-
-  //  静态方法也要用 ChatActionService
-  static String? getPathFromCache(String msgId) => ChatActionService.getPathFromCache(msgId);
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
+      // 切回前台，清除红点
       markAsRead();
     }
   }

@@ -113,7 +113,7 @@ class FcmService {
   //  [统一处理跳转逻辑]
   void _handleMessageInteraction(RemoteMessage message) {
     final data = message.data;
-    print("🚀 [FCM] 准备跳转，参数: $data");
+    print(" [FCM] 准备跳转，参数: $data");
 
     // 1. 获取消息类型和关键 ID
     final String? type = data['type'];

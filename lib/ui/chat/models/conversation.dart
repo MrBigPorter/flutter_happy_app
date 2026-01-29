@@ -228,7 +228,7 @@ class MessageHistoryRequest {
 
   // 后端接收的是 'cursor'，所以这里把 Dart 的 beforeMessageId 映射过去
   // 当然你也可以直接改名叫 cursor
-  final String? cursor;
+  final int? cursor;
 
   final int pageSize; // 你可以用 pageSize, 映射为后端的 limit
 
@@ -251,7 +251,7 @@ class MessageListResponse {
   final List<ChatMessage> list;
 
   // 下一页游标，如果为 null 说明没有更多数据了
-  final String? nextCursor;
+  final int? nextCursor;
   final int partnerLastReadSeqId;
 
   MessageListResponse({

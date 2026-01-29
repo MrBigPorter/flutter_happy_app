@@ -1,9 +1,12 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
+import '../../../utils/image_url.dart';
+import '../../img/app_image.dart';
 import '../models/chat_ui_model.dart';
 import '../providers/chat_room_provider.dart';
 
@@ -134,7 +137,7 @@ class ChatBubble extends ConsumerWidget {
           ),
 
           // 我的头像
-          if (isMe) ...[SizedBox(width: 8.w), _buildAvatar(null)],
+          if (isMe) ...[SizedBox(width: 8.w), _buildAvatar(message.senderAvatar)],
         ],
       ),
     );
@@ -206,16 +209,32 @@ class ChatBubble extends ConsumerWidget {
     return const SizedBox.shrink();
   }
 
+  //  修正：去掉了 BuildContext context 参数
   Widget _buildAvatar(String? url) {
-    return Container(
-      width: 40.w,
-      height: 40.w,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(6.r),
-        color: Colors.grey[200],
-        image: url != null && url.isNotEmpty ? DecorationImage(image: NetworkImage(url), fit: BoxFit.cover) : null,
+    // 1. 空头像处理
+    if (url == null || url.isEmpty) {
+      return Container(
+        width: 40.w,
+        height: 40.w,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(6.r),
+          color: Colors.grey[200],
+        ),
+        child: Icon(Icons.person, color: Colors.grey[400], size: 24.sp),
+      );
+    }
+
+    // 2. 使用 AppCachedImage
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(6.r),
+      child: AppCachedImage(
+        url,
+        width: 40.w,
+        height: 40.w,
+        fit: BoxFit.cover,
+        quality: 50,
+        enablePreview: false,
       ),
-      child: url == null || url.isEmpty ? Icon(Icons.person, color: Colors.grey[400], size: 24.sp) : null,
     );
   }
 }

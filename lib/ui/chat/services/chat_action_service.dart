@@ -26,16 +26,18 @@ import '../services/compression/image_compression_service.dart';
 class PipelineContext {
   final ChatUiModel initialMsg;
   String? currentAbsolutePath;
-  String? thumbAssetId; // 可能是 AssetID (Mobile) 或 Blob URL (Web)
+  String? thumbAssetId;
   String? remoteUrl;
   String? remoteThumbUrl;
   Map<String, dynamic> metadata = {};
 
+  //  核心修复 A：增加 sourceFile 字段
+  // 专门用于在 Web 端传递原始的 XFile，防止文件名和后缀丢失
+  XFile? sourceFile;
+
   PipelineContext(this.initialMsg) {
     if (initialMsg.meta != null) metadata.addAll(initialMsg.meta!);
     remoteThumbUrl = initialMsg.meta?['remote_thumb'];
-
-    // 初始化时就接住原始路径 (Blob URL)
     currentAbsolutePath = initialMsg.localPath;
   }
 }
@@ -50,7 +52,7 @@ abstract class PipelineStep {
 
 class ChatActionService {
   final String conversationId;
-  final dynamic _ref;
+  final Ref _ref;
   final GlobalUploadService _uploadService;
 
   static final Map<String, String> _sessionPathCache = {};
@@ -73,7 +75,7 @@ class ChatActionService {
       for (final step in steps) {
         await step.execute(ctx, this);
       }
-      debugPrint("✅ Pipeline Success: ${ctx.initialMsg.id}");
+      debugPrint("Pipeline Success: ${ctx.initialMsg.id}");
     } catch (e) {
       debugPrint("❌ Pipeline Crashed: $e");
       await LocalDatabaseService().updateMessageStatus(
@@ -102,7 +104,11 @@ class ChatActionService {
     );
     _sessionPathCache[msg.id] = file.path;
 
-    await _runPipeline(PipelineContext(msg), [
+    //  核心修复 B：初始化 Context 时把 sourceFile 塞进去
+    final ctx = PipelineContext(msg);
+    ctx.sourceFile = file;
+
+    await _runPipeline(ctx, [
       PersistStep(),
       ImageProcessStep(),
       UploadStep(),
@@ -118,6 +124,7 @@ class ChatActionService {
       duration: duration,
       meta: {'duration': duration},
     );
+    // 语音通常是录音文件，路径是确定的，一般不需要 sourceFile
     await _runPipeline(PipelineContext(msg), [
       PersistStep(),
       UploadStep(),
@@ -144,7 +151,11 @@ class ChatActionService {
     );
     _sessionPathCache[msg.id] = file.path;
 
-    await _runPipeline(PipelineContext(msg), [
+    //  核心修复 B：初始化 Context 时把 sourceFile 塞进去
+    final ctx = PipelineContext(msg);
+    ctx.sourceFile = file;
+
+    await _runPipeline(ctx, [
       PersistStep(),
       VideoProcessStep(),
       UploadStep(),
@@ -166,6 +177,7 @@ class ChatActionService {
       MessageStatus.sending,
     );
 
+    // 重发时没有 sourceFile，只能依赖 UploadStep 里的兜底逻辑
     await _runPipeline(PipelineContext(msg), [
       RecoverStep(),
       UploadStep(),
@@ -173,7 +185,6 @@ class ChatActionService {
     ]);
   }
 
-  // ... 辅助方法保持不变 ...
   ChatUiModel _createBaseMessage({
     required String content,
     required MessageType type,
@@ -274,13 +285,16 @@ class VideoProcessStep implements PipelineStep {
   Future<void> execute(PipelineContext ctx, ChatActionService service) async {
     if (kIsWeb) {
       // Web端：从 previewBytes 恢复封面上传逻辑
+      // 必须手动指定 name 和 mimeType，否则上传后也会变成 .so 或无后缀文件
       if (ctx.initialMsg.previewBytes != null && ctx.initialMsg.previewBytes!.isNotEmpty) {
         final xFile = XFile.fromData(
             ctx.initialMsg.previewBytes!,
-            name: 'video_thumb.jpg',
+            name: 'video_thumb_${const Uuid().v4()}.jpg', // 显式指定文件名
             mimeType: 'image/jpeg'
         );
         ctx.thumbAssetId = xFile.path;
+        // 注意：Web端 XFile.path 也是 blob url，但我们上面指定了 name，
+        // 在 UploadStep 里我们会处理这个逻辑
 
         if (ctx.metadata['w'] == null) {
           try {
@@ -348,7 +362,6 @@ class UploadStep implements PipelineStep {
   @override
   Future<void> execute(PipelineContext ctx, ChatActionService service) async {
     // 1. 封面上传
-    //  修复点1：允许 uploads/ 开头的相对路径，不要只认 http
     bool hasRemoteThumb = ctx.remoteThumbUrl != null &&
         (ctx.remoteThumbUrl!.startsWith('http') || ctx.remoteThumbUrl!.startsWith('uploads/'));
 
@@ -370,9 +383,14 @@ class UploadStep implements PipelineStep {
             : (path != null && File(path).existsSync());
 
         if (canUploadThumb) {
-          debugPrint("🚀 [UploadStep] 上传视频封面: $path");
+          //  Web端修复：封面必须有文件名，否则后端不认
+          XFile thumbFile = XFile(path!);
+          if (kIsWeb && (thumbFile.name.isEmpty || !thumbFile.name.contains('.'))) {
+            thumbFile = XFile(path, name: 'thumb_${const Uuid().v4()}.jpg');
+          }
+
           ctx.remoteThumbUrl = await service._uploadService.uploadFile(
-            file: XFile(path!),
+            file: thumbFile,
             module: UploadModule.chat,
             onProgress: (_) {},
           );
@@ -381,7 +399,6 @@ class UploadStep implements PipelineStep {
     }
 
     // 2. 附件主体上传
-    //  修复点2：同理，主体也放开
     bool hasRemoteContent = ctx.initialMsg.content.startsWith('http') || ctx.initialMsg.content.startsWith('uploads/');
 
     if (!hasRemoteContent) {
@@ -392,13 +409,32 @@ class UploadStep implements PipelineStep {
           : (uploadPath != null && File(uploadPath).existsSync());
 
       if (canUploadMain) {
-        debugPrint("🚀 [UploadStep] 启动真实上传: $uploadPath");
+        debugPrint(" [UploadStep] 启动真实上传: $uploadPath");
+
+        XFile fileToUpload;
+
+        //  核心修复 C：优先使用 sourceFile
+        // 在 Web 端，如果路径没变（没被压缩替换），优先用 sourceFile。
+        // 因为 sourceFile 完好地保存了文件名 (e.g., 'cat.jpg')。
+        // 如果用 XFile(blobUrl)，文件名会丢失，导致上传变成 'uuid.so' 或 'uuid'，引发 404/CORS。
+        if (kIsWeb && ctx.sourceFile != null && uploadPath == ctx.sourceFile!.path) {
+          fileToUpload = ctx.sourceFile!;
+        } else {
+          // 如果 sourceFile 不可用（比如文件被压缩了，或者是在重发），
+          // 必须手动补全文件名，绝不能让它裸奔。
+          fileToUpload = XFile(uploadPath!);
+          if (kIsWeb && (fileToUpload.name.isEmpty || !fileToUpload.name.contains('.'))) {
+            final ext = ctx.initialMsg.type == MessageType.video ? 'mp4' : 'jpg';
+            fileToUpload = XFile(uploadPath!, name: 'upload_${const Uuid().v4()}.$ext');
+          }
+        }
+
         ctx.remoteUrl = await service._uploadService.uploadFile(
-          file: XFile(uploadPath!),
+          file: fileToUpload,
           module: UploadModule.chat,
           onProgress: (_) {},
         );
-        debugPrint("✅ [UploadStep] 上传成功 Key: ${ctx.remoteUrl}");
+        debugPrint("[UploadStep] 上传成功 Key: ${ctx.remoteUrl}");
       }
     } else {
       ctx.remoteUrl = ctx.initialMsg.content;
@@ -417,8 +453,6 @@ class SyncStep implements PipelineStep {
 
     final Map<String, dynamic> apiMeta = Map.from(ctx.metadata);
 
-    //  修复点3：彻底放开 thumb 校验
-    // 只要有值（无论是 http 还是 uploads/），就认定为有效 URL
     String finalThumbUrl = "";
     if (ctx.remoteThumbUrl != null && ctx.remoteThumbUrl!.isNotEmpty) {
       finalThumbUrl = ctx.remoteThumbUrl!;
@@ -426,16 +460,17 @@ class SyncStep implements PipelineStep {
       finalThumbUrl = ctx.metadata['remote_thumb'];
     }
 
-    // 确保把上传好的封面 URL 塞进 meta
     apiMeta['thumb'] = finalThumbUrl;
-    apiMeta['remote_thumb'] = finalThumbUrl; // 双保险
+    apiMeta['remote_thumb'] = finalThumbUrl;
 
     debugPrint("🌐 [SyncStep] API Request thumb: ${apiMeta['thumb']}");
+
+    final String contentToSend = ctx.remoteUrl ?? ctx.initialMsg.content;
 
     final serverMsg = await Api.sendMessage(
       id: ctx.initialMsg.id,
       conversationId: service.conversationId,
-      content: ctx.remoteUrl!,
+      content: contentToSend,
       type: ctx.initialMsg.type.value,
       meta: apiMeta,
     );
@@ -452,3 +487,17 @@ class SyncStep implements PipelineStep {
     });
   }
 }
+
+// ===========================================================================
+// 4. Provider 定义
+// ===========================================================================
+
+final chatActionServiceProvider = Provider.family.autoDispose<ChatActionService, String>(
+      (ref, conversationId) {
+    return ChatActionService(
+      conversationId,
+      ref,
+      GlobalUploadService(),
+    );
+  },
+);

@@ -15,7 +15,7 @@ class ChatSyncManager {
   final Ref _ref;
   final String _currentUserId;
 
-  String? _nextCursor;
+  int? _nextCursor;
   bool _isLoadingMore = false;
   int _maxReadSeqId = 0;
 

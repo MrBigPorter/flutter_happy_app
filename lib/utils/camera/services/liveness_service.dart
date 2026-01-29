@@ -46,7 +46,7 @@ class LivenessService {
       }
 
       // 2. 尝试调用原生扫描 (在华为海外版上，这里极大概率会抛出 PlatformException)
-      debugPrint("🚀 正在调起原生高级扫描...");
+      debugPrint(" 正在调起原生高级扫描...");
       final String? rawPath = await _channel.invokeMethod('scanDocument');
 
       // 3. 处理返回路径（兼容 file:// 前缀）

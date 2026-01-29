@@ -1,7 +1,7 @@
 
 ---
 
-# 🚀 Lucky IM Project Master Plan v4.5 (Velocity Flow)
+#  Lucky IM Project Master Plan v4.5 (Velocity Flow)
 
 > **🔴 状态校准 (2026-01-29)**
 > **已完成 (Removed from list)**：

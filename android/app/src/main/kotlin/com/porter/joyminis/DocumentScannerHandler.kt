@@ -11,7 +11,7 @@ class DocumentScannerHandler (private val activity: Activity){
     private var pendingResult: MethodChannel.Result? = null
     val SCAN_REQUEST_CODE = 1001
 
-    // 🚀 启动扫描的方法
+    //  启动扫描的方法
     fun startScan(result: MethodChannel.Result) {
         this.pendingResult = result;
 

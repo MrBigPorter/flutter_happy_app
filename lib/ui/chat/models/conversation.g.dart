@@ -186,7 +186,8 @@ MessageListResponse _$MessageListResponseFromJson(Map<String, dynamic> json) =>
                   []),
           partnerLastReadSeqId: $checkedConvert(
               'partnerLastReadSeqId', (v) => (v as num).toInt()),
-          nextCursor: $checkedConvert('nextCursor', (v) => v as String?),
+          nextCursor:
+              $checkedConvert('nextCursor', (v) => (v as num?)?.toInt()),
         );
         return val;
       },

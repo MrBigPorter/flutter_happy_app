@@ -26,4 +26,4 @@ pod install --verbose
 cd ..
 
 echo "✅ Done! Environment fixed."
-# echo "🚀 Building..."
+# echo " Building..."
