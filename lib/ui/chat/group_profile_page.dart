@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_app/common.dart';
 import 'package:flutter_app/components/base_scaffold.dart';
@@ -11,6 +12,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../utils/image_url.dart';
 import '../toast/radix_toast.dart';
 import 'models/conversation.dart';
 
@@ -138,7 +140,16 @@ class GroupProfilePage extends ConsumerWidget {
                   borderRadius: BorderRadius.circular(4.r), // 微信风格头像圆角较小
                   color: context.borderPrimary,
                   image: member.avatar != null
-                      ? DecorationImage(image: NetworkImage(member.avatar!), fit: BoxFit.cover)
+                      ? DecorationImage(
+                    image: CachedNetworkImageProvider(
+                      ImageUrl.build(
+                        context,
+                        member.avatar!,
+                        logicalWidth: 48, // 容器宽 48
+                      ),
+                    ),
+                    fit: BoxFit.cover,
+                  )
                       : null,
                 ),
                 alignment: Alignment.center,

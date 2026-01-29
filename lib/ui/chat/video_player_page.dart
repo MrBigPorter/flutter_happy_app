@@ -38,13 +38,20 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
   }
 
   Future<void> _initVideo() async {
-    // 1. 使用 Service 创建控制器
-    _controller = VideoPlaybackService().createController(widget.videoSource);
-
+    //  核心修改：不再盲目调用 Service，而是自己判断路径类型
+    // 如果是本地文件，必须用 .file()，否则 iOS 必报 -12939 错误
     try {
+      if (!kIsWeb && (widget.videoSource.startsWith('/') || widget.videoSource.startsWith('file://'))) {
+        final f = File(widget.videoSource.replaceFirst('file://', ''));
+        _controller = VideoPlayerController.file(f);
+      } else {
+        // 网络视频 (或 Web Blob)
+        _controller = VideoPlayerController.networkUrl(Uri.parse(widget.videoSource));
+      }
+
       await _controller.initialize();
 
-      // 2. 停止列表里的小窗播放
+      // 停止列表里的小窗播放
       VideoPlaybackService().stopAll();
 
       await _controller.play();
@@ -203,45 +210,24 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
   //  新增：构建 Hero 占位缩略图
   // (逻辑与气泡里的一致，确保 Hero 动画平滑)
   Widget _buildPlaceholderThumbnail() {
-    Widget imageWidget;
-
-    // 1. 无封面
     if (widget.thumbSource.isEmpty) {
-      imageWidget = const SizedBox.shrink();
-    }
-    // 2. 网络封面
-    else if (widget.thumbSource.startsWith('http')) {
-      imageWidget = AppCachedImage(
-        widget.thumbSource,
-        fit: BoxFit.contain, // 全屏展示时用 contain，保证完整性
-      );
-    }
-    // 3. 本地封面
-    else {
-      return FutureBuilder<String?>(
-        future: AssetManager.getFullPath(widget.thumbSource, MessageType.image),
-        builder: (context, snapshot) {
-          if (snapshot.hasData && snapshot.data != null) {
-            final file = File(snapshot.data!);
-            // 简单的检查
-            if (!kIsWeb && !file.existsSync()) return const SizedBox.shrink();
-
-            if (kIsWeb) {
-              return Image.network(snapshot.data!, fit: BoxFit.contain);
-            }
-            return Image.file(file, fit: BoxFit.contain);
-          }
-          return const SizedBox.shrink();
-        },
-      );
+      return const SizedBox.shrink();
     }
 
-    // 包装在居中容器里
-    return Container(
-      width: double.infinity,
-      height: double.infinity,
-      alignment: Alignment.center,
-      child: imageWidget,
+    //  核心修改 1: 优先处理本地绝对路径 (发送者视角)
+    if (!kIsWeb && (widget.thumbSource.startsWith('/') || widget.thumbSource.startsWith('file://'))) {
+      final f = File(widget.thumbSource.replaceFirst('file://', ''));
+      if (f.existsSync()) {
+        return Image.file(f, fit: BoxFit.contain);
+      }
+    }
+
+    //  核心修改 2: 其他情况 (http, uploads/..., blob) 统统交给 AppCachedImage
+    // 我们之前已经修复了 AppCachedImage，它会自动把 uploads/ 拼上域名
+    return AppCachedImage(
+      widget.thumbSource,
+      fit: BoxFit.contain, // 保持比例
+      enablePreview: false,
     );
   }
 }

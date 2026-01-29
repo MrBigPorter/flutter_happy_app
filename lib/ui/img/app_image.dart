@@ -1,223 +1,205 @@
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_app/ui/chat/photo_preview_page.dart';
-
- import 'package:shimmer/shimmer.dart';
+import 'package:shimmer/shimmer.dart';
+import '../chat/photo_preview_page.dart';
 import '../../utils/image_url.dart';
 
 class AppCachedImage extends StatelessWidget {
-  final String? src;
-  final double? width;
-  final double? height;
+  final dynamic src;
+  final double? width, height, cacheWidth, cacheHeight;
   final BoxFit fit;
   final BorderRadius? radius;
   final String? heroTag;
   final int quality;
   final String format;
-  final bool forceGatewayOnNative;
   final Color placeholderColor;
-  final Widget? placeholder;
-  final Widget? error;
+  final Widget? placeholder, error;
   final bool enablePreview;
+  final Duration? fadeInDuration;
+  final Uint8List? previewBytes;
 
   const AppCachedImage(
     this.src, {
     super.key,
     this.width,
     this.height,
+    this.cacheWidth,
+    this.cacheHeight,
     this.fit = BoxFit.cover,
     this.radius,
-    this.quality = 75,
+    this.quality = 50,
     this.format = 'auto',
-    this.forceGatewayOnNative = false,
     this.placeholderColor = const Color(0xFFF5F5F5),
     this.placeholder,
     this.error,
     this.enablePreview = false,
     this.heroTag,
+    this.fadeInDuration,
+    this.previewBytes,
   });
 
   @override
   Widget build(BuildContext context) {
-    if (src == null || src!.isEmpty) {
-      return _wrapper(_ph(width, height), context);
-    }
-
-    final isNetwork = src!.startsWith('http');
-    final isAsset = src!.startsWith('assets/');
-
-    final dpr = MediaQuery.maybeOf(context)?.devicePixelRatio ?? 1.0;
-    final int? memW = (width == null) ? null : (width! * dpr).round();
-    final int? memH = (height == null) ? null : (height! * dpr).round();
-
-    Widget imageWidget;
-
-    if (isNetwork) {
-      final url = ImageUrl.build(
-        context,
-        src,
-        logicalWidth: width,
-        logicalHeight: height,
-        fit: fit,
-        quality: quality,
-        format: format,
-        forceGatewayOnNative: forceGatewayOnNative,
-      );
-
-      //  修正点 1：Web 端强制使用 Image.network (解决大图卡顿/黑屏)
-      if (kIsWeb) {
-        imageWidget = Image.network(
-          url,
+    if (src is Uint8List) {
+      return _wrapper(
+        Image.memory(
+          src as Uint8List,
           width: width,
           height: height,
           fit: fit,
-          // 加上淡入动画，体验和 CachedNetworkImage 一致
-          frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
-            if (wasSynchronouslyLoaded) return child;
-            return AnimatedOpacity(
-              opacity: frame == null ? 0 : 1,
-              duration: const Duration(milliseconds: 300),
-              curve: Curves.easeOut,
-              child: child,
-            );
-          },
-          loadingBuilder: (context, child, loadingProgress) {
-            if (loadingProgress == null) return child;
-            return placeholder ?? _buildShimmer(width, height);
-          },
-          errorBuilder: (_, __, ___) => error ?? _err(width, height),
-        );
-      } else {
-        // App 端保持原样
-        imageWidget = CachedNetworkImage(
+          gaplessPlayback: true,
+        ),
+        context,
+        null,
+        null,
+        null,
+      );
+    }
+
+    final String path = src?.toString() ?? '';
+    if (path.isEmpty || path == '[Image]') return _ph(width, height);
+
+    // 判定逻辑
+    final isBlob = path.startsWith('blob:');
+    final isLocal = path.startsWith('/') || path.startsWith('file://');
+    final isAsset = path.startsWith('assets/');
+    final isRemote =
+        !isBlob && !isLocal && !isAsset && !path.contains('localhost');
+
+    final dpr = MediaQuery.of(context).devicePixelRatio;
+    final int? memW = cacheWidth != null
+        ? (cacheWidth! * dpr).round()
+        : (width != null && width!.isFinite ? (width! * dpr).round() : null);
+    final int? memH = cacheHeight != null
+        ? (cacheHeight! * dpr).round()
+        : (height != null && height!.isFinite ? (height! * dpr).round() : null);
+
+    // 1. 远程图片 (走 ImageUrl 加工)
+    if (isRemote) {
+      final url = ImageUrl.build(
+        context,
+        path,
+        logicalWidth: cacheWidth ?? width,
+        logicalHeight: cacheHeight ?? height,
+        fit: fit,
+        quality: quality,
+        format: format,
+      );
+      return _wrapper(
+        CachedNetworkImage(
           imageUrl: url,
           width: width,
           height: height,
           fit: fit,
           memCacheWidth: memW,
           memCacheHeight: memH,
-          maxWidthDiskCache: memW,
-          maxHeightDiskCache: memH,
           fadeOutDuration: Duration.zero,
-          fadeInDuration: const Duration(milliseconds: 300),
-          placeholder: (_, __) => placeholder ?? _buildShimmer(width, height),
+          fadeInDuration: fadeInDuration ?? const Duration(milliseconds: 200),
+          placeholder: (context, url) =>
+              placeholder ??
+              (previewBytes != null
+                  ? Image.memory(
+                      previewBytes!,
+                      width: width,
+                      height: height,
+                      fit: fit,
+                      gaplessPlayback: true,
+                    )
+                  : _buildShimmer(width, height)),
           errorWidget: (_, __, ___) => error ?? _err(width, height),
-        );
-      }
-    } else if (isAsset) {
-      imageWidget = Image.asset(
-        src!,
-        width: width,
-        height: height,
-        cacheWidth: memW,
-        fit: fit,
-        gaplessPlayback: true,
-        errorBuilder: (_, __, ___) => error ?? _err(width, height),
+        ),
+        context,
+        url,
+        memW,
+        memH,
       );
-    } else {
-      // 本地文件 / Blob
-      if (kIsWeb) {
-        imageWidget = Image.network(
-          src!,
-          width: width,
-          height: height,
-          fit: fit,
-          gaplessPlayback: true,
-          errorBuilder: (_, __, ___) => error ?? _err(width, height),
-        );
-      } else {
-        final file = File(src!);
-        if (file.existsSync()) {
-          imageWidget = Image.file(
-            file,
+    }
+
+    // 2. 本地/Blob 图片
+    Widget localImg = isBlob
+        ? Image.network(
+            path,
             width: width,
             height: height,
-            cacheWidth: memW,
             fit: fit,
             gaplessPlayback: true,
-            errorBuilder: (_, __, ___) => error ?? _err(width, height),
-          );
-        } else {
-          imageWidget = _err(width, height);
-        }
-      }
-    }
+          )
+        : (isAsset
+              ? Image.asset(
+                  path,
+                  width: width,
+                  height: height,
+                  fit: fit,
+                  cacheWidth: memW,
+                  gaplessPlayback: true,
+                )
+              : Image.file(
+                  File(path.replaceFirst('file://', '')),
+                  width: width,
+                  height: height,
+                  fit: fit,
+                  cacheWidth: memW,
+                  gaplessPlayback: true,
+                ));
 
-    return _wrapper(imageWidget, context);
+    return _wrapper(localImg, context, path, memW, memH);
   }
 
-  Widget _wrapper(Widget child, BuildContext context) {
+  Widget _wrapper(
+    Widget child,
+    BuildContext context,
+    String? currentUrl,
+    int? memW,
+    int? memH,
+  ) {
     Widget res = child;
+    if (radius != null) res = ClipRRect(borderRadius: radius!, child: res);
+    if (heroTag != null && heroTag!.isNotEmpty)
+      res = Hero(tag: heroTag!, child: res);
 
-    if (radius != null) {
-      res = ClipRRect(borderRadius: radius!, child: res);
-    }
-
-    //  修正点 2：修复 Hero 逻辑 (isEmpty -> isNotEmpty)
-    if (heroTag != null && heroTag!.isNotEmpty) {
-      res = Hero(tag: heroTag!, transitionOnUserGestures: true, child: res);
-    }
-
-    if (enablePreview && src != null && src!.isNotEmpty) {
+    if (enablePreview && src != null) {
       res = GestureDetector(
-        onTap: () {
-          // 这里只负责最基础的预览，聊天页面会自己处理点击
-          // 所以这段逻辑主要是给非聊天页面用的
-          final bool _ =
-              !src!.startsWith('http') && !src!.startsWith('assets/');
-
-          Navigator.push(
-            context,
-            PageRouteBuilder(
-              opaque: false,
-              pageBuilder: (_, __, ___) => PhotoPreviewPage(
-                heroTag: heroTag ?? src!,
-                imageSource: src!,
-                thumbnailSource: src!,
-              ),
-              transitionsBuilder: (_, animation, __, child) {
-                return FadeTransition(opacity: animation, child: child);
-              },
+        onTap: () => Navigator.push(
+          context,
+          PageRouteBuilder(
+            opaque: false,
+            pageBuilder: (_, __, ___) => PhotoPreviewPage(
+              heroTag: heroTag ?? src.toString(),
+              imageSource: src.toString(),
+              //  修复点：这里改用 cachedThumbnailUrl，匹配 PhotoPreviewPage 的定义
+              cachedThumbnailUrl: currentUrl,
+              previewBytes: previewBytes,
+              memW: memW,
+              memH: memH,
             ),
-          );
-        },
+          ),
+        ),
         child: res,
       );
     }
-
     return res;
   }
 
-  //  骨架屏效果 (使用 shimmer 包)
-  Widget _buildShimmer(double? w, double? h) {
-    return Shimmer.fromColors(
-      // 基础底色 (和你原本的 placeholderColor 一致)
-      baseColor: placeholderColor,
-      // 扫光颜色 (稍微亮一点，形成扫光效果)
-      highlightColor: Colors.white,
-      child: Container(
-        width: w,
-        height: h,
-        color: Colors.white, // 这里必须给个颜色，Shimmer 才能依附在形状上
-      ),
-    );
-  }
+  Widget _buildShimmer(double? w, double? h) => Shimmer.fromColors(
+    baseColor: placeholderColor,
+    highlightColor: Colors.white.withOpacity(0.5),
+    child: Container(width: w, height: h, color: Colors.white),
+  );
 
   Widget _ph(double? w, double? h) => Container(
     width: w,
     height: h,
     color: placeholderColor,
-    alignment: Alignment.center,
-    child: Icon(Icons.image, color: Colors.grey[400], size: 20),
+    child: const Icon(Icons.image, color: Colors.grey, size: 20),
   );
 
   Widget _err(double? w, double? h) => Container(
     width: w,
     height: h,
     color: placeholderColor,
-    alignment: Alignment.center,
-    child: Icon(Icons.broken_image_rounded, color: Colors.grey[400], size: 24),
+    child: const Icon(Icons.broken_image, color: Colors.grey, size: 24),
   );
 }

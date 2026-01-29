@@ -1,4 +1,3 @@
-// lib/utils/image_url.dart
 import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
@@ -9,77 +8,60 @@ class ImageUrl {
 
   static String gateway({bool useProd = false}) => useProd ? prodGateway : devGateway;
 
-  static String build(
-      BuildContext context,
-      String? raw, {
-        double? logicalWidth,
-        double? logicalHeight,
-        BoxFit fit = BoxFit.cover,
-        int quality = 75,
-        String format = 'auto',
-        bool forceGatewayOnNative = false,
-        bool? useProdGateway,
-      }) {
-    if (raw == null || raw.trim().isEmpty) return '';
-    var url = raw.trim();
-
-    final dpr = MediaQuery.maybeOf(context)?.devicePixelRatio ?? 1.0;
-    final useGateway = kIsWeb || forceGatewayOnNative;
-    final gw = gateway(useProd: useProdGateway ?? kReleaseMode);
-
-    // 1) 如果本身已经是 cdn-cgi/image（比如 admin 返回的），Web 也必须改成走网关域名
-    if (url.contains('/cdn-cgi/image/')) {
-      if (useGateway) {
-        // 把原来的 scheme+host 替换成 gw，保证请求一定打到你的 nginx
-        // 例：https://admin.joyminis.com/cdn-cgi/image/... -> http://dev.joyminis.com/cdn-cgi/image/...
-        url = _replaceOriginWithGateway(url, gw);
+  static String formatToRelative(String? path) {
+    if (path == null || path.isEmpty || path == '[Image]') return '';
+    var res = path.trim();
+    if (!res.startsWith('http')) return res;
+    final domains = [prodGateway, devGateway, 'https://admin.joyminis.com', 'https://img.joyminis.com'];
+    for (var d in domains) {
+      if (res.startsWith(d)) {
+        res = res.replaceFirst(d, '');
+        break;
       }
-      return url;
     }
-
-    // 2) 非 cdn-cgi：拼参数并包一层 /cdn-cgi/image
-    if (!useGateway) return url;
-
-    int? wPx = _toPx(logicalWidth, dpr);
-    int? hPx = _toPx(logicalHeight, dpr);
-
-    final params = <String>[];
-    if (wPx != null) params.add('width=$wPx');
-    if (hPx != null) params.add('height=$hPx');
-    // params.add('dpr=${_fmtDpr(dpr)}');
-    params.add('quality=${quality.clamp(30, 95)}');
-    params.add('fit=${_toCdnFit(fit)}');
-    params.add('f=$format');
-
-    return '$gw/cdn-cgi/image/${params.join(",")}/$url';
+    if (res.contains('uploads/')) res = res.substring(res.indexOf('uploads/'));
+    while (res.startsWith('/')) res = res.substring(1);
+    return res;
   }
 
-  static String _replaceOriginWithGateway(String url, String gw) {
-    // 如果是绝对 URL：替换成 gw
-    // 如果不是绝对 URL：直接拼 gw
-    final lower = url.toLowerCase();
-    if (lower.startsWith('http://') || lower.startsWith('https://')) {
-      final uri = Uri.parse(url);
-      return '$gw${uri.path}${uri.hasQuery ? '?${uri.query}' : ''}';
+  static String build(BuildContext context, String? raw, {
+    double? logicalWidth, double? logicalHeight,
+    BoxFit fit = BoxFit.cover, int quality = 75,
+    String format = 'auto', bool forceGatewayOnNative = false,
+  }) {
+    if (raw == null || raw.isEmpty || raw == '[Image]') return '';
+
+    // 1. 本地/内存资源直接放行，绝不加域名
+    if (raw.startsWith('file://') ||
+        raw.startsWith('assets/') ||
+        raw.startsWith('blob:') ||
+        raw.startsWith('/') || // 以 / 开头的绝对路径通常是本地文件
+        raw.contains('localhost')) {
+      return raw;
     }
-    if (url.startsWith('/')) return '$gw$url';
-    return '$gw/$url';
-  }
 
-  static int? _toPx(double? logical, double dpr) {
-    if (logical == null || logical <= 0) return null;
-    final px = (logical * dpr).round();
-    return min(max(px, 1), 2048);
-  }
+    // 2. 清洗路径 (去掉已有的域名，保留 uploads/...)
+    final cleanPath = formatToRelative(raw);
 
+    // 3. 准备网关
+    final gw = gateway(useProd: kReleaseMode);
 
-  static String _toCdnFit(BoxFit fit) {
-    switch (fit) {
-      case BoxFit.contain:
-        return 'contain';
-      case BoxFit.cover:
-      default:
-        return 'cover';
+    // 4. Web 端或强制模式：走 Cloudflare/Nginx 图片处理
+    if (kIsWeb || forceGatewayOnNative) {
+      final dpr = MediaQuery.maybeOf(context)?.devicePixelRatio ?? 2.0;
+      final w = logicalWidth != null ? (logicalWidth * dpr).round() : null;
+
+      List<String> params = [];
+      if (w != null) params.add('width=${min(w, 2048)}');
+      params.add('quality=$quality');
+      params.add('f=$format');
+      params.add('fit=${fit == BoxFit.contain ? "contain" : "cover"}');
+
+      return '$gw/cdn-cgi/image/${params.join(",")}/$cleanPath';
     }
+
+    // 5. 默认模式：直接拼上网关 (这是你缺失的逻辑！)
+    // 只要代码走到这里，cleanPath 就是 uploads/chat/...，必须加上 gw 变成 http://...
+    return '$gw/$cleanPath';
   }
 }

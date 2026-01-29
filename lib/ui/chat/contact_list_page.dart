@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_app/common.dart';
 import 'package:flutter_app/components/base_scaffold.dart';
@@ -6,6 +7,8 @@ import 'package:flutter_app/ui/chat/providers/contact_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
+
+import '../../utils/image_url.dart';
 
 
 class ContactListPage extends ConsumerWidget {
@@ -57,7 +60,15 @@ class ContactListPage extends ConsumerWidget {
                 leading: CircleAvatar(
                   radius: 24.r,
                   backgroundColor: context.bgSecondary,
-                  backgroundImage: user.avatar != null ? NetworkImage(user.avatar!) : null,
+                  backgroundImage: user.avatar != null
+                      ? CachedNetworkImageProvider(
+                    ImageUrl.build(
+                      context,
+                      user.avatar!,
+                      logicalWidth: 48, // Radius 24 * 2
+                    ),
+                  )
+                      : null,
                   child: user.avatar == null
                       ? Text(user.nickname.isNotEmpty ? user.nickname[0].toUpperCase() : "?", style: TextStyle(color: context.textSecondary700))
                       : null,

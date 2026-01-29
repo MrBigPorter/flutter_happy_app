@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:ui' as ui;
-import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart'; // kIsWeb
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 import 'package:cross_file/cross_file.dart';
@@ -26,15 +26,17 @@ import '../services/compression/image_compression_service.dart';
 class PipelineContext {
   final ChatUiModel initialMsg;
   String? currentAbsolutePath;
-  String? thumbAssetId;
+  String? thumbAssetId; // 可能是 AssetID (Mobile) 或 Blob URL (Web)
   String? remoteUrl;
   String? remoteThumbUrl;
   Map<String, dynamic> metadata = {};
 
   PipelineContext(this.initialMsg) {
     if (initialMsg.meta != null) metadata.addAll(initialMsg.meta!);
-    // 初始尝试从 meta 中找 remote_thumb
     remoteThumbUrl = initialMsg.meta?['remote_thumb'];
+
+    // 初始化时就接住原始路径 (Blob URL)
+    currentAbsolutePath = initialMsg.localPath;
   }
 }
 
@@ -48,7 +50,7 @@ abstract class PipelineStep {
 
 class ChatActionService {
   final String conversationId;
-  final dynamic _ref; //  这里从 Ref 改为 dynamic，兼容 Ref 和 ProviderContainer
+  final dynamic _ref;
   final GlobalUploadService _uploadService;
 
   static final Map<String, String> _sessionPathCache = {};
@@ -58,9 +60,9 @@ class ChatActionService {
   ChatActionService(this.conversationId, this._ref, this._uploadService);
 
   Future<void> _runPipeline(
-    PipelineContext ctx,
-    List<PipelineStep> steps,
-  ) async {
+      PipelineContext ctx,
+      List<PipelineStep> steps,
+      ) async {
     try {
       await LocalDatabaseService().saveMessage(ctx.initialMsg);
       _updateConversationSnapshot(
@@ -98,6 +100,8 @@ class ChatActionService {
       type: MessageType.image,
       localPath: file.path,
     );
+    _sessionPathCache[msg.id] = file.path;
+
     await _runPipeline(PipelineContext(msg), [
       PersistStep(),
       ImageProcessStep(),
@@ -122,17 +126,16 @@ class ChatActionService {
   }
 
   Future<void> sendVideo(XFile file) async {
-    // 1.  抢在 Pipeline 排队前，极速生成内存预览图 (不进 FFmpeg 队列)
     Uint8List? quickPreview;
     try {
       quickPreview = await VideoCompress.getByteThumbnail(
         file.path,
-        quality: 20, // 质量设低，速度极快
+        quality: 20,
       );
     } catch (e) {
       debugPrint("Pre-process preview failed: $e");
     }
-    // 2. 创建消息，此时 previewBytes 已经有值了
+
     final msg = _createBaseMessage(
       content: "[Video]",
       type: MessageType.video,
@@ -152,16 +155,17 @@ class ChatActionService {
   Future<void> resend(String msgId) async {
     final target = await LocalDatabaseService().getMessageById(msgId);
     if (target == null) return;
+
     final msg = target.copyWith(
       status: MessageStatus.sending,
       createdAt: DateTime.now().millisecondsSinceEpoch,
     );
+
     await LocalDatabaseService().updateMessageStatus(
       msgId,
       MessageStatus.sending,
     );
 
-    // 重发管道：必须先执行 Recover 找回物理路径和 ID
     await _runPipeline(PipelineContext(msg), [
       RecoverStep(),
       UploadStep(),
@@ -169,10 +173,7 @@ class ChatActionService {
     ]);
   }
 
-  // ===========================================================================
-  // 辅助方法
-  // ===========================================================================
-
+  // ... 辅助方法保持不变 ...
   ChatUiModel _createBaseMessage({
     required String content,
     required MessageType type,
@@ -198,20 +199,12 @@ class ChatActionService {
 
   void _updateConversationSnapshot(String content, int time) {
     try {
-      _ref
-          .read(conversationListProvider.notifier)
-          .updateLocalItem(
-            conversationId: conversationId,
-            lastMsgContent: content,
-            lastMsgTime: time,
-          );
+      _ref.read(conversationListProvider.notifier).updateLocalItem(
+        conversationId: conversationId,
+        lastMsgContent: content,
+        lastMsgTime: time,
+      );
     } catch (_) {}
-  }
-
-  int _timeToInt(dynamic value) {
-    if (value is int) return value;
-    if (value is DateTime) return value.millisecondsSinceEpoch;
-    return DateTime.now().millisecondsSinceEpoch;
   }
 }
 
@@ -222,43 +215,53 @@ class ChatActionService {
 class PersistStep implements PipelineStep {
   @override
   Future<void> execute(PipelineContext ctx, ChatActionService service) async {
+    if (kIsWeb) {
+      ctx.currentAbsolutePath = ctx.initialMsg.localPath;
+      return;
+    }
+
     final assetId = await AssetManager.save(
       XFile(ctx.initialMsg.localPath!),
       ctx.initialMsg.type,
     );
-    ctx.currentAbsolutePath = await AssetManager.getFullPath(
+
+    final String? resolved = await AssetManager.getFullPath(
       assetId,
       ctx.initialMsg.type,
     );
+
+    if (resolved != null) {
+      ctx.currentAbsolutePath = resolved;
+    }
+
     await LocalDatabaseService().updateMessage(ctx.initialMsg.id, {
       'localPath': assetId,
     });
   }
 }
 
-///  修正版 RecoverStep：不仅找回视频路径，还要认出本地封面 ID
 class RecoverStep implements PipelineStep {
   @override
   Future<void> execute(PipelineContext ctx, ChatActionService service) async {
-    // 1. 恢复主体路径
     final assetId = ctx.initialMsg.localPath;
     if (assetId != null && !assetId.startsWith('http')) {
       ctx.currentAbsolutePath = await AssetManager.getFullPath(
         assetId,
         ctx.initialMsg.type,
       );
-      if (ctx.currentAbsolutePath == null ||
-          !File(ctx.currentAbsolutePath!).existsSync()) {
-        // 抢救一下绝对路径
-        final fileName = assetId.split('/').last;
-        ctx.currentAbsolutePath = await AssetManager.getFullPath(
-          fileName,
-          ctx.initialMsg.type,
-        );
+
+      if (!kIsWeb) {
+        if (ctx.currentAbsolutePath == null ||
+            !File(ctx.currentAbsolutePath!).existsSync()) {
+          final fileName = assetId.split('/').last;
+          ctx.currentAbsolutePath = await AssetManager.getFullPath(
+            fileName,
+            ctx.initialMsg.type,
+          );
+        }
       }
     }
 
-    // 2.  关键：识别本地封面 ID，否则 UploadStep 会跳过上传！
     final thumbId = ctx.initialMsg.meta?['thumb'];
     if (thumbId != null && !thumbId.toString().startsWith('http')) {
       ctx.thumbAssetId = thumbId.toString();
@@ -269,10 +272,36 @@ class RecoverStep implements PipelineStep {
 class VideoProcessStep implements PipelineStep {
   @override
   Future<void> execute(PipelineContext ctx, ChatActionService service) async {
+    if (kIsWeb) {
+      // Web端：从 previewBytes 恢复封面上传逻辑
+      if (ctx.initialMsg.previewBytes != null && ctx.initialMsg.previewBytes!.isNotEmpty) {
+        final xFile = XFile.fromData(
+            ctx.initialMsg.previewBytes!,
+            name: 'video_thumb.jpg',
+            mimeType: 'image/jpeg'
+        );
+        ctx.thumbAssetId = xFile.path;
+
+        if (ctx.metadata['w'] == null) {
+          try {
+            final codec = await ui.instantiateImageCodec(ctx.initialMsg.previewBytes!);
+            final frame = await codec.getNextFrame();
+            ctx.metadata.addAll({
+              'w': frame.image.width,
+              'h': frame.image.height
+            });
+          } catch (_) {}
+        }
+      }
+      return;
+    }
+
+    // Mobile 端
     final result = await VideoProcessor.process(
       XFile(ctx.currentAbsolutePath!),
     );
     if (result == null) throw "Compression Failed";
+
     ctx.currentAbsolutePath = result.videoFile.path;
     ctx.thumbAssetId = await AssetManager.save(
       XFile(result.thumbnailFile.path),
@@ -284,6 +313,7 @@ class VideoProcessStep implements PipelineStep {
       'duration': result.duration,
       'thumb': ctx.thumbAssetId,
     });
+
     await LocalDatabaseService().updateMessage(ctx.initialMsg.id, {
       'meta': ctx.metadata,
     });
@@ -293,35 +323,56 @@ class VideoProcessStep implements PipelineStep {
 class ImageProcessStep implements PipelineStep {
   @override
   Future<void> execute(PipelineContext ctx, ChatActionService service) async {
-    final path = ctx.currentAbsolutePath ?? ctx.initialMsg.localPath!;
-    final bytes = await XFile(path).readAsBytes();
-    final codec = await ui.instantiateImageCodec(bytes);
-    final frame = await codec.getNextFrame();
-    ctx.metadata.addAll({'w': frame.image.width, 'h': frame.image.height});
-    final preview = await ImageCompressionService.getTinyThumbnail(XFile(path));
-    await LocalDatabaseService().updateMessage(ctx.initialMsg.id, {
-      'meta': ctx.metadata,
-      'previewBytes': preview,
-    });
+    final path = ctx.currentAbsolutePath ?? ctx.initialMsg.localPath;
+    if (path == null) return;
+
+    try {
+      final bytes = await XFile(path).readAsBytes();
+      final codec = await ui.instantiateImageCodec(bytes);
+      final frame = await codec.getNextFrame();
+      ctx.metadata.addAll({'w': frame.image.width, 'h': frame.image.height});
+
+      final preview = await ImageCompressionService.getTinyThumbnail(XFile(path));
+
+      await LocalDatabaseService().updateMessage(ctx.initialMsg.id, {
+        'meta': ctx.metadata,
+        'previewBytes': preview,
+      });
+    } catch (e) {
+      debugPrint("⚠️ [ImageProcessStep] 预览生成失败: $e");
+    }
   }
 }
 
-///  修正版 UploadStep
 class UploadStep implements PipelineStep {
   @override
   Future<void> execute(PipelineContext ctx, ChatActionService service) async {
-    // 1. 检查封面是否需要上传
-    // 如果已经有远程 URL 了，跳过；否则如果有本地 ID，就传
-    if (ctx.remoteThumbUrl == null || !ctx.remoteThumbUrl!.startsWith('http')) {
+    // 1. 封面上传
+    //  修复点1：允许 uploads/ 开头的相对路径，不要只认 http
+    bool hasRemoteThumb = ctx.remoteThumbUrl != null &&
+        (ctx.remoteThumbUrl!.startsWith('http') || ctx.remoteThumbUrl!.startsWith('uploads/'));
+
+    if (!hasRemoteThumb) {
       if (ctx.thumbAssetId != null) {
-        final path = await AssetManager.getFullPath(
-          ctx.thumbAssetId!,
-          MessageType.image,
-        );
-        if (path != null && File(path).existsSync()) {
-          debugPrint(" [上传] 正在上传补齐小图: ${ctx.thumbAssetId}");
+        String? path;
+
+        if (kIsWeb && (ctx.thumbAssetId!.startsWith('blob:') || ctx.thumbAssetId!.length > 200)) {
+          path = ctx.thumbAssetId;
+        } else {
+          path = await AssetManager.getFullPath(
+            ctx.thumbAssetId!,
+            MessageType.image,
+          );
+        }
+
+        bool canUploadThumb = kIsWeb
+            ? (path != null)
+            : (path != null && File(path).existsSync());
+
+        if (canUploadThumb) {
+          debugPrint("🚀 [UploadStep] 上传视频封面: $path");
           ctx.remoteThumbUrl = await service._uploadService.uploadFile(
-            file: XFile(path),
+            file: XFile(path!),
             module: UploadModule.chat,
             onProgress: (_) {},
           );
@@ -329,17 +380,25 @@ class UploadStep implements PipelineStep {
       }
     }
 
-    // 2. 检查附件主体
-    if (!ctx.initialMsg.content.startsWith('http')) {
-      if (ctx.currentAbsolutePath != null &&
-          File(ctx.currentAbsolutePath!).existsSync()) {
+    // 2. 附件主体上传
+    //  修复点2：同理，主体也放开
+    bool hasRemoteContent = ctx.initialMsg.content.startsWith('http') || ctx.initialMsg.content.startsWith('uploads/');
+
+    if (!hasRemoteContent) {
+      final String? uploadPath = ctx.currentAbsolutePath ?? ctx.initialMsg.localPath;
+
+      bool canUploadMain = kIsWeb
+          ? (uploadPath != null && uploadPath.isNotEmpty)
+          : (uploadPath != null && File(uploadPath).existsSync());
+
+      if (canUploadMain) {
+        debugPrint("🚀 [UploadStep] 启动真实上传: $uploadPath");
         ctx.remoteUrl = await service._uploadService.uploadFile(
-          file: XFile(ctx.currentAbsolutePath!),
+          file: XFile(uploadPath!),
           module: UploadModule.chat,
           onProgress: (_) {},
         );
-      } else {
-        // 极端兜底：如果没绝对路径也没 content URL，重试时可能会报错。这里取决于 resend 时的 Recover 状态。
+        debugPrint("✅ [UploadStep] 上传成功 Key: ${ctx.remoteUrl}");
       }
     } else {
       ctx.remoteUrl = ctx.initialMsg.content;
@@ -347,36 +406,40 @@ class UploadStep implements PipelineStep {
   }
 }
 
-///  修正版 SyncStep
 class SyncStep implements PipelineStep {
   @override
   Future<void> execute(PipelineContext ctx, ChatActionService service) async {
-    // 1. 彻底净化发送 Meta：绝不基于 msg.meta 盲目合并
+    if (ctx.initialMsg.type == MessageType.image || ctx.initialMsg.type == MessageType.video) {
+      if (ctx.remoteUrl == null || ctx.remoteUrl!.isEmpty || ctx.remoteUrl == '[Image]') {
+        throw "【同步中止】上传未完成。";
+      }
+    }
+
     final Map<String, dynamic> apiMeta = Map.from(ctx.metadata);
 
-    // 2. 强制性 URL 校验
+    //  修复点3：彻底放开 thumb 校验
+    // 只要有值（无论是 http 还是 uploads/），就认定为有效 URL
     String finalThumbUrl = "";
-    if (ctx.remoteThumbUrl != null && ctx.remoteThumbUrl!.startsWith('http')) {
+    if (ctx.remoteThumbUrl != null && ctx.remoteThumbUrl!.isNotEmpty) {
       finalThumbUrl = ctx.remoteThumbUrl!;
-    } else if (ctx.metadata['remote_thumb'] != null &&
-        ctx.metadata['remote_thumb'].startsWith('http')) {
+    } else if (ctx.metadata['remote_thumb'] != null && ctx.metadata['remote_thumb'].isNotEmpty) {
       finalThumbUrl = ctx.metadata['remote_thumb'];
     }
 
-    // 覆盖本地 ID：如果没拿到 URL，发出去的必须是空，绝不能是 .jpg ID
+    // 确保把上传好的封面 URL 塞进 meta
     apiMeta['thumb'] = finalThumbUrl;
+    apiMeta['remote_thumb'] = finalThumbUrl; // 双保险
 
-    debugPrint("🌐 [同步] API Request thumb: ${apiMeta['thumb']}");
+    debugPrint("🌐 [SyncStep] API Request thumb: ${apiMeta['thumb']}");
 
     final serverMsg = await Api.sendMessage(
       id: ctx.initialMsg.id,
       conversationId: service.conversationId,
-      content: ctx.remoteUrl ?? ctx.initialMsg.content,
+      content: ctx.remoteUrl!,
       type: ctx.initialMsg.type.value,
       meta: apiMeta,
     );
 
-    // 3. 回写本地：thumb 还是 ID，remote_thumb 记下 URL
     final Map<String, dynamic> dbMeta = Map.from(ctx.metadata);
     if (serverMsg.meta != null && serverMsg.meta!['thumb'] != null) {
       dbMeta['remote_thumb'] = serverMsg.meta!['thumb'];

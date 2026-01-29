@@ -194,7 +194,7 @@ class LocalDatabaseService {
         .map((snapshot) => ChatUiModel.fromJson(snapshot.value))
         .toList();
 
-    // 🔥 如果列表页也需要缩略图，建议这里也加上 await _prewarmMessages(rawList);
+    //  如果列表页也需要缩略图，建议这里也加上 await _prewarmMessages(rawList);
     // 但通常列表只显示文本，这里为了性能暂且保留原样
     return rawList;
   }
@@ -245,7 +245,7 @@ class LocalDatabaseService {
 
       // --- A. 解析主文件路径 ---
       if (msg.localPath != null && msg.localPath!.isNotEmpty) {
-        if (msg.localPath!.startsWith('http')) {
+        if (msg.localPath!.startsWith('http') || msg.localPath!.startsWith('blob:')) {
           absPath = msg.localPath;
         } else {
           // 耗时 IO：查 AssetID

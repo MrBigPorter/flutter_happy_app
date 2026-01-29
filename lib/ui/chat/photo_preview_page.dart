@@ -1,122 +1,115 @@
 import 'dart:io';
-import 'dart:typed_data'; //  必须引用，解决 Uint8List 报错
+import 'dart:typed_data';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:photo_view/photo_view.dart';
-import 'package:flutter/foundation.dart'; // for kIsWeb
+import 'package:flutter/foundation.dart';
+import '../../utils/image_url.dart';
 
 class PhotoPreviewPage extends StatelessWidget {
   final String heroTag;
-  final String imageSource;       // 原图 (高清，用于最终显示)
-  final String thumbnailSource;   // 缩略图路径 (备用)
-  final Uint8List? previewBytes;  // 新增：微缩图字节流 (视觉占位核心)
+  final String imageSource;       // 原始 Key (uploads/...)
+  final String? cachedThumbnailUrl; //  列表页正在显示的完整 URL (width=497那个)
+  final Uint8List? previewBytes;  // 内存微缩图
+  final int? memW, memH;
 
   const PhotoPreviewPage({
     super.key,
     required this.heroTag,
     required this.imageSource,
-    required this.thumbnailSource,
-    this.previewBytes, // 接收 ChatUiModel 传来的 bytes
+    this.cachedThumbnailUrl,
+    this.previewBytes,
+    this.memW,
+    this.memH,
   });
 
-  // 辅助方法：统一获取 Provider (网络或本地)
-  ImageProvider _getProvider(String source) {
-    if (kIsWeb) {
-      // Web 端逻辑
-      return NetworkImage(source);
+  /// 获取高清图 Provider (生成 width=1080 或 750 的大图链接)
+  ImageProvider _getHighResProvider(BuildContext context, String source) {
+    // 这里的 logicalWidth 决定了你请求的大图尺寸
+    final String finalPath = ImageUrl.build(
+        context,
+        source,
+        logicalWidth: 1080, // 这里请求高清图
+        quality: 85
+    );
+
+    if (finalPath.startsWith('blob:') || (kIsWeb && finalPath.startsWith('http') && !finalPath.contains('cdn-cgi'))) {
+      return NetworkImage(finalPath);
     }
 
-    // Mobile 端逻辑
-    if (source.startsWith('http') || source.startsWith('https')) {
-      return CachedNetworkImageProvider(source);
-    } else {
-      // 本地文件
-      return FileImage(File(source));
+    if (!kIsWeb && (finalPath.startsWith('/') || finalPath.startsWith('file://'))) {
+      return FileImage(File(finalPath.replaceFirst('file://', '')));
     }
+
+    return CachedNetworkImageProvider(finalPath);
   }
 
   @override
   Widget build(BuildContext context) {
-    // 1. 准备高清原图 Provider
-    final ImageProvider originalProvider = _getProvider(imageSource);
-
-    // 2. 准备缩略图 Provider (用于 previewBytes 不存在时的备选)
-    final ImageProvider thumbnailProvider = _getProvider(thumbnailSource);
+    // 1. 准备高清图源
+    final ImageProvider originalProvider = _getHighResProvider(context, imageSource);
 
     return Scaffold(
       backgroundColor: Colors.black,
       body: Stack(
         children: [
-          // A. 核心浏览组件
           Center(
             child: PhotoView(
-              imageProvider: originalProvider, // 目标：加载高清原图
-
-              // 绑定 Hero 动画
+              imageProvider: originalProvider,
               heroAttributes: PhotoViewHeroAttributes(tag: heroTag),
-
               minScale: PhotoViewComputedScale.contained,
               maxScale: PhotoViewComputedScale.covered * 2.5,
-              // 设为 true 防止在原图加载完成瞬间闪烁
               gaplessPlayback: true,
 
-              //  核心魔法：渐进式加载 v2.4
-              // 优先级：previewBytes (内存极速) > thumbnailSource (可能需要IO) > 转圈
               loadingBuilder: (context, event) {
-                // 1. 第一优先级：如果有微缩图字节流，直接从内存渲染，0 IO 耗时
+
+                // A. 如果有列表页传过来的 URL (width=497)，立刻显示它！
+                // 因为这个 URL 在列表页已经下载过了，内存里有，所以是 0 延迟秒开。
+                if (cachedThumbnailUrl != null) {
+                  return CachedNetworkImage(
+                    imageUrl: cachedThumbnailUrl!, //  严禁修改这个 URL，必须和列表页一模一样
+                    width: double.infinity,
+                    height: double.infinity,
+                    fit: BoxFit.contain, // 保持比例，铺满屏幕
+                    // 如果连小图都没加载完（极少见），再显示菊花
+                    placeholder: (context, url) => const Center(
+                      child: CircularProgressIndicator(color: Colors.white24),
+                    ),
+                    errorWidget: (context, url, error) => const SizedBox(),
+                  );
+                }
+
+                // B. 如果没有 URL，试着显示 previewBytes (内存微缩图)
                 if (previewBytes != null && previewBytes!.isNotEmpty) {
                   return Image.memory(
                     previewBytes!,
-                    //  核心修改：加上这两行，强制撑满屏幕！
-                    width: double.infinity,
-                    height: double.infinity,
+                    width: double.infinity, height: double.infinity,
                     fit: BoxFit.contain,
-                    // 可选：加个抗锯齿，让拉伸后的马赛克稍微柔和一点点
-                    filterQuality: FilterQuality.low,
                     gaplessPlayback: true,
                   );
                 }
 
-                // 2. 第二优先级：加载缩略图 Provider
-                return Image(
-                  image: thumbnailProvider,
-                  width: double.infinity,
-                  height: double.infinity,
-                  fit: BoxFit.contain,
-                  gaplessPlayback: true,
-                  // 如果缩略图本身也在加载(极少情况)，显示微弱的转圈
-                  loadingBuilder: (context, child, loadingProgress) {
-                    if (loadingProgress == null) return child;
-                    return const Center(
-                      child: CircularProgressIndicator(color: Colors.white24),
-                    );
-                  },
-                  errorBuilder: (_, __, ___) => const SizedBox(),
+                // C. 啥都没有，只能转菊花
+                return const Center(
+                  child: CircularProgressIndicator(color: Colors.white24),
                 );
               },
 
-              //  错误显示
-              errorBuilder: (context, error, stackTrace) {
-                return Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.broken_image, color: Colors.white54, size: 50),
-                      const SizedBox(height: 10),
-                      const Text("image loading error", style: TextStyle(color: Colors.white54)),
-                    ],
-                  ),
-                );
-              },
+              errorBuilder: (context, error, stackTrace) => const Center(
+                child: Icon(Icons.broken_image, color: Colors.white54, size: 50),
+              ),
             ),
           ),
 
-          // B. 关闭按钮 (左上角)
+          // 关闭按钮
           Positioned(
             top: MediaQuery.of(context).padding.top + 10,
             left: 10,
             child: IconButton(
-              icon: const Icon(Icons.close, color: Colors.white, size: 30),
+              icon: const CircleAvatar(
+                backgroundColor: Colors.black26,
+                child: Icon(Icons.close, color: Colors.white, size: 24),
+              ),
               onPressed: () => Navigator.of(context).pop(),
             ),
           ),

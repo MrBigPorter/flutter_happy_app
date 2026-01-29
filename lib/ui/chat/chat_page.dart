@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_app/app/routes/app_router.dart';
@@ -8,6 +9,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
+import '../../utils/image_url.dart';
 import 'components/chat_bubble.dart';
 import 'components/chat_input/modern_chat_input_bar.dart';
 import 'models/chat_ui_model.dart';
@@ -115,7 +117,13 @@ class _ChatPageState extends ConsumerState<ChatPage> {
                 radius: 18.r,
                 backgroundColor: Colors.grey[200],
                 backgroundImage: asyncDetail.valueOrNull?.avatar != null
-                    ? NetworkImage(asyncDetail.value!.avatar!)
+                    ? CachedNetworkImageProvider(
+                  ImageUrl.build(
+                    context,
+                    asyncDetail.value!.avatar!,
+                    logicalWidth: 36, // 这里给两倍半径即可 (Radius 18 * 2)
+                  ),
+                )
                     : null,
                 child: asyncDetail.valueOrNull?.avatar == null
                     ? Icon(Icons.person, color: context.textSecondary700, size: 20.sp)
