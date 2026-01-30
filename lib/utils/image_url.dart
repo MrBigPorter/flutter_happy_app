@@ -8,22 +8,23 @@ class ImageUrl {
 
   static String gateway({bool useProd = false}) => useProd ? prodGateway : devGateway;
 
+  /// 🧹 强力清洗逻辑：提取相对路径
   static String formatToRelative(String? path) {
     if (path == null || path.isEmpty || path == '[Image]') return '';
     var res = path.trim();
-    if (!res.startsWith('http')) return res;
-    final domains = [prodGateway, devGateway, 'https://admin.joyminis.com', 'https://img.joyminis.com'];
-    for (var d in domains) {
-      if (res.startsWith(d)) {
-        res = res.replaceFirst(d, '');
-        break;
-      }
+
+    // 核心修复：只要包含 uploads/，直接截取后面部分
+    if (res.contains('uploads/')) {
+      res = res.substring(res.indexOf('uploads/'));
     }
-    if (res.contains('uploads/')) res = res.substring(res.indexOf('uploads/'));
+
+    // 去掉开头的斜杠，确保统一为 "uploads/chat/..."
     while (res.startsWith('/')) res = res.substring(1);
+
     return res;
   }
 
+  ///  构建 CDN 链接
   static String build(BuildContext context, String? raw, {
     double? logicalWidth, double? logicalHeight,
     BoxFit fit = BoxFit.cover, int quality = 75,
@@ -31,37 +32,52 @@ class ImageUrl {
   }) {
     if (raw == null || raw.isEmpty || raw == '[Image]') return '';
 
-    // 1. 本地/内存资源直接放行，绝不加域名
-    if (raw.startsWith('file://') ||
-        raw.startsWith('assets/') ||
-        raw.startsWith('blob:') ||
-        raw.startsWith('/') || // 以 / 开头的绝对路径通常是本地文件
-        raw.contains('localhost')) {
+    // 0. 免检通道：已经是 CDN 链接则直接放行 (防止 AppCachedImage 重复计算)
+    if (raw.contains('/cdn-cgi/')) {
       return raw;
     }
 
-    // 2. 清洗路径 (去掉已有的域名，保留 uploads/...)
-    final cleanPath = formatToRelative(raw);
+    // 1. 本地/内存/Assets/Blob 资源直接放行
+    if (raw.startsWith('file://') || raw.startsWith('assets/') ||
+        raw.startsWith('blob:') || raw.contains('localhost')) {
+      return raw;
+    }
 
-    // 3. 准备网关
+    // 2. 非 uploads 的绝对路径放行 (比如外部链接，或者是本地 absolute path)
+    if (raw.startsWith('/') && !raw.contains('uploads/')) {
+      return raw;
+    }
+
+    // 3. 清洗路径
+    String cleanPath = formatToRelative(raw);
     final gw = gateway(useProd: kReleaseMode);
 
-    // 4. Web 端或强制模式：走 Cloudflare/Nginx 图片处理
-    if (kIsWeb || forceGatewayOnNative) {
-      final dpr = MediaQuery.maybeOf(context)?.devicePixelRatio ?? 2.0;
-      final w = logicalWidth != null ? (logicalWidth * dpr).round() : null;
+    // 4. 判定是否为上传的图片
+    final String lowerPath = cleanPath.toLowerCase();
+    final bool isVideo = lowerPath.endsWith('.mp4') || lowerPath.endsWith('.mov') ||
+        lowerPath.endsWith('.avi') || lowerPath.endsWith('.m4v');
 
-      List<String> params = [];
-      if (w != null) params.add('width=${min(w, 2048)}');
-      params.add('quality=$quality');
-      params.add('f=$format');
-      params.add('fit=${fit == BoxFit.contain ? "contain" : "cover"}');
+    // 只要包含 uploads/ 且不是视频，就视为图片，必须走 CDN
+    final bool isUploadImage = cleanPath.contains('uploads/') && !isVideo;
+
+    // 5. 构造 CDN 链接
+    if (kIsWeb || forceGatewayOnNative || isUploadImage) {
+      final dpr = MediaQuery.maybeOf(context)?.devicePixelRatio ?? 2.0;
+      final double targetWidth = logicalWidth ?? 600;
+      final w = (targetWidth * dpr).round();
+
+      List<String> params = [
+        'width=${min(w, 2048)}',
+        'quality=$quality',
+        'f=$format',
+        // 核心修复：配合 BoxFit.cover，必须使用 scale-down 避免 Cloudflare 报错
+        'fit=${fit == BoxFit.contain ? "contain" : "scale-down"}'
+      ];
 
       return '$gw/cdn-cgi/image/${params.join(",")}/$cleanPath';
     }
 
-    // 5. 默认模式：直接拼上网关 (这是你缺失的逻辑！)
-    // 只要代码走到这里，cleanPath 就是 uploads/chat/...，必须加上 gw 变成 http://...
-    return '$gw/$cleanPath';
+    // 6. 兜底逻辑 (视频或非图片资源走直连)
+    return cleanPath.startsWith('http') ? cleanPath : '$gw/$cleanPath';
   }
 }

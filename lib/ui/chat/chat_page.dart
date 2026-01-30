@@ -68,6 +68,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
 
     // 3. 监听详情 (保留你原来的逻辑)
     final asyncDetail = ref.watch(chatDetailProvider(widget.conversationId));
+    final controller = ref.watch(chatControllerProvider(widget.conversationId));
     final bool isGroup = asyncDetail.valueOrNull?.type == ConversationType.group;
 
     return GestureDetector(

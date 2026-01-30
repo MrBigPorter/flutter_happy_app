@@ -59,7 +59,7 @@ class GlobalUploadService {
             "application/octet-stream";
       }
 
-      // 2. ⚡️⚡️⚡️ 强制修正：如果后缀是 mp4，必须是 video/mp4 ⚡️⚡️⚡️
+      // 2.  强制修正：如果后缀是 mp4，必须是 video/mp4
       // 这一步是为了防止 lookupMimeType 识别失败 fallback 成 image/jpeg
       if (fileName.toLowerCase().endsWith(".mp4")) {
         mimeType = "video/mp4";
@@ -92,7 +92,6 @@ class GlobalUploadService {
         uploadData = fileToUpload.openRead();
       }
 
-      print("Uploading: $fileName, forced_mime: $mimeType"); // 看这里！必须打印 video/mp4
 
       try {
         await _s3Dio.put(

@@ -1,14 +1,14 @@
 import 'dart:async';
-import 'package:flutter/widgets.dart';
+import 'package:flutter/widgets.dart'; // 包含 debugPrint
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:rxdart/rxdart.dart';
 
 import 'package:flutter_app/core/services/socket_service.dart';
-import 'package:flutter_app/core/providers/socket_provider.dart';
 import 'package:flutter_app/ui/chat/models/chat_ui_model.dart';
 import 'package:flutter_app/ui/chat/services/database/local_database_service.dart';
 import 'package:flutter_app/ui/chat/providers/conversation_provider.dart';
 import 'package:flutter_app/core/api/lucky_api.dart';
+import 'package:flutter_app/core/constants/socket_events.dart';
 
 import '../models/conversation.dart';
 
@@ -27,11 +27,24 @@ class ChatEventHandler {
   ChatEventHandler(this.conversationId, this._ref, this._socketService, this._currentUserId);
 
   void init() {
+    debugPrint("🔵 [ChatEventHandler] 初始化: $conversationId");
+
     _setupSubscriptions();
     _setupReadReceiptDebounce();
+
+    _setupJoinRoomLogic();
   }
 
   void dispose() {
+    debugPrint("🔴 [ChatEventHandler] 销毁: $conversationId");
+
+    // 移除 connect 监听，防止内存泄漏
+    try {
+      _socketService.socket?.off('connect');
+      // 可选：离开房间
+      _socketService.socket?.emit(SocketEvents.leaveChat, {'roomId': conversationId});
+    } catch (_) {}
+
     _msgSub?.cancel();
     _readStatusSub?.cancel();
     _recallSub?.cancel();
@@ -39,20 +52,50 @@ class ChatEventHandler {
   }
 
   // ===========================================================================
-  // 📡 Socket 监听
+  // 🚪 进房逻辑 (核心修复)
+  // ===========================================================================
+
+  void _setupJoinRoomLogic() {
+    final socket = _socketService.socket;
+
+    // 1. 监听底层重连：只要连上，立马进房
+    socket?.on('connect', (_) {
+      debugPrint("✅ [WS] Socket 重连成功，重新进房: $conversationId");
+      _joinRoom();
+    });
+
+    // 2. 如果当前已经连着，直接进
+    if (socket!.connected) {
+      debugPrint(" [WS] Socket 已连接，立即进房: $conversationId");
+      _joinRoom();
+    } else {
+      debugPrint("⏳ [WS] Socket 未连接，等待连接...");
+    }
+  }
+
+  void _joinRoom() {
+    try {
+      // ️ 注意：根据你的 socket_events.dart，这里必须用 'join_chat'
+      _socketService.socket?.emit(SocketEvents.joinChat, {
+        'roomId': conversationId,
+      });
+    } catch (e) {
+      debugPrint(" [WS] 进房失败: $e");
+    }
+  }
+
+  // ===========================================================================
+  //  Socket 监听
   // ===========================================================================
 
   void _setupSubscriptions() {
-    // 监听新消息
     _msgSub = _socketService.chatMessageStream.listen(_onSocketMessage);
-    // 监听对方已读状态
     _readStatusSub = _socketService.readStatusStream.listen(_onReadStatusUpdate);
-    // 监听撤回
     _recallSub = _socketService.recallEventStream.listen(_onMessageRecalled);
   }
 
   // ===========================================================================
-  // 📥 事件处理
+  //  事件处理
   // ===========================================================================
 
   void _onSocketMessage(Map<String, dynamic> data) async {
@@ -85,7 +128,7 @@ class ChatEventHandler {
       _currentUserId,
     );
 
-    // 保护：如果本地已经有微缩图 (比如是同步端)，保留它
+    // 保护本地微缩图
     final localMsg = await LocalDatabaseService().getMessageById(uiMsg.id);
     if (localMsg?.previewBytes != null && localMsg!.previewBytes!.isNotEmpty) {
       uiMsg = uiMsg.copyWith(previewBytes: localMsg.previewBytes);
@@ -105,7 +148,6 @@ class ChatEventHandler {
 
   void _onMessageRecalled(SocketRecallEvent event) async {
     if (event.conversationId != conversationId) return;
-
     final tip = event.isSelf ? "You unsent a message" : "This message was unsent";
     await LocalDatabaseService().doLocalRecall(event.messageId, tip);
     _updateListSnapshot(tip, DateTime.now().millisecondsSinceEpoch);
@@ -122,6 +164,7 @@ class ChatEventHandler {
   }
 
   void markAsRead() {
+    // 只有在前台才发已读，省流量
     if (WidgetsBinding.instance.lifecycleState != AppLifecycleState.resumed) return;
 
     try {

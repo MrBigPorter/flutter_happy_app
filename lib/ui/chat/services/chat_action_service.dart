@@ -16,9 +16,10 @@ import 'package:flutter_app/utils/upload/upload_types.dart';
 import 'package:flutter_app/core/api/lucky_api.dart';
 import 'package:video_compress/video_compress.dart';
 
+import '../../../utils/upload/image_utils.dart';
 import '../services/media/video_processor.dart';
-import '../services/compression/image_compression_service.dart';
 import 'blurHash/blur_hash_service.dart';
+import 'compression/image_compression_service.dart';
 
 // ===========================================================================
 // 1. 管道核心定义
@@ -78,7 +79,7 @@ class ChatActionService {
       }
       debugPrint("Pipeline Success: ${ctx.initialMsg.id}");
     } catch (e) {
-      debugPrint("❌ Pipeline Crashed: $e");
+      debugPrint(" Pipeline Crashed: $e");
       await LocalDatabaseService().updateMessageStatus(
         ctx.initialMsg.id,
         MessageStatus.pending,
@@ -98,20 +99,38 @@ class ChatActionService {
   }
 
   Future<void> sendImage(XFile file) async {
+    // 1. 🚀 前置压缩：解决上传慢、流量大的问题
+    // (Web 端会走 Canvas 加速，不卡顿；App 端走 Native，飞快)
+    final XFile processedFile = await ImageCompressionService.compressForUpload(file);
+
+    // 2. 🚀 秒出预览图：解决消息上屏白屏的问题
+    // (因为是对 150KB 的小图做处理，耗时 <10ms，几乎无感)
+    Uint8List? quickPreview;
+    try {
+      quickPreview = await ImageCompressionService.getTinyThumbnail(processedFile);
+    } catch (e) {
+      debugPrint("⚠️ 预览图生成失败: $e");
+    }
+
+    // 3. 创建消息 (直接带上 previewBytes，UI 渲染时直接显示，无需等待)
     final msg = _createBaseMessage(
       content: "[Image]",
       type: MessageType.image,
-      localPath: file.path,
+      localPath: processedFile.path,
+      previewBytes: quickPreview,
     );
-    _sessionPathCache[msg.id] = file.path;
 
-    //  核心修复 B：初始化 Context 时把 sourceFile 塞进去
+    _sessionPathCache[msg.id] = processedFile.path;
+
+    // 4. 初始化 Pipeline
     final ctx = PipelineContext(msg);
-    ctx.sourceFile = file;
+    // 🚨 核心逻辑：必须把【处理后的文件】传给 Pipeline，否则 Web 端会传原图！
+    ctx.sourceFile = processedFile;
 
+    // 5. 执行管道
     await _runPipeline(ctx, [
       PersistStep(),
-      ImageProcessStep(),
+      ImageProcessStep(), // 这里的 BlurHash 计算现在是锦上添花，因为 previewBytes 已经有了
       UploadStep(),
       SyncStep(),
     ]);
@@ -284,57 +303,42 @@ class RecoverStep implements PipelineStep {
 class VideoProcessStep implements PipelineStep {
   @override
   Future<void> execute(PipelineContext ctx, ChatActionService service) async {
+    // 1. Web 端逻辑：直接从预热的 previewBytes 恢复
     if (kIsWeb) {
-      if (ctx.initialMsg.previewBytes != null && ctx.initialMsg.previewBytes!.isNotEmpty) {
-        final xFile = XFile.fromData(
-            ctx.initialMsg.previewBytes!,
-            name: 'video_thumb_${const Uuid().v4()}.jpg',
-            mimeType: 'image/jpeg'
-        );
-        ctx.thumbAssetId = xFile.path;
-
-        if (ctx.metadata['w'] == null) {
-          try {
-            final codec = await ui.instantiateImageCodec(ctx.initialMsg.previewBytes!);
-            final frame = await codec.getNextFrame();
-            //  Web 端对齐 w, h
-            ctx.metadata.addAll({
-              'w': frame.image.width,
-              'h': frame.image.height
-            });
-            //  计算 Web 端视频封面 BlurHash
-            ctx.metadata['blurHash'] = await BlurHashService.create(ctx.initialMsg.previewBytes!);
-          } catch (_) {}
+      final bytes = ctx.initialMsg.previewBytes;
+      if (bytes != null && bytes.isNotEmpty) {
+        final result = await ThumbBlurHashService.build(bytes);
+        if (result != null) {
+          ctx.metadata.addAll({'w': result.thumbW, 'h': result.thumbH, 'blurHash': result.blurHash});
+          await LocalDatabaseService().updateMessage(ctx.initialMsg.id, {'meta': ctx.metadata});
         }
       }
       return;
     }
 
-    // Mobile 端
+    // 2. Mobile 端逻辑：压缩 + 封面指纹化
     final result = await VideoProcessor.process(XFile(ctx.currentAbsolutePath!));
-    if (result == null) throw "Compression Failed";
+    if (result == null) throw "Video Compression Failed";
 
-    final File thumbFile = result.thumbnailFile;
-    final Uint8List thumbBytes = await thumbFile.readAsBytes();
+    final thumbBytes = await File(result.thumbnailFile.path).readAsBytes();
 
-    //  核心补强：计算视频封面视觉指纹
-    final String coverHash = await BlurHashService.create(thumbBytes);
+    //  关键：给视频封面也跑一遍图片服务，获取微缩图和 BlurHash
+    final thumbResult = await ThumbBlurHashService.build(thumbBytes);
 
     ctx.currentAbsolutePath = result.videoFile.path;
-    ctx.thumbAssetId = await AssetManager.save(XFile(thumbFile.path), MessageType.image);
+    ctx.thumbAssetId = await AssetManager.save(XFile(result.thumbnailFile.path), MessageType.image);
 
-    //  严格对齐 w, h 字段
     ctx.metadata.addAll({
       'w': result.width,
       'h': result.height,
       'duration': result.duration,
       'thumb': ctx.thumbAssetId,
-      'blurHash': coverHash,
+      'blurHash': thumbResult?.blurHash ?? "",
     });
 
     await LocalDatabaseService().updateMessage(ctx.initialMsg.id, {
       'meta': ctx.metadata,
-      'previewBytes': thumbBytes,
+      'previewBytes': thumbResult?.thumbBytes ?? thumbBytes,
     });
   }
 }
@@ -347,27 +351,25 @@ class ImageProcessStep implements PipelineStep {
 
     try {
       final bytes = await XFile(path).readAsBytes();
-      final codec = await ui.instantiateImageCodec(bytes);
-      final frame = await codec.getNextFrame();
 
-      //  严格对齐 w, h
-      ctx.metadata.addAll({'w': frame.image.width, 'h': frame.image.height});
+      //  一站式服务：处理缩放、指纹、宽高
+      final result = await ThumbBlurHashService.build(bytes);
 
-      //  并行执行：缩略图生成 + BlurHash 计算
-      final List<dynamic> results = await Future.wait([
-        ImageCompressionService.getTinyThumbnail(XFile(path)),
-        BlurHashService.create(bytes),
-      ]);
+      if (result != null) {
+        ctx.metadata.addAll({
+          'blurHash': result.blurHash,
+          'w': result.thumbW,
+          'h': result.thumbH,
+        });
 
-      final Uint8List? preview = results[0];
-      ctx.metadata['blurHash'] = results[1];
-
-      await LocalDatabaseService().updateMessage(ctx.initialMsg.id, {
-        'meta': ctx.metadata,
-        'previewBytes': preview, //  使用并行结果，移除冗余调用
-      });
+        // 写入本地 DB，UI 监听到 previewBytes 后会立刻显示微缩图
+        await LocalDatabaseService().updateMessage(ctx.initialMsg.id, {
+          'meta': ctx.metadata,
+          'previewBytes': result.thumbBytes,
+        });
+      }
     } catch (e) {
-      debugPrint(" [ImageProcessStep] 处理失败: $e");
+      debugPrint(" [ImageProcessStep] 异常: $e");
     }
   }
 }

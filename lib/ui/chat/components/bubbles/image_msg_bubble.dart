@@ -1,5 +1,5 @@
 import 'dart:io';
-import 'package:flutter/foundation.dart'; // kIsWeb
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:intl/intl.dart';
@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 import '../../models/chat_ui_model.dart';
 import '../../../img/app_image.dart';
 import '../../photo_preview_page.dart';
+//  1. 恢复引入：我们需要它来生成“垫脚石” URL
 import '../../../../utils/image_url.dart';
 
 class ImageMsgBubble extends StatelessWidget {
@@ -16,10 +17,10 @@ class ImageMsgBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // 1. 提取元数据 (w, h, blurHash)
+    // 1. 提取元数据
     final Map<String, dynamic> meta = message.meta ?? {};
 
-    // 2. 气泡基础宽度 (固定 0.6sw，但比例由 metadata 决定)
+    // 2. 气泡基础宽度
     final double baseWidth = 0.60.sw;
 
     // 3. 时间字符串
@@ -31,42 +32,30 @@ class ImageMsgBubble extends StatelessWidget {
     final String? readyPath = message.resolvedPath ?? message.localPath ??
         (message.content != '[Image]' ? message.content : null);
 
-    // 5. 生成用于预览图对比的 URL (必须与 AppCachedImage 内部生成逻辑完全一致)
-    final String? currentBubbleUrl = (readyPath != null)
-        ? ImageUrl.build(
-      context,
-      readyPath,
-      logicalWidth: baseWidth,
-      logicalHeight: baseWidth, // 这里虽然传了宽，但 AppCachedImage 内部会按比例处理
-      fit: BoxFit.cover,
-      quality: 50,
-    )
-        : null;
-
     return RepaintBoundary(
       child: GestureDetector(
-        onTap: () => _openPreview(context, readyPath, currentBubbleUrl),
+        //  传参优化
+        onTap: () => _openPreview(context, readyPath, baseWidth),
         child: Container(
           width: baseWidth,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12.r),
             border: Border.all(color: Colors.grey.withOpacity(0.1)),
           ),
-          // 使用 ClipRRect 确保内容不溢出圆角
           child: ClipRRect(
             borderRadius: BorderRadius.circular(12.r),
             child: Stack(
               children: [
-                //  核心改变：所有的“阶梯渲染”逻辑全部交给 AppCachedImage
-                // 它会自动处理：BlurHash -> previewBytes -> 高清图
+                // AppCachedImage 内部会自动调用 ImageUrl.build 生成 CDN 链接
                 AppCachedImage(
                   readyPath,
-                  width: baseWidth, // 宽度固定
-                  // 这里的 height 传 null，让 AppCachedImage 根据 metadata 里的 aspectRatio 自动算高度
+                  width: baseWidth,
+                  // 这里的 quality 默认是 50，记住这个参数，下面要对齐
+                  quality: 50,
                   metadata: meta,
                   previewBytes: message.previewBytes,
-                  heroTag: message.id, // Hero 逻辑也收拢进去
-                  enablePreview: false, // 我们手动处理跳转
+                  heroTag: message.id,
+                  enablePreview: false,
                   fit: BoxFit.cover,
                 ),
 
@@ -108,8 +97,21 @@ class ImageMsgBubble extends StatelessWidget {
     );
   }
 
-  void _openPreview(BuildContext context, String? imageSource, String? cachedUrl) {
+  void _openPreview(BuildContext context, String? imageSource, double bubbleWidth) {
     if (imageSource == null || imageSource.isEmpty) return;
+
+    //  核心修正：必须与 AppCachedImage 的默认参数完全对齐！
+    // 1. AppCachedImage 默认 quality = 50
+    // 2. AppCachedImage 默认 format = kIsWeb ? 'auto' : 'webp'
+    final String thumbUrl = ImageUrl.build(
+      context,
+      imageSource,
+      logicalWidth: bubbleWidth,
+      quality: 50,                // 必须对齐
+      fit: BoxFit.cover,          // 必须对齐
+      format: kIsWeb ? 'auto' : 'webp', //  必须对齐！之前这里漏了，导致 URL 不一致
+    );
+
     Navigator.push(
       context,
       PageRouteBuilder(
@@ -117,9 +119,9 @@ class ImageMsgBubble extends StatelessWidget {
         pageBuilder: (_, __, ___) => PhotoPreviewPage(
           heroTag: message.id,
           imageSource: imageSource,
-          cachedThumbnailUrl: cachedUrl,
+          cachedThumbnailUrl: thumbUrl, // 现在这个 URL 和列表页的一模一样了
           previewBytes: message.previewBytes,
-          metadata: message.meta, //  架构师补强：透传元数据给预览页
+          metadata: message.meta,
         ),
       ),
     );

@@ -72,6 +72,31 @@ class Http {
     //  以前这里有几百行代码，现在全部委托给 UnifiedInterceptor
     // 我们把 _rawDio 传给它，让它去处理刷新逻辑
     _dio.interceptors.add(UnifiedInterceptor(_rawDio));
+
+    //  调试：打印 API 请求/响应（只在 debug）
+    /*assert(() {
+      _dio.interceptors.add(InterceptorsWrapper(
+        onRequest: (options, handler) async {
+          final uri = options.uri.toString();
+          print('HTTP REQ ${options.method} $uri');
+          print('  headers=${options.headers}');
+          if (options.data != null) print('  data=${options.data}');
+          handler.next(options);
+        },
+        onResponse: (resp, handler) {
+          final uri = resp.requestOptions.uri.toString();
+          print('HTTP RES ${resp.statusCode} $uri');
+          // 重点：看是不是被 302/重定向、或者 cf 头
+          print('  respHeaders=${resp.headers.map}');
+          handler.next(resp);
+        },
+        onError: (e, handler) {
+          print('HTTP ERR ${e.requestOptions.uri} ${e.message}');
+          handler.next(e);
+        },
+      ));
+      return true;
+    }());*/
   }
 
   // =========================================================
