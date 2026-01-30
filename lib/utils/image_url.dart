@@ -3,7 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 
 class ImageUrl {
-  static const String devGateway = 'http://dev.joyminis.com';
+  static const String devGateway = 'https://dev.joyminis.com';
   static const String prodGateway = 'https://admin.joyminis.com';
 
   static String gateway({bool useProd = false}) => useProd ? prodGateway : devGateway;

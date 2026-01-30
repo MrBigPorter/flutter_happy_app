@@ -135,6 +135,7 @@ dependencies:
   video_compress: ^3.1.4
   cross_file: ^0.3.5+1
   ffmpeg_kit_flutter_new: ^4.1.0
+  blurhash: ^1.2.0
 
 
 dev_dependencies:

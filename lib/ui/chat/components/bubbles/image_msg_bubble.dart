@@ -14,93 +14,79 @@ class ImageMsgBubble extends StatelessWidget {
 
   const ImageMsgBubble({super.key, required this.message});
 
-  int _getCacheWidth(BuildContext context, double widgetWidth) {
-    final double dpr = MediaQuery.of(context).devicePixelRatio;
-    return (widgetWidth * dpr).toInt();
-  }
-
   @override
   Widget build(BuildContext context) {
-    final double bubbleSize = 0.60.sw;
-    final int cacheW = _getCacheWidth(context, bubbleSize);
+    // 1. 提取元数据 (w, h, blurHash)
+    final Map<String, dynamic> meta = message.meta ?? {};
+
+    // 2. 气泡基础宽度 (固定 0.6sw，但比例由 metadata 决定)
+    final double baseWidth = 0.60.sw;
+
+    // 3. 时间字符串
     final timeStr = DateFormat('HH:mm').format(
       DateTime.fromMillisecondsSinceEpoch(message.createdAt),
     );
 
-    // 1. 获取有效路径
-    final String? readyPath = message.resolvedPath ??
-        (message.localPath != null && (message.localPath!.startsWith('/') || message.localPath!.startsWith('blob:'))
-            ? message.localPath
-            : null) ??
+    // 4. 统一路径获取
+    final String? readyPath = message.resolvedPath ?? message.localPath ??
         (message.content != '[Image]' ? message.content : null);
 
-    // AppCachedImage 默认 format 是 'webp'
-    // ImageUrl.build 默认 format 是 'auto'
-    // 这里必须强制指定 format: 'webp'，否则生成的 URL 会变成 f=auto，导致无法命中列表页的缓存！
+    // 5. 生成用于预览图对比的 URL (必须与 AppCachedImage 内部生成逻辑完全一致)
     final String? currentBubbleUrl = (readyPath != null)
         ? ImageUrl.build(
       context,
       readyPath,
-      logicalWidth: bubbleSize,
-      logicalHeight: bubbleSize,
+      logicalWidth: baseWidth,
+      logicalHeight: baseWidth, // 这里虽然传了宽，但 AppCachedImage 内部会按比例处理
       fit: BoxFit.cover,
       quality: 50,
     )
         : null;
 
     return RepaintBoundary(
-      child: Hero(
-        tag: message.id,
-        child: GestureDetector(
-          onTap: () => _openPreview(context, readyPath, currentBubbleUrl),
-          child: Container(
-            width: bubbleSize,
-            height: bubbleSize,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12.r),
-              border: Border.all(color: Colors.grey.withOpacity(0.1)),
-              color: Colors.grey[50],
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(12.r),
-              child: Stack(
-                alignment: Alignment.center,
-                fit: StackFit.expand,
-                children: [
-                  // Layer 1: 内存微缩图
-                  if (message.previewBytes != null && message.previewBytes!.isNotEmpty)
-                    Image.memory(
-                      message.previewBytes!,
-                      width: bubbleSize, height: bubbleSize,
-                      fit: BoxFit.cover,
-                      gaplessPlayback: true,
-                      cacheWidth: cacheW,
-                    ),
+      child: GestureDetector(
+        onTap: () => _openPreview(context, readyPath, currentBubbleUrl),
+        child: Container(
+          width: baseWidth,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12.r),
+            border: Border.all(color: Colors.grey.withOpacity(0.1)),
+          ),
+          // 使用 ClipRRect 确保内容不溢出圆角
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(12.r),
+            child: Stack(
+              children: [
+                //  核心改变：所有的“阶梯渲染”逻辑全部交给 AppCachedImage
+                // 它会自动处理：BlurHash -> previewBytes -> 高清图
+                AppCachedImage(
+                  readyPath,
+                  width: baseWidth, // 宽度固定
+                  // 这里的 height 传 null，让 AppCachedImage 根据 metadata 里的 aspectRatio 自动算高度
+                  metadata: meta,
+                  previewBytes: message.previewBytes,
+                  heroTag: message.id, // Hero 逻辑也收拢进去
+                  enablePreview: false, // 我们手动处理跳转
+                  fit: BoxFit.cover,
+                ),
 
-                  // Layer 2: 高清图层
-                  if (readyPath != null)
-                    _buildHighResImage(readyPath, bubbleSize, cacheW),
-
-                  // Layer 3: Loading
-                  if (message.status == MessageStatus.sending)
-                    Container(
+                // 发送中遮罩
+                if (message.status == MessageStatus.sending)
+                  Positioned.fill(
+                    child: Container(
                       color: Colors.black26,
                       child: const Center(
-                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 3),
+                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                       ),
                     ),
-
-                  // Layer 4: Time
-                  Positioned(
-                    right: 6.w, bottom: 6.h,
-                    child: Container(
-                      padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
-                      decoration: BoxDecoration(color: Colors.black.withOpacity(0.4), borderRadius: BorderRadius.circular(10.r)),
-                      child: Text(timeStr, style: TextStyle(color: Colors.white, fontSize: 9.sp, fontWeight: FontWeight.w500)),
-                    ),
                   ),
-                ],
-              ),
+
+                // 时间戳
+                Positioned(
+                  right: 6.w, bottom: 6.h,
+                  child: _buildTimeTag(timeStr),
+                ),
+              ],
             ),
           ),
         ),
@@ -108,22 +94,17 @@ class ImageMsgBubble extends StatelessWidget {
     );
   }
 
-  Widget _buildHighResImage(String path, double size, int cacheW) {
-    final isLocalFile = !kIsWeb && (path.startsWith('/') || path.startsWith('file://'));
-
-    if (isLocalFile) {
-      final file = File(path.replaceFirst('file://', ''));
-      if (file.existsSync()) {
-        return Image.file(file, width: size, height: size, fit: BoxFit.cover, cacheWidth: cacheW, gaplessPlayback: true, errorBuilder: (_, __, ___) => const SizedBox.shrink());
-      }
-    }
-
-    // AppCachedImage 内部默认就是 format: 'webp'，所以这里不用动
-    return AppCachedImage(
-      path,
-      width: size, height: size, fit: BoxFit.cover,
-      quality: 50,
-      enablePreview: false,
+  Widget _buildTimeTag(String time) {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
+      decoration: BoxDecoration(
+        color: Colors.black.withOpacity(0.4),
+        borderRadius: BorderRadius.circular(10.r),
+      ),
+      child: Text(
+        time,
+        style: TextStyle(color: Colors.white, fontSize: 9.sp, fontWeight: FontWeight.w500),
+      ),
     );
   }
 
@@ -138,6 +119,7 @@ class ImageMsgBubble extends StatelessWidget {
           imageSource: imageSource,
           cachedThumbnailUrl: cachedUrl,
           previewBytes: message.previewBytes,
+          metadata: message.meta, //  架构师补强：透传元数据给预览页
         ),
       ),
     );

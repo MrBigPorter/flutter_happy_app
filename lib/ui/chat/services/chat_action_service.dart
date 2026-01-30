@@ -18,6 +18,7 @@ import 'package:video_compress/video_compress.dart';
 
 import '../services/media/video_processor.dart';
 import '../services/compression/image_compression_service.dart';
+import 'blurHash/blur_hash_service.dart';
 
 // ===========================================================================
 // 1. 管道核心定义
@@ -220,7 +221,7 @@ class ChatActionService {
 }
 
 // ===========================================================================
-// 3. 原子步骤实现
+// 3. 原子步骤实现 (严格对齐 w, h 协议)
 // ===========================================================================
 
 class PersistStep implements PipelineStep {
@@ -284,26 +285,25 @@ class VideoProcessStep implements PipelineStep {
   @override
   Future<void> execute(PipelineContext ctx, ChatActionService service) async {
     if (kIsWeb) {
-      // Web端：从 previewBytes 恢复封面上传逻辑
-      // 必须手动指定 name 和 mimeType，否则上传后也会变成 .so 或无后缀文件
       if (ctx.initialMsg.previewBytes != null && ctx.initialMsg.previewBytes!.isNotEmpty) {
         final xFile = XFile.fromData(
             ctx.initialMsg.previewBytes!,
-            name: 'video_thumb_${const Uuid().v4()}.jpg', // 显式指定文件名
+            name: 'video_thumb_${const Uuid().v4()}.jpg',
             mimeType: 'image/jpeg'
         );
         ctx.thumbAssetId = xFile.path;
-        // 注意：Web端 XFile.path 也是 blob url，但我们上面指定了 name，
-        // 在 UploadStep 里我们会处理这个逻辑
 
         if (ctx.metadata['w'] == null) {
           try {
             final codec = await ui.instantiateImageCodec(ctx.initialMsg.previewBytes!);
             final frame = await codec.getNextFrame();
+            //  Web 端对齐 w, h
             ctx.metadata.addAll({
               'w': frame.image.width,
               'h': frame.image.height
             });
+            //  计算 Web 端视频封面 BlurHash
+            ctx.metadata['blurHash'] = await BlurHashService.create(ctx.initialMsg.previewBytes!);
           } catch (_) {}
         }
       }
@@ -311,25 +311,30 @@ class VideoProcessStep implements PipelineStep {
     }
 
     // Mobile 端
-    final result = await VideoProcessor.process(
-      XFile(ctx.currentAbsolutePath!),
-    );
+    final result = await VideoProcessor.process(XFile(ctx.currentAbsolutePath!));
     if (result == null) throw "Compression Failed";
 
+    final File thumbFile = result.thumbnailFile;
+    final Uint8List thumbBytes = await thumbFile.readAsBytes();
+
+    //  核心补强：计算视频封面视觉指纹
+    final String coverHash = await BlurHashService.create(thumbBytes);
+
     ctx.currentAbsolutePath = result.videoFile.path;
-    ctx.thumbAssetId = await AssetManager.save(
-      XFile(result.thumbnailFile.path),
-      MessageType.image,
-    );
+    ctx.thumbAssetId = await AssetManager.save(XFile(thumbFile.path), MessageType.image);
+
+    //  严格对齐 w, h 字段
     ctx.metadata.addAll({
       'w': result.width,
       'h': result.height,
       'duration': result.duration,
       'thumb': ctx.thumbAssetId,
+      'blurHash': coverHash,
     });
 
     await LocalDatabaseService().updateMessage(ctx.initialMsg.id, {
       'meta': ctx.metadata,
+      'previewBytes': thumbBytes,
     });
   }
 }
@@ -344,16 +349,25 @@ class ImageProcessStep implements PipelineStep {
       final bytes = await XFile(path).readAsBytes();
       final codec = await ui.instantiateImageCodec(bytes);
       final frame = await codec.getNextFrame();
+
+      //  严格对齐 w, h
       ctx.metadata.addAll({'w': frame.image.width, 'h': frame.image.height});
 
-      final preview = await ImageCompressionService.getTinyThumbnail(XFile(path));
+      //  并行执行：缩略图生成 + BlurHash 计算
+      final List<dynamic> results = await Future.wait([
+        ImageCompressionService.getTinyThumbnail(XFile(path)),
+        BlurHashService.create(bytes),
+      ]);
+
+      final Uint8List? preview = results[0];
+      ctx.metadata['blurHash'] = results[1];
 
       await LocalDatabaseService().updateMessage(ctx.initialMsg.id, {
         'meta': ctx.metadata,
-        'previewBytes': preview,
+        'previewBytes': preview, //  使用并行结果，移除冗余调用
       });
     } catch (e) {
-      debugPrint("⚠️ [ImageProcessStep] 预览生成失败: $e");
+      debugPrint(" [ImageProcessStep] 处理失败: $e");
     }
   }
 }
@@ -368,27 +382,17 @@ class UploadStep implements PipelineStep {
     if (!hasRemoteThumb) {
       if (ctx.thumbAssetId != null) {
         String? path;
-
         if (kIsWeb && (ctx.thumbAssetId!.startsWith('blob:') || ctx.thumbAssetId!.length > 200)) {
           path = ctx.thumbAssetId;
         } else {
-          path = await AssetManager.getFullPath(
-            ctx.thumbAssetId!,
-            MessageType.image,
-          );
+          path = await AssetManager.getFullPath(ctx.thumbAssetId!, MessageType.image);
         }
 
-        bool canUploadThumb = kIsWeb
-            ? (path != null)
-            : (path != null && File(path).existsSync());
-
-        if (canUploadThumb) {
-          //  Web端修复：封面必须有文件名，否则后端不认
-          XFile thumbFile = XFile(path!);
+        if (path != null && (kIsWeb || File(path).existsSync())) {
+          XFile thumbFile = XFile(path);
           if (kIsWeb && (thumbFile.name.isEmpty || !thumbFile.name.contains('.'))) {
             thumbFile = XFile(path, name: 'thumb_${const Uuid().v4()}.jpg');
           }
-
           ctx.remoteThumbUrl = await service._uploadService.uploadFile(
             file: thumbFile,
             module: UploadModule.chat,
@@ -398,43 +402,26 @@ class UploadStep implements PipelineStep {
       }
     }
 
-    // 2. 附件主体上传
+    // 2. 主文件上传
     bool hasRemoteContent = ctx.initialMsg.content.startsWith('http') || ctx.initialMsg.content.startsWith('uploads/');
-
     if (!hasRemoteContent) {
       final String? uploadPath = ctx.currentAbsolutePath ?? ctx.initialMsg.localPath;
-
-      bool canUploadMain = kIsWeb
-          ? (uploadPath != null && uploadPath.isNotEmpty)
-          : (uploadPath != null && File(uploadPath).existsSync());
-
-      if (canUploadMain) {
-        debugPrint(" [UploadStep] 启动真实上传: $uploadPath");
-
+      if (uploadPath != null && (kIsWeb || File(uploadPath).existsSync())) {
         XFile fileToUpload;
-
-        //  核心修复 C：优先使用 sourceFile
-        // 在 Web 端，如果路径没变（没被压缩替换），优先用 sourceFile。
-        // 因为 sourceFile 完好地保存了文件名 (e.g., 'cat.jpg')。
-        // 如果用 XFile(blobUrl)，文件名会丢失，导致上传变成 'uuid.so' 或 'uuid'，引发 404/CORS。
         if (kIsWeb && ctx.sourceFile != null && uploadPath == ctx.sourceFile!.path) {
           fileToUpload = ctx.sourceFile!;
         } else {
-          // 如果 sourceFile 不可用（比如文件被压缩了，或者是在重发），
-          // 必须手动补全文件名，绝不能让它裸奔。
-          fileToUpload = XFile(uploadPath!);
+          fileToUpload = XFile(uploadPath);
           if (kIsWeb && (fileToUpload.name.isEmpty || !fileToUpload.name.contains('.'))) {
             final ext = ctx.initialMsg.type == MessageType.video ? 'mp4' : 'jpg';
-            fileToUpload = XFile(uploadPath!, name: 'upload_${const Uuid().v4()}.$ext');
+            fileToUpload = XFile(uploadPath, name: 'upload_${const Uuid().v4()}.$ext');
           }
         }
-
         ctx.remoteUrl = await service._uploadService.uploadFile(
           file: fileToUpload,
           module: UploadModule.chat,
           onProgress: (_) {},
         );
-        debugPrint("[UploadStep] 上传成功 Key: ${ctx.remoteUrl}");
       }
     } else {
       ctx.remoteUrl = ctx.initialMsg.content;
@@ -446,39 +433,32 @@ class SyncStep implements PipelineStep {
   @override
   Future<void> execute(PipelineContext ctx, ChatActionService service) async {
     if (ctx.initialMsg.type == MessageType.image || ctx.initialMsg.type == MessageType.video) {
-      if (ctx.remoteUrl == null || ctx.remoteUrl!.isEmpty || ctx.remoteUrl == '[Image]') {
-        throw "【同步中止】上传未完成。";
-      }
+      if (ctx.remoteUrl == null || ctx.remoteUrl!.isEmpty) throw "【同步中止】上传未完成";
     }
 
-    final Map<String, dynamic> apiMeta = Map.from(ctx.metadata);
-
-    String finalThumbUrl = "";
-    if (ctx.remoteThumbUrl != null && ctx.remoteThumbUrl!.isNotEmpty) {
-      finalThumbUrl = ctx.remoteThumbUrl!;
-    } else if (ctx.metadata['remote_thumb'] != null && ctx.metadata['remote_thumb'].isNotEmpty) {
-      finalThumbUrl = ctx.metadata['remote_thumb'];
-    }
-
-    apiMeta['thumb'] = finalThumbUrl;
-    apiMeta['remote_thumb'] = finalThumbUrl;
-
-    debugPrint("🌐 [SyncStep] API Request thumb: ${apiMeta['thumb']}");
-
-    final String contentToSend = ctx.remoteUrl ?? ctx.initialMsg.content;
+    //  严格按照后端 DTO 构建 meta 命名空间
+    final Map<String, dynamic> apiMeta = {
+      'blurHash': ctx.metadata['blurHash'],
+      'w': ctx.metadata['w'],
+      'h': ctx.metadata['h'],
+      'duration': ctx.metadata['duration'],
+      'thumb': ctx.remoteThumbUrl ?? ctx.metadata['remote_thumb'] ?? "",
+    };
 
     final serverMsg = await Api.sendMessage(
       id: ctx.initialMsg.id,
       conversationId: service.conversationId,
-      content: contentToSend,
+      content: ctx.remoteUrl ?? ctx.initialMsg.content,
       type: ctx.initialMsg.type.value,
       meta: apiMeta,
     );
 
-    final Map<String, dynamic> dbMeta = Map.from(ctx.metadata);
-    if (serverMsg.meta != null && serverMsg.meta!['thumb'] != null) {
-      dbMeta['remote_thumb'] = serverMsg.meta!['thumb'];
-    }
+    //  数据回写：合并后端权威数据 (如 seqId) 并清理本地 meta
+    final Map<String, dynamic> dbMeta = {
+      ...ctx.metadata,
+      ...serverMsg.meta ?? {},
+      'remote_thumb': serverMsg.meta?['thumb'] ?? ctx.remoteThumbUrl,
+    };
 
     await LocalDatabaseService().updateMessage(ctx.initialMsg.id, {
       'status': MessageStatus.success.name,

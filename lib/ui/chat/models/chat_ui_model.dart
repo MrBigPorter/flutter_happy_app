@@ -65,6 +65,7 @@ class ChatUiModel {
   // Helper Getters
   double? get imgWidth => meta?['w'] is num ? (meta!['w'] as num).toDouble() : null;
   double? get imgHeight => meta?['h'] is num ? (meta!['h'] as num).toDouble() : null;
+  String? get blurHash => meta?['blurHash'] as String?; //  架构师补强
 
   ChatUiModel({
     required this.id,

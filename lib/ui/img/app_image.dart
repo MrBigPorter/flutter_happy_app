@@ -1,8 +1,9 @@
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:flutter/foundation.dart'; // kIsWeb
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_blurhash/flutter_blurhash.dart'; // 渲染库
 import 'package:shimmer/shimmer.dart';
 import '../chat/photo_preview_page.dart';
 import '../../utils/image_url.dart';
@@ -12,7 +13,7 @@ class AppCachedImage extends StatelessWidget {
   final double? width, height, cacheWidth, cacheHeight;
   final BoxFit fit;
   final BorderRadius? radius;
-  final String? heroTag; // 如果开启预览，建议必须传唯一的 heroTag
+  final String? heroTag;
   final int quality;
   final String format;
   final Color placeholderColor;
@@ -20,6 +21,9 @@ class AppCachedImage extends StatelessWidget {
   final bool enablePreview;
   final Duration? fadeInDuration;
   final Uint8List? previewBytes;
+
+  /// 工业级关键：包含 blurHash, w, h 的元数据
+  final Map<String, dynamic>? metadata;
 
   const AppCachedImage(
       this.src, {
@@ -39,18 +43,42 @@ class AppCachedImage extends StatelessWidget {
         this.heroTag,
         this.fadeInDuration,
         this.previewBytes,
+        this.metadata,
       });
 
   @override
   Widget build(BuildContext context) {
-    // 1. 快速处理二进制数据 (Uint8List)
+    // -------------------------------------------------------------------------
+    // 1. 布局锁定逻辑 (Anti-Jank)
+    // -------------------------------------------------------------------------
+    // 优先从 metadata 提取原始比例。即使图片还没下载，AspectRatio 也会强行占坑，防止列表跳动。
+    double? aspectRatio;
+    if (metadata != null) {
+      final double metaW = (metadata!['w'] ?? metadata!['width'] ?? 0).toDouble();
+      final double metaH = (metadata!['h'] ?? metadata!['height'] ?? 0).toDouble();
+      if (metaW > 0 && metaH > 0) {
+        aspectRatio = metaW / metaH;
+      }
+    }
+
+    Widget mainWidget = _buildContent(context);
+
+    // 如果有比例且外部没有强制给死高度，则应用 AspectRatio
+    if (aspectRatio != null && height == null) {
+      mainWidget = AspectRatio(aspectRatio: aspectRatio, child: mainWidget);
+    }
+
+    return mainWidget;
+  }
+
+  Widget _buildContent(BuildContext context) {
+    // 处理内存数据
     if (src is Uint8List) {
       return _wrapper(
         context,
         Image.memory(
           src as Uint8List,
-          width: width,
-          height: height,
+          width: width, height: height,
           fit: fit,
           gaplessPlayback: true,
         ),
@@ -60,109 +88,61 @@ class AppCachedImage extends StatelessWidget {
     final String path = src?.toString() ?? '';
     if (path.isEmpty || path == '[Image]') return _ph(width, height);
 
-    // 2. 计算内存缓存尺寸 (DPR 优化)
-    // 避免解码超大图片导致内存溢出和卡顿
     final dpr = MediaQuery.of(context).devicePixelRatio;
     final int? memW = _calcMemSize(cacheWidth ?? width, dpr);
     final int? memH = _calcMemSize(cacheHeight ?? height, dpr);
 
-    // 3. 判定图片类型
-    // 优先判定 Web，因为 Web 不支持 File IO
+    // -------------------------------------------------------------------------
+    // 2. 平台与类型路由
+    // -------------------------------------------------------------------------
     if (kIsWeb) {
-      // Web 端全部视为 NetworkImage (包括 blob: 和 assets 也是通过 url 加载)
-      // 注意：Assets 在 Web 上通常不需要 ImageUrl 处理，除非你有特殊 CDN
       bool isRemote = !path.startsWith('blob:') && !path.startsWith('assets/');
-      if (isRemote) {
-        return _buildNetworkImage(context, path, memW, memH);
-      } else {
-        return _wrapper(
-          context,
-          Image.network(
-            path,
-            width: width,
-            height: height,
-            fit: fit,
-            gaplessPlayback: true,
-          ),
-        );
-      }
+      if (isRemote) return _buildNetworkImage(context, path, memW, memH);
+      return _wrapper(context, Image.network(path, width: width, height: height, fit: fit, gaplessPlayback: true));
     }
 
-    // 4. Mobile 端逻辑
     final isAsset = path.startsWith('assets/');
     final isFile = path.startsWith('/') || path.startsWith('file://');
-    final isRemote = !isAsset && !isFile;
 
-    if (isRemote) {
+    if (!isAsset && !isFile) {
       return _buildNetworkImage(context, path, memW, memH);
     } else if (isAsset) {
-      return _wrapper(
-        context,
-        Image.asset(
-          path,
-          width: width,
-          height: height,
-          fit: fit,
-          cacheWidth: memW,
-          gaplessPlayback: true,
-        ),
-      );
+      return _wrapper(context, Image.asset(path, width: width, height: height, fit: fit, cacheWidth: memW, gaplessPlayback: true));
     } else {
-      // File 处理优化
-      File file;
-      try {
-        if (path.startsWith('file://')) {
-          file = File(Uri.parse(path).toFilePath());
-        } else {
-          file = File(path);
-        }
-      } catch (e) {
-        return _err(width, height);
-      }
-
-      return _wrapper(
-        context,
-        Image.file(
-          file,
-          width: width,
-          height: height,
-          fit: fit,
-          cacheWidth: memW,
-          gaplessPlayback: true,
-        ),
-      );
+      File file = path.startsWith('file://') ? File(Uri.parse(path).toFilePath()) : File(path);
+      if (!file.existsSync()) return _err(width, height);
+      return _wrapper(context, Image.file(file, width: width, height: height, fit: fit, cacheWidth: memW, gaplessPlayback: true));
     }
   }
 
-  // 构建网络图片 (核心优化点)
-  Widget _buildNetworkImage(
-      BuildContext context, String path, int? memW, int? memH) {
-    // 调用 ImageUrl 工具进行 CDN 裁剪/格式转换参数拼接
+  Widget _buildNetworkImage(BuildContext context, String path, int? memW, int? memH) {
     final url = ImageUrl.build(
-      context,
-      path,
+      context, path,
       logicalWidth: cacheWidth ?? width,
       logicalHeight: cacheHeight ?? height,
-      fit: fit,
-      quality: quality,
-      format: format,
+      fit: fit, quality: quality, format: format,
     );
 
-    // 设定动画时间：如果外部传了就用外部的，否则为了性能默认 0
     final animDuration = fadeInDuration ?? Duration.zero;
 
-    // 占位图逻辑：优先用传入的 -> 其次用预览图(高斯模糊/缩略图) -> 最后用 Shimmer
+    // -------------------------------------------------------------------------
+    // 3. 阶梯式占位逻辑 (Laddering Strategy)
+    // -------------------------------------------------------------------------
     Widget buildPlaceholder(BuildContext ctx, String url) {
       if (placeholder != null) return placeholder!;
-      if (previewBytes != null) {
-        return Image.memory(
-          previewBytes!,
-          width: width,
-          height: height,
-          fit: fit,
-          gaplessPlayback: true,
-        );
+
+      // 优先级 A: BlurHash (体感最快，颜色匹配)
+      final String? hash = metadata?['blurHash'];
+      if (hash != null && hash.isNotEmpty) {
+        return BlurHash(hash: hash, imageFit: fit, color: placeholderColor);
       }
+
+      // 优先级 B: 二进制预览图 (发送者本地即时显示)
+      if (previewBytes != null) {
+        return Image.memory(previewBytes!, width: width, height: height, fit: fit, gaplessPlayback: true);
+      }
+
+      // 优先级 C: 骨架屏
       return _buildShimmer(width, height);
     }
 
@@ -170,16 +150,13 @@ class AppCachedImage extends StatelessWidget {
       context,
       CachedNetworkImage(
         imageUrl: url,
-        width: width,
-        height: height,
+        width: width, height: height,
         fit: fit,
-        // 核心：指定内存缓存大小，由 flutter 引擎在解码时缩小图片，大幅降低内存
         memCacheWidth: memW,
         memCacheHeight: memH,
-        // 动画控制
         fadeOutDuration: animDuration,
         fadeInDuration: animDuration,
-        placeholderFadeInDuration: Duration.zero, // 占位图不需要渐变，直接显示
+        placeholderFadeInDuration: Duration.zero,
         placeholder: buildPlaceholder,
         errorWidget: (_, __, ___) => error ?? _err(width, height),
       ),
@@ -189,51 +166,27 @@ class AppCachedImage extends StatelessWidget {
     );
   }
 
-  // 包装器：处理 圆角、Hero、点击预览
-  Widget _wrapper(
-      BuildContext context,
-      Widget child, {
-        String? currentUrl,
-        int? memW,
-        int? memH,
-      }) {
+  // -------------------------------------------------------------------------
+  // 4. 辅助工具
+  // -------------------------------------------------------------------------
+
+  Widget _wrapper(BuildContext context, Widget child, {String? currentUrl, int? memW, int? memH}) {
     Widget res = child;
+    if (radius != null) res = ClipRRect(borderRadius: radius!, child: res);
+    if (heroTag != null && heroTag!.isNotEmpty) res = Hero(tag: heroTag!, child: res);
 
-    // 1. 圆角
-    if (radius != null) {
-      res = ClipRRect(borderRadius: radius!, child: res);
-    }
-
-    // 2. Hero 动画 (安全检查)
-    // 只有当提供了 heroTag 且不为空时才启用 Hero。
-    // 避免在列表中多个相同 URL 图片导致 crash。
-    if (heroTag != null && heroTag!.isNotEmpty) {
-      res = Hero(tag: heroTag!, child: res);
-    }
-
-    // 3. 点击预览
     if (enablePreview && src != null) {
       res = GestureDetector(
-        onTap: () {
-          // 预览页面通常需要显示原始大图，但这里为了过渡平滑，
-          // 可以把当前已经加载好的缩略图 url 传过去作为 thumbnail
-          Navigator.push(
-            context,
-            PageRouteBuilder(
-              opaque: false, // 透明背景
-              pageBuilder: (_, __, ___) => PhotoPreviewPage(
-                // 必须保证 Hero tag 一致
-                heroTag: heroTag ?? src.toString(),
-                imageSource: src.toString(),
-                cachedThumbnailUrl: currentUrl,
-                previewBytes: previewBytes,
-                // 传过去是为了预览页也能做初始优化，虽然预览页一般看原图
-                memW: memW,
-                memH: memH,
-              ),
-            ),
-          );
-        },
+        onTap: () => Navigator.push(context, PageRouteBuilder(
+          opaque: false,
+          pageBuilder: (_, __, ___) => PhotoPreviewPage(
+            heroTag: heroTag ?? src.toString(),
+            imageSource: src.toString(),
+            cachedThumbnailUrl: currentUrl,
+            previewBytes: previewBytes,
+            metadata: metadata, // 将元数据透传给预览页，防止预览页布局闪烁
+          ),
+        )),
         child: res,
       );
     }
@@ -248,23 +201,10 @@ class AppCachedImage extends StatelessWidget {
   Widget _buildShimmer(double? w, double? h) => Shimmer.fromColors(
     baseColor: placeholderColor,
     highlightColor: Colors.white.withOpacity(0.5),
-    period: const Duration(milliseconds: 1500), // 稍微调慢一点，更有质感
     child: Container(width: w, height: h, color: Colors.white),
   );
 
-  Widget _ph(double? w, double? h) => Container(
-    width: w,
-    height: h,
-    color: placeholderColor,
-    alignment: Alignment.center,
-    child: Icon(Icons.image, color: Colors.grey[400], size: 20),
-  );
+  Widget _ph(double? w, double? h) => Container(width: w, height: h, color: placeholderColor, child: const Icon(Icons.image, color: Colors.grey, size: 20));
 
-  Widget _err(double? w, double? h) => Container(
-    width: w,
-    height: h,
-    color: placeholderColor,
-    alignment: Alignment.center,
-    child: Icon(Icons.broken_image, color: Colors.grey[400], size: 24),
-  );
+  Widget _err(double? w, double? h) => Container(width: w, height: h, color: placeholderColor, child: const Icon(Icons.broken_image, color: Colors.grey, size: 24));
 }
