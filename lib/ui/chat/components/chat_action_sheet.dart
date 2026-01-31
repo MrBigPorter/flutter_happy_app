@@ -59,7 +59,7 @@ class ChatActionSheet extends StatelessWidget {
             width: 60.w,
             height: 60.w,
             decoration: BoxDecoration(
-              color: context.bgPrimary,
+              color: context.bgSecondary,
               borderRadius: BorderRadius.circular(16.r), // 微圆角
             ),
             child: Icon(item.icon, size: 28.sp, color: context.textBrandPrimary900),
