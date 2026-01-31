@@ -7,7 +7,6 @@ import 'package:intl/intl.dart';
 import '../../models/chat_ui_model.dart';
 import '../../../img/app_image.dart';
 import '../../photo_preview_page.dart';
-//  1. 恢复引入：我们需要它来生成“垫脚石” URL
 import '../../../../utils/image_url.dart';
 
 class ImageMsgBubble extends StatelessWidget {
