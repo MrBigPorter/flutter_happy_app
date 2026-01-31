@@ -1,23 +1,24 @@
 import 'dart:io';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 import '../img/app_image.dart';
 import 'services/media/video_playback_service.dart';
 
-import '../../../utils/asset/asset_manager.dart';
-import 'models/chat_ui_model.dart';
 
 class VideoPlayerPage extends StatefulWidget {
   final String videoSource;
   final String heroTag;
   final String thumbSource;
+  final String? cachedThumbUrl;
 
   const VideoPlayerPage({
     super.key,
     required this.videoSource,
     required this.heroTag,
     required this.thumbSource,
+    this.cachedThumbUrl,
   });
 
   @override
@@ -38,6 +39,8 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
   }
 
   Future<void> _initVideo() async {
+
+
     //  核心修改：不再盲目调用 Service，而是自己判断路径类型
     // 如果是本地文件，必须用 .file()，否则 iOS 必报 -12939 错误
     try {
@@ -210,6 +213,19 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
   //  新增：构建 Hero 占位缩略图
   // (逻辑与气泡里的一致，确保 Hero 动画平滑)
   Widget _buildPlaceholderThumbnail() {
+
+    //  3. 核心修改：如果有 cachedThumbUrl，直接用 CachedNetworkImage 加载它
+    // 这样能 100% 命中列表页的缓存，实现零延迟
+    if (widget.cachedThumbUrl != null && widget.cachedThumbUrl!.isNotEmpty) {
+      return CachedNetworkImage(
+        imageUrl: widget.cachedThumbUrl!,
+        fit: BoxFit.contain,
+        // 既然是缓存图，不需要再做淡入动画，直接显示
+        fadeInDuration: Duration.zero,
+        placeholder: (context, url) => Container(color: Colors.black),
+      );
+    }
+
     if (widget.thumbSource.isEmpty) {
       return const SizedBox.shrink();
     }

@@ -159,6 +159,27 @@ class _VideoMsgBubbleState extends State<VideoMsgBubble> {
         widget.message.meta?['remote_thumb'] ??
         '';
 
+    //  2. 核心修正：手动计算列表页刚才渲染的 URL
+    // 必须和 build 方法里计算 maxWidth 的逻辑一模一样！
+    final meta = widget.message.meta ?? {};
+    final int w = _parseInt(meta['w']) ?? 16;
+    final int h = _parseInt(meta['h']) ?? 9;
+    final double aspectRatio = (w / h).clamp(0.6, 1.8);
+    final double maxWidth = 0.6.sw; //  列表页用的宽度
+
+    String? cachedUrl;
+    if (thumbRaw.isNotEmpty) {
+      // 调用 ImageUrl.build 生成完全一致的 CDN 链接
+      cachedUrl = ImageUrl.build(
+        context,
+        thumbRaw,
+        logicalWidth: maxWidth, // 关键：宽度对齐
+        quality: 50,            // 关键：质量对齐 (AppCachedImage 默认 50)
+        fit: BoxFit.cover,      // 关键：裁剪对齐
+        format: kIsWeb ? 'auto' : 'webp', // 关键：格式对齐
+      );
+    }
+
     if (finalSource.isEmpty) return;
 
     Navigator.of(context).push(
@@ -168,6 +189,7 @@ class _VideoMsgBubbleState extends State<VideoMsgBubble> {
           videoSource: finalSource,
           heroTag: widget.message.id,
           thumbSource: thumbRaw,
+          cachedThumbUrl: cachedUrl,
         ),
         transitionsBuilder: (_, animation, __, child) =>
             FadeTransition(opacity: animation, child: child),
@@ -198,7 +220,7 @@ class _VideoMsgBubbleState extends State<VideoMsgBubble> {
             ? meta['remote_thumb'].toString()
             : null);
 
-    // ✅ 关键：给封面 meta 补 blurHash（字段名兼容）
+    // 关键：给封面 meta 补 blurHash（字段名兼容）
     final Map<String, dynamic> thumbMeta = {
       ...meta,
       'blurHash': meta['thumbBlurHash'] ??
@@ -211,7 +233,7 @@ class _VideoMsgBubbleState extends State<VideoMsgBubble> {
       child: Hero(
         tag: widget.message.id,
         child: Material(
-          // ✅ 不要纯黑 Material，当封面还没来时会“黑一下”
+          //  不要纯黑 Material，当封面还没来时会“黑一下”
           color: Colors.transparent,
           borderRadius: BorderRadius.circular(12.r),
           clipBehavior: Clip.antiAlias,
@@ -221,7 +243,7 @@ class _VideoMsgBubbleState extends State<VideoMsgBubble> {
             child: Stack(
               fit: StackFit.expand,
               children: [
-                // ✅ 底层占位：你可以改成更浅（F5F5F5）
+                //  底层占位：你可以改成更浅（F5F5F5）
                 Container(color: const Color(0xFF111111)),
 
                 // Layer 1：发送中内存预览图（最先显示）
@@ -244,18 +266,23 @@ class _VideoMsgBubbleState extends State<VideoMsgBubble> {
                     fit: BoxFit.cover,
                     enablePreview: false,
                     metadata: thumbMeta,
-                    // ✅ 失败不显示红叉，避免盖住底层
+                    // 失败不显示红叉，避免盖住底层
                     error: const SizedBox.shrink(),
-                    // ✅ 不要传 placeholder！否则 blur/shimmer 永远不显示
+                    // 不要传 placeholder！否则 blur/shimmer 永远不显示
                     // placeholder: const SizedBox.shrink(),
                   ),
 
                 // Layer 3：播放器（初始化后覆盖封面）
                 if (_controller != null && _controller!.value.isInitialized)
-                  Center(
-                    child: AspectRatio(
-                      aspectRatio: _controller!.value.aspectRatio,
-                      child: VideoPlayer(_controller!),
+                  SizedBox.expand( // 1. 强制撑满整个气泡容器
+                    child: FittedBox(
+                      fit: BoxFit.cover, // 2. 核心：像图片一样裁剪并填满，不留缝隙
+                      child: SizedBox(
+                        // 3. 必须指定视频的原始尺寸，FittedBox 才知道怎么缩放
+                        width: _controller!.value.size.width,
+                        height: _controller!.value.size.height,
+                        child: VideoPlayer(_controller!),
+                      ),
                     ),
                   ),
 
