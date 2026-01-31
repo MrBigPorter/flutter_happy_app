@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_app/common.dart';
 
 class ChatInputBar extends StatefulWidget {
   final Function(String) onSend;
@@ -22,7 +23,7 @@ class _ChatInputBarState extends State<ChatInputBar> {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      color: Colors.white,
+      color: context.bgSecondary,
       child: Row(
         children: [
           Expanded(
