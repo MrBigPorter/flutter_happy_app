@@ -49,7 +49,7 @@ class AppCachedImage extends StatelessWidget {
         this.metadata,
       });
 
-  // CHANGED: 不要固定 iOS UA（也不要 const）
+  //  CHANGED: 不要固定 iOS UA（也不要 const）
   // Web 上浏览器会自己带 UA；native 如需“伪装 Safari”再做平台判断
   static Map<String, String> buildImgHttpHeaders() {
     if (kIsWeb) return {};
@@ -213,7 +213,7 @@ class AppCachedImage extends StatelessWidget {
       return _buildShimmer(width, height);
     }
 
-    // CHANGED: 把“原始 source + 当前缩略图 url”一起传给预览页
+    //  CHANGED: 把“原始 source + 当前缩略图 url”一起传给预览页
     return _wrapper(
       context,
       CachedNetworkImage(
@@ -224,7 +224,7 @@ class AppCachedImage extends StatelessWidget {
         fit: fit,
         memCacheWidth: memW,
         memCacheHeight: memH,
-        httpHeaders: buildImgHttpHeaders(), // CHANGED
+        httpHeaders: buildImgHttpHeaders(), // ✅ CHANGED
         fadeOutDuration: animDuration,
         fadeInDuration: animDuration,
         placeholderFadeInDuration: Duration.zero,
@@ -236,7 +236,7 @@ class AppCachedImage extends StatelessWidget {
           return error ?? _err(width, height);
         },
       ),
-      // CHANGED: 预览页需要这两个参数避免再打一次 /uploads
+      //  CHANGED: 预览页需要这两个参数避免再打一次 /uploads
       previewSource: path,
       cachedThumbUrl: url,
     );
@@ -262,8 +262,8 @@ class AppCachedImage extends StatelessWidget {
             opaque: false,
             pageBuilder: (_, __, ___) => PhotoPreviewPage(
               heroTag: heroTag ?? src.toString(),
-              imageSource: previewSource ?? src.toString(), // CHANGED
-              cachedThumbnailUrl: cachedThumbUrl, // CHANGED（关键）
+              imageSource: previewSource ?? src.toString(),
+              cachedThumbnailUrl: cachedThumbUrl,
               previewBytes: previewBytes,
               metadata: metadata,
             ),
