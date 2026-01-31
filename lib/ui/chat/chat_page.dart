@@ -281,7 +281,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
               duration: const Duration(milliseconds: 250),
               curve: Curves.easeOutQuad,
               height: _isPanelOpen ?  280.h + MediaQuery.of(context).padding.bottom : 0,
-              color:context.bgSecondary,
+              color:context.bgPrimary,
               // 适配 iPhone 底部横条
               child: SingleChildScrollView(
                 physics: const NeverScrollableScrollPhysics(),

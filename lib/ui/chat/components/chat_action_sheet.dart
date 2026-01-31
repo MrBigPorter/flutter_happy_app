@@ -26,7 +26,7 @@ class ChatActionSheet extends StatelessWidget {
     return Container(
       padding: EdgeInsets.symmetric(vertical: 20.h, horizontal: 24.w),
       decoration: BoxDecoration(
-        color: context.bgSecondary, // 浅灰背景
+        color: context.bgPrimary, // 浅灰背景
       ),
       // 根据数量自动计算高度，或者固定高度
       height: 260.h,

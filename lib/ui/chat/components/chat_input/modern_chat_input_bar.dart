@@ -170,7 +170,7 @@ class _ModernChatInputBarState extends State<ModernChatInputBar> {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: context.bgSecondary,
+        color: context.bgPrimary,
         border: Border(top: BorderSide(color: Colors.grey.withOpacity(0.1))),
       ),
       child: SafeArea(
@@ -244,7 +244,7 @@ class _ModernChatInputBarState extends State<ModernChatInputBar> {
     return Container(
       constraints: const BoxConstraints(maxHeight: 100),
       decoration: BoxDecoration(
-        color: context.bgPrimary, // 输入框白底
+        color: context.bgSecondary, // 输入框白底
         borderRadius: BorderRadius.circular(20),
       ),
       child: TextField(
