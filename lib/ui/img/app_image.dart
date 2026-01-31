@@ -201,7 +201,7 @@ class AppCachedImage extends StatelessWidget {
     assert(() {
       if ((url.contains('/cdn-cgi/image/') || url.contains('/uploads/')) &&
           _debugged.add(url)) {
-        debugImageHeaders(url);
+       // debugImageHeaders(url);
       }
       return true;
     }());
