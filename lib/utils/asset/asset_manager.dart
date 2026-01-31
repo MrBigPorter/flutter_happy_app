@@ -18,6 +18,8 @@ class AssetManager {
         return 'chat_audio';
       case MessageType.video:
         return 'chat_video'; // 未来扩展非常容易
+      case MessageType.file:
+        return 'chat_files';
       case MessageType.image:
       default:
         return 'chat_images';
@@ -33,6 +35,7 @@ class AssetManager {
     switch (type) {
       case MessageType.audio: return '.m4a';
       case MessageType.video: return '.mp4';
+      case MessageType.file: return '.bin'; //  文件如果没有后缀，给个 .bin
       default: return '.jpg';
     }
   }

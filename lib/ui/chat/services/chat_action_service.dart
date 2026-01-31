@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:ui' as ui;
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart'; // kIsWeb
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
@@ -99,17 +100,17 @@ class ChatActionService {
   }
 
   Future<void> sendImage(XFile file) async {
-    // 1. 🚀 前置压缩：解决上传慢、流量大的问题
+    // 1.  前置压缩：解决上传慢、流量大的问题
     // (Web 端会走 Canvas 加速，不卡顿；App 端走 Native，飞快)
     final XFile processedFile = await ImageCompressionService.compressForUpload(file);
 
-    // 2. 🚀 秒出预览图：解决消息上屏白屏的问题
+    // 2.  秒出预览图：解决消息上屏白屏的问题
     // (因为是对 150KB 的小图做处理，耗时 <10ms，几乎无感)
     Uint8List? quickPreview;
     try {
       quickPreview = await ImageCompressionService.getTinyThumbnail(processedFile);
     } catch (e) {
-      debugPrint("⚠️ 预览图生成失败: $e");
+      debugPrint(" 预览图生成失败: $e");
     }
 
     // 3. 创建消息 (直接带上 previewBytes，UI 渲染时直接显示，无需等待)
@@ -124,7 +125,7 @@ class ChatActionService {
 
     // 4. 初始化 Pipeline
     final ctx = PipelineContext(msg);
-    // 🚨 核心逻辑：必须把【处理后的文件】传给 Pipeline，否则 Web 端会传原图！
+    //  核心逻辑：必须把【处理后的文件】传给 Pipeline，否则 Web 端会传原图！
     ctx.sourceFile = processedFile;
 
     // 5. 执行管道
@@ -181,6 +182,73 @@ class ChatActionService {
       UploadStep(),
       SyncStep(),
     ]);
+  }
+
+  Future<void> sendFile() async {
+    try{
+      // 1. 唤起系统文件选择器
+      FilePickerResult? result = await FilePicker.platform.pickFiles(
+        allowMultiple: false,
+        type: FileType.custom,// 仅允许特定类型
+        allowedExtensions: ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'zip', 'rar', 'txt'],
+        withData: kIsWeb,// Web 端必须读入内存
+        withReadStream: !kIsWeb,// App 端可以用流式读取优化
+      );
+
+      if (result == null || result.files.isEmpty) return; // 用户取消选择
+
+      final PlatformFile pFile = result.files.first;
+
+      // 2. 兼容性处理：构建 XFile (Web 拿 blob, App 拿 path)
+      XFile xFile;
+      if(kIsWeb){
+        // Web 端用内存字节流构建 XFile
+        if(pFile.bytes == null) return;
+        xFile = XFile.fromData(pFile.bytes!,name: pFile.name);
+      }else{
+        if(pFile.path == null) return;
+        xFile = XFile(pFile.path!,name: pFile.name);
+      }
+
+      // 5. 元数据解析
+      final String fileName = pFile.name;
+      final int fileSize = pFile.size; // 字节大小
+      // 优先用 pick 出来的后缀，如果没有则从文件名解析
+      final String fileExt = pFile.extension ??
+          (fileName.contains('.') ? fileName.split('.').last : 'bin');
+
+      // 6. 创建消息模型
+      final msg = _createBaseMessage(
+        content: "[File]",
+        type: MessageType.file,
+        localPath: xFile.path,
+        meta: {
+          'fileName': fileName,
+          'fileSize': fileSize,
+          'fileExt': fileExt,
+        },
+      );
+
+    // 5. Cache (UI 零抖动)
+    // 此时 fullPath 就是 xFile.path，UI 会先读这个临时路径显示
+    if (msg.localPath != null) {
+    _sessionPathCache[msg.id] = msg.localPath!;
+    }
+
+      // 7. 初始化管道上下文
+      final ctx = PipelineContext(msg);
+      ctx.sourceFile = xFile; // 传递原始 XFile 以保留文件名等信息
+
+      // 8. 执行管道 (文件不需要压缩/处理，直接上传 + 同步)
+      await _runPipeline(ctx, [
+       // PersistStep(),
+       // UploadStep(),
+       // SyncStep(),
+      ]);
+
+    }catch(e){
+      debugPrint(" Send file failed: $e");
+    }
   }
 
   Future<void> resend(String msgId) async {
@@ -415,7 +483,15 @@ class UploadStep implements PipelineStep {
         } else {
           fileToUpload = XFile(uploadPath);
           if (kIsWeb && (fileToUpload.name.isEmpty || !fileToUpload.name.contains('.'))) {
-            final ext = ctx.initialMsg.type == MessageType.video ? 'mp4' : 'jpg';
+            // 尝试从 meta 获取后缀，没有则根据类型判断
+            String ext = ctx.metadata['fileExt'] ?? 'bin';
+            if (ext == 'bin') {
+              if (ctx.initialMsg.type == MessageType.video) {
+                ext = 'mp4';
+              } else if (ctx.initialMsg.type == MessageType.image) {
+                ext = 'jpg';
+              }
+            }
             fileToUpload = XFile(uploadPath, name: 'upload_${const Uuid().v4()}.$ext');
           }
         }
@@ -445,7 +521,15 @@ class SyncStep implements PipelineStep {
       'h': ctx.metadata['h'],
       'duration': ctx.metadata['duration'],
       'thumb': ctx.remoteThumbUrl ?? ctx.metadata['remote_thumb'] ?? "",
+
+      //  新增：文件字段 (从 ctx.metadata 透传给后端)
+      'fileName': ctx.metadata['fileName'],
+      'fileSize': ctx.metadata['fileSize'],
+      'fileExt': ctx.metadata['fileExt'],
     };
+
+    // 移除 null 值，保持 Payload 干净
+    apiMeta.removeWhere((key, value) => value == null || value == "");
 
     final serverMsg = await Api.sendMessage(
       id: ctx.initialMsg.id,

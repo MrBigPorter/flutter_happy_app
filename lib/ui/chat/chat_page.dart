@@ -119,6 +119,10 @@ class _ChatPageState extends ConsumerState<ChatPage> {
     }
   }
 
+  void _handleTakeFile() async {
+    ref.read(chatActionServiceProvider(widget.conversationId)).sendFile();
+  }
+
   @override
   Widget build(BuildContext context) {
     // 1. 数据源
@@ -306,9 +310,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
                     ActionItem(
                       label: "File",
                       icon: Icons.folder,
-                      onTap: () {
-                        // TODO: File Picker
-                      },
+                      onTap: _handleTakeFile,
                     ),
                     ActionItem(
                       label: "Location",

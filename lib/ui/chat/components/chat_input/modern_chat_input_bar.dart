@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:image_picker/image_picker.dart';
 
-import '../chat_action_sheet.dart';
 import 'package:flutter_app/ui/chat/components/chat_input/voice_button.dart';
 import '../../../../theme/design_tokens.g.dart';
 
@@ -70,101 +69,6 @@ class _ModernChatInputBarState extends State<ModernChatInputBar> {
     widget.onSend("👍");
   }
 
-  // --- 媒体选择逻辑 (作为私有方法保留，供菜单调用) ---
-
-  Future<void> _handlePickImage() async {
-    try {
-      final XFile? image = await _picker.pickImage(
-        source: ImageSource.gallery,
-        imageQuality: 100,
-      );
-      if (image != null) widget.onSendImage(image);
-    } catch (e) {
-      debugPrint("Pick image failed: $e");
-    }
-  }
-
-  Future<void> _handlePickVideo() async {
-    try {
-      final XFile? video = await _picker.pickVideo(
-        source: ImageSource.gallery,
-        maxDuration: const Duration(minutes: 5),
-      );
-      if (video != null) widget.onSendVideo(video);
-    } catch (e) {
-      debugPrint("Pick video failed: $e");
-    }
-  }
-
-  Future<void> _handleCamera() async {
-    try {
-      final XFile? image = await _picker.pickImage(source: ImageSource.camera);
-      if (image != null) widget.onSendImage(image);
-    } catch (e) {
-      debugPrint("Camera failed: $e");
-    }
-  }
-
-  // ---  核心：弹出全能菜单 ---
-  void _showActionMenu() {
-    // 1. 收起键盘
-    FocusScope.of(context).unfocus();
-
-    // 2. 如果当前是语音模式，建议切回文字模式 (看个人喜好，微信是保持原样)
-    // setState(() => _isVoiceMode = false);
-
-    // 3. 弹出菜单
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent, // 透明背景，让 ChatActionSheet 的圆角生效
-      builder: (context) => ChatActionSheet(
-        actions: [
-          ActionItem(
-            label: "Photos",
-            icon: Icons.photo_library,
-            onTap: () {
-              Navigator.pop(context); // 关掉弹窗
-              _handlePickImage();     // 执行逻辑
-            },
-          ),
-          ActionItem(
-            label: "Camera",
-            icon: Icons.camera_alt,
-            onTap: () {
-              Navigator.pop(context);
-              _handleCamera();
-            },
-          ),
-          ActionItem(
-            label: "Video",
-            icon: Icons.videocam,
-            onTap: () {
-              Navigator.pop(context);
-              _handlePickVideo();
-            },
-          ),
-          //  预留位：文件
-          ActionItem(
-            label: "File",
-            icon: Icons.folder,
-            onTap: () {
-              Navigator.pop(context);
-              debugPrint("TODO: Implement File Picker");
-            },
-          ),
-          //  预留位：位置
-          ActionItem(
-            label: "Location",
-            icon: Icons.location_on,
-            onTap: () {
-              Navigator.pop(context);
-              debugPrint("TODO: Implement Location Picker");
-            },
-          ),
-        ],
-      ),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {

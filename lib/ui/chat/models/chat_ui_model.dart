@@ -17,6 +17,8 @@ enum MessageType {
   audio(2),
   video(3),
   recalled(4),
+  file(5),
+  location(6),
   system(99);
 
   final int value;
@@ -62,10 +64,23 @@ class ChatUiModel {
   // 元数据 (宽、高、其他信息)
   final Map<String, dynamic>? meta;
 
+  //  新增：文件专用字段 (作为强类型 getter 存在)
+  final String? fileName;
+  final int? fileSize;    // 字节 Bytes
+  final String? fileExt;  // 后缀 (pdf, doc, zip...)
+
   // Helper Getters
   double? get imgWidth => meta?['w'] is num ? (meta!['w'] as num).toDouble() : null;
   double? get imgHeight => meta?['h'] is num ? (meta!['h'] as num).toDouble() : null;
   String? get blurHash => meta?['blurHash'] as String?; //  架构师补强
+
+  //  新增：自动格式化文件大小 (UI 直接用)
+  String get displaySize {
+    if (fileSize == null) return '0 B';
+    if (fileSize! < 1024) return '${fileSize} B';
+    if (fileSize! < 1024 * 1024) return '${(fileSize! / 1024).toStringAsFixed(1)} KB';
+    return '${(fileSize! / (1024 * 1024)).toStringAsFixed(1)} MB';
+  }
 
   ChatUiModel({
     required this.id,
@@ -86,6 +101,10 @@ class ChatUiModel {
 
     this.resolvedPath,
     this.resolvedThumbPath,
+
+    this.fileName,
+    this.fileSize,
+    this.fileExt,
   });
 
   // ---  手动实现序列化 (100% 可控) ---
@@ -155,6 +174,10 @@ class ChatUiModel {
       //  读库时，这两个字段永远是 null，等待 Service 层填充
       resolvedPath: null,
       resolvedThumbPath: null,
+
+      fileName: json['fileName'] as String?,
+      fileSize: json['fileSize'] as int?,
+      fileExt: json['fileExt'] as String?,
     );
   }
 
@@ -178,6 +201,10 @@ class ChatUiModel {
 
     String? resolvedPath,
     String? resolvedThumbPath,
+
+    String? fileName,
+    int? fileSize,
+    String? fileExt,
   }) {
     return ChatUiModel(
       id: id ?? this.id,
@@ -197,6 +224,10 @@ class ChatUiModel {
       meta: meta ?? this.meta,
       resolvedPath: resolvedPath ?? this.resolvedPath,
       resolvedThumbPath: resolvedThumbPath ?? this.resolvedThumbPath,
+
+      fileName: fileName ?? this.fileName,
+      fileSize: fileSize ?? this.fileSize,
+      fileExt: fileExt ?? this.fileExt,
     );
   }
 
@@ -215,6 +246,17 @@ class ChatUiModel {
       isMe = true;
     }
 
+    //  核心逻辑：从后端 Meta 提取文件信息
+    // 兼容后端可能用的不同字段名 (fileName vs name, fileSize vs size)
+    String? fName = meta['fileName'] ?? meta['name'];
+    int? fSize = meta['fileSize'] is int ? meta['fileSize'] : int.tryParse(meta['fileSize']?.toString() ?? '0');
+    String? fExt = meta['fileExt'] ?? meta['ext'];
+
+    // 如果后端没给 ext，尝试从文件名解析
+    if (fExt == null && fName != null && fName.contains('.')) {
+      fExt = fName.split('.').last;
+    }
+
     return ChatUiModel(
       id: apiMsg.id.toString(),
       seqId: apiMsg.seqId,
@@ -231,6 +273,11 @@ class ChatUiModel {
       duration: metaDuration,
       meta: meta,
       previewBytes: null, // API 消息默认没有本地微缩图，需要下载后生成或用别的逻辑
+
+      //  填充提取出的信息
+      fileName: fName,
+      fileSize: fSize,
+      fileExt: fExt,
     );
   }
 }

@@ -10,6 +10,7 @@ import '../../img/app_image.dart';
 import '../models/chat_ui_model.dart';
 import '../providers/chat_room_provider.dart';
 
+import 'bubbles/file_msg_bubble.dart';
 import 'bubbles/image_msg_bubble.dart';
 import 'bubbles/text_msg_bubble.dart';
 import 'bubbles/video_msg_bubble.dart';
@@ -152,6 +153,9 @@ class ChatBubble extends ConsumerWidget {
         return VoiceBubble(message: message, isMe: message.isMe);
       case MessageType.video:
         return VideoMsgBubble(message: message);
+        case MessageType.file:
+         return FileMsgBubble(message: message);
+        // 目前先用文本气泡占位
       case MessageType.text:
       default:
         return TextMsgBubble(message: message);
