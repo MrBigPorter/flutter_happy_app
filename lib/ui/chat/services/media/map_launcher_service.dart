@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:map_launcher/map_launcher.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 class MapLauncherService {
 
-  /// 打开地图选择菜单
   static Future<void> openMap(
       BuildContext context, {
         required double lat,
@@ -14,7 +12,6 @@ class MapLauncherService {
         String? address,
       }) async {
     try {
-      // 1. 获取已安装地图
       final availableMaps = await MapLauncher.installedMaps;
 
       if (!context.mounted) return;
@@ -26,7 +23,6 @@ class MapLauncherService {
         return;
       }
 
-      // 2. 弹出底部菜单
       showModalBottomSheet(
         context: context,
         backgroundColor: Colors.white,
@@ -50,7 +46,6 @@ class MapLauncherService {
                 ),
                 Divider(height: 1, color: Colors.grey[200]),
 
-                // 3. 遍历地图列表
                 ...availableMaps.map((map) {
                   return ListTile(
                     onTap: () {
@@ -61,8 +56,8 @@ class MapLauncherService {
                         description: address,
                       );
                     },
-                    // 核心修复：安全的图标构建器
-                    leading: _buildSafeMapIcon(map.icon),
+                    //  核心修改：不再解析 SVG，而是用安全的本地映射
+                    leading: _buildMapIconByMapType(map.mapType),
                     title: Text(
                       map.mapName,
                       style: TextStyle(fontSize: 16.sp),
@@ -90,29 +85,52 @@ class MapLauncherService {
     }
   }
 
-  ///  安全构建图标的方法
-  static Widget _buildSafeMapIcon(String svgString) {
-    // 修复布局错误：强制限制宽高，防止 SVG 无限扩张挤崩 ListTile
-    return SizedBox(
-      width: 32.w,
-      height: 32.w,
-      child: Builder(
-        builder: (context) {
-          try {
-            // map.icon 是一个 SVG 字符串，必须用 .string()
-            return SvgPicture.string(
-              svgString,
-              width: 32.w,
-              height: 32.w,
-              // 如果 SVG 数据本身有问题，尝试显示 fallback
-              placeholderBuilder: (_) => const Icon(Icons.map, color: Colors.grey),
-            );
-          } catch (e) {
-            //  终极兜底：如果 SVG 解析直接报错 (Invalid SVG data)，显示默认图标
-            debugPrint("SVG Parse Error: $e");
-            return const Icon(Icons.map, color: Colors.blueGrey);
-          }
-        },
+  ///  根据地图类型手动返回漂亮的图标
+  static Widget _buildMapIconByMapType(MapType type) {
+    // 定义一个默认大小
+    final double size = 32.w;
+
+    IconData iconData;
+    Color color;
+
+    // 根据不同地图给不同的颜色和图标
+    switch (type) {
+      case MapType.google:
+        iconData = Icons.location_on;
+        color = Colors.red; // Google 地图经典红
+        break;
+      case MapType.apple:
+        iconData = Icons.map;
+        color = Colors.green; // Apple 地图经典绿
+        break;
+      case MapType.amap: // 高德
+        iconData = Icons.navigation;
+        color = Colors.blue;
+        break;
+      case MapType.baidu:
+        iconData = Icons.near_me;
+        color = Colors.indigo;
+        break;
+      case MapType.waze:
+        iconData = Icons.directions_car;
+        color = Colors.lightBlue;
+        break;
+      default:
+        iconData = Icons.map_outlined;
+        color = Colors.grey;
+    }
+
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1), // 浅色背景
+        borderRadius: BorderRadius.circular(8.r),
+      ),
+      child: Icon(
+        iconData,
+        color: color,
+        size: 20.w,
       ),
     );
   }
