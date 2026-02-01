@@ -518,8 +518,13 @@ class Api {
   }
 
   /// 邀请成员进群 (强类型版)
-  static Future<InviteToGroupResponse> groupInviteApi(InviteToGroupRequest req) async {
-    final res = await Http.post('/api/v1/chat/group/invite', data: req.toJson());
+  static Future<InviteToGroupResponse> groupInviteApi(
+    InviteToGroupRequest req,
+  ) async {
+    final res = await Http.post(
+      '/api/v1/chat/group/invite',
+      data: req.toJson(),
+    );
 
     // 2. 将返回结果转为 Model
     return InviteToGroupResponse.fromJson(res);
@@ -555,7 +560,7 @@ class Api {
 
   // 1. 获取好友列表
   static Future<bool> addFriendApi(String friendId) async {
-      return Http.post('/api/v1/users/add-friend', data: {'friendId': friendId});
+    return Http.post('/api/v1/users/add-friend', data: {'friendId': friendId});
   }
 
   // 2. 用户搜索
@@ -642,4 +647,5 @@ class Api {
     );
     return parseList(res, (e) => ChatSender.fromJson(e));
   }
+
 }

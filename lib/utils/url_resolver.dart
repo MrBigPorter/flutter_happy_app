@@ -1,11 +1,16 @@
 import 'dart:math';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import '../core/config/app_config.dart';
 
 class UrlResolver {
   static const String _cdnPrefix = '/cdn-cgi/image/';
   static const String _uploadsDir = 'uploads/';
+
+  /// 生成静态地图快照 URL
+  static String getStaticMapUrl(double lat, double lng) {
+    // it's the stream API endpoint, which generates a static map image based on lat/lng
+    return "${AppConfig.apiBaseUrl}/api/v1/media/static-map?lat=$lat&lng=$lng";
+  }
 
   /// =================================================================
   /// 1. 通用文件解析 -> 走资源域名

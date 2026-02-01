@@ -10,7 +10,7 @@ import '../camera_helper.dart';
 class LivenessService {
   static const MethodChannel _channel = MethodChannel('com.porter.joyminis/liveness');
 
-  /// 👤 活体检测
+  ///  活体检测
   static Future<bool?> start(BuildContext context, String sessionId) async {
     if (kDebugMode && !await _isPhysicalDevice()) return true;
     if (!await CameraHelper.ensureCameraPermission(context)) return false;
@@ -23,12 +23,12 @@ class LivenessService {
       if (result is Map) return result['success'] == true;
       return false;
     } catch (e) {
-      debugPrint("❌ 活体检测失败: $e");
+      debugPrint("活体检测失败: $e");
       return false;
     }
   }
 
-  /// 📸 文档扫描
+  /// 文档扫描
   static Future<String?> scanDocument(BuildContext context) async {
     if (kDebugMode && !await _isPhysicalDevice()) return "mock_image_path.jpg";
     if (!await CameraHelper.ensureCameraPermission(context)) return null;
@@ -52,25 +52,25 @@ class LivenessService {
       // 3. 处理返回路径（兼容 file:// 前缀）
       if (rawPath != null && rawPath.isNotEmpty) {
         final cleanPath = rawPath.replaceFirst('file://', '').replaceFirst('content://', '');
-        debugPrint("✅ 扫描成功: $cleanPath");
+        debugPrint(" 扫描成功: $cleanPath");
         return cleanPath;
       }
       return null;
 
     } on PlatformException catch (e) {
-      // 🛡️ 关键处理：针对华为海外版“假支持”的降级逻辑
+      //  关键处理：针对华为海外版“假支持”的降级逻辑
       // 捕获到原生代码中的 SCAN_INIT_FAILED 或任何初始化失败
-      debugPrint("⚠️ 原生扫描不可用 (华为海外版兼容性): ${e.code}");
-      debugPrint("🔄 自动切换至 Flutter 自定义拍照...");
+      debugPrint(" 原生扫描不可用 (华为海外版兼容性): ${e.code}");
+      debugPrint(" 自动切换至 Flutter 自定义拍照...");
       return await _switchToFlutterScanner(context);
 
     } catch (e) {
-      debugPrint("❌ 扫描过程发生未知异常: $e");
+      debugPrint(" 扫描过程发生未知异常: $e");
       return await _switchToFlutterScanner(context); // 保底方案
     }
   }
 
-  /// 🔄 统一跳转：Flutter 自定义拍照页面
+  ///  统一跳转：Flutter 自定义拍照页面
   static Future<String?> _switchToFlutterScanner(BuildContext context) async {
     final camera = await CameraHelper.getBackCamera();
     return await Navigator.push<String>(
@@ -81,7 +81,7 @@ class LivenessService {
     );
   }
 
-  /// 🔍 真机检测逻辑
+  ///  真机检测逻辑
   static Future<bool> _isPhysicalDevice() async {
     final deviceInfo = DeviceInfoPlugin();
     try {

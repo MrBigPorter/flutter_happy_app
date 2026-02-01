@@ -7,9 +7,12 @@ import 'package:flutter_app/ui/chat/providers/chat_room_provider.dart';
 import 'package:flutter_app/ui/chat/providers/chat_view_model.dart';
 import 'package:flutter_app/ui/chat/providers/conversation_provider.dart';
 import 'package:flutter_app/ui/chat/services/chat_action_service.dart';
+import 'package:flutter_app/ui/chat/services/media/location_service.dart';
+import 'package:flutter_app/ui/index.dart';
 import 'package:flutter_app/utils/url_resolver.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
@@ -43,7 +46,8 @@ class _ChatPageState extends ConsumerState<ChatPage> {
     super.initState();
     // 1. 初始化：标记活跃会话 + 标为已读
     Future.microtask(() {
-      ref.read(activeConversationIdProvider.notifier).state = widget.conversationId;
+      ref.read(activeConversationIdProvider.notifier).state =
+          widget.conversationId;
       ref.read(chatControllerProvider(widget.conversationId)).markAsRead();
     });
   }
@@ -99,7 +103,9 @@ class _ChatPageState extends ConsumerState<ChatPage> {
     final picker = ImagePicker();
     final image = await picker.pickImage(source: ImageSource.gallery);
     if (image != null) {
-      ref.read(chatActionServiceProvider(widget.conversationId)).sendImage(image);
+      ref
+          .read(chatActionServiceProvider(widget.conversationId))
+          .sendImage(image);
     }
   }
 
@@ -107,7 +113,9 @@ class _ChatPageState extends ConsumerState<ChatPage> {
     final picker = ImagePicker();
     final image = await picker.pickImage(source: ImageSource.camera);
     if (image != null) {
-      ref.read(chatActionServiceProvider(widget.conversationId)).sendImage(image);
+      ref
+          .read(chatActionServiceProvider(widget.conversationId))
+          .sendImage(image);
     }
   }
 
@@ -115,7 +123,9 @@ class _ChatPageState extends ConsumerState<ChatPage> {
     final picker = ImagePicker();
     final video = await picker.pickVideo(source: ImageSource.gallery);
     if (video != null) {
-      ref.read(chatActionServiceProvider(widget.conversationId)).sendVideo(video);
+      ref
+          .read(chatActionServiceProvider(widget.conversationId))
+          .sendVideo(video);
     }
   }
 
@@ -123,9 +133,86 @@ class _ChatPageState extends ConsumerState<ChatPage> {
     ref.read(chatActionServiceProvider(widget.conversationId)).sendFile();
   }
 
+  void _handleTakeLocation() async {
+    // 1. 关面板
+    _closePanel();
+
+    try {
+      // 显示 Loading (建议加上)
+      // EasyLoading.show(status: 'Locating...');
+
+      // 2. 获取坐标
+      final pos = await LocationService.getCurrentPosition();
+
+      if (pos != null) {
+        // 3. 获取地址
+        final String address = await LocationService.getAddress(
+            pos.latitude,
+            pos.longitude
+        );
+
+        String title = "Current Location";
+        print("Resolved address: $address");
+        if (address.contains("市")) {
+          title = address.split("市").last;
+        }
+
+        // 4. 发送
+        ref.read(chatActionServiceProvider(widget.conversationId)).sendLocation(
+          latitude: pos.latitude,
+          longitude: pos.longitude,
+          address: address,
+          title: title,
+        );
+      }
+    } catch (e) {
+      debugPrint("Location error: $e");
+
+      //  核心修复：捕获“永久拒绝”异常，引导用户去设置
+      final errorStr = e.toString();
+      if (errorStr.contains('permanently denied')) {
+        _showPermissionDialog(); // 弹出挽回弹窗
+      } else if (errorStr.contains('Location services are disabled')) {
+        // 提示用户开 GPS
+        Geolocator.openLocationSettings();
+      } else {
+        RadixToast.info("Failed to get location.");
+      }
+    }
+  }
+
+  //  新增：权限挽回弹窗
+  void _showPermissionDialog() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Permission Required'),
+        content: const Text(
+          'Location permission is permanently denied. Please enable it in the app settings to share your location.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              //  核心魔法：直接跳到 App 设置页
+              Geolocator.openAppSettings();
+            },
+            child: const Text(
+              'Open Settings',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-
     // 使用 ref.watch 监听 Controller。
     // 虽然我们不需要它的返回值，但这行代码告诉 Riverpod：
     // "只要这个 ChatPage 还在屏幕上，就千万别销毁 chatControllerProvider！"
@@ -133,15 +220,20 @@ class _ChatPageState extends ConsumerState<ChatPage> {
 
     // 1. 数据源
     final chatState = ref.watch(chatViewModelProvider(widget.conversationId));
-    final viewModel = ref.read(chatViewModelProvider(widget.conversationId).notifier);
+    final viewModel = ref.read(
+      chatViewModelProvider(widget.conversationId).notifier,
+    );
     final messages = chatState.messages;
 
     // 2. 发送服务
-    final actionService = ref.read(chatActionServiceProvider(widget.conversationId));
+    final actionService = ref.read(
+      chatActionServiceProvider(widget.conversationId),
+    );
 
     // 3. 详情信息
     final asyncDetail = ref.watch(chatDetailProvider(widget.conversationId));
-    final bool isGroup = asyncDetail.valueOrNull?.type == ConversationType.group;
+    final bool isGroup =
+        asyncDetail.valueOrNull?.type == ConversationType.group;
 
     return WillPopScope(
       onWillPop: _onWillPop,
@@ -159,7 +251,11 @@ class _ChatPageState extends ConsumerState<ChatPage> {
           titleSpacing: 0,
           leadingWidth: 40,
           leading: IconButton(
-            icon: Icon(Icons.arrow_back_ios_new, color: context.textPrimary900, size: 22.sp),
+            icon: Icon(
+              Icons.arrow_back_ios_new,
+              color: context.textPrimary900,
+              size: 22.sp,
+            ),
             onPressed: () {
               if (context.canPop()) {
                 context.pop();
@@ -175,11 +271,19 @@ class _ChatPageState extends ConsumerState<ChatPage> {
                 backgroundColor: Colors.grey[200],
                 backgroundImage: asyncDetail.valueOrNull?.avatar != null
                     ? CachedNetworkImageProvider(
-                  UrlResolver.resolveImage(context, asyncDetail.value!.avatar!, logicalWidth: 36),
-                )
+                        UrlResolver.resolveImage(
+                          context,
+                          asyncDetail.value!.avatar!,
+                          logicalWidth: 36,
+                        ),
+                      )
                     : null,
                 child: asyncDetail.valueOrNull?.avatar == null
-                    ? Icon(Icons.person, color: context.textSecondary700, size: 20.sp)
+                    ? Icon(
+                        Icons.person,
+                        color: context.textSecondary700,
+                        size: 20.sp,
+                      )
                     : null,
               ),
               SizedBox(width: 10.w),
@@ -203,12 +307,20 @@ class _ChatPageState extends ConsumerState<ChatPage> {
           ),
           actions: [
             IconButton(
-              icon: Icon(Icons.more_horiz, color: context.textPrimary900, size: 24.sp),
+              icon: Icon(
+                Icons.more_horiz,
+                color: context.textPrimary900,
+                size: 24.sp,
+              ),
               onPressed: () {
                 if (isGroup) {
-                  appRouter.push('/chat/group/profile/${widget.conversationId}');
+                  appRouter.push(
+                    '/chat/group/profile/${widget.conversationId}',
+                  );
                 } else {
-                  appRouter.push('/chat/direct/profile/${widget.conversationId}');
+                  appRouter.push(
+                    '/chat/direct/profile/${widget.conversationId}',
+                  );
                 }
               },
             ),
@@ -239,7 +351,10 @@ class _ChatPageState extends ConsumerState<ChatPage> {
                   child: ListView.builder(
                     controller: _scrollController,
                     reverse: true,
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 10,
+                    ),
                     itemCount: messages.length + 1,
                     itemBuilder: (context, index) {
                       // 顶部 Loading / 到底提示
@@ -248,14 +363,29 @@ class _ChatPageState extends ConsumerState<ChatPage> {
                           padding: const EdgeInsets.symmetric(vertical: 15),
                           alignment: Alignment.center,
                           child: (chatState.hasMore)
-                              ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                              : const Text("—— No more history ——", style: TextStyle(color: Colors.grey, fontSize: 12)),
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Text(
+                                  "—— No more history ——",
+                                  style: TextStyle(
+                                    color: Colors.grey,
+                                    fontSize: 12,
+                                  ),
+                                ),
                         );
                       }
 
                       final msg = messages[index];
                       // 简单判断已读显示 (仅供参考)
-                      bool showReadStatus = msg.isMe && msg.status == MessageStatus.read && index == 0;
+                      bool showReadStatus =
+                          msg.isMe &&
+                          msg.status == MessageStatus.read &&
+                          index == 0;
 
                       return ChatBubble(
                         key: ValueKey(msg.id),
@@ -281,8 +411,9 @@ class _ChatPageState extends ConsumerState<ChatPage> {
               onSendVideo: (file) => actionService.sendVideo(file),
 
               // ---  核心交互回调 ---
-              onAddPressed: _togglePanel,      // 点击加号 -> 切换面板
-              onTextFieldTap: _closePanel,     // 点击输入框 -> 收起面板
+              onAddPressed: _togglePanel,
+              // 点击加号 -> 切换面板
+              onTextFieldTap: _closePanel, // 点击输入框 -> 收起面板
             ),
 
             // 3. 全能菜单面板 (隐藏在最下方)
@@ -290,8 +421,10 @@ class _ChatPageState extends ConsumerState<ChatPage> {
             AnimatedContainer(
               duration: const Duration(milliseconds: 250),
               curve: Curves.easeOutQuad,
-              height: _isPanelOpen ?  280.h + MediaQuery.of(context).padding.bottom : 0,
-              color:context.bgPrimary,
+              height: _isPanelOpen
+                  ? 280.h + MediaQuery.of(context).padding.bottom
+                  : 0,
+              color: context.bgPrimary,
               // 适配 iPhone 底部横条
               child: SingleChildScrollView(
                 physics: const NeverScrollableScrollPhysics(),
@@ -321,9 +454,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
                     ActionItem(
                       label: "Location",
                       icon: Icons.location_on,
-                      onTap: () {
-                        // TODO: Location
-                      },
+                      onTap: _handleTakeLocation,
                     ),
                   ],
                 ),

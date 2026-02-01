@@ -5,6 +5,8 @@ class RouteAuthConfig {
     '/payment',
     '/order/',
     '/me/',
+    '/chat/',
+    '/conversations'
   ];
 
   /// Determine if the given path requires user login/authentication.
