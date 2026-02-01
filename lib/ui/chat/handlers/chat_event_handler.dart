@@ -114,7 +114,7 @@ class ChatEventHandler {
       _readReceiptSubject.add(null);
     }
 
-    var uiMsg = ChatUiModel.fromApiModel(
+    var uiMsg = ChatUiModelMapper.fromApiModel(
       ChatMessage(
         id: msg.id,
         content: msg.content,

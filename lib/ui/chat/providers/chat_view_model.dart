@@ -80,7 +80,7 @@ class ChatViewModel extends StateNotifier<ChatListState> {
 
       // 结果入库
       if (response.list.isNotEmpty) {
-        final uiMsgs = response.list.map((m) => ChatUiModel.fromApiModel(m, conversationId)).toList();
+        final uiMsgs = response.list.map((m) => ChatUiModelMapper.fromApiModel(m, conversationId)).toList();
         await _dbService.saveMessages(uiMsgs);
       }
     } catch (e) {
@@ -148,7 +148,7 @@ class ChatViewModel extends StateNotifier<ChatListState> {
         state = state.copyWith(hasMore: false, isLoadingMore: false);
       } else {
         // 入库 -> Sembast 自动通知 UI -> 列表变长
-        final uiMsgs = response.list.map((m) => ChatUiModel.fromApiModel(m, conversationId)).toList();
+        final uiMsgs = response.list.map((m) => ChatUiModelMapper.fromApiModel(m, conversationId)).toList();
         await _dbService.saveMessages(uiMsgs);
         state = state.copyWith(isLoadingMore: false);
       }

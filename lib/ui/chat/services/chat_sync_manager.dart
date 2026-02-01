@@ -69,7 +69,7 @@ class ChatSyncManager {
   }
 
   List<ChatUiModel> _mapToUiModels(List<dynamic> list) {
-    return list.map((dto) => ChatUiModel.fromApiModel(dto, conversationId, _currentUserId)).toList();
+    return list.map((dto) => ChatUiModelMapper.fromApiModel(dto, conversationId, _currentUserId)).toList();
   }
 
   List<ChatUiModel> _applyReadStatusLocally(List<ChatUiModel> list, int waterLine) {

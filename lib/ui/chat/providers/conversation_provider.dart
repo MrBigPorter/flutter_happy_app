@@ -149,7 +149,7 @@ class ConversationList extends _$ConversationList {
           id: msg.sender!.id, nickname: msg.sender!.nickname, avatar: msg.sender!.avatar,
         ),
       );
-      final uiMsg = ChatUiModel.fromApiModel(apiMsg, convId, myUserId);
+      final uiMsg = ChatUiModelMapper.fromApiModel(apiMsg, convId, myUserId);
       await LocalDatabaseService().saveMessage(uiMsg);
     } catch (e) {
       debugPrint(" [ConversationList] DB Save Error: $e");
