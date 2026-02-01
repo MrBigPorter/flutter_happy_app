@@ -7,6 +7,7 @@ import 'package:flutter_app/ui/chat/models/chat_ui_model.dart';
 import 'package:flutter_app/ui/chat/services/database/local_database_service.dart';
 import 'package:flutter_app/ui/chat/services/chat_action_service.dart';
 import 'package:flutter_app/utils/upload/global_upload_service.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class OfflineQueueManager with WidgetsBindingObserver {
   static final OfflineQueueManager _instance = OfflineQueueManager._internal();
@@ -15,7 +16,7 @@ class OfflineQueueManager with WidgetsBindingObserver {
 
   bool _isProcessing = false;
   StreamSubscription? _connectivitySubscription;
-  late dynamic _ref; //  这里改为 dynamic
+  late ProviderContainer _ref; //  这里改为 dynamic
 
   final GlobalUploadService _uploadService = GlobalUploadService();
   final Map<String, int> _retryRegistry = {};
@@ -102,7 +103,7 @@ class OfflineQueueManager with WidgetsBindingObserver {
       debugPrint("[OfflineQueue] 正在通过管道重发消息: ${msg.id}");
 
       // 构造 Service 实例
-      final service = ChatActionService(msg.conversationId, _ref, _uploadService);
+      final service = _ref.read(chatActionServiceProvider(msg.conversationId));
 
       // 调用我们在 ChatActionService 里写好的重发管道
       // 它会自动执行：RecoverStep -> UploadStep -> SyncStep
