@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_app/common.dart';
 import 'package:map_launcher/map_launcher.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
@@ -25,7 +26,7 @@ class MapLauncherService {
 
       showModalBottomSheet(
         context: context,
-        backgroundColor: Colors.white,
+        backgroundColor: context.bgPrimary,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(16.r)),
         ),
@@ -41,10 +42,11 @@ class MapLauncherService {
                     style: TextStyle(
                       fontSize: 16.sp,
                       fontWeight: FontWeight.bold,
+                      color: context.textPrimary900,
                     ),
                   ),
                 ),
-                Divider(height: 1, color: Colors.grey[200]),
+                Divider(height: 1, color: context.borderPrimary),
 
                 ...availableMaps.map((map) {
                   return ListTile(
@@ -65,7 +67,7 @@ class MapLauncherService {
                   );
                 }).toList(),
 
-                Divider(height: 1, color: Colors.grey[200]),
+                Divider(height: 1, color: context.borderPrimary),
                 ListTile(
                   onTap: () => Navigator.pop(ctx),
                   title: Center(
