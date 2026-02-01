@@ -7,13 +7,13 @@ import 'package:flutter_app/components/skeleton.dart';
 import 'package:flutter_app/ui/button/button.dart';
 import 'package:flutter_app/ui/button/variant.dart';
 import 'package:flutter_app/ui/chat/providers/conversation_provider.dart';
+import 'package:flutter_app/utils/url_resolver.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 //  [新增] 引入 LuckyStore 获取当前用户 ID
 import 'package:flutter_app/core/store/lucky_store.dart';
 
-import '../../utils/image_url.dart';
 import '../toast/radix_toast.dart';
 import 'models/conversation.dart';
 
@@ -81,7 +81,7 @@ class UserProfilePage extends ConsumerWidget {
             image: avatar != null
                 ? DecorationImage(
               image: CachedNetworkImageProvider(
-                ImageUrl.build(
+                UrlResolver.resolveImage(
                   context,
                   avatar,
                   logicalWidth: 48,

@@ -7,12 +7,12 @@ import 'package:flutter_app/ui/chat/providers/chat_room_provider.dart';
 import 'package:flutter_app/ui/chat/providers/chat_view_model.dart';
 import 'package:flutter_app/ui/chat/providers/conversation_provider.dart';
 import 'package:flutter_app/ui/chat/services/chat_action_service.dart';
+import 'package:flutter_app/utils/url_resolver.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
-import '../../utils/image_url.dart';
 import 'components/chat_bubble.dart';
 import 'components/chat_input/modern_chat_input_bar.dart';
 import 'models/chat_ui_model.dart';
@@ -125,6 +125,12 @@ class _ChatPageState extends ConsumerState<ChatPage> {
 
   @override
   Widget build(BuildContext context) {
+
+    // 使用 ref.watch 监听 Controller。
+    // 虽然我们不需要它的返回值，但这行代码告诉 Riverpod：
+    // "只要这个 ChatPage 还在屏幕上，就千万别销毁 chatControllerProvider！"
+    ref.watch(chatControllerProvider(widget.conversationId));
+
     // 1. 数据源
     final chatState = ref.watch(chatViewModelProvider(widget.conversationId));
     final viewModel = ref.read(chatViewModelProvider(widget.conversationId).notifier);
@@ -169,7 +175,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
                 backgroundColor: Colors.grey[200],
                 backgroundImage: asyncDetail.valueOrNull?.avatar != null
                     ? CachedNetworkImageProvider(
-                  ImageUrl.build(context, asyncDetail.value!.avatar!, logicalWidth: 36),
+                  UrlResolver.resolveImage(context, asyncDetail.value!.avatar!, logicalWidth: 36),
                 )
                     : null,
                 child: asyncDetail.valueOrNull?.avatar == null

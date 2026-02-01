@@ -192,9 +192,9 @@ class ChatActionService {
         allowMultiple: false,
         // Web端：为了兼容性，允许所有类型 (any)
         // Native端：为了体验，只允许特定后缀 (custom)
-        type: kIsWeb ? FileType.any : FileType.custom,
+        type: FileType.custom,
         // Native端才传后缀列表，Web端传了可能会导致不弹窗
-        allowedExtensions: kIsWeb ? null : [
+        allowedExtensions:[
           'pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx',
           'zip', 'rar', 'txt', 'apk'
         ],

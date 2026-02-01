@@ -8,11 +8,11 @@ import 'package:flutter_app/ui/button/variant.dart';
 import 'package:flutter_app/ui/chat/providers/contact_provider.dart';
 import 'package:flutter_app/ui/chat/providers/conversation_provider.dart';
 import 'package:flutter_app/ui/index.dart';
+import 'package:flutter_app/utils/url_resolver.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../utils/image_url.dart';
 import '../toast/radix_toast.dart';
 import 'models/conversation.dart';
 
@@ -142,7 +142,7 @@ class GroupProfilePage extends ConsumerWidget {
                   image: member.avatar != null
                       ? DecorationImage(
                     image: CachedNetworkImageProvider(
-                      ImageUrl.build(
+                      UrlResolver.resolveImage(
                         context,
                         member.avatar!,
                         logicalWidth: 48, // 容器宽 48

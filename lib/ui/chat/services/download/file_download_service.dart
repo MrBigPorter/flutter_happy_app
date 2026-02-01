@@ -1,14 +1,17 @@
 import 'dart:io';
 import 'package:dio/dio.dart';
-import 'package:flutter/foundation.dart'; // kIsWeb
+import 'package:flutter/foundation.dart';
+import 'package:universal_html/html.dart' as html;
+
 import 'package:open_filex/open_filex.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import 'package:flutter_app/utils/asset/asset_manager.dart';
 import 'package:flutter_app/ui/chat/models/chat_ui_model.dart';
 import 'package:flutter_app/ui/chat/services/database/local_database_service.dart';
+//  1. 引入 UrlResolver
+import 'package:flutter_app/utils/url_resolver.dart';
 
 final fileDownloadServiceProvider = Provider((ref) => FileDownloadService());
 
@@ -16,23 +19,24 @@ class FileDownloadService {
   final Dio _dio = Dio();
 
   /// 核心入口：下载或打开文件
-  /// [onProgress]: 下载进度回调 (received, total)
-  /// [cancelToken]: 用于取消下载
   Future<String?> downloadOrOpen(
       ChatUiModel message, {
         Function(int, int)? onProgress,
         CancelToken? cancelToken,
       }) async {
-    final remoteUrl = message.content;
-    if (remoteUrl == '[File]' || !remoteUrl.startsWith('http')) return null;
+    final rawContent = message.content;
+    if (rawContent == '[File]') return null;
 
-    // === 1. Web 端策略：直接打开，不下载到本地 ===
+    //  2. 核心修改：使用 UrlResolver 获取完整链接
+    // 它会自动处理 relative path, domain, https 等问题
+    final String fullUrl = UrlResolver.resolveFile(rawContent);
+
+    if (fullUrl.isEmpty) return null;
+
+    // === 1. Web 端策略：触发浏览器下载 ===
     if (kIsWeb) {
-      final uri = Uri.parse(remoteUrl);
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-      }
-      return null; // Web 端不返回本地路径
+      _downloadWeb(fullUrl, fileName: message.fileName);
+      return null; // Web 端没有本地路径的概念
     }
 
     // === 2. Native 端策略：下载到沙盒 ===
@@ -50,21 +54,24 @@ class FileDownloadService {
           "file_${message.id}.bin";
       final String savePath = "${saveDir.path}/$fileName";
 
-      // 2.3 检查是否已存在 (断点续传的基础，这里简单处理为已存在直接返回)
+      // 2.3 检查是否已存在 (断点续传/缓存命中)
       if (File(savePath).existsSync()) {
-        return savePath;
+        // 如果文件存在且大小不为0，直接返回
+        if (await File(savePath).length() > 0) {
+          return savePath;
+        }
       }
 
       // 2.4 开始下载
+      //  3. 这里传入 fullUrl，确保 Dio 能请求到完整地址
       await _dio.download(
-        remoteUrl,
+        fullUrl,
         savePath,
         cancelToken: cancelToken,
         onReceiveProgress: onProgress,
       );
 
       // 2.5 下载成功，回写数据库
-      // 这样下次进 App 就不用再下了
       await LocalDatabaseService().updateMessage(message.id, {
         'localPath': savePath
       });
@@ -72,18 +79,53 @@ class FileDownloadService {
       return savePath;
 
     } catch (e) {
-      // 可以在这里统一处理 Toast 报错
       rethrow;
     }
   }
 
-  /// 仅仅打开本地文件 (Native Only)
+  /// 专门处理 Web 端的下载
+  void _downloadWeb(String url, {String? fileName}) {
+    // 创建一个隐藏的 <a> 标签
+    final anchor = html.AnchorElement(href: url);
+
+    // 1. 只要是 Blob 或者是 PDF，不要让浏览器直接在当前也打开，尝试新标签页
+    anchor.target = '_blank';
+
+    // 2.  核心修复：强制设置 download 属性
+    // 只要设置了这个属性，浏览器就会把响应当成文件下载，而不会试图去渲染它（导致显示乱码）
+    String finalName = fileName ?? '';
+
+    // 如果没有传文件名，尝试从 URL 截取，或者给个默认名
+    if (finalName.isEmpty) {
+      if (url.startsWith('http')) {
+        finalName = url.split('/').last;
+      }
+      // 兜底：如果是 blob 且没名字，给个默认名，防止浏览器乱猜
+      if (finalName.isEmpty || finalName.contains('?')) {
+        finalName = "download_file.pdf";
+      }
+    }
+
+    // 赋值 download 属性 -> 这就是告诉浏览器："别废话，给我存成文件！"
+    anchor.download = finalName;
+
+    anchor.click();
+  }
+
+  /// 打开本地文件 (Native)
   Future<void> openLocalFile(String path) async {
-    if (kIsWeb) return;
+    if (kIsWeb) {
+      // Web 端如果有 localPath (通常是 blob)，也用同样的方式打开
+      _downloadWeb(path);
+      return;
+    }
 
     final result = await OpenFilex.open(path);
     if (result.type != ResultType.done) {
-      throw "Open file failed: ${result.message}";
+      // 忽略 "file not found" 之类的常见错误提示，或者根据需求 throw
+      if (result.type != ResultType.noAppToOpen) {
+        throw "无法打开文件: ${result.message}";
+      }
     }
   }
 

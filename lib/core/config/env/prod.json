@@ -1,0 +1,6 @@
+{
+  "FLAVOR": "prod",
+  "API_BASE_URL": "https://admin.joyminis.com",
+  "IMG_BASE_URL": "https://img.joyminis.com",
+  "LOG_HTTP": false
+}

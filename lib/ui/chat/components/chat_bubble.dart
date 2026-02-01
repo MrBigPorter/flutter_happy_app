@@ -5,7 +5,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
-import '../../../utils/image_url.dart';
 import '../../img/app_image.dart';
 import '../models/chat_ui_model.dart';
 import '../providers/chat_room_provider.dart';

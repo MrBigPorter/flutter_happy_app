@@ -74,6 +74,8 @@ class ChatUiModel {
   double? get imgHeight => meta?['h'] is num ? (meta!['h'] as num).toDouble() : null;
   String? get blurHash => meta?['blurHash'] as String?; //  架构师补强
 
+
+
   //  新增：自动格式化文件大小 (UI 直接用)
   String get displaySize {
     if (fileSize == null) return '0 B';
@@ -130,12 +132,21 @@ class ChatUiModel {
       'localPath': localPath,
       'duration': duration,
       'isRecalled': isRecalled,
+
+      'fileName': fileName,
+      'fileSize': fileSize,
+      'fileExt': fileExt,
+
       'meta': meta,
     };
   }
 
   // 2. 从数据库读取 Map (Sembast)
   factory ChatUiModel.fromJson(Map<String, dynamic> json) {
+
+    // 1. 先读 meta
+    final metaMap = json['meta'] as Map<String, dynamic>? ?? {};
+
     return ChatUiModel(
       id: json['id'] as String,
       seqId: json['seqId'] as int?,
@@ -169,15 +180,20 @@ class ChatUiModel {
       localPath: json['localPath'] as String?,
       duration: json['duration'] as int?,
       isRecalled: json['isRecalled'] as bool? ?? false,
-      meta: json['meta'] as Map<String, dynamic>?,
+      meta: metaMap,
 
       //  读库时，这两个字段永远是 null，等待 Service 层填充
       resolvedPath: null,
       resolvedThumbPath: null,
 
-      fileName: json['fileName'] as String?,
-      fileSize: json['fileSize'] as int?,
-      fileExt: json['fileExt'] as String?,
+      //  核心修复：优先从顶层读，读不到去 meta 里找
+      // 这样无论数据结构是旧版还是新版，都能读到文件名
+      fileName: json['fileName'] as String? ?? metaMap['fileName'],
+
+      fileSize: json['fileSize'] as int? ??
+          (metaMap['fileSize'] is int ? metaMap['fileSize'] : int.tryParse(metaMap['fileSize']?.toString() ?? '0')),
+
+      fileExt: json['fileExt'] as String? ?? metaMap['fileExt'],
     );
   }
 

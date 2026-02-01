@@ -1,11 +1,11 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_app/utils/url_resolver.dart';
 import 'package:photo_view/photo_view.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
 import '../../utils/asset/image_provider_utils.dart';
-import '../../utils/image_url.dart';
 
 class PhotoPreviewPage extends StatelessWidget {
   final String heroTag;
@@ -37,7 +37,7 @@ class PhotoPreviewPage extends StatelessWidget {
 
     // CHANGED: 网络图片：无论 source 是 uploads 还是 cdn-cgi，都统一用 ImageUrl.build 再包一次
     // 这样保证：移动端会强制 f=webp；Web 用 auto
-    final finalUrl = ImageUrl.build(
+    final finalUrl = UrlResolver.resolveImage(
       context,
       source,
       logicalWidth: 1080,

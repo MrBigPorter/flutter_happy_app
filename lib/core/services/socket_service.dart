@@ -1,9 +1,9 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_app/core/config/app_config.dart';
 import 'package:flutter_app/core/constants/socket_events.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
 import 'package:jwt_decoder/jwt_decoder.dart';
-import '../api/env.dart';
 import '../api/http_client.dart';
 import 'package:flutter_app/ui/chat/models/conversation.dart';
 
@@ -280,7 +280,7 @@ class SocketService extends _SocketBase
      // 只有 Token 变了，或者断开了，才执行下面的 disconnect 和重连
      disconnect();
 
-     final socketUrl = '${Env.apiBaseEffective}/events';
+     final socketUrl = '${AppConfig.apiBaseUrl}/events';
      debugPrint('🔌 [Socket] Connecting to $socketUrl');
 
      _socket = IO.io(

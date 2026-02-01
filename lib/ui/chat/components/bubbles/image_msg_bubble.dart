@@ -1,13 +1,13 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_app/utils/url_resolver.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:intl/intl.dart';
 
 import '../../models/chat_ui_model.dart';
 import '../../../img/app_image.dart';
 import '../../photo_preview_page.dart';
-import '../../../../utils/image_url.dart';
 
 class ImageMsgBubble extends StatelessWidget {
   final ChatUiModel message;
@@ -102,7 +102,7 @@ class ImageMsgBubble extends StatelessWidget {
     //  核心修正：必须与 AppCachedImage 的默认参数完全对齐！
     // 1. AppCachedImage 默认 quality = 50
     // 2. AppCachedImage 默认 format = kIsWeb ? 'auto' : 'webp'
-    final String thumbUrl = ImageUrl.build(
+    final String thumbUrl = UrlResolver.resolveImage(
       context,
       imageSource,
       logicalWidth: bubbleWidth,

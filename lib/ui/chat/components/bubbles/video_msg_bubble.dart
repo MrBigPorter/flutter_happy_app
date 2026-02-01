@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_app/utils/url_resolver.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:video_player/video_player.dart';
 
@@ -8,7 +9,6 @@ import '../../models/chat_ui_model.dart';
 import '../../../img/app_image.dart';
 import '../../services/media/video_playback_service.dart';
 import '../../video_player_page.dart';
-import '../../../../utils/image_url.dart';
 import '../../services/chat_action_service.dart';
 
 class VideoMsgBubble extends StatefulWidget {
@@ -37,7 +37,7 @@ class _VideoMsgBubbleState extends State<VideoMsgBubble> {
 
   /// 视频 URL：统一走 buildVideo（你现有策略）
   String _resolveNetworkUrl(String rawPath) {
-    return ImageUrl.buildVideo(rawPath);
+    return UrlResolver.resolveVideo(rawPath);
   }
 
   /// 尽可能找到本地文件（避免在线播放失败）
@@ -170,7 +170,7 @@ class _VideoMsgBubbleState extends State<VideoMsgBubble> {
     String? cachedUrl;
     if (thumbRaw.isNotEmpty) {
       // 调用 ImageUrl.build 生成完全一致的 CDN 链接
-      cachedUrl = ImageUrl.build(
+      cachedUrl = UrlResolver.resolveImage(
         context,
         thumbRaw,
         logicalWidth: maxWidth, // 关键：宽度对齐

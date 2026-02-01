@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart'; // kIsWeb, kDebugMode, kReleaseMode
+import 'package:flutter_app/utils/url_resolver.dart';
 import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:sembast/sembast.dart';
@@ -9,10 +10,10 @@ import 'package:sembast_web/sembast_web.dart';
 import '../../models/chat_ui_model.dart';
 import '../../models/conversation.dart';
 import '../../../../utils/asset/asset_manager.dart';
-import '../../../../utils/image_url.dart'; // 必须引入，用于处理 uploads/
 
 class LocalDatabaseService {
-  static final LocalDatabaseService _instance = LocalDatabaseService._internal();
+  static final LocalDatabaseService _instance =
+      LocalDatabaseService._internal();
 
   factory LocalDatabaseService() => _instance;
 
@@ -51,7 +52,8 @@ class LocalDatabaseService {
     final oldSnapshot = await record.getSnapshot(db);
     if (oldSnapshot != null) {
       final oldData = oldSnapshot.value;
-      if (dataToSave['previewBytes'] == null && oldData['previewBytes'] != null) {
+      if (dataToSave['previewBytes'] == null &&
+          oldData['previewBytes'] != null) {
         dataToSave['previewBytes'] = oldData['previewBytes'];
       }
       if (dataToSave['localPath'] == null && oldData['localPath'] != null) {
@@ -87,7 +89,10 @@ class LocalDatabaseService {
     });
   }
 
-  Future<void> updateMessageStatus(String msgId, MessageStatus newStatus) async {
+  Future<void> updateMessageStatus(
+    String msgId,
+    MessageStatus newStatus,
+  ) async {
     final db = await database;
     await _messageStore.record(msgId).update(db, {'status': newStatus.name});
   }
@@ -142,9 +147,10 @@ class LocalDatabaseService {
   // ========================================================================
   //  核心重构 A：监听消息流 (带 Limit 分页 + 自动预热)
   // ========================================================================
-  /// [limit]: 默认 50，核心性能优化点。
-  /// UI 层通过 ChatViewModel 动态增加这个值来实现"无感加载更多"。
-  Stream<List<ChatUiModel>> watchMessages(String conversationId, {int limit = 50}) async* {
+  Stream<List<ChatUiModel>> watchMessages(
+    String conversationId, {
+    int limit = 50,
+  }) async* {
     final db = await database;
 
     final finder = Finder(
@@ -153,18 +159,13 @@ class LocalDatabaseService {
       limit: limit, //  关键：限制数量，防止大群卡死
     );
 
-    // 使用 asyncMap 将预热逻辑注入到流中
-    yield* _messageStore
-        .query(finder: finder)
-        .onSnapshots(db)
-        .asyncMap((snapshots) async {
-      // 1. 转为原始 Model
+    yield* _messageStore.query(finder: finder).onSnapshots(db).asyncMap((
+      snapshots,
+    ) async {
       final rawModels = snapshots
           .map((snapshot) => ChatUiModel.fromJson(snapshot.value))
           .toList();
 
-      // 2. 并行预热 (路径计算、Gateway拼接、HTTPS升级)
-      // 这一步完成后，UI 拿到的就是"热数据"，直接渲染即可
       return await _prewarmMessages(rawModels);
     });
   }
@@ -186,23 +187,20 @@ class LocalDatabaseService {
     );
 
     final snapshots = await _messageStore.find(db, finder: finder);
-    final rawList = snapshots.map((e) => ChatUiModel.fromJson(e.value)).toList();
+    final rawList = snapshots
+        .map((e) => ChatUiModel.fromJson(e.value))
+        .toList();
 
-    // 同样需要预热
     return await _prewarmMessages(rawList);
   }
 
   // ========================================================================
   // 内部引擎：批量数据预热 (Pre-warming Service)
+  //  修复点：删除了手动 gw 拼接，全部委托给 UrlResolver
   // ========================================================================
-  // 这一步彻底解放了 UI 线程。UI 组件不需要做任何 IO 或逻辑判断。
   Future<List<ChatUiModel>> _prewarmMessages(List<ChatUiModel> models) async {
     if (models.isEmpty) return [];
 
-    // 1. 提前获取网关 (根据环境判断 dev/prod)
-    final gw = ImageUrl.gateway(useProd: kReleaseMode);
-
-    // 2. 并行处理所有消息
     final futures = models.map((msg) async {
       String? absPath;
       String? thumbPath;
@@ -210,47 +208,57 @@ class LocalDatabaseService {
 
       // --- A. 预处理主文件路径 ---
       if (msg.localPath != null && msg.localPath!.isNotEmpty) {
-        // 如果已经是网络路径或Blob，只做 HTTPS 检查
-        if (msg.localPath!.startsWith('http') || msg.localPath!.startsWith('blob:')) {
-          absPath = _ensureHttps(msg.localPath!);
-        } else {
-          // 如果是 AssetID，进行 IO 解析 (最耗时的一步，在这里做完)
-          absPath = await AssetManager.getFullPath(msg.localPath!, msg.type);
-        }
-      } else {
-        // 没有本地路径，看 content
-        if (msg.content.startsWith('http')) {
-          absPath = _ensureHttps(msg.content);
-        } else if (msg.content.startsWith('uploads/')) {
-          // 自动补全 Gateway
-          absPath = _ensureHttps('$gw/${msg.content}');
+        // ️ Blob 保护策略：
+        // 如果是 Web 端，且消息已发送成功，则认为本地存的 blob 链接已过期（刷新会导致失效）
+        // 此时强制 absPath = null，迫使下方逻辑使用 msg.content (远程链接)
+        bool isDeadBlob = kIsWeb &&
+            msg.localPath!.startsWith('blob:') &&
+            msg.status == MessageStatus.success;
+
+        if (!isDeadBlob) {
+          if (msg.localPath!.startsWith('http') || msg.localPath!.startsWith('blob:')) {
+            // 网络路径 -> UrlResolver
+            absPath = _resolveByMsgType(msg.type, msg.localPath);
+          } else {
+            // 本地路径 -> AssetManager
+            absPath = await AssetManager.getFullPath(msg.localPath!, msg.type);
+          }
         }
       }
 
-      if (absPath != null) needsUpdate = true;
+      // 3. 如果本地解析失败，兜底使用 content (远程路径)
+      //    UrlResolver 会自动识别 content 是绝对路径还是相对 uploads 路径，并补全正确域名
+      if (absPath == null) {
+        absPath = _resolveByMsgType(msg.type, msg.content);
+      }
+
+      if (absPath != null && absPath != msg.resolvedPath) {
+        needsUpdate = true;
+      }
 
       // --- B. 预处理封面路径 ---
       if (msg.meta != null) {
-        String? t = msg.meta!['thumb'];
-        if (t == null || t.isEmpty) {
-          t = msg.meta!['remote_thumb'];
-        }
-
+        String? t = msg.meta!['thumb'] ?? msg.meta!['remote_thumb'];
         if (t != null && t.isNotEmpty) {
-          if (t.startsWith('http')) {
-            thumbPath = _ensureHttps(t);
-          } else if (t.startsWith('uploads/')) {
-            thumbPath = _ensureHttps('$gw/$t');
+          // 封面全部按图片处理
+          // 如果 t 是相对路径 (uploads/xxx) 或网络路径，走 UrlResolver
+          // 如果 t 是本地资源 ID (没有斜杠)，走 AssetManager
+          if (t.startsWith('http') ||
+              t.startsWith('blob:') ||
+              t.contains('/')) {
+            //  修复：第一个参数传 null (因为 Service 层没有 context)
+            thumbPath = UrlResolver.resolveImage(null, t);
           } else {
             thumbPath = await AssetManager.getFullPath(t, MessageType.image);
           }
         }
-        if (thumbPath != null) needsUpdate = true;
+        if (thumbPath != null && thumbPath != msg.resolvedThumbPath) {
+          needsUpdate = true;
+        }
       }
 
-      // --- C. 组装成品 ---
+      // --- C. 返回新模型 ---
       if (needsUpdate) {
-        // 注入到内存字段 resolvedPath/resolvedThumbPath 中
         return msg.copyWith(
           resolvedPath: absPath,
           resolvedThumbPath: thumbPath,
@@ -262,20 +270,18 @@ class LocalDatabaseService {
     return await Future.wait(futures);
   }
 
-  //  辅助：环境感知 HTTPS 转换 (解决 iOS 播放报错)
-  String _ensureHttps(String url) {
-    // 1. 本地开发模式 (Debug) -> 允许 HTTP，不做处理，方便调试
-    if (kDebugMode) {
-      return url;
+  //  辅助分发器：根据消息类型选择正确的解析策略
+  // 取代了旧的 _ensureHttps
+  String? _resolveByMsgType(MessageType type, String? raw) {
+    if (raw == null || raw.isEmpty) return null;
+    switch (type) {
+      case MessageType.video:
+        return UrlResolver.resolveVideo(raw); // 走视频专用通道 (Web/Native 分流)
+      case MessageType.image:
+        return UrlResolver.resolveImage(null, raw); // 走图片专用通道 (CDN)
+      default:
+        return UrlResolver.resolveFile(raw); // 走文件专用通道 (纯 API 域名)
     }
-
-    // 2. 线上发布模式 (Release) -> 强制 HTTPS (满足 iOS ATS)
-    // 如果是 http://dev.joyminis.com... 强制转 https://
-    if (url.startsWith('http://')) {
-      return url.replaceFirst('http://', 'https://');
-    }
-
-    return url;
   }
 
   // ========================================================================
@@ -303,7 +309,9 @@ class LocalDatabaseService {
 
   Future<void> clearConversation(String conversationId) async {
     final db = await database;
-    final finder = Finder(filter: Filter.equals('conversationId', conversationId));
+    final finder = Finder(
+      filter: Filter.equals('conversationId', conversationId),
+    );
     await _messageStore.delete(db, finder: finder);
   }
 

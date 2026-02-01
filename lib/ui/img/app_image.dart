@@ -5,11 +5,11 @@ import 'dart:async';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_app/utils/url_resolver.dart';
 import 'package:flutter_blurhash/flutter_blurhash.dart';
 import 'package:shimmer/shimmer.dart';
 
 import '../chat/photo_preview_page.dart';
-import '../../utils/image_url.dart';
 
 class AppCachedImage extends StatelessWidget {
   final dynamic src;
@@ -161,7 +161,7 @@ class AppCachedImage extends StatelessWidget {
     if (path.contains('/cdn-cgi/')) {
       url = path;
     } else {
-      url = ImageUrl.build(
+      url = UrlResolver.resolveImage(
         context,
         path,
         logicalWidth: cacheWidth ?? width,

@@ -1,15 +1,13 @@
 import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_app/common.dart';
+import 'package:flutter_app/ui/index.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:intl/intl.dart';
-import 'package:open_filex/open_filex.dart';
-import 'package:path_provider/path_provider.dart';
 
 import '../../models/chat_ui_model.dart';
-import '../../services/database/local_database_service.dart';
-import '../../../../utils/asset/asset_manager.dart';
 import '../../services/download/file_download_service.dart';
 
 class FileMsgBubble extends ConsumerStatefulWidget {
@@ -21,11 +19,9 @@ class FileMsgBubble extends ConsumerStatefulWidget {
   ConsumerState<FileMsgBubble> createState() => _FileMsgBubbleState();
 }
 
-
 class _FileMsgBubbleState extends ConsumerState<FileMsgBubble> {
-  // 状态机
-  bool _isDownloading = false;
-  double _progress = 0.0;
+  // 简化状态机：只关心是否正在处理中
+  bool _isLoading = false;
   String? _finalLocalPath;
   final CancelToken _cancelToken = CancelToken();
 
@@ -37,11 +33,11 @@ class _FileMsgBubbleState extends ConsumerState<FileMsgBubble> {
 
   @override
   void dispose() {
-    if (_isDownloading) _cancelToken.cancel();
+    if (_isLoading) _cancelToken.cancel();
     super.dispose();
   }
 
-  // 1. 检查状态 -> 交给 Service
+  // 1. 初始化检查文件是否存在
   void _checkFile() async {
     final path = await ref.read(fileDownloadServiceProvider).checkLocalFile(widget.message.localPath);
     if (path != null && mounted) {
@@ -49,57 +45,51 @@ class _FileMsgBubbleState extends ConsumerState<FileMsgBubble> {
     }
   }
 
-  // 2. 下载/打开 -> 交给 Service
+  // 2. 点击逻辑：简化版
   void _handleTap() async {
-    final service = ref.read(fileDownloadServiceProvider);
+    // 正在处理中，忽略点击 (防止重复触发)
+    if (_isLoading) return;
 
-    // 情况 A: 发送中，点不动
+    // 消息正在发送中，忽略点击
     if (widget.message.status == MessageStatus.sending) return;
 
-    // 情况 B: 正在下载，点击取消
-    if (_isDownloading) {
-      _cancelToken.cancel();
-      setState(() => _isDownloading = false);
-      return;
-    }
+    final service = ref.read(fileDownloadServiceProvider);
 
-    // 情况 C: 已有文件，点击打开
+    // 情况 A: 已有本地文件 -> 直接打开
     if (_finalLocalPath != null) {
       try {
         await service.openLocalFile(_finalLocalPath!);
       } catch (e) {
-        debugPrint(e.toString());
+        debugPrint("Open error: $e");
+        RadixToast.error("Failed to open file.");
       }
       return;
     }
 
-    // 情况 D: 需要下载 (Web端是直接打开链接)
-    setState(() {
-      _isDownloading = true;
-      _progress = 0.0;
-    });
+    // 情况 B: 需要下载 (Web端是直接触发浏览器下载)
+    // 切换到 Loading 状态
+    setState(() => _isLoading = true);
 
     try {
+      // 这里的 onProgress 我们不需要了，因为只显示转圈圈
       final path = await service.downloadOrOpen(
         widget.message,
         cancelToken: _cancelToken,
-        onProgress: (received, total) {
-          if (total != -1 && mounted) {
-            setState(() => _progress = received / total);
-          }
-        },
       );
 
       if (mounted) {
         setState(() {
-          _isDownloading = false;
-          // Web 端 path 是 null，但没关系，点击逻辑里会处理 Web 跳转
+          _isLoading = false;
+          // Web 端 path 是 null，Native 端是本地路径
           if (path != null) _finalLocalPath = path;
         });
       }
     } catch (e) {
       debugPrint("Download error: $e");
-      if (mounted) setState(() => _isDownloading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+        // 可以选加一个 Toast 提示失败
+      }
     }
   }
 
@@ -110,10 +100,13 @@ class _FileMsgBubbleState extends ConsumerState<FileMsgBubble> {
     final name = widget.message.fileName ?? 'Unknown File';
     final sizeStr = widget.message.displaySize;
     final style = _getFileStyle(ext);
-    final isDownloaded = _finalLocalPath != null;
-    final isSending = widget.message.status == MessageStatus.sending;
 
-    // 2. 气泡宽度 (参考 ImageMsgBubble: 0.60.sw，文件可以稍微宽一点以便显示长文件名)
+    // 状态判断：是否有文件?
+    // Web端我们通常认为如果没有 _isLoading 就是待下载状态(除非你存了blob状态，但这里简单处理)
+    final bool isDownloaded = _finalLocalPath != null;
+    final bool isSending = widget.message.status == MessageStatus.sending;
+
+    // 2. 气泡宽度
     final double baseWidth = 0.65.sw;
 
     // 3. 时间字符串
@@ -126,11 +119,11 @@ class _FileMsgBubbleState extends ConsumerState<FileMsgBubble> {
         onTap: _handleTap,
         child: Container(
           width: baseWidth,
-          padding: EdgeInsets.fromLTRB(12.w, 12.h, 12.w, 8.h), // 底部留点空间给时间戳
+          padding: EdgeInsets.fromLTRB(12.w, 12.h, 12.w, 8.h),
           decoration: BoxDecoration(
-            color: Colors.white, // 文件气泡通常是白底
+            color:context.bgSecondary,
             borderRadius: BorderRadius.circular(12.r),
-            border: Border.all(color: Colors.grey.withOpacity(0.2)),
+            border: Border.all(color: context.borderPrimary),
           ),
           child: Stack(
             children: [
@@ -138,7 +131,7 @@ class _FileMsgBubbleState extends ConsumerState<FileMsgBubble> {
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // 左侧：动态图标区
+                  // 左侧：动态图标区 (核心修改)
                   _buildIconArea(style, isDownloaded, isSending),
 
                   SizedBox(width: 12.w),
@@ -155,22 +148,21 @@ class _FileMsgBubbleState extends ConsumerState<FileMsgBubble> {
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                             fontSize: 14.sp,
-                            color: Colors.black87,
+                            color:context.textPrimary900,
                             fontWeight: FontWeight.w500,
                             height: 1.3,
                           ),
                         ),
                         SizedBox(height: 6.h),
                         Text(
-                          _isDownloading
-                              ? "Downloading ${( _progress * 100).toInt()}%"
-                              : sizeStr,
+                          _isLoading ? "Loading..." : sizeStr,
                           style: TextStyle(
                             fontSize: 11.sp,
-                            color: Colors.grey[500],
+                            color: _isLoading ? style.color : Colors.grey[500],
+                            fontWeight: _isLoading ? FontWeight.w500 : FontWeight.normal,
                           ),
                         ),
-                        // 预留空间给绝对定位的时间戳，防止文字重叠
+                        // 预留空间给时间戳
                         SizedBox(height: 10.h),
                       ],
                     ),
@@ -179,7 +171,6 @@ class _FileMsgBubbleState extends ConsumerState<FileMsgBubble> {
               ),
 
               // === 时间戳 (右下角) ===
-              // 模仿 ImageMsgBubble 的 _buildTimeTag
               Positioned(
                 right: 0,
                 bottom: 0,
@@ -192,58 +183,69 @@ class _FileMsgBubbleState extends ConsumerState<FileMsgBubble> {
     );
   }
 
-  // 左侧图标区 (集成 发送中/下载中/文件类型)
+  // 左侧图标区：精简版
+  // 优先级：发送中 > 加载中(下载/打开) > 已下载(显示文件图标) > 未下载(显示下载箭头)
   Widget _buildIconArea(_FileStyle style, bool isDownloaded, bool isSending) {
-    return Stack(
+    return Container(
+      width: 44.w,
+      height: 44.w,
+      decoration: BoxDecoration(
+        color: style.color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(10.r),
+      ),
       alignment: Alignment.center,
-      children: [
-        // 背景块
-        Container(
-          width: 44.w,
-          height: 44.w,
-          decoration: BoxDecoration(
-            color: style.color.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(10.r),
-          ),
-        ),
-
-        // 状态分层显示
-        if (isSending)
-          SizedBox(
-            width: 20.w, height: 20.w,
-            child: const CircularProgressIndicator(strokeWidth: 2, color: Colors.grey),
-          )
-        else if (_isDownloading)
-          SizedBox(
-            width: 20.w, height: 20.w,
-            child: CircularProgressIndicator(
-              value: _progress,
-              strokeWidth: 2.5,
-              color: style.color,
-            ),
-          )
-        else
-          Icon(
-            isDownloaded ? style.icon : Icons.arrow_circle_down_rounded,
-            color: style.color,
-            size: 26.sp,
-          ),
-      ],
+      child: _buildInnerIcon(style, isDownloaded, isSending),
     );
   }
 
-  // 完全复刻 ImageMsgBubble 的时间胶囊样式
+  Widget _buildInnerIcon(_FileStyle style, bool isDownloaded, bool isSending) {
+    // 1. 发送中 (转灰圈)
+    if (isSending) {
+      return SizedBox(
+        width: 20.w, height: 20.w,
+        child: const CircularProgressIndicator(strokeWidth: 2, color: Colors.grey),
+      );
+    }
+
+    // 2. 加载中 (转色圈) - 下载或打开
+    if (_isLoading) {
+      return SizedBox(
+        width: 20.w, height: 20.w,
+        child: CircularProgressIndicator(
+          strokeWidth: 2.5,
+          color: style.color, // 使用文件类型的颜色
+        ),
+      );
+    }
+
+    // 3. 已下载 (显示文件类型图标)
+    if (isDownloaded) {
+      return Icon(
+        style.icon, // e.g. PDF icon
+        color: style.color,
+        size: 26.sp,
+      );
+    }
+
+    // 4. 未下载 (显示下载箭头)
+    return Icon(
+      Icons.arrow_circle_down_rounded,
+      color: style.color,
+      size: 26.sp,
+    );
+  }
+
   Widget _buildTimeTag(String time) {
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
       decoration: BoxDecoration(
-        color: Colors.grey.withOpacity(0.2), // 白底上改用浅灰背景
+        color: Colors.grey.withOpacity(0.2),
         borderRadius: BorderRadius.circular(10.r),
       ),
       child: Text(
         time,
         style: TextStyle(
-            color: Colors.grey[700], // 字体改深色
+            color: context.textSecondary700,
             fontSize: 9.sp,
             fontWeight: FontWeight.w500
         ),
@@ -251,7 +253,6 @@ class _FileMsgBubbleState extends ConsumerState<FileMsgBubble> {
     );
   }
 
-  // 样式映射表
   _FileStyle _getFileStyle(String ext) {
     final e = ext.toLowerCase();
     if (['pdf'].contains(e)) return _FileStyle(Colors.redAccent, Icons.picture_as_pdf);

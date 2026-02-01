@@ -1,10 +1,10 @@
 import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:flutter_app/app/routes/app_router.dart';
+import 'package:flutter_app/core/config/app_config.dart';
 import 'package:flutter_app/core/store/auth/auth_initial.dart';
 
 import '../network/unified_interceptor.dart';
-import 'env.dart';
 
 typedef FromJson<T> = T Function(dynamic json);
 
@@ -17,7 +17,7 @@ class Http {
 
   static final Dio _dio = Dio(
     BaseOptions(
-      baseUrl: Env.apiBaseEffective,
+      baseUrl: AppConfig.apiBaseUrl,
       connectTimeout: const Duration(seconds: 20),
       receiveTimeout: const Duration(seconds: 60),
       responseType: ResponseType.json,
@@ -34,7 +34,7 @@ class Http {
   /// 干净 Dio (给拦截器刷新 Token 用)
   static final Dio _rawDio = Dio(
     BaseOptions(
-      baseUrl: Env.apiBaseEffective,
+      baseUrl: AppConfig.apiBaseUrl,
       connectTimeout: const Duration(seconds: 20),
       receiveTimeout: const Duration(seconds: 20),
       responseType: ResponseType.json,

@@ -4,11 +4,11 @@ import 'package:flutter_app/common.dart';
 import 'package:flutter_app/components/base_scaffold.dart';
 import 'package:flutter_app/components/skeleton.dart';
 import 'package:flutter_app/ui/chat/providers/contact_provider.dart';
+import 'package:flutter_app/utils/url_resolver.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../utils/image_url.dart';
 
 
 class ContactListPage extends ConsumerWidget {
@@ -62,7 +62,7 @@ class ContactListPage extends ConsumerWidget {
                   backgroundColor: context.bgSecondary,
                   backgroundImage: user.avatar != null
                       ? CachedNetworkImageProvider(
-                    ImageUrl.build(
+                    UrlResolver.resolveImage(
                       context,
                       user.avatar!,
                       logicalWidth: 48, // Radius 24 * 2
