@@ -187,10 +187,17 @@ class ChatActionService {
   Future<void> sendFile() async {
     try{
       // 1. 唤起系统文件选择器
+      ///核心修复：Web 端强制使用 FileType.any，防止 MIME Type 识别失败导致不弹窗
       FilePickerResult? result = await FilePicker.platform.pickFiles(
         allowMultiple: false,
-        type: FileType.custom,// 仅允许特定类型
-        allowedExtensions: ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'zip', 'rar', 'txt'],
+        // Web端：为了兼容性，允许所有类型 (any)
+        // Native端：为了体验，只允许特定后缀 (custom)
+        type: kIsWeb ? FileType.any : FileType.custom,
+        // Native端才传后缀列表，Web端传了可能会导致不弹窗
+        allowedExtensions: kIsWeb ? null : [
+          'pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx',
+          'zip', 'rar', 'txt', 'apk'
+        ],
         withData: kIsWeb,// Web 端必须读入内存
         withReadStream: !kIsWeb,// App 端可以用流式读取优化
       );
@@ -241,9 +248,9 @@ class ChatActionService {
 
       // 8. 执行管道 (文件不需要压缩/处理，直接上传 + 同步)
       await _runPipeline(ctx, [
-       // PersistStep(),
-       // UploadStep(),
-       // SyncStep(),
+        PersistStep(),
+        UploadStep(),
+        SyncStep(),
       ]);
 
     }catch(e){

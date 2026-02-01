@@ -12,7 +12,7 @@ class AssetManager {
   static final AssetStore _store = kIsWeb ? WebAssetStore() : MobileAssetStore();
 
   //  2. 定义目录映射 (以后加 Video/File 就在这里加)
-  static String _getSubDir(MessageType type) {
+  static String getSubDir(MessageType type) {
     switch (type) {
       case MessageType.audio:
         return 'chat_audio';
@@ -45,7 +45,7 @@ class AssetManager {
   ///  [保存]：业务层只管传文件和类型，剩下的交给底层
   static Future<String> save(XFile rawFile, MessageType type) async {
     final fileName = "${const Uuid().v4()}${_getExtension(rawFile.path, type)}";
-    final subDir = _getSubDir(type);
+    final subDir = getSubDir(type);
 
     await _store.saveFile(rawFile, fileName, subDir);
 
@@ -55,6 +55,6 @@ class AssetManager {
   /// [获取]：还原路径
   static Future<String?> getFullPath(String? fileName, MessageType type) async {
     if (fileName == null || fileName.isEmpty) return null;
-    return await _store.getFullPath(fileName, _getSubDir(type));
+    return await _store.getFullPath(fileName, getSubDir(type));
   }
 }

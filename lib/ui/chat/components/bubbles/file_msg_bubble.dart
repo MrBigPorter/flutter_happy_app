@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:intl/intl.dart';
 import 'package:open_filex/open_filex.dart';
@@ -9,17 +10,19 @@ import 'package:path_provider/path_provider.dart';
 import '../../models/chat_ui_model.dart';
 import '../../services/database/local_database_service.dart';
 import '../../../../utils/asset/asset_manager.dart';
+import '../../services/download/file_download_service.dart';
 
-class FileMsgBubble extends StatefulWidget {
+class FileMsgBubble extends ConsumerStatefulWidget {
   final ChatUiModel message;
 
   const FileMsgBubble({super.key, required this.message});
 
   @override
-  State<FileMsgBubble> createState() => _FileMsgBubbleState();
+  ConsumerState<FileMsgBubble> createState() => _FileMsgBubbleState();
 }
 
-class _FileMsgBubbleState extends State<FileMsgBubble> {
+
+class _FileMsgBubbleState extends ConsumerState<FileMsgBubble> {
   // 状态机
   bool _isDownloading = false;
   double _progress = 0.0;
@@ -29,7 +32,7 @@ class _FileMsgBubbleState extends State<FileMsgBubble> {
   @override
   void initState() {
     super.initState();
-    _initFileState();
+    _checkFile();
   }
 
   @override
@@ -38,49 +41,49 @@ class _FileMsgBubbleState extends State<FileMsgBubble> {
     super.dispose();
   }
 
-  // 初始化：检查本地文件是否存在
-  Future<void> _initFileState() async {
-    final rawPath = widget.message.localPath;
-    if (rawPath == null) return;
-
-    String? resolvedPath;
-    // 兼容绝对路径和 AssetID
-    if (rawPath.startsWith('/') || rawPath.contains(Platform.pathSeparator)) {
-      resolvedPath = rawPath;
-    } else {
-      resolvedPath = await AssetManager.getFullPath(rawPath, MessageType.file);
-    }
-
-    if (resolvedPath != null && File(resolvedPath).existsSync()) {
-      if (mounted) setState(() => _finalLocalPath = resolvedPath);
+  // 1. 检查状态 -> 交给 Service
+  void _checkFile() async {
+    final path = await ref.read(fileDownloadServiceProvider).checkLocalFile(widget.message.localPath);
+    if (path != null && mounted) {
+      setState(() => _finalLocalPath = path);
     }
   }
 
-  // 核心交互：下载
-  Future<void> _downloadFile() async {
-    final remoteUrl = widget.message.content;
-    if (remoteUrl == '[File]' || !remoteUrl.startsWith('http')) return;
+  // 2. 下载/打开 -> 交给 Service
+  void _handleTap() async {
+    final service = ref.read(fileDownloadServiceProvider);
 
+    // 情况 A: 发送中，点不动
+    if (widget.message.status == MessageStatus.sending) return;
+
+    // 情况 B: 正在下载，点击取消
+    if (_isDownloading) {
+      _cancelToken.cancel();
+      setState(() => _isDownloading = false);
+      return;
+    }
+
+    // 情况 C: 已有文件，点击打开
+    if (_finalLocalPath != null) {
+      try {
+        await service.openLocalFile(_finalLocalPath!);
+      } catch (e) {
+        debugPrint(e.toString());
+      }
+      return;
+    }
+
+    // 情况 D: 需要下载 (Web端是直接打开链接)
     setState(() {
       _isDownloading = true;
       _progress = 0.0;
     });
 
     try {
-      final dir = await getApplicationDocumentsDirectory();
-      final saveDir = Directory('${dir.path}/chat_files');
-      if (!saveDir.existsSync()) saveDir.createSync(recursive: true);
-
-      final String fileName = widget.message.fileName ??
-          widget.message.meta?['fileName'] ??
-          "file_${widget.message.id}.bin";
-      final String savePath = "${saveDir.path}/$fileName";
-
-      await Dio().download(
-        remoteUrl,
-        savePath,
+      final path = await service.downloadOrOpen(
+        widget.message,
         cancelToken: _cancelToken,
-        onReceiveProgress: (received, total) {
+        onProgress: (received, total) {
           if (total != -1 && mounted) {
             setState(() => _progress = received / total);
           }
@@ -90,34 +93,13 @@ class _FileMsgBubbleState extends State<FileMsgBubble> {
       if (mounted) {
         setState(() {
           _isDownloading = false;
-          _finalLocalPath = savePath;
-        });
-        // 成功后回写数据库
-        await LocalDatabaseService().updateMessage(widget.message.id, {
-          'localPath': savePath
+          // Web 端 path 是 null，但没关系，点击逻辑里会处理 Web 跳转
+          if (path != null) _finalLocalPath = path;
         });
       }
     } catch (e) {
+      debugPrint("Download error: $e");
       if (mounted) setState(() => _isDownloading = false);
-    }
-  }
-
-  // 核心交互：打开
-  void _openFile() async {
-    if (_finalLocalPath != null) {
-      await OpenFilex.open(_finalLocalPath!);
-    }
-  }
-
-  void _onTap() {
-    if (widget.message.status == MessageStatus.sending) return;
-    if (_isDownloading) {
-      _cancelToken.cancel();
-      setState(() => _isDownloading = false);
-    } else if (_finalLocalPath != null) {
-      _openFile();
-    } else {
-      _downloadFile();
     }
   }
 
@@ -141,7 +123,7 @@ class _FileMsgBubbleState extends State<FileMsgBubble> {
 
     return RepaintBoundary(
       child: GestureDetector(
-        onTap: _onTap,
+        onTap: _handleTap,
         child: Container(
           width: baseWidth,
           padding: EdgeInsets.fromLTRB(12.w, 12.h, 12.w, 8.h), // 底部留点空间给时间戳
