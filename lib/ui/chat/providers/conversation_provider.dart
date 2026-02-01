@@ -165,6 +165,8 @@ class ConversationList extends _$ConversationList {
       case MessageType.image: return '[Image]';
       case MessageType.audio: return '[Voice]';
       case MessageType.video: return '[Video]';
+      case MessageType.file: return '[File]';
+      case MessageType.location : return '[Location]';
       case MessageType.recalled: return '[Message recalled]';
       default: return rawContent;
     }
