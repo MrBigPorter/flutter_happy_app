@@ -34,7 +34,7 @@ class ConversationList extends _$ConversationList {
 
     //  2. [新增] 监听头像/属性更新信号
     _conversationUpdateSub?.cancel();
-    _conversationUpdateSub = socketService.conversationUpdateStream.listen(_onConversationUpdate);
+    _conversationUpdateSub = socketService.conversationUpdateStream.listen(_onConversationAttributeUpdate);
 
     ref.onDispose((){
       _conversationSub?.cancel();
@@ -102,13 +102,13 @@ class ConversationList extends _$ConversationList {
 
       state = AsyncData(newList);
     } else {
-      // 会话不在当前列表中，执行全量刷新
+      // 会话不在当前列表中，执行全量刷新c
       refresh();
     }
   }
 
   ///  [核心新增] 处理来自 Socket 的头像更新信号
-  void _onConversationUpdate(Map<String, dynamic> data) {
+  void _onConversationAttributeUpdate(Map<String, dynamic> data) async{
     if (!state.hasValue) return;
 
     final String convId = data['id'];
@@ -117,9 +117,8 @@ class ConversationList extends _$ConversationList {
     final currentList = state.value!;
     final index = currentList.indexWhere((c) => c.id == convId);
 
+    // find conversation and update avatar
     if (index != -1) {
-      debugPrint(" [ConversationList] 更新群组头像: $convId -> $newAvatar");
-
       final oldConv = currentList[index];
       // 只有在头像真正发生变化时才更新状态，避免不必要的 UI 重绘
       if (oldConv.avatar != newAvatar) {
@@ -128,6 +127,37 @@ class ConversationList extends _$ConversationList {
         final newList = [...currentList];
         newList[index] = newConv;
         state = AsyncData(newList);
+      }
+    }else{
+      try{
+        print(" [ConversationList] Received conversation update for non-existing convId: $convId, fetching detail...");
+        // if not found, fetch conversation detail to see if it needs to be added
+        final newConvDetail = await ref.read(chatDetailProvider(convId).future);
+        // generate Conversation from ConversationDetail
+        final newConv = Conversation(
+          id: newConvDetail.id,
+          type: newConvDetail.type,
+          name: newConvDetail.name,
+          avatar: newAvatar,// use updated avatar
+          lastMsgContent: 'New Conversation',
+          lastMsgTime: DateTime.now().millisecondsSinceEpoch,
+          isPinned: false,
+          isMuted: false,
+          unreadCount: 0,
+        );
+
+        // check if already in list to avoid duplicates
+        if(!state.value!.any((c) => c.id == newConv.id)){
+          // insert at top
+          final newList = [newConv, ...currentList];
+          state = AsyncData(newList);
+          debugPrint(" [ConversationList] Added new conversation from update event: ${newConv.id}");
+        }
+
+      }catch(e){
+        debugPrint(" [ConversationList] Fetch Conversation Detail Error: $e");
+        // on error,refresh entire list
+        refresh();
       }
     }
   }

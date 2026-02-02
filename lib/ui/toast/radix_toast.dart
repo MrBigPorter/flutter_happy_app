@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/painting.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:fluttertoast/fluttertoast.dart';
@@ -21,8 +22,10 @@ class RadixToast {
     required Color textColor,
     ToastGravity gravity = ToastGravity.TOP,
   }) {
-    // Cancel any existing toasts before showing a new one, avoids stacking
-    Fluttertoast.cancel();
+   if(!kIsWeb){
+     // Cancel any existing toasts before showing a new one, avoids stacking
+     Fluttertoast.cancel();
+   }
 
     // Show the toast with specified parameters
     Fluttertoast.showToast(
