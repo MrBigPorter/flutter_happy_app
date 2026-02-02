@@ -1,74 +1,187 @@
-既然**文件全链路 (P0 - 3.2)** 和 **重发管道 (P1 - 4.1)** 已经彻底拿下，咱们的进度条又往前狠狠推了一大截。
+收到！位置消息 (3.3) 已拿下，咱们的“待办清单”又轻了一点。
 
-这是剔除已完成项、并根据当前最新代码状态（已解决 `ProviderContainer` 报错与 `isSelf` 逻辑）重定义的 **v4.9 攻坚版计划**。现在的重心正式转向**“用户体验的精致化”**与**“功能边界的扩张”**。
-
----
-
-# 🚀 Lucky IM Project Master Plan v4.9 (Refinement & Expansion)
-
-> **🔴 状态校准 (2026-02-01 下午)**
-> **刚刚完成 (Moved to Done)**：
-> * ✅ **文件消息 (P0)**：`file_picker` 集成、`FileMsgBubble` 开发、Web 端 PDF 乱码修复。
-> * ✅ **重发机制 (P1)**：`OfflineQueueManager` 修复、`ProviderContainer` 作用域对齐。
-> * ✅ **撤回同步 (P1)**：后端推送补全、`isSelf` 逻辑闭环。
->
->
+这是剔除掉地图功能后的**最新 v4.9 纯净攻坚计划**。目前的绝对核心就是 **“性能优化”**，特别是群头像缓存，这是提升列表流畅度的关键一战。
 
 ---
 
-## 👑 第一梯队：交互与性能优化 (Refinement)
+# 🚀 Lucky IM Execution Plan v4.9 (Performance First)
 
-**目标：让 App 从“能用”变成“好用”，消除滑动与加载的各种“肉感”。**
+> **🎯 当前战术目标**
+> 集中火力攻克 **P0 - 4.2 群头像持久化**。
+> 解决痛点：群聊列表在滑动时，因九宫格头像实时计算导致的掉帧和发热问题。
 
-| 优先级 | ID | 任务模块 | 核心技术方案 | 解决痛点 |
+## 🛠️ 第一梯队：性能与交互 (Performance & UX)
+
+| 优先级 | ID | 任务模块 | 状态 | 核心技术路径 |
 | --- | --- | --- | --- | --- |
-| **🔥 P0** | **4.2** | **头像持久化与预加载** | **二级缓存策略**：<br>
+| **🔥 P0** | **4.2** | **群头像持久化 (Group Avatar Persistence)** | **Todo** | **[AssetManager + Canvas + Cache]**<br>
 
-<br>1. 改造 `GroupAvatar`，将 Canvas 绘制结果通过 `toImage()` 转为字节流存入 `AssetManager`。<br>
+<br>1. **Hash Key**: `md5(sorted_member_urls)` 生成唯一文件名。<br>
 
-<br>2. 列表滑动时直接读本地 File，不再实时重绘九宫格。 | 现状：群聊列表多的时候，滑动会有轻微掉帧。 |
-| **P1** | **4.3** | **消息发送状态动画** | **UI 微调**：<br>
+<br>2. **二级缓存**: 内存(ImageProvider) -> 本地文件(Disk) -> 网络下载合成。<br>
 
-<br>1. 优化消息上屏后的“发送中” Loading 样式。<br>
+<br>3. **服务化**: 将绘图逻辑从 UI 剥离到 Service 后台运行。 |
+| **P1** | **4.3** | **发送状态动画 (Send Status Animation)** | **Todo** | **[AnimationController]**<br>
 
-<br>2. 增加发送成功后的“渐隐”效果或“已读”文字的平滑出现。 | 现状：状态切换比较生硬，缺乏呼吸感。 |
+<br>优化 Loading 转圈样式，实现“发送中 -> 成功/已读”的平滑透明度/位移动画过渡。 |
 
----
+## 🌍 第二梯队：社交扩展 (Social Expansion)
 
-## ⚔️ 第二梯队：新业务板块 (New Frontiers)
-
-**目标：增加 IM 的功能厚度，支持更多社交维度。**
-
-| 优先级 | ID | 任务模块 | 说明 | 复杂度 |
+| 优先级 | ID | 任务模块 | 状态 | 核心技术路径 |
 | --- | --- | --- | --- | --- |
-| **🔥 P1** | **3.3** | **位置消息 (Location)** | **核心逻辑**：<br>
+| **P2** | **5.1** | **联系人管理 (Contact System)** | **Todo** | **[Friendship Module]**<br>
 
-<br>1. **发送**：调用定位权限，获取经纬度，并截取一张静态图作为 `meta['thumb']`。<br>
+<br>搜索用户、好友申请(Request/Accept)、A-Z 通讯录排序列表。 |
+| **P3** | **5.2** | **朋友圈 (Moments)** | **Todo** | **[Feed System]**<br>
 
-<br>2. **接收**：显示地图卡片，点击调用 `url_launcher` 唤起手机自带的地图 App（高德/Google/Apple Maps）。 | ⭐⭐⭐⭐ |
-| **P2** | **5.1** | **联系人管理 (Contacts)** | **社交基础**：<br>
-
-<br>1. 实现“搜索手机号加好友”。<br>
-
-<br>2. 好友申请列表（待处理/已通过）。<br>
-
-<br>3. 通讯录列表（按字母 A-Z 排序）。 | ⭐⭐⭐ |
-| **P3** | **5.2** | **朋友圈/动态 (Moments)** | **扩展模块**：<br>
-
-<br>基于现有的 `GlobalUploadService` 扩展图文发布功能。 | ⭐⭐⭐⭐⭐ |
+<br>基于 `GlobalUploadService` 的图文发布与 Timeline 流展示。 |
 
 ---
 
-### 💡 下一步行动 (Immediate Action)
+### ⚡️ 立即执行：P0 - 4.2 群头像持久化
 
-**建议先搞 P0 - 4.2 头像持久化。**
+咱们刚才已经准备好了 `AvatarCacheManager` 工具类。接下来我们需要编写**合成服务 (GroupAvatarService)**。
 
-虽然 **位置消息 (3.3)** 很诱人，但头像持久化是解决“列表丝滑度”的关键，这关乎 App 的第一印象。
+这个服务的核心职责是：**在后台下载图片 -> 计算九宫格坐标 -> 绘制成一张新图 -> 存入缓存**。
 
-**具体步骤：**
+#### 第二步：GroupAvatarService (合成引擎)
 
-1. 检查 `GroupAvatar` 组件，看它现在是怎么拼图的。
-2. 引入一个简单的本地缓存 Key 逻辑：`avatar_cache_{conversationId}_{members_hash}.png`。
-3. 如果本地有，直接显示 `FileImage`；没有，再跑绘制逻辑并保存。
+需要引入 `http` 包来下载图片数据。
 
-**大哥，是先去优化列表流畅度（头像缓存），还是直接开搞“位置分享”？**
+```dart
+// lib/ui/chat/services/group_avatar_service.dart
+
+import 'dart:async';
+import 'dart:typed_data';
+import 'dart:ui' as ui;
+import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import '../../../../utils/avatar_cache_manager.dart'; // 引用刚才的 CacheManager
+
+class GroupAvatarService {
+  
+  /// 获取群头像 Provider (对外唯一接口)
+  /// 逻辑：查本地缓存 -> 有则返回 FileImage -> 无则合成并返回 MemoryImage (同时存本地)
+  static Future<ImageProvider> getGroupAvatar(List<String> memberAvatars) async {
+    // 1. 尝试读取本地缓存
+    final cachedFile = AvatarCacheManager.instance.getCachedFile(memberAvatars);
+    if (cachedFile != null) {
+      return FileImage(cachedFile);
+    }
+
+    // 2. 无缓存，开始合成
+    try {
+      final Uint8List? generatedBytes = await _generateGroupAvatarBytes(memberAvatars);
+      
+      if (generatedBytes != null) {
+        // 3. 异步写入缓存，不阻塞当前显示
+        AvatarCacheManager.instance.saveImage(memberAvatars, generatedBytes);
+        return MemoryImage(generatedBytes);
+      }
+    } catch (e) {
+      debugPrint("⚠️ Group Avatar Gen Failed: $e");
+    }
+
+    // 4. 兜底默认图
+    return const AssetImage("assets/images/group_default.png");
+  }
+
+  /// 核心：下载并绘制九宫格
+  static Future<Uint8List?> _generateGroupAvatarBytes(List<String> urls) async {
+    // 限制最多 9 张
+    final validUrls = urls.take(9).toList();
+    if (validUrls.isEmpty) return null;
+
+    final int totalCount = validUrls.length;
+    // 设定画布大小 (200x200 足够高清，显示时会缩小)
+    const double canvasSize = 200.0; 
+    
+    // 1. 并发下载所有图片
+    final List<ui.Image> images = await Future.wait(
+      validUrls.map((url) => _downloadImage(url)),
+    );
+
+    // 2. 启动录制
+    final ui.PictureRecorder recorder = ui.PictureRecorder();
+    final Canvas canvas = Canvas(recorder);
+    final Paint paint = Paint()..isAntiAlias = true;
+
+    // 绘制背景 (浅灰)
+    canvas.drawRect(
+      const Rect.fromLTWH(0, 0, canvasSize, canvasSize),
+      Paint()..color = const Color(0xFFEEEEEE),
+    );
+
+    // 3. 九宫格布局计算
+    double gap = 4.0; // 间隙
+    int rowCount = _getRowCount(totalCount); // 2行还是3行
+    // 单元格大小
+    double cellSize = (canvasSize - (rowCount + 1) * gap) / rowCount;
+
+    for (int i = 0; i < totalCount; i++) {
+      if (i >= images.length) break;
+
+      // 计算坐标 (简化版 Grid)
+      int row = i ~/ rowCount;
+      int col = i % rowCount;
+      
+      double x = gap + col * (cellSize + gap);
+      double y = gap + row * (cellSize + gap);
+
+      // 居中偏移修正 (针对 3张、7张这种不对称情况，仿微信逻辑可在此处优化)
+      // 这里先用标准 Grid 填充
+
+      _drawImage(canvas, images[i], x, y, cellSize, paint);
+    }
+
+    // 4. 导出 PNG
+    final ui.Picture picture = recorder.endRecording();
+    final ui.Image compositeImage = await picture.toImage(canvasSize.toInt(), canvasSize.toInt());
+    final ByteData? byteData = await compositeImage.toByteData(format: ui.ImageByteFormat.png);
+
+    return byteData?.buffer.asUint8List();
+  }
+
+  // 下载辅助方法
+  static Future<ui.Image> _downloadImage(String url) async {
+    final Completer<ui.Image> completer = Completer();
+    try {
+      final response = await http.get(Uri.parse(url));
+      if (response.statusCode == 200) {
+        ui.decodeImageFromList(response.bodyBytes, (ui.Image img) {
+          completer.complete(img);
+        });
+      } else {
+        throw Exception("Download error");
+      }
+    } catch (e) {
+      throw e;
+    }
+    return completer.future;
+  }
+  
+  // 绘制辅助方法
+  static void _drawImage(Canvas canvas, ui.Image image, double x, double y, double size, Paint paint) {
+    canvas.save();
+    canvas.translate(x, y);
+    
+    // 简单的缩放绘制 (Cover 模式)
+    canvas.drawImageRect(
+      image,
+      Rect.fromLTWH(0, 0, image.width.toDouble(), image.height.toDouble()),
+      Rect.fromLTWH(0, 0, size, size),
+      paint,
+    );
+    
+    canvas.restore();
+  }
+
+  static int _getRowCount(int count) {
+    if (count <= 4) return 2;
+    return 3;
+  }
+}
+
+```
+
+代码准备好了，就差把它接到 UI 上了！Ready?
