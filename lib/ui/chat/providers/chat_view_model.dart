@@ -77,11 +77,20 @@ class ChatViewModel extends StateNotifier<ChatListState> {
           cursor: null,
         ),
       );
+      
+      print("初始化拉取到 ${response.list.length} 条消息");
 
       // 结果入库
       if (response.list.isNotEmpty) {
         final uiMsgs = response.list.map((m) => ChatUiModelMapper.fromApiModel(m, conversationId)).toList();
         await _dbService.saveMessages(uiMsgs);
+      }
+
+      //  优化 1：如果初始化的数据不足一页（50条），说明没有更多历史了
+      // 直接把 hasMore 设置为 false，UI 层就不会再显示 loading 圈了
+      if(response.list.length < 50){
+        // 如果拉取到的消息少于请求数量，说明没有更多了
+        state = state.copyWith(hasMore: false);
       }
     } catch (e) {
       debugPrint(" 初始化拉取失败: $e");
@@ -92,6 +101,13 @@ class ChatViewModel extends StateNotifier<ChatListState> {
 
   //  场景 B：上拉加载更多 (拉取历史)
   Future<void> loadMore() async {
+
+    if(state.messages.length < 50){
+      // 优化 2：如果当前消息总数都没到50条，说明根本没历史可加载
+      state = state.copyWith(hasMore: false);
+      return;
+    }
+
     if (state.isLoadingMore || !state.hasMore) return;
 
     state = state.copyWith(isLoadingMore: true);
@@ -107,7 +123,6 @@ class ChatViewModel extends StateNotifier<ChatListState> {
 
     // 2. 如果扩大窗口后数据量没怎么变，说明本地缓存不够了，去服务器拉
     if (newLength < _currentLimit) {
-      debugPrint(" 本地缓存耗尽，启动网络拉取...");
       await _fetchHistoryFromApi();
     } else {
       // 本地够用，结束 loading
@@ -133,7 +148,6 @@ class ChatViewModel extends StateNotifier<ChatListState> {
         return;
       }
 
-      debugPrint(" API 请求历史: cursor(seqId)=$cursor");
 
       final response = await Api.chatMessagesApi(
         MessageHistoryRequest(
@@ -150,7 +164,14 @@ class ChatViewModel extends StateNotifier<ChatListState> {
         // 入库 -> Sembast 自动通知 UI -> 列表变长
         final uiMsgs = response.list.map((m) => ChatUiModelMapper.fromApiModel(m, conversationId)).toList();
         await _dbService.saveMessages(uiMsgs);
-        state = state.copyWith(isLoadingMore: false);
+
+        if(response.list.length < 50){
+          // 如果拉取到的消息少于请求数量，说明没有更多了
+          state = state.copyWith(hasMore: false, isLoadingMore: false);
+        }else{
+          state = state.copyWith(isLoadingMore: false);
+        }
+
       }
     } catch (e) {
       debugPrint(" 拉取历史失败: $e");
