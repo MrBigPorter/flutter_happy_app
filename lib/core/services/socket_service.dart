@@ -36,6 +36,10 @@ mixin SocketChatMixin on _SocketBase {
   final _recallEventController = StreamController<SocketRecallEvent>.broadcast();
   Stream<SocketRecallEvent> get recallEventStream => _recallEventController.stream;
 
+  //  [新增] 会话属性更新流 (用于处理头像、名称等变更)
+  final _conversationUpdateStream = StreamController<Map<String, dynamic>>.broadcast();
+  Stream<Map<String, dynamic>> get conversationUpdateStream => _conversationUpdateStream.stream;
+
   // 监听聊天相关事件
   void _setupChatListeners(IO.Socket socket) {
     // 监听聊天消息
@@ -89,6 +93,18 @@ mixin SocketChatMixin on _SocketBase {
         return;
       }
     });
+
+    //  [监听后端头像合成完成事件]
+    socket.on(SocketEvents.conversationUpdated, (data) {
+      if (data == null) return;
+      debugPrint("🖼️ [Socket] 收到会话更新信号 (头像): $data");
+
+      if (!_conversationUpdateStream.isClosed) {
+        _conversationUpdateStream.add(Map<String, dynamic>.from(data));
+      }
+    });
+
+
 
   }
 

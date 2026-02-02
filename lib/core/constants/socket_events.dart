@@ -9,6 +9,8 @@ abstract class SocketEvents {
   static const String conversationRead = 'conversation_read';
   /// 消息撤回通知
   static const String messageRecall = 'message_recalled';
+  // avatar 更新通知
+  static const String conversationUpdated = 'conversation_updated';
 
    /// 对方正在输入... (未来扩展)
    static const String typing = 'typing';

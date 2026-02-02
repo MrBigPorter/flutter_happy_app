@@ -21,6 +21,7 @@ final activeConversationIdProvider = StateProvider<String?>((ref) => null);
 @riverpod
 class ConversationList extends _$ConversationList {
   StreamSubscription? _conversationSub;
+  StreamSubscription? _conversationUpdateSub;
 
   @override
   FutureOr<List<Conversation>> build() async {
@@ -30,7 +31,15 @@ class ConversationList extends _$ConversationList {
     // 2. 页面销毁或 Provider 重置时自动取消订阅
     _conversationSub?.cancel();
     _conversationSub = socketService.conversationListUpdateStream.listen(_onNewMessage);
-    ref.onDispose(() => _conversationSub?.cancel());
+
+    //  2. [新增] 监听头像/属性更新信号
+    _conversationUpdateSub?.cancel();
+    _conversationUpdateSub = socketService.conversationUpdateStream.listen(_onConversationUpdate);
+
+    ref.onDispose((){
+      _conversationSub?.cancel();
+      _conversationUpdateSub?.cancel();
+    });
 
     // 3. 执行初始数据抓取 (会自动进入 AsyncLoading 状态)
     return await _fetchList();
@@ -95,6 +104,31 @@ class ConversationList extends _$ConversationList {
     } else {
       // 会话不在当前列表中，执行全量刷新
       refresh();
+    }
+  }
+
+  ///  [核心新增] 处理来自 Socket 的头像更新信号
+  void _onConversationUpdate(Map<String, dynamic> data) {
+    if (!state.hasValue) return;
+
+    final String convId = data['id'];
+    final String? newAvatar = data['avatar'];
+
+    final currentList = state.value!;
+    final index = currentList.indexWhere((c) => c.id == convId);
+
+    if (index != -1) {
+      debugPrint(" [ConversationList] 更新群组头像: $convId -> $newAvatar");
+
+      final oldConv = currentList[index];
+      // 只有在头像真正发生变化时才更新状态，避免不必要的 UI 重绘
+      if (oldConv.avatar != newAvatar) {
+        final newConv = oldConv.copyWith(avatar: newAvatar);
+
+        final newList = [...currentList];
+        newList[index] = newConv;
+        state = AsyncData(newList);
+      }
     }
   }
 

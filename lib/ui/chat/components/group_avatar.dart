@@ -1,74 +1,59 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
-import 'dart:typed_data';
-import 'package:flutter_app/ui/chat/services/avatar/group_avatar_service.dart';
-// 1. 引入刚才写的缺省组件
 import 'default_group_avatar.dart';
 
-class GroupAvatar extends StatefulWidget {
-  final List<String> memberAvatars;
+class GroupAvatar extends StatelessWidget {
+  /// 后端合成后的完整 URL (对应数据库中的 groupAvatar 或 avatar 字段)
+  final String? avatarUrl;
+
+  /// 成员数量：用于在 URL 为空时绘制对应的灰色九宫格骨架
+  final int memberCount;
+
   final double size;
 
   const GroupAvatar({
     super.key,
-    required this.memberAvatars,
-    this.size = 50
+    this.avatarUrl,
+    required this.memberCount,
+    this.size = 50,
   });
 
   @override
-  State<GroupAvatar> createState() => _GroupAvatarState();
-}
-
-class _GroupAvatarState extends State<GroupAvatar> {
-  Future<Uint8List?>? _avatarFuture;
-
-  @override
-  void didUpdateWidget(covariant GroupAvatar oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    // 只有成员列表变了才重新生成
-    if (!listEquals(oldWidget.memberAvatars, widget.memberAvatars)) {
-      _avatarFuture = GroupAvatarService.getOrGenerateGroupAvatar(widget.memberAvatars);
-    }
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    _avatarFuture = GroupAvatarService.getOrGenerateGroupAvatar(widget.memberAvatars);
-  }
-
-  @override
   Widget build(BuildContext context) {
-    // 2. 准备缺省占位组件
+    // 1. 准备缺省占位组件（骨架屏）
     final placeholder = DefaultGroupAvatar(
-      count: widget.memberAvatars.length,
-      size: widget.size,
+      count: memberCount,
+      size: size,
     );
 
     return SizedBox(
-      width: widget.size,
-      height: widget.size,
+      width: size,
+      height: size,
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(8),
-        child: FutureBuilder<Uint8List?>(
-          future: _avatarFuture,
-          builder: (context, snapshot) {
-            // 1. 成功且有数据
-            if (snapshot.hasData && snapshot.data != null) {
-              return Image.memory(
-                snapshot.data!,
-                fit: BoxFit.cover,
-                gaplessPlayback: true, // 防止闪烁
-                // 如果图片解码出错，也回退到缺省图
-                errorBuilder: (ctx, err, stack) => placeholder,
-              );
-            }
-
-            // 2. Loading, Error, 或数据为 null -> 显示缺省骨架
-            return placeholder;
-          },
-        ),
+        // 保持圆角风格一致，15% 是比较接近微信的圆角比例
+        borderRadius: BorderRadius.circular(size * 0.15),
+        child: _buildAvatarImage(placeholder),
       ),
+    );
+  }
+
+  Widget _buildAvatarImage(Widget placeholder) {
+    // 如果 URL 根本不存在（后端还没开始合成），直接展示骨架
+    if (avatarUrl == null || avatarUrl!.isEmpty) {
+      return placeholder;
+    }
+
+    // 使用 CachedNetworkImage 进行高效缓存和异步加载
+    return CachedNetworkImage(
+      imageUrl: avatarUrl!,
+      fit: BoxFit.cover,
+      // 加载时的占位图：即九宫格骨架
+      placeholder: (context, url) => placeholder,
+      // 加载失败（比如 404 或 R2 还没同步过去）回退到骨架
+      errorWidget: (context, url, error) => placeholder,
+      // 淡入效果，体验更丝滑
+      fadeInDuration: const Duration(milliseconds: 300),
+      fadeOutDuration: const Duration(milliseconds: 100),
     );
   }
 }
