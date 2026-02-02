@@ -1,7 +1,10 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_app/common.dart';
+import 'package:flutter_app/ui/toast/radix_toast.dart';
 import 'package:map_launcher/map_launcher.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class MapLauncherService {
 
@@ -13,6 +16,26 @@ class MapLauncherService {
         String? address,
       }) async {
     try {
+
+      //  Web 端特供逻辑：直接跳转网页版 Google Maps
+      if(kIsWeb){
+        // 构建 Google Maps 网页版查询链接
+        // api=1: 启用 API 模式
+        // query: 经纬度，格式为 lat,lng
+        final Uri googleMapUrl = Uri.parse(
+            'https://www.google.com/maps/search/?api=1&query=$lat,$lng'
+        );
+        // 使用浏览器打开链接
+        if(await canLaunchUrl(googleMapUrl)){
+          await launchUrl(googleMapUrl,mode:  LaunchMode.externalApplication);
+        } else {
+          if(!context.mounted) return;
+          RadixToast.info("Could not launch map URL.");
+        }
+        return;
+      }
+
+      // android / iOS 端逻辑：使用 MapLauncher 调用本地地图应用
       final availableMaps = await MapLauncher.installedMaps;
 
       if (!context.mounted) return;

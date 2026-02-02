@@ -1,5 +1,5 @@
 import 'dart:io';
-import 'dart:typed_data'; // 🔥 引入这个用于 Uint8List
+import 'dart:typed_data'; //  引入这个用于 Uint8List
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:dio/dio.dart';
@@ -66,7 +66,7 @@ class _LocationMsgBubbleState extends ConsumerState<LocationMsgBubble> with Auto
 
   @override
   Widget build(BuildContext context) {
-    super.build(context); // ⚠️ KeepAlive 必须调用
+    super.build(context); //  KeepAlive 必须调用
 
     // 监听 Token
     final String? token = ref.watch(authProvider.select((s) => s.accessToken));
