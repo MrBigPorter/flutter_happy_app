@@ -1,16 +1,14 @@
-这份是您刚才发给我的 **v4.9.0 (文件系统版)**。
+没问题！这是经过 **合并、校对、补全** 后的 **Lucky IM 项目史诗级完整日志 (Grand Master Log v4.9.5)**。
 
-对比我们**刚刚完成**的 **“位置消息 & Nginx 调优”**，这份记录**缺少了最新的 v4.9.5 成果**，同时也缺少了 v4.8 之前的详细历史。
+这一版包含了从 **v4.0 协议底层** 到 **v4.9.5 LBS 位置服务** 的所有关键战役成果，是目前项目的**最终真理版本**。
 
-为了不让你混淆，我将 **最新成果 (位置/地图)** 与 **v4.9.0 (文件)** 进行了完美合并，并补全了所有历史战绩。
-
-这是 **最终定稿、最全的 Grand Master Log (v4.9.5)**。请以这份为准归档！
+请直接复制归档。 📋
 
 ---
 
 # 📜 Lucky IM Project **Grand Master Log** (v4.0 - v4.9.5)
 
-> **🕒 更新时间**: 2026-02-01 16:30
+> **🕒 最后更新**: 2026-02-02 12:00
 > **🚀 当前版本**: **v4.9.5 (Location & Full Media)**
 > **🌟 总体进度**: 核心 IM 功能 (文本/图片/视频/语音/文件/位置) 全面闭环，进入精致化交互打磨阶段。
 
@@ -20,10 +18,11 @@
 
 ### v4.9.5 - 位置服务与基建调优 (LBS & Infra) 🔥
 
-* **[LBS] 谷歌地图安全代理**: 后端 NestJS 实现 `StreamableFile` 代理，前端通过 Token 鉴权加载静态图，**彻底隐藏 Google API Key**。
-* **[LBS] 智能地图唤起**: 开发 `MapLauncherService`，自动检测本地已安装地图（Google/Apple/高德等），使用 **Icon Mapping** 策略替代 SVG 解析，根治崩溃问题。
-* **[Infra] Nginx 终极调优**: 完美融合旧业务路由（Webhooks）与新版高性能配置（HTTP/2, Gzip, CORS 精准控制），支持视频流 `Range` 拖拽播放。
-* **[Core] 拦截器逃生舱**: 修复 NestJS 全局拦截器错误包装二进制流的问题，实现对 `StreamableFile` 和 `Buffer` 的自动放行。
+* **[LBS] 谷歌地图安全代理**: 后端 NestJS 实现 `StreamableFile` 代理，前端通过 Token 鉴权加载静态图，**彻底隐藏 Google API Key**，杜绝前端泄漏风险。
+* **[LBS] 智能地图唤起**: 开发 `MapLauncherService`，自动检测本地已安装地图（Google/Apple/高德/百度/Waze），使用 **Icon Mapping** 策略替代 SVG 解析，并针对 Web 端实现 `url_launcher` 降级跳转，根治崩溃问题。
+* **[LBS] 交互防抖**: 将位置气泡升级为 `StatefulWidget` 并混入 `KeepAlive`，利用 `Future` 缓存机制解决 Web 端因 `build` 循环导致的 **429 Too Many Requests** 问题。
+* **[Infra] Nginx 终极调优**: 完美融合旧业务路由（Webhooks）与新版高性能配置（HTTP/2, HTTP/3 QUIC, Gzip, CORS 精准控制），支持视频流 `Range` 拖拽播放。
+* **[Core] 拦截器逃生舱**: 修复 NestJS 全局拦截器错误包装二进制流的问题，实现对 `StreamableFile` 和 `Buffer` 的自动放行；前端 `Http.rawDio` 实现手动 Token 注入，绕过 JSON 解析器。
 
 ### v4.9.0 - 文件系统与离线稳定性 (File System) 📂
 
@@ -38,14 +37,14 @@
 
 ### v4.8.0 - 交互架构重构 (Interaction) 🎨
 
-* **[UI] 键盘/面板无缝切换**: 彻底解决键盘收起时的页面跳动问题，实现微信级丝滑过渡。
+* **[UI] 键盘/面板无缝切换**: 彻底解决键盘收起时的页面跳动问题，利用 `WidgetsBinding.instance.addPostFrameCallback` 锁定高度，实现微信级丝滑过渡。
 * **[Layout] 推顶布局重构**: 抛弃 Overlay 方案，重构为 `Column` 流式布局，输入框随功能面板自动顶起，完美适配 iPhone Home Indicator。
 * **[Comp] 全能菜单组件**: 封装 `ChatActionSheet`，实现配置化 Grid 菜单，解耦页面逻辑。
 
 ### v4.6.5 - 媒体组件精修 (Media Polish) 🖼️
 
-* **[Media] 视频播放器**: 基于 `media_kit` (VideoPlayer) 封装，支持双击暂停、进度条拖拽、静音控制。
-* **[Media] 图片预览器**: 集成 `photo_view`，支持手势缩放、Hero 动画转场、长按保存。
+* **[Media] 视频播放器**: 基于 `media_kit` (VideoPlayer) 封装，支持双击暂停、进度条拖拽、静音控制、全屏切换。
+* **[Media] 图片预览器**: 集成 `photo_view`，支持手势缩放、Hero 动画转场、长按保存到相册。
 
 ---
 
@@ -76,14 +75,14 @@
 ### v4.0.0 - 通讯协议地基 (Protocol) 📡
 
 * **[Net] Socket.IO 封装**: 实现心跳保活、断线重连、鉴权握手 (`auth: { token }`)。
-* **[Net] HTTP/2 适配**: 引入 `native_dio_adapter`，开启 HTTP/2 多路复用，大幅提升并发加载速度。
+* **[Net] HTTP/2 & HTTP/3 适配**: 引入 `native_dio_adapter` 工厂模式，App 端开启 HTTP/2 多路复用与 HTTP/3 (QUIC) 加速，Web 端自动降级 BrowserClient，大幅提升并发加载速度。
 * **[Auth] 登录鉴权**: 完整的 JWT 流程，Token 持久化与自动刷新。
 
 ---
 
-## 🛡️ 架构铁律 (The Iron Rules - Updated)
+## 🛡️ 架构铁律 (The Iron Rules - v4.9.5)
 
-*(这是我们开发过程中用血泪总结出来的 28 条军规，**新增了 24-28 条**)*
+*(这是项目开发的最高准则，新增了 24-30 条)*
 
 1. **ID 唯一性**: 前端生成 UUID，后端透传。
 2. **UI 零抖动**: 利用 `_sessionPathCache` 确保发送瞬间 UI 静止。
@@ -99,7 +98,7 @@
 12. **游标有序性**: 历史消息分页使用 `seqId`。
 13. **Web 路径保护**: Pipeline 持有原始 `XFile`，防止 Blob 丢失。
 14. **解码受限原则**: 图片加载指定 `memCacheWidth`。
-15. **协议先进性**: 强推 **HTTP/2** 适配器。
+15. **协议先进性**: 强推 **HTTP/2 & HTTP/3** 适配器。
 16. **媒体流透传**: Nginx 必须支持 `Range` 请求。
 17. **安全跨域原则**: CORS 必须基于动态 `map` 匹配。
 18. **面板推顶原则**: 严禁 `Overlay`，必须用 `Column` 布局。
@@ -113,6 +112,7 @@
 26. **流式穿透原则**: **[New]** 拦截器必须放行 `StreamableFile`。
 27. **布局强约束**: **[New]** 异步图片外层必须包 `SizedBox` 防止 `RenderBox` 报错。
 28. **缓存分级原则**: **[New]** 头像加载遵循 `内存 -> 本地文件 -> 网络下载生成` 的三级策略。
+29. **Web 适配原则**: **[New]** `NativeAdapter` 必须通过工厂模式条件导入，严禁在 Web 端引用 `dart:ffi` 相关库。
+30. **状态防抖原则**: **[New]** Web 端异步资源加载必须在 `State` 中缓存 Future，严禁在 `build` 中直接请求。
 
 ---
-
