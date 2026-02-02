@@ -10,6 +10,8 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 
 import '../toast/radix_toast.dart';
+import 'models/chat_ui_model.dart';
+import 'models/conversation.dart';
 
 class GroupMemberSelectPage extends ConsumerStatefulWidget {
   // 核心参数：有 ID = 邀请模式；无 ID = 建群模式
@@ -120,7 +122,7 @@ class _GroupMemberSelectPageState extends ConsumerState<GroupMemberSelectPage> {
               final user = friends[index];
               final isSelected = _selectedIds.contains(user.id);
 
-              // 💡 视觉优化：如果是预选中的人，可以加粗或者稍微灰色底色提示用户
+              //  视觉优化：如果是预选中的人，可以加粗或者稍微灰色底色提示用户
               // 但为了简单，这里保持统一的 Checkbox 逻辑
 
               return CheckboxListTile(
@@ -210,8 +212,27 @@ class _GroupMemberSelectPageState extends ConsumerState<GroupMemberSelectPage> {
 
     // 成功回调
     if (newGroupId != null && mounted) {
-      RadixToast.success("Group created!");
-      // 跳转到新群
+      // [优化核心] 手动抢跑：在 Socket 推送之前，先把群加到列表里
+      // 这样用户回退到列表页时，群已经在那了，不需要刷新
+      final newConv = Conversation(
+        id: newGroupId,
+        type: ConversationType.group,
+        name: name,
+        avatar: null, // 此时还没有头像，会显示灰色九宫格骨架
+        lastMsgContent: "Group created",
+        lastMsgTime: DateTime.now().millisecondsSinceEpoch,
+        unreadCount: 0,
+        lastMsgStatus: MessageStatus.success,
+        isPinned: false,
+        isMuted: false,
+      );
+      
+      // use provider to update conversation list
+      ref.read(conversationListProvider.notifier).addConversation(newConv);
+      
+      // notify success
+      RadixToast.success("Group created successfully");
+      // go to the new group chat page
       appRouter.go('/chat/room/$newGroupId');
     }
   }

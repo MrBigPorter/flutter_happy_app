@@ -21,24 +21,26 @@ import 'package:flutter_app/ui/modal/progress/overlay_progress_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../components/lucky_tab_bar.dart';
-import '../../ui/chat/chat_page.dart';
-import '../../ui/chat/contact_list_page.dart';
-import '../../ui/chat/contact_profile_page.dart';
-import '../../ui/chat/group_member_select_page.dart';
-import '../../ui/chat/group_profile_page.dart';
-import '../../ui/chat/user_profile_page.dart';
-import '../page/deposit_detail_page.dart';
-import '../page/group_lobby_page.dart';
-import '../page/guide_page.dart';
-import '../page/home_page.dart';
-import '../page/product_page.dart';
-import '../page/transaction/transaction_ui_model.dart';
-import '../page/transaction_record_page.dart';
-import '../page/me_page.dart';
-import '../page/login_page.dart';
-import '../page/product_detail_page.dart';
-import '../page/withdraw_page.dart';
+import 'package:flutter_app/components/lucky_tab_bar.dart';
+import 'package:flutter_app/ui/chat/chat_page.dart';
+import 'package:flutter_app/ui/chat/contact_list_page.dart';
+import 'package:flutter_app/ui/chat/contact_profile_page.dart';
+import 'package:flutter_app/ui/chat/contact_search_page.dart';
+import 'package:flutter_app/ui/chat/group_member_select_page.dart';
+import 'package:flutter_app/ui/chat/group_profile_page.dart';
+import 'package:flutter_app/ui/chat/new_friend_page.dart';
+import 'package:flutter_app/ui/chat/user_profile_page.dart';
+import 'package:flutter_app/app/page/deposit_detail_page.dart';
+import 'package:flutter_app/app/page/group_lobby_page.dart';
+import 'package:flutter_app/app/page/guide_page.dart';
+import 'package:flutter_app/app/page/home_page.dart';
+import 'package:flutter_app/app/page/product_page.dart';
+import 'package:flutter_app/app/page/transaction/transaction_ui_model.dart';
+import 'package:flutter_app/app/page/transaction_record_page.dart';
+import 'package:flutter_app/app/page/me_page.dart';
+import 'package:flutter_app/app/page/login_page.dart';
+import 'package:flutter_app/app/page/product_detail_page.dart';
+import 'package:flutter_app/app/page/withdraw_page.dart';
 
 final _shellKey = GlobalKey<NavigatorState>(debugLabel: 'shell');
 // 全局路由器实例  Global router instance
@@ -79,6 +81,18 @@ class AppRouter {
               final preSelectedId = state.uri.queryParameters['preSelectedId'];
               return GroupMemberSelectPage(existingGroupId: groupId, preSelectedId: preSelectedId,);
             }
+        ),
+        GoRoute(
+          path: '/contact/search',
+          name: 'contactSearch',
+          parentNavigatorKey: NavHub.key,
+          builder: (context, state) => const ContactSearchPage(),
+        ),
+        GoRoute(
+          path: '/contact/new-friends',
+          name: 'newFriends',
+          parentNavigatorKey: NavHub.key,
+          builder: (context, state) => const NewFriendPage(),
         ),
         GoRoute(
           path: '/chat/group/profile/:id',

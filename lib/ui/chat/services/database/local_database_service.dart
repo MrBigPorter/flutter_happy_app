@@ -13,15 +13,19 @@ import '../../../../utils/asset/asset_manager.dart';
 
 class LocalDatabaseService {
   static final LocalDatabaseService _instance =
-      LocalDatabaseService._internal();
+  LocalDatabaseService._internal();
 
   factory LocalDatabaseService() => _instance;
 
   LocalDatabaseService._internal();
 
   Database? _db;
+
+  // 1. 定义存储仓库
   final _messageStore = stringMapStoreFactory.store('messages');
   final _detailStore = stringMapStoreFactory.store('conversation_details');
+  //  新增：会话列表仓库
+  final _conversationStore = stringMapStoreFactory.store('conversations');
 
   Future<Database> get database async {
     if (_db != null) return _db!;
@@ -41,7 +45,58 @@ class LocalDatabaseService {
     }
   }
 
-  // ================= 业务方法 (CRUD) =================
+  // ========================================================================
+  //  Conversation List 缓存 (新增核心)
+  // ========================================================================
+
+  /// 批量保存会话列表 (Sync: API -> Local DB)
+  ///  优化版：使用 records 批量写入，解决循环 await 导致的性能问题
+  Future<void> saveConversations(List<Conversation> list) async {
+    if (list.isEmpty) return;
+
+    final db = await database;
+
+    // 1. 提取所有 ID (Keys)
+    final keys = list.map((c) => c.id).toList();
+
+    // 2. 提取所有数据 (Values)
+    final values = list.map((c) => c.toJson()).toList();
+
+    // 3. 批量写入 (Batch Write)
+    // Sembast 的 records(...).put(...) 是原子操作，比循环快得多
+    await db.transaction((txn) async {
+      await _conversationStore.records(keys).put(txn, values);
+    });
+  }
+
+  /// 获取本地会话列表 (Load: Local DB -> UI)
+  /// 按 lastMsgTime 倒序排列
+  Future<List<Conversation>> getConversations() async {
+    final db = await database;
+    final finder = Finder(
+      sortOrders: [SortOrder('lastMsgTime', false)], // 倒序
+    );
+
+    final snapshots = await _conversationStore.find(db, finder: finder);
+
+    return snapshots.map((s) {
+      // 容错处理：万一 json 解析失败不要崩
+      try {
+        return Conversation.fromJson(s.value);
+      } catch (e) {
+        debugPrint(" [DB] 会话解析失败 id=${s.key}: $e");
+        return null;
+      }
+    }).whereType<Conversation>().toList();
+  }
+
+  /// 更新单个会话 (用于 Socket 推送更新)
+  Future<void> updateConversation(Conversation item) async {
+    final db = await database;
+    await _conversationStore.record(item.id).put(db, item.toJson());
+  }
+
+  // ================= 业务方法 (CRUD - Message) =================
 
   Future<void> saveMessage(ChatUiModel msg) async {
     final db = await database;
@@ -90,9 +145,9 @@ class LocalDatabaseService {
   }
 
   Future<void> updateMessageStatus(
-    String msgId,
-    MessageStatus newStatus,
-  ) async {
+      String msgId,
+      MessageStatus newStatus,
+      ) async {
     final db = await database;
     await _messageStore.record(msgId).update(db, {'status': newStatus.name});
   }
@@ -148,9 +203,9 @@ class LocalDatabaseService {
   //  核心重构 A：监听消息流 (带 Limit 分页 + 自动预热)
   // ========================================================================
   Stream<List<ChatUiModel>> watchMessages(
-    String conversationId, {
-    int limit = 50,
-  }) async* {
+      String conversationId, {
+        int limit = 50,
+      }) async* {
     final db = await database;
 
     final finder = Finder(
@@ -160,8 +215,8 @@ class LocalDatabaseService {
     );
 
     yield* _messageStore.query(finder: finder).onSnapshots(db).asyncMap((
-      snapshots,
-    ) async {
+        snapshots,
+        ) async {
       final rawModels = snapshots
           .map((snapshot) => ChatUiModel.fromJson(snapshot.value))
           .toList();

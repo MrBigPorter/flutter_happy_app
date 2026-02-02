@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_app/app/routes/app_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_app/ui/chat/providers/conversation_provider.dart';
+
+import '../models/chat_ui_model.dart';
+import '../models/conversation.dart';
 
 class CreateDirectChatDialog extends ConsumerStatefulWidget {
   const CreateDirectChatDialog({super.key});
@@ -81,8 +85,30 @@ class _CreateDirectChatDialogState extends ConsumerState<CreateDirectChatDialog>
         .createDirectChat(targetId);
 
     if (res != null && mounted) {
+
+      //  [优化核心] 手动抢跑：私聊也需要瞬间上屏
+      // 私聊的头像通常就是对方的头像，API 返回的 res (CreateDirectChatResponse) 里
+      // 最好能带上对方的 avatar/name。如果后端没带，暂时先给 null，让 Socket 慢慢补。
+      // 假设 res.conversationId 是准确的。
+
+      final newConv = Conversation(
+        id: res.conversationId,
+        type: ConversationType.direct,
+        name: "User $targetId", // 最好让 API 返回 name，否则暂时用 ID 占位
+        avatar: null, // API 返回对方头像
+        lastMsgContent: "New chat",
+        lastMsgTime: DateTime.now().millisecondsSinceEpoch,
+        unreadCount: 0,
+        lastMsgStatus: MessageStatus.success,
+        isPinned: false,
+        isMuted: false,
+      );
+
+      // 强行插入列表
+      ref.read(conversationListProvider.notifier).addConversation(newConv);
+
       Navigator.pop(context);
-      context.push('/chat/room/${res.conversationId}');
+      appRouter.push('/chat/room/${res.conversationId}');
     }
   }
 }

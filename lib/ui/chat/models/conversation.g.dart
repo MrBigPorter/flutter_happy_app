@@ -73,6 +73,7 @@ ChatSender _$ChatSenderFromJson(Map<String, dynamic> json) => $checkedCreate(
           id: $checkedConvert('id', (v) => v as String),
           nickname: $checkedConvert('nickname', (v) => v as String),
           avatar: $checkedConvert('avatar', (v) => v as String?),
+          phone: $checkedConvert('phone', (v) => v as String?),
         );
         return val;
       },
@@ -83,6 +84,7 @@ Map<String, dynamic> _$ChatSenderToJson(ChatSender instance) =>
       'id': instance.id,
       'nickname': instance.nickname,
       'avatar': instance.avatar,
+      'phone': instance.phone,
     };
 
 ChatMessage _$ChatMessageFromJson(Map<String, dynamic> json) => $checkedCreate(
@@ -460,11 +462,6 @@ Map<String, dynamic> _$ChatUserToJson(ChatUser instance) => <String, dynamic>{
       'nickname': instance.nickname,
       'avatar': instance.avatar,
       'phone': instance.phone,
-    };
-
-Map<String, dynamic> _$AddFriendRequestToJson(AddFriendRequest instance) =>
-    <String, dynamic>{
-      'friendId': instance.friendId,
     };
 
 Map<String, dynamic> _$CreateGroupRequestToJson(CreateGroupRequest instance) =>

@@ -18,7 +18,9 @@ final activeConversationIdProvider = StateProvider<String?>((ref) => null);
 
 // --- 会话列表控制器 (核心重构部分) ---
 
-@riverpod
+//  核心修改：keepAlive: true
+// 这保证了当你跳转到聊天详情页再回来时，列表状态还在内存里，不会重新触发 build()
+@Riverpod(keepAlive: true)
 class ConversationList extends _$ConversationList {
   StreamSubscription? _conversationSub;
   StreamSubscription? _conversationUpdateSub;
@@ -41,14 +43,33 @@ class ConversationList extends _$ConversationList {
       _conversationUpdateSub?.cancel();
     });
 
-    // 3. 执行初始数据抓取 (会自动进入 AsyncLoading 状态)
-    return await _fetchList();
+    // core logic: local first, then network fetch
+    final localData = await LocalDatabaseService().getConversations();
+
+    // if local data exists, return it first
+    if(localData.isNotEmpty){
+      state = AsyncData(localData);
+    }
+
+    // 然后再发起网络请求（静默刷新）
+    // 注意：这里不要 await，而是让它在后台跑，或者用 future.then 更新
+      _fetchList();
+
+    return localData;
   }
 
   /// 内部抓取逻辑：获取列表并根据当前 activeId 修正红点
   Future<List<Conversation>> _fetchList() async {
+
     final list = await Api.chatListApi(page: 1);
+
+    // save to local db
+    await LocalDatabaseService().saveConversations(list);
+
     final currentActiveId = ref.read(activeConversationIdProvider);
+
+    // update state
+    state = AsyncData(list);
 
     if (currentActiveId != null) {
       return list.map((c) {
@@ -59,10 +80,24 @@ class ConversationList extends _$ConversationList {
     return list;
   }
 
-  /// 供 UI 调用的手动刷新方法
+  /// [优化点 1] 静默刷新 (Silent Refresh)
+  /// 彻底解决 "列表闪烁/白屏" 问题
   Future<void> refresh() async {
-    state = const AsyncValue.loading();
+    //  严禁：state = const AsyncValue.loading();
+    // 保持当前数据在屏幕上，后台偷偷更新
     state = await AsyncValue.guard(() => _fetchList());
+  }
+
+  void addConversation(Conversation newItem){
+    if(!state.hasValue) return;
+    final currentList = state.value!;
+    // avoid duplicates
+    if(currentList.any((c) => c.id == newItem.id)) return;
+
+    // insert at top
+    state = AsyncData([newItem, ...currentList]);
+
+    debugPrint(" [ConversationList] Added new conversation: ${newItem.id}");
   }
 
   /// 收到新消息时的处理逻辑 (包含存储本地数据库和更新 UI)
@@ -130,7 +165,6 @@ class ConversationList extends _$ConversationList {
       }
     }else{
       try{
-        print(" [ConversationList] Received conversation update for non-existing convId: $convId, fetching detail...");
         // if not found, fetch conversation detail to see if it needs to be added
         final newConvDetail = await ref.read(chatDetailProvider(convId).future);
         // generate Conversation from ConversationDetail

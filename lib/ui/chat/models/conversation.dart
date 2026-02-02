@@ -80,8 +80,10 @@ class ChatSender {
   final String id;
   final String nickname;
   final String? avatar;
+  // 仅通讯录列表会有 phone，搜索结果可能有也可能没有
+  final String? phone;
 
-  ChatSender({required this.id, required this.nickname, this.avatar});
+  ChatSender({required this.id, required this.nickname, this.avatar, this.phone});
 
   factory ChatSender.fromJson(Map<String, dynamic> json) => _$ChatSenderFromJson(json);
   Map<String, dynamic> toJson() => _$ChatSenderToJson(this);
@@ -480,17 +482,7 @@ class ChatUser {
   Map<String, dynamic> toJson() => _$ChatUserToJson(this);
 }
 
-// ==========================================
-//  添加好友请求
-// ==========================================
-@JsonSerializable(createFactory: false)
-class AddFriendRequest {
-  final String friendId;
 
-  AddFriendRequest({required this.friendId});
-
-  Map<String, dynamic> toJson() => _$AddFriendRequestToJson(this);
-}
 
 // ==========================================
 //  创建群聊请求参数

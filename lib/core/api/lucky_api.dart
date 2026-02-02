@@ -11,6 +11,7 @@ import 'package:flutter_app/ui/chat/models/conversation.dart';
 import 'package:flutter_app/utils/helper.dart';
 import 'package:flutter_app/core/models/index.dart';
 
+import '../../ui/chat/models/friend_request.dart';
 import '../../utils/upload/global_upload_service.dart';
 import '../models/fcm_notification.dart';
 import '../models/kyc.dart';
@@ -558,10 +559,6 @@ class Api {
     return parseList(res, (e) => ChatUser.fromJson(e));
   }
 
-  // 1. 获取好友列表
-  static Future<bool> addFriendApi(String friendId) async {
-    return Http.post('/api/v1/users/add-friend', data: {'friendId': friendId});
-  }
 
   // 2. 用户搜索
   static Future<List<ChatUser>> searchUserApi(String keyword) async {
@@ -582,7 +579,6 @@ class Api {
       '/api/v1/chat/create-group',
       data: request.toJson(),
     );
-    print('createGroupApi response: $res');
     return CreateGroupResponse.fromJson(res);
   }
 
@@ -647,5 +643,27 @@ class Api {
     );
     return parseList(res, (e) => ChatSender.fromJson(e));
   }
+
+  // 1. 获取好友申请列表
+  static Future<List<FriendRequest>> getFriendRequestsApi() async {
+    final res = await Http.get('/api/v1/chat/contacts/requests');
+    // 使用 parseList 配合 fromJson
+    return parseList(res, (e) => FriendRequest.fromJson(e));
+  }
+
+  // 2. 发起申请
+  static Future<bool> addFriendApi(String friendId, {String? reason}) async {
+    final req = AddFriendRequest(friendId: friendId, reason: reason);
+    await Http.post('/api/v1/chat/contacts/add', data: req.toJson());
+    return true;
+  }
+
+  // 3. 处理申请
+  static Future<bool> handleFriendRequestApi(String targetId, FriendRequestAction action) async {
+    final req = HandleFriendRequest(targetId: targetId, action: action);
+    await Http.post('/api/v1/chat/contacts/handle', data: req.toJson());
+    return true;
+  }
+
 
 }

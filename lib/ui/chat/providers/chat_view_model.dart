@@ -78,8 +78,8 @@ class ChatViewModel extends StateNotifier<ChatListState> {
         ),
       );
       
-      print("初始化拉取到 ${response.list.length} 条消息");
 
+      if(!mounted) return;
       // 结果入库
       if (response.list.isNotEmpty) {
         final uiMsgs = response.list.map((m) => ChatUiModelMapper.fromApiModel(m, conversationId)).toList();
