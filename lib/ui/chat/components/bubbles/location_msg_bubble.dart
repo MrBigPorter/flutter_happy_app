@@ -1,39 +1,99 @@
 import 'dart:io';
+import 'dart:typed_data'; // 🔥 引入这个用于 Uint8List
 
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_app/common.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:intl/intl.dart';
 
+import 'package:flutter_app/core/api/http_client.dart'; // 确保引入 Http 类
 import 'package:flutter_app/ui/chat/models/chat_ui_model.dart';
 import 'package:flutter_app/utils/url_resolver.dart';
 import 'package:flutter_app/ui/chat/services/media/map_launcher_service.dart';
 
 import '../../../../core/store/auth/auth_provider.dart';
 
-class LocationMsgBubble extends ConsumerWidget {
+//  1. 改动：从 ConsumerWidget 改为 ConsumerStatefulWidget
+// 只有有状态组件才能缓存 Future，防止 build 循环重绘
+class LocationMsgBubble extends ConsumerStatefulWidget {
   final ChatUiModel message;
 
   const LocationMsgBubble({super.key, required this.message});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    // 1. 监听 Token，但允许为空 (String?)
+  ConsumerState<LocationMsgBubble> createState() => _LocationMsgBubbleState();
+}
+
+//  2. 改动：混入 AutomaticKeepAliveClientMixin
+// 这能保证列表滚动出屏幕外再滚回来时，图片不会重新加载，进一步节省流量
+class _LocationMsgBubbleState extends ConsumerState<LocationMsgBubble> with AutomaticKeepAliveClientMixin {
+
+  //  3. 新增：定义一个变量来缓存 Web 端的请求任务
+  // 一旦赋值，除非组件销毁，否则不会再次执行网络请求
+  Future<Uint8List?>? _mapSnapshotFuture;
+
+  @override
+  bool get wantKeepAlive => true; // 保持状态不被回收
+
+  ///  Web 端获取图片二进制数据的辅助方法 (移到了 State 内部)
+  Future<Uint8List?> _webFetchMapImage(String url, String token) async {
+    if (token.isEmpty) return null;
+    try {
+      // 使用 rawDio (跳过全局拦截器，防止它去解析 JSON)
+      final response = await Http.rawDio.get(
+        url,
+        options: Options(
+          responseType: ResponseType.bytes, // 告诉它我要二进制
+          headers: {
+            "Authorization": "Bearer $token", // 手动带 Token
+          },
+        ),
+      );
+
+      if (response.statusCode == 200) {
+        return Uint8List.fromList(response.data);
+      }
+    } catch (e) {
+      debugPrint("Web Map Load Error: $e");
+    }
+    return null;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context); // ⚠️ KeepAlive 必须调用
+
+    // 监听 Token
     final String? token = ref.watch(authProvider.select((s) => s.accessToken));
 
-    final double? lat = message.latitude;
-    final double? lng = message.longitude;
-    final String address = message.address ?? "Unknown Address";
-    final String? title = message.locationTitle;
+    final double? lat = widget.message.latitude;
+    final double? lng = widget.message.longitude;
+    final String address = widget.message.address ?? "Unknown Address";
+    final String? title = widget.message.locationTitle;
+
+    //  4. 关键逻辑：懒加载初始化 Future
+    // 条件：是Web端 + 还没请求过(_mapSnapshotFuture为空) + 有经纬度 + 有Token
+    if (kIsWeb &&
+        _mapSnapshotFuture == null &&
+        lat != null &&
+        lng != null &&
+        token != null &&
+        token.isNotEmpty) {
+      final String mapUrl = UrlResolver.getStaticMapUrl(lat, lng);
+      // 将请求赋给变量，下次 build 时直接用这个变量，不会再次发起请求
+      _mapSnapshotFuture = _webFetchMapImage(mapUrl, token);
+    }
 
     final double bubbleWidth = 0.65.sw;
 
-    final timeStr = DateFormat('HH:mm').format(
-      DateTime.fromMillisecondsSinceEpoch(message.createdAt),
-    );
+    final timeStr = DateFormat(
+      'HH:mm',
+    ).format(DateTime.fromMillisecondsSinceEpoch(widget.message.createdAt));
 
     return RepaintBoundary(
       child: GestureDetector(
@@ -49,8 +109,8 @@ class LocationMsgBubble extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              // === 优化后的地图预览 ===
-              _buildMapPreview(context, lat, lng, bubbleWidth, token!),
+              // 地图预览
+              _buildMapPreview(context, lat, lng, bubbleWidth, token ?? ""),
 
               // 地址信息
               Padding(
@@ -94,79 +154,125 @@ class LocationMsgBubble extends ConsumerWidget {
     );
   }
 
-  /// 构建地图预览 (包含 4 种状态：本地、网络、无Token、错误)
-  Widget _buildMapPreview(BuildContext context, double? lat, double? lng, double width, String token) {
-    // 固定高度，防止布局抖动
+  /// 构建地图预览
+  Widget _buildMapPreview(
+      BuildContext context,
+      double? lat,
+      double? lng,
+      double width,
+      String token,
+      ) {
     final double imageHeight = 120.h;
 
-    // 状态 1: 数据缺失，显示默认灰块
+    // 状态 1: 数据缺失
     if (lat == null || lng == null) {
-      return _buildPlaceholder(width, height: imageHeight, icon: Icons.location_off);
+      return _buildPlaceholder(
+        width,
+        height: imageHeight,
+        icon: Icons.location_off,
+      );
     }
 
-    final String? localPath = message.resolvedThumbPath;
+    // 状态 2: Web 端逻辑
+    if (kIsWeb) {
+      //  5. 改动：FutureBuilder 使用缓存的 _mapSnapshotFuture
+      // 这里的 future 不再是函数调用，而是一个固定的变量
+      return ClipRRect(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(11.r)),
+        child: SizedBox(
+          width: width,
+          height: imageHeight,
+          child: FutureBuilder<Uint8List?>(
+            future: _mapSnapshotFuture, //  正确用法
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return Container(
+                  color: context.bgSecondary,
+                  child: const Center(child: CupertinoActivityIndicator()),
+                );
+              }
+              if (snapshot.hasData && snapshot.data != null) {
+                return Image.memory(
+                  snapshot.data!,
+                  fit: BoxFit.cover,
+                  gaplessPlayback: true, // 防止重新加载时闪烁
+                );
+              }
+              // 加载失败或无数据
+              return _buildPlaceholder(width, height: imageHeight, icon: Icons.map_outlined);
+            },
+          ),
+        ),
+      );
+    }
 
-    // 状态 2: 优先检查本地文件
-    if (localPath != null && localPath.isNotEmpty && !localPath.startsWith('http')) {
+    // 状态 3: Native 端逻辑 (保持不变)
+    final String? localPath = widget.message.resolvedThumbPath; // 注意用了 widget.message
+
+    // 优先检查本地文件
+    if (localPath != null &&
+        localPath.isNotEmpty &&
+        !localPath.startsWith('http')) {
       final file = File(localPath);
       if (file.existsSync()) {
         return ClipRRect(
           borderRadius: BorderRadius.vertical(top: Radius.circular(11.r)),
-          //  修复点 1：用 SizedBox 强制约束尺寸，防止 RenderBox 报错
           child: SizedBox(
             width: width,
             height: imageHeight,
             child: Image.file(
               file,
               fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => _buildPlaceholder(width, height: imageHeight),
+              errorBuilder: (_, __, ___) =>
+                  _buildPlaceholder(width, height: imageHeight),
             ),
           ),
         );
       }
     }
 
-    // 状态 3: Token 缺失
+    // Token 缺失检查
     if (token.isEmpty) {
-      return _buildPlaceholder(width, height: imageHeight, icon: Icons.lock_clock);
+      return _buildPlaceholder(
+        width,
+        height: imageHeight,
+        icon: Icons.lock_clock,
+      );
     }
 
-    // 状态 4: 正常网络请求
+    // 正常网络请求 (Native)
     final String mapUrl = UrlResolver.getStaticMapUrl(lat, lng);
-
     return ClipRRect(
       borderRadius: BorderRadius.vertical(top: Radius.circular(11.r)),
-      // 修复点 2：CachedNetworkImage 也包一层 SizedBox
       child: SizedBox(
         width: width,
         height: imageHeight,
         child: CachedNetworkImage(
           imageUrl: mapUrl,
-          httpHeaders: {
-            "Authorization": "Bearer $token",
-          },
-          fit: BoxFit.cover, // 这里的 fit 才能在 SizedBox 里生效
-
-          // 优化：加载中显示转圈
+          httpHeaders: {"Authorization": "Bearer $token"},
+          fit: BoxFit.cover,
           placeholder: (context, url) => Container(
             color: context.bgSecondary,
-            child: const Center(
-              child: CupertinoActivityIndicator(),
-            ),
+            child: const Center(child: CupertinoActivityIndicator()),
           ),
-
-          // 优化：加载失败
-          errorWidget: (context, url, error) => _buildPlaceholder(width, height: imageHeight, icon: Icons.map_outlined),
+          errorWidget: (context, url, error) => _buildPlaceholder(
+            width,
+            height: imageHeight,
+            icon: Icons.map_outlined,
+          ),
         ),
       ),
     );
   }
 
-  /// 统一的占位组件 (记得更新这个方法的签名，接收 height)
-  Widget _buildPlaceholder(double width, {required double height, IconData icon = Icons.map}) {
+  Widget _buildPlaceholder(
+      double width, {
+        required double height,
+        IconData icon = Icons.map,
+      }) {
     return Container(
       width: width,
-      height: height, // 使用传入的高度
+      height: height,
       decoration: BoxDecoration(
         color: Colors.grey.withOpacity(0.2),
         borderRadius: BorderRadius.vertical(top: Radius.circular(11.r)),
@@ -176,7 +282,6 @@ class LocationMsgBubble extends ConsumerWidget {
       ),
     );
   }
-
 
   Widget _buildTimeTag(BuildContext context, String time) {
     return Container(
@@ -197,7 +302,13 @@ class LocationMsgBubble extends ConsumerWidget {
     );
   }
 
-  void _handleOpenMap(BuildContext context, double? lat, double? lng, String? title, String address) {
+  void _handleOpenMap(
+      BuildContext context,
+      double? lat,
+      double? lng,
+      String? title,
+      String address,
+      ) {
     if (lat == null || lng == null) return;
 
     MapLauncherService.openMap(

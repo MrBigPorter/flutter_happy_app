@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter_app/core/network/http_adapter/http_adapter_factory.dart';
 import 'package:flutter_app/app/routes/app_router.dart';
 import 'package:flutter_app/core/config/app_config.dart';
 import 'package:flutter_app/core/store/auth/auth_initial.dart';
@@ -69,6 +71,12 @@ class Http {
   // =========================================================
 
   static Future<void> init() async {
+    //  3. 核心修复：加 Web 判断
+    // NativeAdapter 依赖手机底层系统库，Web 端没有，必须跳过
+    if (!kIsWeb) {
+      _dio.httpClientAdapter = getNativeAdapter()!;
+      _rawDio.httpClientAdapter = getNativeAdapter()!;
+    }
     //  以前这里有几百行代码，现在全部委托给 UnifiedInterceptor
     // 我们把 _rawDio 传给它，让它去处理刷新逻辑
     _dio.interceptors.add(UnifiedInterceptor(_rawDio));

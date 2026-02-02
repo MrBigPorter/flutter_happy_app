@@ -12,11 +12,29 @@ import 'package:flutter_app/ui/chat/models/chat_ui_model.dart';
 import 'package:flutter_app/ui/chat/services/database/local_database_service.dart';
 //  1. 引入 UrlResolver
 import 'package:flutter_app/utils/url_resolver.dart';
+import 'package:flutter_app/core/network/http_adapter/http_adapter_factory.dart';
 
 final fileDownloadServiceProvider = Provider((ref) => FileDownloadService());
 
 class FileDownloadService {
-  final Dio _dio = Dio();
+  // 1. 改为 late final，允许在构造函数里初始化
+  late final Dio _dio;
+
+  FileDownloadService() {
+    // 2. 初始化 BaseOptions
+    _dio = Dio(BaseOptions(
+      connectTimeout: const Duration(seconds: 30),
+      receiveTimeout: const Duration(minutes: 30),
+    ));
+
+    // 3.  核心修复：安全赋值
+    // getNativeAdapter() 在 Web 端返回 null，在 Native 端返回 NativeAdapter
+    // 只有不为 null 时才赋值，千万不要加 "!"
+    final adapter = getNativeAdapter();
+    if (adapter != null) {
+      _dio.httpClientAdapter = adapter;
+    }
+  }
 
   /// 核心入口：下载或打开文件
   Future<String?> downloadOrOpen(

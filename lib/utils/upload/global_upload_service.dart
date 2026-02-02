@@ -7,14 +7,26 @@ import 'package:image_picker/image_picker.dart';
 import 'package:mime/mime.dart'; //  必须引入这个包 (如果没有请在 pubspec.yaml 添加 mime: ^1.0.0)
 
 import 'package:flutter_app/common.dart';
+import 'package:flutter_app/core/network/http_adapter/http_adapter_factory.dart';
 import 'upload_types.dart';
 import 'image_utils.dart';
 
 class GlobalUploadService {
-  static final Dio _s3Dio = Dio(BaseOptions(
-    connectTimeout: const Duration(seconds: 15),
-    sendTimeout: const Duration(minutes: 5),
-  ));
+  static final Dio _s3Dio = _createS3Dio();
+
+  static Dio _createS3Dio() {
+    final dio = Dio(BaseOptions(
+      connectTimeout: const Duration(seconds: 15),
+      sendTimeout: const Duration(minutes: 30),
+    ));
+
+    //  Safe Adapter Assignment
+    final adapter = getNativeAdapter();
+    if (adapter != null) {
+      dio.httpClientAdapter = adapter;
+    }
+    return dio;
+  }
 
   Future<String> uploadFile({
     required XFile file,

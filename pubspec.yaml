@@ -142,6 +142,7 @@ dependencies:
   geolocator: ^14.0.2
   map_launcher: ^4.4.3
   geocoding: ^4.0.0
+  native_dio_adapter: ^1.5.1
 
 
 dev_dependencies:
