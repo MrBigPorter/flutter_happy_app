@@ -138,8 +138,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
     _closePanel();
 
     try {
-      // 显示 Loading (建议加上)
-      // EasyLoading.show(status: 'Locating...');
+
 
       // 2. 获取坐标
       final pos = await LocationService.getCurrentPosition();
@@ -333,70 +332,94 @@ class _ChatPageState extends ConsumerState<ChatPage> {
           children: [
             // 1. 消息列表 (占满剩余空间)
             Expanded(
-              child: GestureDetector(
-                onTap: () {
-                  FocusScope.of(context).unfocus();
-                  _closePanel();
-                },
-                child: NotificationListener<ScrollNotification>(
-                  onNotification: (ScrollNotification scrollInfo) {
-                    // P0级优化：智能分页加载
-                    if (chatState.hasMore && !chatState.isLoadingMore) {
-                      if (scrollInfo.metrics.extentAfter < 500) {
-                        viewModel.loadMore();
-                      }
-                    }
-                    return false;
-                  },
-                  child: ListView.builder(
-                    controller: _scrollController,
-                    reverse: true,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 10,
-                    ),
-                    itemCount: messages.length + 1,
-                    itemBuilder: (context, index) {
-                      // 顶部 Loading / 到底提示
-                      if (index == messages.length) {
-                        return Container(
-                          padding: const EdgeInsets.symmetric(vertical: 15),
-                          alignment: Alignment.center,
-                          child: (chatState.hasMore)
-                              ? const SizedBox(
-                                  width: 20,
-                                  height: 20,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                  ),
-                                )
-                              : const Text(
-                                  "—— No more history ——",
-                                  style: TextStyle(
-                                    color: Colors.grey,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                        );
-                      }
+              //  修改点：使用 Builder 包裹，处理 Loading 和 空状态
+              child: Builder(
+                builder: (context) {
+                  // A. 只有在【完全没数据】且【正在初始化】时，才显示全屏 Loading
+                  if (messages.isEmpty && chatState.isInitializing) {
+                    return  Center(child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: context.textBrandPrimary900,
+                    ));
+                  }
 
-                      final msg = messages[index];
-                      // 简单判断已读显示 (仅供参考)
-                      bool showReadStatus =
-                          msg.isMe &&
-                          msg.status == MessageStatus.read &&
-                          index == 0;
+                  // B. 【完全没数据】且【初始化结束】 -> 显示空状态插画
+                  if (messages.isEmpty && !chatState.isInitializing) {
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.chat_bubble_outline, size: 48.sp, color: Colors.grey[300]),
+                          SizedBox(height: 10.h),
+                          Text("No messages yet", style: TextStyle(color: Colors.grey[400])),
+                        ],
+                      ),
+                    );
+                  }
 
-                      return ChatBubble(
-                        key: ValueKey(msg.id),
-                        isGroup: isGroup,
-                        message: msg,
-                        showReadStatus: showReadStatus,
-                        onRetry: () => actionService.resend(msg.id),
-                      );
+                  // C. 【有数据】 -> 直接显示列表 (Data First)
+                  // 原来的 GestureDetector 代码放这里
+                  return GestureDetector(
+                    onTap: () {
+                      FocusScope.of(context).unfocus();
+                      _closePanel();
                     },
-                  ),
-                ),
+                    child: NotificationListener<ScrollNotification>(
+                      onNotification: (ScrollNotification scrollInfo) {
+                        if (chatState.hasMore && !chatState.isLoadingMore) {
+                          if (scrollInfo.metrics.extentAfter < 500) {
+                            viewModel.loadMore();
+                          }
+                        }
+                        return false;
+                      },
+                      child: ListView.builder(
+                        controller: _scrollController,
+                        reverse: true, // 倒序
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                        // +1 是为了显示顶部的 loading/没有更多 提示
+                        itemCount: messages.length + 1,
+                        itemBuilder: (context, index) {
+                          // --- 顶部状态栏 ---
+                          if (index == messages.length) {
+                            if (chatState.hasMore) {
+                              return Container(
+                                padding: const EdgeInsets.symmetric(vertical: 15),
+                                alignment: Alignment.center,
+                                child: SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(strokeWidth: 2, color: context.textBrandPrimary900)
+                                ),
+                              );
+                            } else {
+                              return Container(
+                                padding: const EdgeInsets.symmetric(vertical: 15),
+                                alignment: Alignment.center,
+                                child: Text(
+                                  "—— No more history ——",
+                                  style: TextStyle(color: Colors.grey[400], fontSize: 12),
+                                ),
+                              );
+                            }
+                          }
+
+                          // --- 消息气泡 ---
+                          final msg = messages[index];
+                          bool showReadStatus = msg.isMe && msg.status == MessageStatus.read && index == 0;
+
+                          return ChatBubble(
+                            key: ValueKey(msg.id),
+                            isGroup: isGroup,
+                            message: msg,
+                            showReadStatus: showReadStatus,
+                            onRetry: () => actionService.resend(msg.id),
+                          );
+                        },
+                      ),
+                    ),
+                  );
+                },
               ),
             ),
 

@@ -18,14 +18,14 @@ class OfflineQueueManager with WidgetsBindingObserver {
 
   //  修复 1：将 Ref 改为 ProviderContainer
   // 因为 main.dart 里使用的是 container，而不是 ref
-  ProviderContainer? _container;
+  WidgetRef? _container;
 
   final Map<String, int> _retryRegistry = {};
   static const int maxRetries = 5;
 
   /// 初始化并监听网络
   ///  修复 2：参数类型改为 ProviderContainer
-  void init(ProviderContainer container) {
+  void init(WidgetRef container) {
     _container = container;
     debugPrint(" [OfflineQueue] Manager initialized.");
 

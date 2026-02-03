@@ -5,6 +5,7 @@ import 'package:bot_toast/bot_toast.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_app/ui/chat/services/network/offline_queue_manager.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
@@ -59,6 +60,11 @@ class _GlobalHandlerState extends ConsumerState<GlobalHandler> {
     Future.microtask(() {
       final service = ref.read(socketServiceProvider);
       _subscribeToSocket(service);
+    });
+    
+    WidgetsBinding.instance.addPostFrameCallback((_){
+      OfflineQueueManager().init(ref);
+      debugPrint(' [GlobalHandler] OfflineQueueManager initialized.');
     });
   }
 

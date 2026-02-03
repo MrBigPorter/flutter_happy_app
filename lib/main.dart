@@ -14,6 +14,7 @@ import 'package:flutter_web_plugins/url_strategy.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'app/app.dart';
+import 'app/app_startup.dart';
 import 'core/api/http_client.dart';
 import 'core/store/auth/auth_initial.dart';
 
@@ -59,9 +60,6 @@ Future<void> main() async {
     ],
   );
 
-  // 7. 初始化离线队列 (传入容器)
-  // 确保 OfflineQueueManager 的 init 方法接收 dynamic 或 ProviderContainer
-  OfflineQueueManager().init(container);
 
   // 8. 初始化 Firebase
   await _setupFirebase();
@@ -104,5 +102,65 @@ Future<void> _setupFirebase() async {
     debugPrint("[Firebase] Core initialized.");
   } catch (e) {
     debugPrint("[Firebase] Init failed: $e");
+  }
+}
+
+class AppBootstrap extends riverpod.ConsumerWidget {
+  const AppBootstrap({super.key});
+
+  @override
+  Widget build(BuildContext context, riverpod.WidgetRef ref) {
+    // 监听启动逻辑的执行状态
+    final startupState = ref.watch(appStartupProvider);
+
+    return startupState.when(
+      // 1. 初始化成功 (DB Ready) -> 进入真正的 App
+      data: (_) => const MyApp(),
+
+      //  2. 初始化中 -> 显示伪装启动页
+      // 为了体验最好，这里建议放一张和你原生 LaunchScreen 一模一样的图
+      loading: () => MaterialApp(
+        debugShowCheckedModeBanner: false,
+        home: Scaffold(
+          // 背景色要和启动图一致
+          backgroundColor: Colors.white,
+          body: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const SizedBox(height: 20),
+                // 进度条告诉用户正在处理
+                 const CircularProgressIndicator.adaptive(),
+              ],
+            ),
+          ),
+        ),
+      ),
+
+      //  3. 初始化失败 -> 显示错误页 (允许重试)
+      error: (e, st) => MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.error_outline, color: Colors.red, size: 48),
+                const SizedBox(height: 16),
+                const Text("Initialization Failed"),
+                Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Text(e.toString(), textAlign: TextAlign.center, style: const TextStyle(color: Colors.grey)),
+                ),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: () => ref.invalidate(appStartupProvider),
+                  child: const Text("Retry"),
+                )
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }

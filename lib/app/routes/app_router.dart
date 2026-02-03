@@ -42,6 +42,8 @@ import 'package:flutter_app/app/page/login_page.dart';
 import 'package:flutter_app/app/page/product_detail_page.dart';
 import 'package:flutter_app/app/page/withdraw_page.dart';
 
+import '../../ui/chat/local_contact_search_page.dart';
+
 final _shellKey = GlobalKey<NavigatorState>(debugLabel: 'shell');
 // 全局路由器实例  Global router instance
 late GoRouter appRouter;
@@ -87,6 +89,12 @@ class AppRouter {
           name: 'contactSearch',
           parentNavigatorKey: NavHub.key,
           builder: (context, state) => const ContactSearchPage(),
+        ),
+        GoRoute(
+          path: '/contact/local-search',
+          name: 'contactLocalSearch',
+          parentNavigatorKey: NavHub.key,
+          builder: (context, state) => const LocalContactSearchPage(),
         ),
         GoRoute(
           path: '/contact/new-friends',

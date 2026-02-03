@@ -87,12 +87,45 @@ class RadixToast {
 
   ///  全局 Loading (新增常用)
   /// 用于网络请求等需要阻塞交互的场景
-  static void showLoading({String message = "Loading..."}) {
-    BotToast.showLoading(
+  static void showLoading({String? message}) {
+    BotToast.showCustomLoading(
       clickClose: false,
       allowClick: false,
       backButtonBehavior: BackButtonBehavior.ignore,
-      backgroundColor: Colors.black26,
+      toastBuilder: (_) {
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+          decoration: BoxDecoration(
+            color: const Color(0xFF333333).withOpacity(0.9), // 深灰色背景
+            borderRadius: BorderRadius.circular(12), // 圆角
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(
+                width: 32,
+                height: 32,
+                child: CircularProgressIndicator(
+                  strokeWidth: 3,
+                  valueColor: AlwaysStoppedAnimation(Colors.white), // 白色转圈
+                ),
+              ),
+              if (message != null && message.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                Text(
+                  message,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    decoration: TextDecoration.none,
+                  ),
+                ),
+              ]
+            ],
+          ),
+        );
+      },
     );
   }
 

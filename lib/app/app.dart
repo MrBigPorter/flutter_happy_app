@@ -59,7 +59,6 @@ class _MyAppState extends ConsumerState<MyApp> {
 
 
 
-
     return MaterialApp.router(
       title: 'Lucky App',
       routerConfig: router,

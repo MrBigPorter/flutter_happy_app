@@ -96,7 +96,7 @@ dependencies:
   share_plus: ^12.0.1
   qr_flutter: ^4.1.0
   screenshot: ^3.0.0
-  path_provider: ^2.1.4
+  path_provider: ^2.1.5
   equatable: ^2.0.7
   dismissible_page: ^1.0.2
   flutter_blurhash: ^0.9.1
@@ -147,6 +147,8 @@ dependencies:
   convert: ^3.1.2
   azlistview: ^2.0.0
   lpinyin: ^2.0.3
+  path: ^1.9.1
+  flutter_native_splash: ^2.4.7
 
 
 dev_dependencies:
@@ -159,7 +161,6 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
-  path: ^1.8.3
 
   # json serialization and deserialization solution
   build_runner: ^2.4.0
