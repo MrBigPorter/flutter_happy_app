@@ -75,9 +75,9 @@ class ImageCompressionService {
 
       await img.onLoad.first; // 等待浏览器解码
 
-      // 3. 计算尺寸 ( 修复点：处理 int? 可空类型)
-      int w = img.naturalWidth;
-      int h = img.naturalHeight;
+      // 3. 计算尺寸 (✅ 修复点：处理 int? 可空类型，如果为 null 则默认为 0)
+      int w = img.naturalWidth ?? 0;
+      int h = img.naturalHeight ?? 0;
 
       // 如果获取不到尺寸，说明图片有问题，直接返回原图
       if (w == 0 || h == 0) {
