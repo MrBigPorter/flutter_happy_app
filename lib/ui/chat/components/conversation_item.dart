@@ -24,24 +24,8 @@ class ConversationItem extends ConsumerWidget {
     final date = DateTime.fromMillisecondsSinceEpoch(item.lastMsgTime);
     final timeStr = "${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}";
 
-    // 2. 监听详情（主要是为了获取准确的成员人数，用于画缺省格子）
-    final asyncDetail = ref.watch(chatDetailProvider(item.id));
-
-    // 3. 判断发送状态
+    // 2. 发送失败状态判断
     final isSendFailed = item.lastMsgStatus == MessageStatus.failed;
-
-    //  核心修改：逻辑下沉，这里只负责提取 URL 和 人数
-    // 如果是私聊且没头像，给一个 ui-avatars 的兜底图，确保 GroupAvatar 渲染
-    String? displayAvatar = item.avatar;
-    int memberCount = 0;
-
-    if (item.type == ConversationType.group) {
-      // 群组：人数从详情缓存拿，或者从模型里的 count 拿
-      memberCount = asyncDetail.valueOrNull?.members.length ?? 0;
-    } else {
-      // 私聊：如果是空的，我们在这里生成一个确定性的首字母头像
-      memberCount = 1;
-    }
 
     return ListTile(
       contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
@@ -52,14 +36,15 @@ class ConversationItem extends ConsumerWidget {
       leading: Stack(
         clipBehavior: Clip.none,
         children: [
-          // 🔥 使用简化后的 GroupAvatar，只传 URL 和人数
+          //  修改点：不再监听 chatDetailProvider。
+          // 直接使用 item.avatar。memberCount 传固定值 1 或 0 即可，
+          // 因为现在主要靠后端合成的图片渲染。
           GroupAvatar(
-            avatarUrl: displayAvatar,
-            memberCount: memberCount,
+            avatarUrl: item.avatar,
             size: 48.r,
           ),
 
-          // 红点 Badge
+          // 未读数红点
           if (item.unreadCount > 0)
             Positioned(
               right: -2,
@@ -89,7 +74,7 @@ class ConversationItem extends ConsumerWidget {
       ),
 
       // ===========================
-      //  标题 (群名/人名) - 保持不变
+      //  内容区域
       // ===========================
       title: Text(
         item.name,
@@ -101,10 +86,6 @@ class ConversationItem extends ConsumerWidget {
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
       ),
-
-      // ===========================
-      //  摘要 (最后一条消息) - 保持不变
-      // ===========================
       subtitle: Padding(
         padding: EdgeInsets.only(top: 4.h),
         child: Row(
@@ -127,25 +108,19 @@ class ConversationItem extends ConsumerWidget {
           ],
         ),
       ),
-
-      // ===========================
-      //  时间 - 保持不变
-      // ===========================
-      trailing: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            timeStr,
-            style: TextStyle(
-              color: context.textPrimary900,
-              fontSize: 12.sp,
-            ),
-          ),
-        ],
+      trailing: Text(
+        timeStr,
+        style: TextStyle(
+          color: context.textPrimary900,
+          fontSize: 12.sp,
+        ),
       ),
 
       onTap: () {
+        // 清除本地未读状态
         ref.read(conversationListProvider.notifier).clearUnread(item.id);
+
+        // 跳转聊天室
         context.push(
           '/chat/room/${item.id}?title=${Uri.encodeComponent(item.name)}',
         );

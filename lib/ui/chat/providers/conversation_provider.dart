@@ -13,13 +13,10 @@ part 'conversation_provider.g.dart';
 
 // --- 状态提供者 ---
 
-// 如果为 null，说明用户不在任何聊天室里
 final activeConversationIdProvider = StateProvider<String?>((ref) => null);
 
-// --- 会话列表控制器 (核心重构部分) ---
+// --- 会话列表控制器 ---
 
-//  核心修改：keepAlive: true
-// 这保证了当你跳转到聊天详情页再回来时，列表状态还在内存里，不会重新触发 build()
 @Riverpod(keepAlive: true)
 class ConversationList extends _$ConversationList {
   StreamSubscription? _conversationSub;
@@ -27,29 +24,19 @@ class ConversationList extends _$ConversationList {
 
   @override
   FutureOr<List<Conversation>> build() async {
-    // 1. [关键修复] 监听用户 ID 变化
-    // 只要 luckyProvider 里的 userInfo.id 变了（比如换号、退出登录），
-    // 这个 Provider 就会自动重建 (Rebuild)，从而重新加载数据。
     final currentUserId = ref.watch(luckyProvider.select((s) => s.userInfo?.id));
 
-    // 用户未登录，直接返回空列表
     if(currentUserId == null || currentUserId.isEmpty){
-      // 用户未登录，直接返回空列表
       return [];
     }
 
-    // App 重启时，虽然 userId 被持久化恢复了，但数据库连接还没打开。
-    // 在这里强制确保数据库初始化。因为 init 内部有判断，重复调用是安全的。
     await LocalDatabaseService.init(currentUserId);
 
-    // 1. 获取 Socket 服务并监听
     final socketService = ref.watch(socketServiceProvider);
 
-    // 2. 页面销毁或 Provider 重置时自动取消订阅
     _conversationSub?.cancel();
     _conversationSub = socketService.conversationListUpdateStream.listen(_onNewMessage);
 
-    //  2. [新增] 监听头像/属性更新信号
     _conversationUpdateSub?.cancel();
     _conversationUpdateSub = socketService.conversationUpdateStream.listen(_onConversationAttributeUpdate);
 
@@ -58,32 +45,22 @@ class ConversationList extends _$ConversationList {
       _conversationUpdateSub?.cancel();
     });
 
-    // core logic: local first, then network fetch
     final localData = await LocalDatabaseService().getConversations();
 
-    // if local data exists, return it first
     if(localData.isNotEmpty){
       state = AsyncData(localData);
     }
 
-    // 然后再发起网络请求（静默刷新）
-    // 注意：这里不要 await，而是让它在后台跑，或者用 future.then 更新
-      _fetchList();
+    _fetchList();
 
     return localData;
   }
 
-  /// 内部抓取逻辑：获取列表并根据当前 activeId 修正红点
   Future<List<Conversation>> _fetchList() async {
-
     final list = await Api.chatListApi(page: 1);
-
-    // save to local db
     await LocalDatabaseService().saveConversations(list);
-
     final currentActiveId = ref.read(activeConversationIdProvider);
 
-    // update state
     state = AsyncData(list);
 
     if (currentActiveId != null) {
@@ -95,27 +72,17 @@ class ConversationList extends _$ConversationList {
     return list;
   }
 
-  /// [优化点 1] 静默刷新 (Silent Refresh)
-  /// 彻底解决 "列表闪烁/白屏" 问题
   Future<void> refresh() async {
-    //  严禁：state = const AsyncValue.loading();
-    // 保持当前数据在屏幕上，后台偷偷更新
     state = await AsyncValue.guard(() => _fetchList());
   }
 
   void addConversation(Conversation newItem){
     if(!state.hasValue) return;
     final currentList = state.value!;
-    // avoid duplicates
     if(currentList.any((c) => c.id == newItem.id)) return;
-
-    // insert at top
     state = AsyncData([newItem, ...currentList]);
-
-    debugPrint(" [ConversationList] Added new conversation: ${newItem.id}");
   }
 
-  /// 收到新消息时的处理逻辑 (包含存储本地数据库和更新 UI)
   void _onNewMessage(SocketMessage msg) async {
     if (!state.hasValue) return;
 
@@ -126,17 +93,14 @@ class ConversationList extends _$ConversationList {
     final bool isMe = senderId.isNotEmpty && (senderId == myUserId);
     final convId = msg.conversationId;
 
-    // A. 存入本地数据库
     _saveMessageToLocal(msg, isMe, myUserId, convId);
 
-    // B. 更新 UI 列表项
     final index = currentList.indexWhere((conv) => conv.id == convId);
     if (index != -1) {
       final oldConv = currentList[index];
       final currentActiveId = ref.read(activeConversationIdProvider);
       final bool isViewingNow = (currentActiveId == convId);
 
-      // 计算逻辑保持不变：如果是自己发的或正在看该房间，红点为0
       final newUnreadCount = (isMe || isViewingNow) ? 0 : (oldConv.unreadCount + 1);
 
       final newConv = oldConv.copyWith(
@@ -152,66 +116,54 @@ class ConversationList extends _$ConversationList {
 
       state = AsyncData(newList);
     } else {
-      // 会话不在当前列表中，执行全量刷新c
+      // [优化 1] 收到新消息但不在列表中时，建议使用 refresh() 触发分页拉取
+      // 而不是一个个去查详情，这样能保证列表的连续性
       refresh();
     }
   }
 
-  ///  [核心新增] 处理来自 Socket 的头像更新信号
-  void _onConversationAttributeUpdate(Map<String, dynamic> data) async{
+  /// 处理来自 Socket 的头像/属性更新信号
+  void _onConversationAttributeUpdate(Map<String, dynamic> data) async {
     if (!state.hasValue) return;
 
     final String convId = data['id'];
     final String? newAvatar = data['avatar'];
+    final String? newName = data['name']; // [新增] 同时也处理名称更新
 
     final currentList = state.value!;
     final index = currentList.indexWhere((c) => c.id == convId);
 
-    // find conversation and update avatar
     if (index != -1) {
       final oldConv = currentList[index];
-      // 只有在头像真正发生变化时才更新状态，避免不必要的 UI 重绘
-      if (oldConv.avatar != newAvatar) {
-        final newConv = oldConv.copyWith(avatar: newAvatar);
+      // [优化 2] 增加判断逻辑，只有真正变化时才更新
+      bool isChanged = false;
+      var newConv = oldConv;
 
+      if (newAvatar != null && oldConv.avatar != newAvatar) {
+        newConv = newConv.copyWith(avatar: newAvatar);
+        isChanged = true;
+      }
+      if (newName != null && oldConv.name != newName) {
+        newConv = newConv.copyWith(name: newName);
+        isChanged = true;
+      }
+
+      if (isChanged) {
         final newList = [...currentList];
         newList[index] = newConv;
         state = AsyncData(newList);
+        // 记得同步本地数据库
+        LocalDatabaseService().saveConversations([newConv]);
       }
-    }else{
-      try{
-        // if not found, fetch conversation detail to see if it needs to be added
-        final newConvDetail = await ref.read(chatDetailProvider(convId).future);
-        // generate Conversation from ConversationDetail
-        final newConv = Conversation(
-          id: newConvDetail.id,
-          type: newConvDetail.type,
-          name: newConvDetail.name,
-          avatar: newAvatar,// use updated avatar
-          lastMsgContent: 'New Conversation',
-          lastMsgTime: DateTime.now().millisecondsSinceEpoch,
-          isPinned: false,
-          isMuted: false,
-          unreadCount: 0,
-        );
-
-        // check if already in list to avoid duplicates
-        if(!state.value!.any((c) => c.id == newConv.id)){
-          // insert at top
-          final newList = [newConv, ...currentList];
-          state = AsyncData(newList);
-          debugPrint(" [ConversationList] Added new conversation from update event: ${newConv.id}");
-        }
-
-      }catch(e){
-        debugPrint(" [ConversationList] Fetch Conversation Detail Error: $e");
-        // on error,refresh entire list
-        refresh();
-      }
+    } else {
+      // [核心优化 3] 移除 else 分支中的 ref.read(chatDetailProvider...)
+      // 理由：Socket 信号可能非常频繁（风暴），如果该会话不在当前列表显示范围内（比如在第二页），
+      // 我们没必要为了一个头像更新去请求网络详情接口。
+      // 策略：静默忽略，等用户滚动或手动刷新时自然会获取到最新数据。
+      debugPrint(" [ConversationList] Skip attribute update for non-existent conversation: $convId");
     }
   }
 
-  /// 供 ChatRoom 调用，手动更新列表项 (发送消息时)
   void updateLocalItem({
     required String conversationId,
     String? lastMsgContent,
@@ -240,7 +192,6 @@ class ConversationList extends _$ConversationList {
     }
   }
 
-  /// 清除红点
   void clearUnread(String conversationId) {
     if (!state.hasValue) return;
 
@@ -251,7 +202,6 @@ class ConversationList extends _$ConversationList {
     state = AsyncData(newList);
   }
 
-  /// 辅助方法：存入本地数据库
   void _saveMessageToLocal(SocketMessage msg, bool isMe, String myUserId, String convId) async {
     try {
       final apiMsg = ChatMessage(
@@ -269,7 +219,6 @@ class ConversationList extends _$ConversationList {
     }
   }
 
-  /// 预览内容转换
   String _getPreviewContent(dynamic type, String rawContent) {
     final int typeInt = int.tryParse(type.toString()) ?? 0;
     final messageType = MessageType.fromValue(typeInt);
@@ -286,7 +235,7 @@ class ConversationList extends _$ConversationList {
   }
 }
 
-// --- 其他控制器 (保持原样) ---
+// --- 其他控制器 ---
 
 @riverpod
 class CreateDirectChatController extends _$CreateDirectChatController {
@@ -305,25 +254,20 @@ class CreateDirectChatController extends _$CreateDirectChatController {
   }
 }
 
-
-// [核心修改部分] SWR 策略：缓存优先，网络更新
-// 改为 async* 生成器流
+// SWR 策略：缓存优先，网络更新
 @riverpod
 Stream<ConversationDetail> chatDetail(
     ChatDetailRef ref,
     String conversationId,
     ) async*{
-  // 1. [新增] 同样获取一下当前用户 ID
   final userId = ref.watch(luckyProvider.select((s) => s.userInfo?.id));
 
-  // 2. [新增] 防御性初始化：万一用户是点推送进来的，这里负责把库打开
   if (userId != null && userId.isNotEmpty) {
     await LocalDatabaseService.init(userId);
   }
 
   final db = LocalDatabaseService();
 
-  // 1. [缓存层] 尝试先查本地，如果有直接发射 (秒开)
   ConversationDetail? localData;
   try{
     localData = await db.getConversationDetail(conversationId);
@@ -334,18 +278,13 @@ Stream<ConversationDetail> chatDetail(
     debugPrint(" [chatDetail] Local DB Fetch Error: $e");
   }
 
-  // 2. [网络层] 再去网络拉取最新数据，发射更新 (后台更新)
   try{
     final networkData = await Api.chatDetailApi(conversationId);
-
-    // 3. [持久化] 存入本地，供下次使用
     await db.saveConversationDetail(networkData);
-    // 4. [更新 UI] 发射最新数据
-    // Riverpod 内部会自动对比，如果 networkData 和 localData 一样，不会触发多余的重建
     yield networkData;
   }catch(e){
     debugPrint(" [chatDetail] Network Fetch Error: $e");
-    throw e;
+    // [优化 4] 如果网络请求失败且本地也没有数据，再抛出异常
+    if(localData == null) throw e;
   }
-
 }
