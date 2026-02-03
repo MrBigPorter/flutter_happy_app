@@ -439,7 +439,7 @@ class _Avatar extends ConsumerWidget {
                     overflow: TextOverflow.ellipsis,
                     TextSpan(
                       text: 'Hello',
-                      children: [const TextSpan(text: ","), TextSpan(text: '$nickname' )],
+                      children: [const TextSpan(text: ","), TextSpan(text: nickname?.substring(0,10) )],
                     ),
                   ),
                   SizedBox(width: 8.w),

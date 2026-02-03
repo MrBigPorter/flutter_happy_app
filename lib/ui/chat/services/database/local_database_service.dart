@@ -12,49 +12,85 @@ import '../../models/conversation.dart';
 import '../../../../utils/asset/asset_manager.dart';
 
 class LocalDatabaseService {
-  static final LocalDatabaseService _instance =
-  LocalDatabaseService._internal();
+  /// 构造函数保持为空，允许 `LocalDatabaseService().method()` 的调用方式
+  /// 但内部共享同一个 static _db 连接
+  LocalDatabaseService();
 
-  factory LocalDatabaseService() => _instance;
+  // ---------------------------------------------------------------------------
+  // 核心：静态连接管理 (User Isolation)
+  // ---------------------------------------------------------------------------
 
-  LocalDatabaseService._internal();
+  static Database? _db;
+  static String? _currentUserId;
 
-  Database? _db;
+  // 定义存储仓库 (改为 static final)
+  static final _messageStore = stringMapStoreFactory.store('messages');
+  static final _detailStore = stringMapStoreFactory.store('conversation_details');
+  static final _conversationStore = stringMapStoreFactory.store('conversations');
 
-  // 1. 定义存储仓库
-  final _messageStore = stringMapStoreFactory.store('messages');
-  final _detailStore = stringMapStoreFactory.store('conversation_details');
-  //  新增：会话列表仓库
-  final _conversationStore = stringMapStoreFactory.store('conversations');
-
+  /// 获取当前活跃的数据库实例
   Future<Database> get database async {
-    if (_db != null) return _db!;
-    await init();
+    if (_db == null) {
+      throw Exception(" [LocalDB] Database not initialized! You MUST call LocalDatabaseService.init(userId) after login.");
+    }
     return _db!;
   }
 
-  Future<void> init() async {
-    if (_db != null) return;
-    if (kIsWeb) {
-      _db = await databaseFactoryWeb.openDatabase('chat_app_v1.db');
-    } else {
-      final appDir = await getApplicationDocumentsDirectory();
-      await appDir.create(recursive: true);
-      final dbPath = join(appDir.path, 'chat_app_v1.db');
-      _db = await databaseFactoryIo.openDatabase(dbPath);
+  ///  初始化：传入 userId，打开专属数据库
+  static Future<void> init(String userId) async {
+    // 1. 如果已经是这个用户的库，直接复用
+    if (_db != null && _currentUserId == userId) {
+      debugPrint(" [LocalDB] Already initialized for user: $userId");
+      return;
+    }
+
+    // 2. 如果之前有别的用户登录，先关掉旧的，防止串号
+    if (_db != null) {
+      debugPrint(" [LocalDB] Closing DB for previous user: $_currentUserId");
+      await _db!.close();
+      _db = null;
+    }
+
+    _currentUserId = userId;
+
+    // 3. 关键点：文件名带上 userId，实现物理隔离
+    final dbName = 'chat_app_v1_$userId.db';
+
+    try {
+      if (kIsWeb) {
+        _db = await databaseFactoryWeb.openDatabase(dbName);
+      } else {
+        final appDir = await getApplicationDocumentsDirectory();
+        await appDir.create(recursive: true);
+        final dbPath = join(appDir.path, dbName);
+        _db = await databaseFactoryIo.openDatabase(dbPath);
+      }
+      debugPrint(" [LocalDB] Initialized successfully: $dbName");
+    } catch (e) {
+      debugPrint(" [LocalDB] Init failed: $e");
+      rethrow;
+    }
+  }
+
+  /// 关闭数据库 (用于退出登录)
+  static Future<void> close() async {
+    if (_db != null) {
+      await _db!.close();
+      _db = null;
+      _currentUserId = null;
+      debugPrint("🔒 [LocalDB] Database closed.");
     }
   }
 
   // ========================================================================
-  //  Conversation List 缓存 (新增核心)
+  //  Conversation List 缓存
   // ========================================================================
 
   /// 批量保存会话列表 (Sync: API -> Local DB)
-  ///  优化版：使用 records 批量写入，解决循环 await 导致的性能问题
   Future<void> saveConversations(List<Conversation> list) async {
     if (list.isEmpty) return;
 
-    final db = await database;
+    final db = await database; // 这里的 database 已经是隔离后的实例
 
     // 1. 提取所有 ID (Keys)
     final keys = list.map((c) => c.id).toList();
@@ -62,15 +98,13 @@ class LocalDatabaseService {
     // 2. 提取所有数据 (Values)
     final values = list.map((c) => c.toJson()).toList();
 
-    // 3. 批量写入 (Batch Write)
-    // Sembast 的 records(...).put(...) 是原子操作，比循环快得多
+    // 3. 批量写入
     await db.transaction((txn) async {
       await _conversationStore.records(keys).put(txn, values);
     });
   }
 
   /// 获取本地会话列表 (Load: Local DB -> UI)
-  /// 按 lastMsgTime 倒序排列
   Future<List<Conversation>> getConversations() async {
     final db = await database;
     final finder = Finder(
@@ -80,7 +114,6 @@ class LocalDatabaseService {
     final snapshots = await _conversationStore.find(db, finder: finder);
 
     return snapshots.map((s) {
-      // 容错处理：万一 json 解析失败不要崩
       try {
         return Conversation.fromJson(s.value);
       } catch (e) {
@@ -90,7 +123,7 @@ class LocalDatabaseService {
     }).whereType<Conversation>().toList();
   }
 
-  /// 更新单个会话 (用于 Socket 推送更新)
+  /// 更新单个会话
   Future<void> updateConversation(Conversation item) async {
     final db = await database;
     await _conversationStore.record(item.id).put(db, item.toJson());
@@ -103,12 +136,11 @@ class LocalDatabaseService {
     final record = _messageStore.record(msg.id);
     Map<String, dynamic> dataToSave = msg.toJson();
 
-    // 防御性合并：防止覆盖关键字段 (如本地预览图、时长)
     final oldSnapshot = await record.getSnapshot(db);
     if (oldSnapshot != null) {
       final oldData = oldSnapshot.value;
-      if (dataToSave['previewBytes'] == null &&
-          oldData['previewBytes'] != null) {
+      // 防御性保留本地字段
+      if (dataToSave['previewBytes'] == null && oldData['previewBytes'] != null) {
         dataToSave['previewBytes'] = oldData['previewBytes'];
       }
       if (dataToSave['localPath'] == null && oldData['localPath'] != null) {
@@ -130,7 +162,7 @@ class LocalDatabaseService {
           if (msg.id.trim().isEmpty) continue;
           await _messageStore.record(msg.id).put(txn, msg.toJson());
         } catch (e) {
-          debugPrint("❌ [存库炸了] id=${msg.id} err=$e");
+          debugPrint(" [存库炸了] id=${msg.id} err=$e");
         }
       }
     });
@@ -144,10 +176,7 @@ class LocalDatabaseService {
     });
   }
 
-  Future<void> updateMessageStatus(
-      String msgId,
-      MessageStatus newStatus,
-      ) async {
+  Future<void> updateMessageStatus(String msgId, MessageStatus newStatus) async {
     final db = await database;
     await _messageStore.record(msgId).update(db, {'status': newStatus.name});
   }
@@ -191,7 +220,6 @@ class LocalDatabaseService {
     final db = await database;
     final recordSnapshot = await _messageStore.record(msgId).getSnapshot(db);
     if (recordSnapshot != null) {
-      // 单条查询也要过一遍预热，保证数据结构一致
       final raw = ChatUiModel.fromJson(recordSnapshot.value);
       final list = await _prewarmMessages([raw]);
       return list.first;
@@ -200,23 +228,18 @@ class LocalDatabaseService {
   }
 
   // ========================================================================
-  //  核心重构 A：监听消息流 (带 Limit 分页 + 自动预热)
+  //  监听消息流
   // ========================================================================
-  Stream<List<ChatUiModel>> watchMessages(
-      String conversationId, {
-        int limit = 50,
-      }) async* {
+  Stream<List<ChatUiModel>> watchMessages(String conversationId, {int limit = 50}) async* {
     final db = await database;
 
     final finder = Finder(
       filter: Filter.equals('conversationId', conversationId),
-      sortOrders: [SortOrder('createdAt', false)], // 倒序：最新的在前面
-      limit: limit, //  关键：限制数量，防止大群卡死
+      sortOrders: [SortOrder('createdAt', false)],
+      limit: limit,
     );
 
-    yield* _messageStore.query(finder: finder).onSnapshots(db).asyncMap((
-        snapshots,
-        ) async {
+    yield* _messageStore.query(finder: finder).onSnapshots(db).asyncMap((snapshots) async {
       final rawModels = snapshots
           .map((snapshot) => ChatUiModel.fromJson(snapshot.value))
           .toList();
@@ -226,7 +249,7 @@ class LocalDatabaseService {
   }
 
   // ========================================================================
-  //  核心重构 B：分页拉取旧消息 (供上拉加载使用)
+  //  分页历史
   // ========================================================================
   Future<List<ChatUiModel>> getHistoryMessages({
     required String conversationId,
@@ -250,8 +273,7 @@ class LocalDatabaseService {
   }
 
   // ========================================================================
-  // 内部引擎：批量数据预热 (Pre-warming Service)
-  //  修复点：删除了手动 gw 拼接，全部委托给 UrlResolver
+  // 内部引擎：数据预热
   // ========================================================================
   Future<List<ChatUiModel>> _prewarmMessages(List<ChatUiModel> models) async {
     if (models.isEmpty) return [];
@@ -261,28 +283,21 @@ class LocalDatabaseService {
       String? thumbPath;
       bool needsUpdate = false;
 
-      // --- A. 预处理主文件路径 ---
+      // A. 主文件路径
       if (msg.localPath != null && msg.localPath!.isNotEmpty) {
-        // ️ Blob 保护策略：
-        // 如果是 Web 端，且消息已发送成功，则认为本地存的 blob 链接已过期（刷新会导致失效）
-        // 此时强制 absPath = null，迫使下方逻辑使用 msg.content (远程链接)
         bool isDeadBlob = kIsWeb &&
             msg.localPath!.startsWith('blob:') &&
             msg.status == MessageStatus.success;
 
         if (!isDeadBlob) {
           if (msg.localPath!.startsWith('http') || msg.localPath!.startsWith('blob:')) {
-            // 网络路径 -> UrlResolver
             absPath = _resolveByMsgType(msg.type, msg.localPath);
           } else {
-            // 本地路径 -> AssetManager
             absPath = await AssetManager.getFullPath(msg.localPath!, msg.type);
           }
         }
       }
 
-      // 3. 如果本地解析失败，兜底使用 content (远程路径)
-      //    UrlResolver 会自动识别 content 是绝对路径还是相对 uploads 路径，并补全正确域名
       if (absPath == null) {
         absPath = _resolveByMsgType(msg.type, msg.content);
       }
@@ -291,17 +306,11 @@ class LocalDatabaseService {
         needsUpdate = true;
       }
 
-      // --- B. 预处理封面路径 ---
+      // B. 封面路径
       if (msg.meta != null) {
         String? t = msg.meta!['thumb'] ?? msg.meta!['remote_thumb'];
         if (t != null && t.isNotEmpty) {
-          // 封面全部按图片处理
-          // 如果 t 是相对路径 (uploads/xxx) 或网络路径，走 UrlResolver
-          // 如果 t 是本地资源 ID (没有斜杠)，走 AssetManager
-          if (t.startsWith('http') ||
-              t.startsWith('blob:') ||
-              t.contains('/')) {
-            //  修复：第一个参数传 null (因为 Service 层没有 context)
+          if (t.startsWith('http') || t.startsWith('blob:') || t.contains('/')) {
             thumbPath = UrlResolver.resolveImage(null, t);
           } else {
             thumbPath = await AssetManager.getFullPath(t, MessageType.image);
@@ -312,7 +321,6 @@ class LocalDatabaseService {
         }
       }
 
-      // --- C. 返回新模型 ---
       if (needsUpdate) {
         return msg.copyWith(
           resolvedPath: absPath,
@@ -325,17 +333,15 @@ class LocalDatabaseService {
     return await Future.wait(futures);
   }
 
-  //  辅助分发器：根据消息类型选择正确的解析策略
-  // 取代了旧的 _ensureHttps
   String? _resolveByMsgType(MessageType type, String? raw) {
     if (raw == null || raw.isEmpty) return null;
     switch (type) {
       case MessageType.video:
-        return UrlResolver.resolveVideo(raw); // 走视频专用通道 (Web/Native 分流)
+        return UrlResolver.resolveVideo(raw);
       case MessageType.image:
-        return UrlResolver.resolveImage(null, raw); // 走图片专用通道 (CDN)
+        return UrlResolver.resolveImage(null, raw);
       default:
-        return UrlResolver.resolveFile(raw); // 走文件专用通道 (纯 API 域名)
+        return UrlResolver.resolveFile(raw);
     }
   }
 

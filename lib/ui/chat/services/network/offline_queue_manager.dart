@@ -6,7 +6,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_app/ui/chat/models/chat_ui_model.dart';
 import 'package:flutter_app/ui/chat/services/database/local_database_service.dart';
 import 'package:flutter_app/ui/chat/services/chat_action_service.dart';
-import 'package:flutter_app/utils/upload/global_upload_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class OfflineQueueManager with WidgetsBindingObserver {
@@ -16,21 +15,27 @@ class OfflineQueueManager with WidgetsBindingObserver {
 
   bool _isProcessing = false;
   StreamSubscription? _connectivitySubscription;
-  late ProviderContainer _ref; //  这里改为 dynamic
 
-  final GlobalUploadService _uploadService = GlobalUploadService();
+  //  修复 1：将 Ref 改为 ProviderContainer
+  // 因为 main.dart 里使用的是 container，而不是 ref
+  ProviderContainer? _container;
+
   final Map<String, int> _retryRegistry = {};
   static const int maxRetries = 5;
 
   /// 初始化并监听网络
-  void init(dynamic ref) {
-    _ref = ref;
-    debugPrint("[OfflineQueue] Manager initialized.");
+  ///  修复 2：参数类型改为 ProviderContainer
+  void init(ProviderContainer container) {
+    _container = container;
+    debugPrint(" [OfflineQueue] Manager initialized.");
+
+    _connectivitySubscription?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
 
     _connectivitySubscription = Connectivity().onConnectivityChanged.listen((results) {
       final result = results.isNotEmpty ? results.first : ConnectivityResult.none;
       if (result != ConnectivityResult.none) {
-        debugPrint("[OfflineQueue] 网络恢复，开始清理队列...");
+        debugPrint(" [OfflineQueue] Network restored, triggering flush...");
         startFlush();
       }
     });
@@ -42,12 +47,11 @@ class OfflineQueueManager with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      debugPrint("[OfflineQueue] App 回到前台，检查未完成任务.");
+      debugPrint("🔌 [OfflineQueue] App resumed, checking pending tasks.");
       startFlush();
     }
   }
 
-  /// 触发清理
   Future<void> startFlush() async {
     if (_isProcessing) return;
     _isProcessing = true;
@@ -59,31 +63,38 @@ class OfflineQueueManager with WidgetsBindingObserver {
     }
   }
 
-  /// 循环重发所有 Pending 消息
   Future<void> _doFlush() async {
-    final pendingMessages = await LocalDatabaseService().getPendingMessages();
+    //  修复 3：检查 _container 是否为空
+    if (_container == null) return;
+
+    List<ChatUiModel> pendingMessages = [];
+
+    try {
+      pendingMessages = await LocalDatabaseService().getPendingMessages();
+    } catch (e) {
+      debugPrint(" [OfflineQueue] Database not ready yet. Skipping flush.");
+      return;
+    }
+
     if (pendingMessages.isEmpty) return;
 
-    debugPrint("[OfflineQueue] 准备重发 ${pendingMessages.length} 条消息.");
+    debugPrint(" [OfflineQueue] Found ${pendingMessages.length} pending messages to resend.");
 
     for (var msg in pendingMessages) {
-      // 实时检查网络
       final connectivity = await Connectivity().checkConnectivity();
       if (connectivity.contains(ConnectivityResult.none)) {
-        debugPrint("[OfflineQueue] 清理中断：网络连接丢失.");
+        debugPrint("🔌 [OfflineQueue] Flush interrupted: Network lost.");
         break;
       }
 
-      // 检查重试次数
       final retries = _retryRegistry[msg.id] ?? 0;
       if (retries >= maxRetries) {
-        debugPrint("[OfflineQueue] 消息 ${msg.id} 达到最大重试次数，标记失败.");
+        debugPrint(" [OfflineQueue] Message ${msg.id} max retries reached. Marking as failed.");
         await LocalDatabaseService().updateMessageStatus(msg.id, MessageStatus.failed);
         _retryRegistry.remove(msg.id);
         continue;
       }
 
-      //  核心调用：收编“游击队”，统一走管道
       bool success = await _resendViaPipeline(msg);
 
       if (!success) {
@@ -92,26 +103,25 @@ class OfflineQueueManager with WidgetsBindingObserver {
         _retryRegistry.remove(msg.id);
       }
 
-      // 避免请求过快
       await Future.delayed(const Duration(milliseconds: 500));
     }
   }
 
-  /// 内部方法：通过 Pipeline 重新发送
   Future<bool> _resendViaPipeline(ChatUiModel msg) async {
+    if (_container == null) return false;
+
     try {
-      debugPrint("[OfflineQueue] 正在通过管道重发消息: ${msg.id}");
+      debugPrint(" [OfflineQueue] Resending via pipeline: ${msg.id}");
 
-      // 构造 Service 实例
-      final service = _ref.read(chatActionServiceProvider(msg.conversationId));
+      //  修复 4：使用 _container!.read()
+      // ProviderContainer 也有 read 方法，用法和 Ref 一样
+      final service = _container!.read(chatActionServiceProvider(msg.conversationId));
 
-      // 调用我们在 ChatActionService 里写好的重发管道
-      // 它会自动执行：RecoverStep -> UploadStep -> SyncStep
       await service.resend(msg.id);
 
       return true;
     } catch (e) {
-      debugPrint("[OfflineQueue] 管道重发失败 ${msg.id}: $e");
+      debugPrint(" [OfflineQueue] Pipeline failed for ${msg.id}: $e");
       return false;
     }
   }
@@ -120,5 +130,6 @@ class OfflineQueueManager with WidgetsBindingObserver {
     _connectivitySubscription?.cancel();
     _retryRegistry.clear();
     WidgetsBinding.instance.removeObserver(this);
+    _container = null;
   }
 }

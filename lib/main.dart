@@ -6,7 +6,6 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_app/theme/theme_provider.dart';
-import 'package:flutter_app/ui/chat/services/database/local_database_service.dart';
 import 'package:flutter_app/ui/chat/services/network/offline_queue_manager.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart' as riverpod;
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -39,8 +38,6 @@ Future<void> main() async {
   // 注意：确保你的 Http 类里有 init 方法
   await Http.init();
 
-  // 4. 数据库初始化
-  await LocalDatabaseService().init();
 
   // 5. 准备 Riverpod 的初始数据
   final prefs = await SharedPreferences.getInstance();

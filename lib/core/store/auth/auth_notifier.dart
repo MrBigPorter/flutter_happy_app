@@ -4,6 +4,7 @@ import 'package:flutter_app/common.dart';
 import 'package:flutter_app/core/store/auth/auth_state.dart';
 import 'package:flutter_app/core/store/lucky_store.dart';
 import 'package:flutter_app/core/store/token/token_storage.dart';
+import 'package:flutter_app/ui/chat/services/database/local_database_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 /// 改变登录状态的 Notifier
@@ -68,6 +69,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
     // Clear token for HTTP requests
     await storage.clear();
     await Http.clearToken();
+    await LocalDatabaseService.close();
     state = AuthState.initial();
     appRouter.replace('/home');
   }

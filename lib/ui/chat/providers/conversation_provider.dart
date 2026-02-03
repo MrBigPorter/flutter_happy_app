@@ -27,6 +27,21 @@ class ConversationList extends _$ConversationList {
 
   @override
   FutureOr<List<Conversation>> build() async {
+    // 1. [关键修复] 监听用户 ID 变化
+    // 只要 luckyProvider 里的 userInfo.id 变了（比如换号、退出登录），
+    // 这个 Provider 就会自动重建 (Rebuild)，从而重新加载数据。
+    final currentUserId = ref.watch(luckyProvider.select((s) => s.userInfo?.id));
+
+    // 用户未登录，直接返回空列表
+    if(currentUserId == null || currentUserId.isEmpty){
+      // 用户未登录，直接返回空列表
+      return [];
+    }
+
+    // App 重启时，虽然 userId 被持久化恢复了，但数据库连接还没打开。
+    // 在这里强制确保数据库初始化。因为 init 内部有判断，重复调用是安全的。
+    await LocalDatabaseService.init(currentUserId);
+
     // 1. 获取 Socket 服务并监听
     final socketService = ref.watch(socketServiceProvider);
 
@@ -298,6 +313,14 @@ Stream<ConversationDetail> chatDetail(
     ChatDetailRef ref,
     String conversationId,
     ) async*{
+  // 1. [新增] 同样获取一下当前用户 ID
+  final userId = ref.watch(luckyProvider.select((s) => s.userInfo?.id));
+
+  // 2. [新增] 防御性初始化：万一用户是点推送进来的，这里负责把库打开
+  if (userId != null && userId.isNotEmpty) {
+    await LocalDatabaseService.init(userId);
+  }
+
   final db = LocalDatabaseService();
 
   // 1. [缓存层] 尝试先查本地，如果有直接发射 (秒开)

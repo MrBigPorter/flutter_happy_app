@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_app/core/config/app_config.dart';
 import 'package:flutter_app/core/constants/socket_events.dart';
@@ -7,106 +8,236 @@ import 'package:jwt_decoder/jwt_decoder.dart';
 import '../api/http_client.dart';
 import 'package:flutter_app/ui/chat/models/conversation.dart';
 
-// 定义 Token 刷新函数的签名
+// Signature definition for Token Refresh
 typedef TokenRefreshCallback = Future<String?> Function();
-typedef AckResponse = ({bool success, String? message, Map<String, dynamic>? data});
+typedef AckResponse = ({
+  bool success,
+  String? message,
+  Map<String, dynamic>? data,
+});
 
 class SocketException implements Exception {
   final String message;
+
   SocketException(this.message);
+
   @override
   String toString() => 'SocketException: $message';
 }
 
-// ==========================================
-// 🧩 Mixin 1: 聊天能力
-// ==========================================
-mixin SocketChatMixin on _SocketBase {
-  final _chatMessageController = StreamController<Map<String, dynamic>>.broadcast();
-  Stream<Map<String, dynamic>> get chatMessageStream => _chatMessageController.stream;
+class GlobalNotification {
+  final bool isSuccess;
+  final String title;
+  final String message;
+  final dynamic originalData;
 
-  final _conversationListUpdateController = StreamController<SocketMessage>.broadcast();
-  Stream<SocketMessage> get conversationListUpdateStream => _conversationListUpdateController.stream;
+  GlobalNotification({
+    required this.isSuccess,
+    required this.title,
+    required this.message,
+    this.originalData,
+  });
+}
 
-  //  新增：已读回执流
+// ==========================================
+//  Base: Connection Management
+// ==========================================
+abstract class _SocketBase {
+  IO.Socket? _socket;
+
+  IO.Socket? get socket => _socket;
+
+  bool get isConnected => _socket != null && _socket!.connected;
+
+  // Reconnection signal stream
+  final _syncController = StreamController<void>.broadcast();
+
+  Stream<void> get onSyncNeeded => _syncController.stream;
+
+  void triggerSync() {
+    if (!_syncController.isClosed) _syncController.add(null);
+  }
+
+  void dispose() {
+    _syncController.close();
+  }
+}
+
+// ==========================================
+// ⚙ Mixin: Central Dispatcher [NEW]
+// ==========================================
+mixin SocketDispatcherMixin on _SocketBase {
+  /// Handles the unified 'dispatch' event
+  void _handleDispatch(dynamic payload) {
+    if (payload == null || payload is! Map) return;
+
+    // Expected format: { "type": "chat_message", "data": {...} }
+    final String type = payload['type']?.toString() ?? 'unknown';
+    final dynamic data = payload['data'];
+
+    // debugPrint(" [Socket Dispatch] Type: $type");
+
+    switch (type) {
+      // --- Chat ---
+      case SocketEvents.chatMessage:
+        _onChatMessage(data);
+        break;
+      case SocketEvents.conversationRead:
+        _onReadReceipt(data);
+        break;
+      case SocketEvents.messageRecall:
+        _onMessageRecall(data);
+        break;
+      case SocketEvents.conversationUpdated:
+        _onConversationUpdated(data);
+        break;
+      case SocketEvents.contactApply:
+        _onContactApply(data);
+        // Handle contact apply if needed
+        break;
+      case SocketEvents.contactAccept:
+        _onContactAccept(data);
+        // Handle contact accept if needed
+        break;
+
+      // --- Notifications ---
+      case SocketEvents.groupSuccess:
+      case SocketEvents.groupFailed:
+        _onGroupNotification(type, data);
+        break;
+      case SocketEvents.groupUpdate:
+      case SocketEvents.walletChange:
+        _onBusinessEvent(type, data);
+        break;
+
+      // --- System ---
+      case SocketEvents.forceLogout:
+        debugPrint(" [Socket] Force logout received!");
+        break;
+      case SocketEvents.error:
+        debugPrint(" [Socket] Server error: $data");
+        break;
+
+      default:
+        debugPrint("️ [Socket] Unknown event type: $type");
+    }
+  }
+
+  // Abstract methods to be implemented by specific Mixins
+  void _onChatMessage(dynamic data);
+
+  void _onReadReceipt(dynamic data);
+
+  void _onMessageRecall(dynamic data);
+
+  void _onConversationUpdated(dynamic data);
+
+  void _onGroupNotification(String type, dynamic data);
+
+  void _onBusinessEvent(String type, dynamic data);
+
+  // New Abstract methods
+  void _onContactApply(dynamic data);
+
+  void _onContactAccept(dynamic data);
+}
+
+// ==========================================
+//  Mixin 1: Chat Capability
+// ==========================================
+mixin SocketChatMixin on _SocketBase, SocketDispatcherMixin {
+  // chat message stream
+  final _chatMessageController =
+      StreamController<Map<String, dynamic>>.broadcast();
+
+  Stream<Map<String, dynamic>> get chatMessageStream =>
+      _chatMessageController.stream;
+
+  // conversation list update stream
+  final _conversationListUpdateController =
+      StreamController<SocketMessage>.broadcast();
+
+  Stream<SocketMessage> get conversationListUpdateStream =>
+      _conversationListUpdateController.stream;
+
+  // read status stream
   final _readStatusController = StreamController<SocketReadEvent>.broadcast();
+
   Stream<SocketReadEvent> get readStatusStream => _readStatusController.stream;
 
-  // 新增：recall 事件流
-  final _recallEventController = StreamController<SocketRecallEvent>.broadcast();
-  Stream<SocketRecallEvent> get recallEventStream => _recallEventController.stream;
+  // recall event stream
+  final _recallEventController =
+      StreamController<SocketRecallEvent>.broadcast();
 
-  //  [新增] 会话属性更新流 (用于处理头像、名称等变更)
-  final _conversationUpdateStream = StreamController<Map<String, dynamic>>.broadcast();
-  Stream<Map<String, dynamic>> get conversationUpdateStream => _conversationUpdateStream.stream;
+  Stream<SocketRecallEvent> get recallEventStream =>
+      _recallEventController.stream;
 
-  // 监听聊天相关事件
-  void _setupChatListeners(IO.Socket socket) {
-    // 监听聊天消息
-    socket.on(SocketEvents.chatMessage, (data) {
-      if (data == null) return;
+  // conversation update stream (avatar/info changes)
+  final _conversationUpdateStream =
+      StreamController<Map<String, dynamic>>.broadcast();
 
-      final mapData = Map<String, dynamic>.from(data);
+  Stream<Map<String, dynamic>> get conversationUpdateStream =>
+      _conversationUpdateStream.stream;
 
-      // 1. 发给详情页 (详情页自己处理容错)
-      if (!_chatMessageController.isClosed) {
-        _chatMessageController.add(mapData);
+  // --- Implementation of Dispatcher Methods ---
+
+  @override
+  void _onChatMessage(dynamic data) {
+    if (data == null) return;
+    final mapData = Map<String, dynamic>.from(data);
+
+    // 1. Send to Detail Page
+    if (!_chatMessageController.isClosed) {
+      _chatMessageController.add(mapData);
+    }
+
+    // 2. Send to List Page
+    if (!_conversationListUpdateController.isClosed) {
+      try {
+        final message = SocketMessage.fromJson(mapData);
+        _conversationListUpdateController.add(message);
+      } catch (e) {
+        debugPrint("[Socket] Failed to parse message for list update: $e");
       }
-
-      // 2. 发给列表页 (需要转换模型，容易报错，所以要加 try-catch)
-      if(!_conversationListUpdateController.isClosed){
-        try {
-          final message = SocketMessage.fromJson(mapData);
-          _conversationListUpdateController.add(message);
-        } catch (e) {
-          debugPrint("[Socket] 解析消息失败，跳过列表更新: $e");
-          // 这里捕获异常，保证 Socket 连接不会受影响，
-          // 仅仅是这条消息在列表里显示不出来而已，不影响大局。
-        }
-      }
-    });
-
-    // 监听已读回执
-    socket.on(SocketEvents.conversationRead, (data) {
-      if( data == null ) return;
-      try{
-        final event = SocketReadEvent.fromJson(Map<String, dynamic>.from(data));
-        if(!_readStatusController.isClosed){
-          _readStatusController.add(event);
-        }
-      }catch(e){
-        debugPrint("[Socket] 解析已读回执失败，跳过: $e");
-        return;
-      }
-    });
-
-    // 监听消息撤回事件
-    socket.on(SocketEvents.messageRecall, (data){
-      if(data == null) return;
-      try{
-        final event = SocketRecallEvent.fromJson(Map<String, dynamic>.from(data));
-        if(!_recallEventController.isClosed){
-          _recallEventController.add(event);
-        }
-      }catch(e){
-        debugPrint("[Socket] 解析消息撤回事件失败，跳过: $e");
-        return;
-      }
-    });
-
-    //  [监听后端头像合成完成事件]
-    socket.on(SocketEvents.conversationUpdated, (data) {
-      if (data == null) return;
-      debugPrint("🖼️ [Socket] 收到会话更新信号 (头像): $data");
-
-      if (!_conversationUpdateStream.isClosed) {
-        _conversationUpdateStream.add(Map<String, dynamic>.from(data));
-      }
-    });
-
-
-
+    }
   }
+
+  @override
+  void _onReadReceipt(dynamic data) {
+    if (data == null) return;
+    try {
+      final event = SocketReadEvent.fromJson(Map<String, dynamic>.from(data));
+      if (!_readStatusController.isClosed) {
+        _readStatusController.add(event);
+      }
+    } catch (e) {
+      debugPrint("[Socket] Failed to parse read receipt: $e");
+    }
+  }
+
+  @override
+  void _onMessageRecall(dynamic data) {
+    if (data == null) return;
+    try {
+      final event = SocketRecallEvent.fromJson(Map<String, dynamic>.from(data));
+      if (!_recallEventController.isClosed) {
+        _recallEventController.add(event);
+      }
+    } catch (e) {
+      debugPrint("[Socket] Failed to parse recall event: $e");
+    }
+  }
+
+  @override
+  void _onConversationUpdated(dynamic data) {
+    if (data == null) return;
+    debugPrint(" [Socket] Conversation updated (avatar/info): $data");
+    if (!_conversationUpdateStream.isClosed) {
+      _conversationUpdateStream.add(Map<String, dynamic>.from(data));
+    }
+  }
+
+  // --- Emitting Methods ---
 
   Future<AckResponse> sendMessage({
     required String conversationId,
@@ -114,29 +245,34 @@ mixin SocketChatMixin on _SocketBase {
     required int type,
     required String tempId,
   }) {
-    if (!isConnected) return Future.error(SocketException('Socket disconnected'));
+    if (!isConnected)
+      return Future.error(SocketException('Socket disconnected'));
     final completer = Completer<AckResponse>();
 
-    socket!.emitWithAck(SocketEvents.sendMessage, {
-      'conversationId': conversationId,
-      'content': content,
-      'type': type,
-      'tempId': tempId,
-    }, ack: (response) {
-      if (response != null && response['status'] == 'ok') {
-        completer.complete((
-        success: true,
-        message: null,
-        data: Map<String, dynamic>.from(response['data'])
-        ));
-      } else {
-        completer.complete((
-        success: false,
-        message: response is String ? response : 'Send failed',
-        data: null
-        ));
-      }
-    });
+    socket!.emitWithAck(
+      SocketEvents.sendMessage,
+      {
+        'conversationId': conversationId,
+        'content': content,
+        'type': type,
+        'tempId': tempId,
+      },
+      ack: (response) {
+        if (response != null && response['status'] == 'ok') {
+          completer.complete((
+            success: true,
+            message: null,
+            data: Map<String, dynamic>.from(response['data']),
+          ));
+        } else {
+          completer.complete((
+            success: false,
+            message: response is String ? response : 'Send failed',
+            data: null,
+          ));
+        }
+      },
+    );
 
     return completer.future.timeout(
       const Duration(seconds: 10),
@@ -152,212 +288,206 @@ mixin SocketChatMixin on _SocketBase {
 }
 
 // ==========================================
-// 🧩 Mixin 2: 通用通知与业务事件 (含 Group Update)
+//  Mixin 1.1: Contact Events
 // ==========================================
-mixin SocketNotificationMixin on _SocketBase {
-  // 全局弹窗通知流
-  final _notificationController = StreamController<GlobalNotification>.broadcast();
-  Stream<GlobalNotification> get notificationStream => _notificationController.stream;
+mixin SocketContactMixin on _SocketBase, SocketDispatcherMixin {
+  final _contactApplyController =
+      StreamController<Map<String, dynamic>>.broadcast();
 
-  // 业务数据流 (统一入口)
-  final _businessEventController = StreamController<Map<String, dynamic>>.broadcast();
+  Stream<Map<String, dynamic>> get contactApplyStream =>
+      _contactApplyController.stream;
 
-  //  [修复] 专门暴露给 GroupLobbyPage 使用的流
-  Stream<Map<String, dynamic>> get groupUpdateStream => _businessEventController.stream
-      .where((e) => e['type'] == 'group_update')
-      .map((e) => Map<String, dynamic>.from(e['data']));
+  final _contactAcceptController =
+      StreamController<Map<String, dynamic>>.broadcast();
 
-  void _setupNotificationListeners(IO.Socket socket) {
-    socket.on('server_push', (data) {
-      if (data == null) return;
-      _handlePush(data);
-    });
+  Stream<Map<String, dynamic>> get contactAcceptStream =>
+      _contactAcceptController.stream;
+
+  @override
+  void _onContactApply(dynamic data) {
+    if (data == null) return;
+    if (!_contactApplyController.isClosed) {
+      _contactApplyController.add(Map<String, dynamic>.from(data));
+    }
   }
 
-  void _handlePush(dynamic data) {
-    final typeStr = data['type'] ?? 'unknown';
-    final payload = data['payload'] ?? {};
+  @override
+  void _onContactAccept(dynamic data) {
+    if (data == null) return;
+    if (!_contactAcceptController.isClosed) {
+      _contactAcceptController.add(Map<String, dynamic>.from(data));
+    }
+    // Logic hint: You might want to trigger a sync of the contact list here
+    triggerSync();
+  }
+}
+// ==========================================
+//  Mixin 2: Notifications & Business Events
+// ==========================================
+mixin SocketNotificationMixin on _SocketBase, SocketDispatcherMixin {
+  final _notificationController =
+      StreamController<GlobalNotification>.broadcast();
 
-    // 调试日志
-    // debugPrint('🔔 [Socket] Push: $typeStr');
+  Stream<GlobalNotification> get notificationStream =>
+      _notificationController.stream;
 
-    switch (typeStr) {
-      case 'group_success':
-      case 'group_failed':
-        _notificationController.add(GlobalNotification(
-          isSuccess: typeStr == 'group_success',
-          title: payload['title'] ?? (typeStr == 'group_success' ? 'Success' : 'Failed'),
-          message: payload['message'] ?? '',
-          originalData: payload,
-        ));
-        break;
+  final _businessEventController =
+      StreamController<Map<String, dynamic>>.broadcast();
 
-      case 'group_update':
-      case 'wallet_change':
-      // 分发到业务流
-        if (!_businessEventController.isClosed) {
-          _businessEventController.add({
-            'type': typeStr,
-            'data': payload,
-            'timestamp': DateTime.now().millisecondsSinceEpoch
-          });
-        }
-        break;
+  Stream<Map<String, dynamic>> get groupUpdateStream => _businessEventController
+      .stream
+      .where((e) => e['type'] == SocketEvents.groupUpdate)
+      .map((e) => Map<String, dynamic>.from(e['data']));
+
+  // --- Implementation of Dispatcher Methods ---
+
+  @override
+  void _onGroupNotification(String type, dynamic data) {
+    final payload = data ?? {};
+    _notificationController.add(
+      GlobalNotification(
+        isSuccess: type == SocketEvents.groupSuccess,
+        title:
+            payload['title'] ??
+            (type == SocketEvents.groupSuccess ? 'Success' : 'Failed'),
+        message: payload['message'] ?? '',
+        originalData: payload,
+      ),
+    );
+  }
+
+  @override
+  void _onBusinessEvent(String type, dynamic data) {
+    if (!_businessEventController.isClosed) {
+      _businessEventController.add({
+        'type': type,
+        'data': data ?? {},
+        'timestamp': DateTime.now().millisecondsSinceEpoch,
+      });
     }
   }
 }
 
 // ==========================================
-// 🧩 Mixin 3: 拼团大厅能力 (Lobby Capability)  [新增]
+//  Mixin 3: Lobby Capability
 // ==========================================
 mixin SocketLobbyMixin on _SocketBase {
-  /// 加入大厅 (订阅实时更新)
   void joinLobby() {
     if (isConnected) {
       socket!.emit(SocketEvents.joinLobby);
-      debugPrint('🏟️ [Socket] Joined Lobby');
+      debugPrint(' [Socket] Joined Lobby');
     }
   }
 
-  /// 离开大厅 (取消订阅)
   void leaveLobby() {
     if (isConnected) {
       socket!.emit(SocketEvents.leaveLobby);
-      debugPrint('👋 [Socket] Left Lobby');
+      debugPrint(' [Socket] Left Lobby');
     }
   }
 }
 
 // ==========================================
-// 🧱 基类：连接管理
-// ==========================================
-abstract class _SocketBase {
-  IO.Socket? _socket;
-  IO.Socket? get socket => _socket;
-  bool get isConnected => _socket != null && _socket!.connected;
-
-  //  [修复] 重连信号流
-  final _syncController = StreamController<void>.broadcast();
-  Stream<void> get onSyncNeeded => _syncController.stream;
-
-  // 供子类/Mixin 调用
-  void triggerSync() {
-    if (!_syncController.isClosed) _syncController.add(null);
-  }
-
-  void dispose() {
-    _syncController.close();
-  }
-}
-
-// ==========================================
-//  主服务类 (The Service)
+//  Main Service Class
 // ==========================================
 class SocketService extends _SocketBase
-    with SocketChatMixin, SocketNotificationMixin, SocketLobbyMixin {
-
+    with
+        SocketDispatcherMixin,
+        SocketChatMixin,
+        SocketContactMixin,
+        SocketNotificationMixin,
+        SocketLobbyMixin {
   static final SocketService _instance = SocketService._internal();
+
   factory SocketService() => _instance;
+
   SocketService._internal();
 
   TokenRefreshCallback? onTokenRefreshRequest;
   TokenRefreshCallback? _tokenRefresher;
-
-  // 1. 新增：初始化互斥锁
   bool _isInitializing = false;
 
-  Future<void> init({required String token, TokenRefreshCallback? onTokenRefresh}) async {
-
-    // 2. 新增：第一道防线：如果正在初始化，直接打回！
+  Future<void> init({
+    required String token,
+    TokenRefreshCallback? onTokenRefresh,
+  }) async {
     if (_isInitializing) {
-      debugPrint(
-          '⏳ [Socket] Initialization already in progress, skipping duplicate call.');
+      debugPrint(' [Socket] Init already in progress.');
       return;
     }
 
-    _tokenRefresher = onTokenRefresh ?? onTokenRefreshRequest ?? _defaultTokenRefresher;
-
-    // 3. 新增：第二道防线：加锁
+    _tokenRefresher =
+        onTokenRefresh ?? onTokenRefreshRequest ?? _defaultTokenRefresher;
     _isInitializing = true;
 
-   try{
-     final validToken = await _ensureValidToken(token);
-     if (validToken == null) return;
+    try {
+      final validToken = await _ensureValidToken(token);
+      if (validToken == null) return;
 
-     // 新增：如果 Token 没变且已连接，直接返回，不折腾
-     if(_socket != null && _socket!.connected){
-       final currentToken = _socket!.io.options?['query']?['token'];
-       if(currentToken == validToken){
-         debugPrint('🔒 [Socket] Token 未变，保持现有连接');
-         return;
-       }
-     }
+      if (_socket != null && _socket!.connected) {
+        final currentToken = _socket!.io.options?['query']?['token'];
+        if (currentToken == validToken) {
+          debugPrint('🔒 [Socket] Token unchanged, skipping reconnect.');
+          return;
+        }
+      }
 
-     // 只有 Token 变了，或者断开了，才执行下面的 disconnect 和重连
-     disconnect();
+      disconnect();
 
-     final socketUrl = '${AppConfig.apiBaseUrl}/events';
-     debugPrint('🔌 [Socket] Connecting to $socketUrl');
+      final socketUrl = '${AppConfig.apiBaseUrl}/events';
+      debugPrint(' [Socket] Connecting to $socketUrl');
 
-     _socket = IO.io(
-       socketUrl,
-       IO.OptionBuilder()
-           .setTransports(['websocket'])
-           .disableAutoConnect()
-           .setQuery({'token': validToken})
-           .setReconnectionAttempts(5)
-           .setReconnectionDelay(2000)
-           .setAuth({'token': validToken})
-           .build(),
-     );
+      _socket = IO.io(
+        socketUrl,
+        IO.OptionBuilder()
+            .setTransports(['websocket'])
+            .disableAutoConnect()
+            .setQuery({'token': validToken})
+            .setReconnectionAttempts(5)
+            .setReconnectionDelay(2000)
+            .setAuth({'token': validToken})
+            .build(),
+      );
 
-     // 挂载监听器
-     _setupCommonListeners();
-     _setupChatListeners(_socket!);
-     _setupNotificationListeners(_socket!);
+      _setupListeners();
 
-     _socket!.connect();
-   }catch(e){
-      debugPrint('❌ [Socket] Initialization error: $e');
-   } finally {
-      // 4. 解锁
+      _socket!.connect();
+    } catch (e) {
+      debugPrint(' [Socket] Init error: $e');
+    } finally {
       _isInitializing = false;
-   }
+    }
   }
 
-  void _setupCommonListeners() {
+  void _setupListeners() {
+    // 1. Connection Status
     _socket!.onConnect((_) {
-      debugPrint('✅ [Socket] Connected: ${_socket!.id}');
-      //  连接成功时，触发 Sync 信号
+      debugPrint(' [Socket] Connected: ${_socket!.id}');
       triggerSync();
     });
 
-    _socket!.onDisconnect((r) => debugPrint('❌ [Socket] Disconnected: $r'));
+    _socket!.onDisconnect((r) => debugPrint(' [Socket] Disconnected: $r'));
+
+    // 2.  Unified Event Listener
+    // The server emits 'dispatch', containing { type: "...", data: ... }
+    _socket!.on(SocketEvents.dispatch, (data) {
+      _handleDispatch(data);
+    });
   }
 
   Future<String?> _ensureValidToken(String token) async {
     try {
-      // 1. 简单判空
-      if(token.isEmpty){
-        debugPrint("❌ [Socket] Token 为空，取消连接！");
-        return null;
-      }
+      if (token.isEmpty) return null;
 
       if (JwtDecoder.isExpired(token) ||
           JwtDecoder.getRemainingTime(token).inSeconds < 60) {
-        debugPrint("⚠️ [Socket] Token 已过期，尝试刷新...");
+        debugPrint(" [Socket] Token expired, refreshing...");
         final newToken = await _tokenRefresher?.call();
-        if (newToken == null) {
-          debugPrint("❌ [Socket] Token 刷新失败，无法建立连接！");
-        } else {
-          debugPrint("✅ [Socket] Token 刷新成功！");
-        }
         return newToken;
       }
       return token;
     } catch (e) {
-      //  之前这里可能吞掉了报错
-      debugPrint("❌ [Socket] Token 校验异常: $e");
+      debugPrint(" [Socket] Token check error: $e");
       return null;
     }
   }
@@ -378,21 +508,6 @@ class SocketService extends _SocketBase
   @override
   void dispose() {
     disconnect();
-    // 单例模式下不要关闭 StreamController，除非你确定要彻底销毁 App
-    // super.dispose();
+    super.dispose();
   }
-}
-
-class GlobalNotification {
-  final bool isSuccess;
-  final String title;
-  final String message;
-  final dynamic originalData;
-
-  GlobalNotification({
-    required this.isSuccess,
-    required this.title,
-    required this.message,
-    this.originalData,
-  });
 }

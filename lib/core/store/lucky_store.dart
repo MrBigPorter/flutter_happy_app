@@ -5,6 +5,8 @@ import 'package:flutter_app/core/providers/wallet_provider.dart';
 import 'package:flutter_app/core/store/hydrated_state_notifier.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../ui/chat/services/database/local_database_service.dart';
+
 /// LuckyState - State class for LuckyStore
 /// Holds user info, balance, and system config
 /// Parameters:
@@ -29,16 +31,15 @@ class LuckyState {
   /// - userInfo: null
   /// - balance: Balance with realBalance and coinBalance set to 0
   /// - sysConfig: SysConfig with kycAndPhoneVerification set to '1'
-  factory LuckyState.initial()=> LuckyState(
-     userInfo: null,
-      balance: Balance(realBalance: 0, coinBalance: 0),
-      sysConfig: SysConfig(
-          kycAndPhoneVerification: '1',
-          webBaseUrl: '',
-          exChangeRate: 1.0
-      ),
+  factory LuckyState.initial() => LuckyState(
+    userInfo: null,
+    balance: Balance(realBalance: 0, coinBalance: 0),
+    sysConfig: SysConfig(
+      kycAndPhoneVerification: '1',
+      webBaseUrl: '',
+      exChangeRate: 1.0,
+    ),
   );
-
 
   /// Copy with method for LuckyState
   /// Creates a new LuckyState with updated fields
@@ -58,7 +59,7 @@ class LuckyState {
     );
   }
 
-  Map<String,dynamic> toJson() {
+  Map<String, dynamic> toJson() {
     return {
       'userInfo': userInfo?.toJson(),
       'balance': balance.toJson(),
@@ -66,15 +67,24 @@ class LuckyState {
     };
   }
 
-  factory LuckyState.fromJson(Map<String,dynamic> json) {
+  factory LuckyState.fromJson(Map<String, dynamic> json) {
     return LuckyState(
-      userInfo: json['userInfo'] != null ? UserInfo.fromJson(json['userInfo']) : null,
-      balance: json['balance'] != null ? Balance.fromJson(json['balance']) : Balance(realBalance: 0, coinBalance: 0),
-      sysConfig: json['sysConfig'] != null ? SysConfig.fromJson(json['sysConfig']) : SysConfig(kycAndPhoneVerification: '1', webBaseUrl: '', exChangeRate: 1.0),
+      userInfo: json['userInfo'] != null
+          ? UserInfo.fromJson(json['userInfo'])
+          : null,
+      balance: json['balance'] != null
+          ? Balance.fromJson(json['balance'])
+          : Balance(realBalance: 0, coinBalance: 0),
+      sysConfig: json['sysConfig'] != null
+          ? SysConfig.fromJson(json['sysConfig'])
+          : SysConfig(
+              kycAndPhoneVerification: '1',
+              webBaseUrl: '',
+              exChangeRate: 1.0,
+            ),
     );
   }
 }
-
 
 /// LuckyNotifier - StateNotifier for LuckyState
 /// Manages user info, balance, and system config state
@@ -121,14 +131,14 @@ class LuckyNotifier extends HydratedStateNotifier<LuckyState> {
   /// Fetches wallet balance from API and updates state
   Future<void> updateWalletBalance() async {
     final data = await ref.refresh(walletBalanceProvider.future);
-      state = state.copyWith(balance: data);
+    state = state.copyWith(balance: data);
   }
 
   /// Update system config method
   /// Fetches system config from API and updates state
   Future<void> updateSysConfig() async {
     final data = await ref.refresh(sysConfigProvider.future);
-      state = state.copyWith(sysConfig: data);
+    state = state.copyWith(sysConfig: data);
   }
 
   /// Refresh all data method
@@ -136,22 +146,19 @@ class LuckyNotifier extends HydratedStateNotifier<LuckyState> {
   /// and updates state
   /// No parameters
   Future<void> refreshAll() async {
-     final user = await Api.getUserInfo();
-     print('LuckyNotifier.refreshAll: fetched user info: ${user.toString()}');
-     final balance = await ref.read(walletBalanceProvider.future);
-     state = LuckyState(
-       userInfo: user,
-       balance: balance,
-       sysConfig: state.sysConfig,
-     );
+    final user = await Api.getUserInfo();
+    await LocalDatabaseService.init(user.id);
+    final balance = await ref.read(walletBalanceProvider.future);
+    state = LuckyState(
+      userInfo: user,
+      balance: balance,
+      sysConfig: state.sysConfig,
+    );
   }
-
 
   void reset() {
     state = LuckyState.initial();
   }
-  
-
 }
 
 /// Riverpod provider for LuckyNotifier
@@ -160,8 +167,7 @@ class LuckyNotifier extends HydratedStateNotifier<LuckyState> {
 /// Usage: luckyProvider
 /// Example: final lucky = ref.watch(luckyProvider);
 /// Updates: ref.read(luckyProvider.notifier).updateUserInfo(userInfo);
-final luckyProvider = StateNotifierProvider<LuckyNotifier,LuckyState>((ref){
-
+final luckyProvider = StateNotifierProvider<LuckyNotifier, LuckyState>((ref) {
   final notifier = LuckyNotifier(ref);
   return notifier;
 });

@@ -1,40 +1,54 @@
 abstract class SocketEvents {
-  // 🚫 禁止实例化
+  // Prohibition of instantiation
   SocketEvents._();
 
-  //聊天相关
-  /// 收到新消息
+  // ----------------------------------------------------------------------
+  //  Core: Unified Dispatch Event (Backend emits this event name)
+  // ----------------------------------------------------------------------
+  static const String dispatch = 'dispatch';
+
+  // ----------------------------------------------------------------------
+  //  Event Types (These are now values for the 'type' field in the payload)
+  // ----------------------------------------------------------------------
+
+  // --- Chat Related ---
+  /// Received new message
   static const String chatMessage = 'chat_message';
-  /// 消息已读回执 (对方读了我的消息)
+  /// Message read receipt
   static const String conversationRead = 'conversation_read';
-  /// 消息撤回通知
+  /// Message recall notification
   static const String messageRecall = 'message_recalled';
-  // avatar 更新通知
+  /// Avatar/Info update notification
   static const String conversationUpdated = 'conversation_updated';
+  /// Contact request applied
+  static const String contactApply = 'contact_apply';
+  /// Contact request accepted
+  static const String contactAccept = 'contact_accept';
+  /// Typing indicator
+  static const String typing = 'typing';
 
-   /// 对方正在输入... (未来扩展)
-   static const String typing = 'typing';
+  // --- Business/System Notifications ---
+  static const String groupSuccess = 'group_success';
+  static const String groupFailed = 'group_failed';
+  static const String groupUpdate = 'group_update';
+  static const String walletChange = 'wallet_change';
 
-  /// 加入房间 (连接成功后必须加入)
-   static const String joinChat = 'join_chat';
-
-   /// 离开房间
-  static const String leaveChat = 'leave_chat';
-
-  /// 加入大厅 (连接成功后必须加入)
-  static const String joinLobby = 'join_lobby';
-  /// 离开大厅
-  static const String leaveLobby = 'leave_lobby';
-
-  /// 消息发送结果
-  static const String sendMessage = 'send_message';
-
-  // ==========================
-  // 📢 系统通知 (System)
-  // ==========================
-  /// 异常报错
+  /// Exception error
   static const String error = 'error';
-
-  /// 强制下线 (多端登录互踢)
+  /// Force logout (kick)
   static const String forceLogout = 'force_logout';
+
+  // ----------------------------------------------------------------------
+  //  Client Emission Events (Client emits these to server)
+  // ----------------------------------------------------------------------
+  /// Join room
+  static const String joinChat = 'join_chat';
+  /// Leave room
+  static const String leaveChat = 'leave_chat';
+  /// Join lobby
+  static const String joinLobby = 'join_lobby';
+  /// Leave lobby
+  static const String leaveLobby = 'leave_lobby';
+  /// Send message
+  static const String sendMessage = 'send_message';
 }
