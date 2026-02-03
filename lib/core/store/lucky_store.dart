@@ -137,6 +137,7 @@ class LuckyNotifier extends HydratedStateNotifier<LuckyState> {
   /// No parameters
   Future<void> refreshAll() async {
      final user = await Api.getUserInfo();
+     print('LuckyNotifier.refreshAll: fetched user info: ${user.toString()}');
      final balance = await ref.read(walletBalanceProvider.future);
      state = LuckyState(
        userInfo: user,

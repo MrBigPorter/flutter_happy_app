@@ -49,6 +49,12 @@ Future<List<ChatUser>> userSearch(UserSearchRef ref, String keyword) async {
   return await Api.searchUserApi(keyword);
 }
 
+@riverpod
+Future<List<ChatUser>> chatContactsSearch(ChatContactsSearchRef ref, String keyword) async {
+  if (keyword.trim().isEmpty) return [];
+  return await Api.chatContactsSearch(keyword);
+}
+
 // ===========================================================================
 // 4. 控制器：添加好友 (Add Friend)
 // ===========================================================================
@@ -62,6 +68,9 @@ class AddFriendController extends _$AddFriendController {
 
   /// 执行添加
   Future<bool> execute({String? reason}) async {
+
+    final link = ref.keepAlive();
+
     state = const AsyncLoading();
 
     final newState = await AsyncValue.guard(() async {
@@ -69,7 +78,16 @@ class AddFriendController extends _$AddFriendController {
       await Api.addFriendApi(userId, reason: reason);
     });
 
-    state = newState;
+    // 2. 只有当 Provider 没有被 dispose 时才更新状态 (双重保险)
+    // 虽然有 keepAlive，但是一个好的习惯
+    if(state.hasValue || state.isLoading || state.hasError) {
+      state = newState;
+    }
+
+    // 3. 请求结束，释放保活锁。
+    // 如果此时 UI 已经销毁，这个 Provider 也会随之销毁。
+    link.close();
+
     return !newState.hasError;
   }
 }

@@ -13,6 +13,18 @@ enum ConversationType {
   @JsonValue('SUPPORT') support,
 }
 
+// relationship :0=Stranger, 1=Friend, 2=RequestSent
+enum RelationshipStatus {
+  @JsonValue(0) stranger,
+  @JsonValue(1) friend,
+  @JsonValue(2) sent;
+
+  bool get isFriend => this == RelationshipStatus.friend;
+  bool get isStranger => this == RelationshipStatus.stranger;
+  bool get isSent => this == RelationshipStatus.sent;
+
+}
+
 @JsonSerializable(checked: true)
 class Conversation {
   final String id;
@@ -470,12 +482,17 @@ class ChatUser {
   final String nickname;
   final String? avatar;
   final String? phone; // 搜索时可能返回手机号
+  @JsonKey(unknownEnumValue: RelationshipStatus.stranger)
+  final RelationshipStatus status; //  新增: 0=陌生人, 1=好友, 2=已申请
+
+
 
   ChatUser({
     required this.id,
     required this.nickname,
     this.avatar,
     this.phone,
+    this.status = RelationshipStatus.stranger,
   });
 
   factory ChatUser.fromJson(Map<String, dynamic> json) => _$ChatUserFromJson(json);

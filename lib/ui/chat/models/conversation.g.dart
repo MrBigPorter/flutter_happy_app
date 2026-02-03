@@ -452,6 +452,12 @@ ChatUser _$ChatUserFromJson(Map<String, dynamic> json) => $checkedCreate(
           nickname: $checkedConvert('nickname', (v) => v as String),
           avatar: $checkedConvert('avatar', (v) => v as String?),
           phone: $checkedConvert('phone', (v) => v as String?),
+          status: $checkedConvert(
+              'status',
+              (v) =>
+                  $enumDecodeNullable(_$RelationshipStatusEnumMap, v,
+                      unknownValue: RelationshipStatus.stranger) ??
+                  RelationshipStatus.stranger),
         );
         return val;
       },
@@ -462,7 +468,14 @@ Map<String, dynamic> _$ChatUserToJson(ChatUser instance) => <String, dynamic>{
       'nickname': instance.nickname,
       'avatar': instance.avatar,
       'phone': instance.phone,
+      'status': _$RelationshipStatusEnumMap[instance.status]!,
     };
+
+const _$RelationshipStatusEnumMap = {
+  RelationshipStatus.stranger: 0,
+  RelationshipStatus.friend: 1,
+  RelationshipStatus.sent: 2,
+};
 
 Map<String, dynamic> _$CreateGroupRequestToJson(CreateGroupRequest instance) =>
     <String, dynamic>{

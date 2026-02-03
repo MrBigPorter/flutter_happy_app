@@ -49,4 +49,9 @@ class UserInfo {
 
   factory UserInfo.fromJson(Map<String, dynamic> json) => _$UserInfoFromJson(json);
   Map<String, dynamic> toJson() => _$UserInfoToJson(this);
+
+  @override
+  String toString() {
+     return toJson().toString();
+  }
 }

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:dio/dio.dart';
+import 'package:flutter_app/ui/toast/radix_toast.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import '../../utils/device_utils.dart';
 import '../../utils/time/server_time_helper.dart';
@@ -86,7 +87,8 @@ class UnifiedInterceptor extends QueuedInterceptor {
 
   void _showToast(Response response, Map data, String defaultMsg) {
     if (response.requestOptions.extra['noErrorToast'] != true) {
-      Fluttertoast.showToast(msg: (data['errorMsg'] as String?) ?? defaultMsg);
+      RadixToast.error((data['errorMsg'] as String?) ?? defaultMsg);
+     // Fluttertoast.showToast(msg: (data['errorMsg'] as String?) ?? defaultMsg);
     }
   }
 

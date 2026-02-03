@@ -191,23 +191,5 @@ final createDirectChatControllerProvider = AutoDisposeNotifierProvider<
 
 typedef _$CreateDirectChatController
     = AutoDisposeNotifier<AsyncValue<ConversationIdResponse?>>;
-String _$userSearchControllerHash() =>
-    r'fd0297440893e1df12e16064f3860807e49186e0';
-
-/// See also [UserSearchController].
-@ProviderFor(UserSearchController)
-final userSearchControllerProvider = AutoDisposeNotifierProvider<
-    UserSearchController, AsyncValue<List<ChatSender>>>.internal(
-  UserSearchController.new,
-  name: r'userSearchControllerProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$userSearchControllerHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
-
-typedef _$UserSearchController
-    = AutoDisposeNotifier<AsyncValue<List<ChatSender>>>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member

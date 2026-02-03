@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_app/ui/chat/providers/contact_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -13,7 +14,6 @@ import 'package:flutter_app/ui/toast/radix_toast.dart';
 
 import 'models/conversation.dart';
 
-
 class ContactSearchPage extends ConsumerStatefulWidget {
   const ContactSearchPage({super.key});
 
@@ -25,9 +25,7 @@ class _ContactSearchPageState extends ConsumerState<ContactSearchPage> {
   final TextEditingController _searchCtl = TextEditingController();
   final FocusNode _focusNode = FocusNode();
 
-  // 定义防抖的 Tag
   static const String _debounceTag = 'search_debounce';
-
   String _keyword = "";
 
   @override
@@ -42,16 +40,14 @@ class _ContactSearchPageState extends ConsumerState<ContactSearchPage> {
   void dispose() {
     _searchCtl.dispose();
     _focusNode.dispose();
-    //  页面销毁时取消防抖任务，防止内存泄漏或报错
     EasyDebounce.cancel(_debounceTag);
     super.dispose();
   }
 
-  // 使用 EasyDebounce 进行防抖
   void _onSearchChanged(String value) {
     EasyDebounce.debounce(
       _debounceTag,
-      const Duration(milliseconds: 500), // 500ms 延迟
+      const Duration(milliseconds: 500),
           () {
         if (value.trim() != _keyword) {
           setState(() {
@@ -64,12 +60,13 @@ class _ContactSearchPageState extends ConsumerState<ContactSearchPage> {
 
   @override
   Widget build(BuildContext context) {
-    final searchAsync = ref.watch(userSearchProvider(_keyword));
+    final searchAsync = ref.watch(chatContactsSearchProvider(_keyword));
 
     return Scaffold(
       backgroundColor: context.bgSecondary,
       appBar: AppBar(
-        backgroundColor:context.bgPrimary,
+        backgroundColor: context.bgPrimary,
+        surfaceTintColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
           icon: Icon(Icons.arrow_back_ios, color: context.textPrimary900, size: 20.sp),
@@ -89,7 +86,7 @@ class _ContactSearchPageState extends ConsumerState<ContactSearchPage> {
               hintStyle: TextStyle(color: Colors.grey),
               contentPadding: EdgeInsets.symmetric(vertical: 0, horizontal: 16.w),
               filled: true,
-              fillColor:context.bgSecondary,
+              fillColor: context.bgSecondary,
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8.r),
                 borderSide: BorderSide.none,
@@ -98,7 +95,7 @@ class _ContactSearchPageState extends ConsumerState<ContactSearchPage> {
                   ? GestureDetector(
                 onTap: () {
                   _searchCtl.clear();
-                  EasyDebounce.cancel(_debounceTag); // 清除时也取消正在进行的防抖
+                  EasyDebounce.cancel(_debounceTag);
                   setState(() => _keyword = "");
                 },
                 child: Icon(Icons.clear, color: Colors.grey, size: 20.sp),
@@ -182,6 +179,7 @@ class _ContactSearchPageState extends ConsumerState<ContactSearchPage> {
   }
 }
 
+// 独立的 Item 组件
 class _UserSearchResultItem extends ConsumerStatefulWidget {
   final ChatUser user;
 
@@ -192,11 +190,13 @@ class _UserSearchResultItem extends ConsumerStatefulWidget {
 }
 
 class _UserSearchResultItemState extends ConsumerState<_UserSearchResultItem> {
-  bool _isSent = false;
+  // 乐观 UI 状态：如果用户在当前页面发起了申请，这个值会变为 true
+  bool _optimisticSent = false;
 
   @override
   Widget build(BuildContext context) {
     final user = widget.user;
+    final bool hasAvatar = user.avatar != null && user.avatar!.isNotEmpty;
 
     return Container(
       padding: EdgeInsets.all(12.w),
@@ -213,75 +213,106 @@ class _UserSearchResultItemState extends ConsumerState<_UserSearchResultItem> {
           CircleAvatar(
             radius: 24.r,
             backgroundColor: Colors.blueAccent,
-            backgroundImage: (user.avatar?.isNotEmpty == true)
-                ? NetworkImage(user.avatar!)
+            backgroundImage: hasAvatar ? CachedNetworkImageProvider(user.avatar!) : null,
+            onBackgroundImageError: hasAvatar
+                ? (exception, stackTrace) => debugPrint("Avatar error: $exception")
                 : null,
-            child: user.avatar == null
-                ? Text(user.nickname.isNotEmpty ? user.nickname[0].toUpperCase() : "?",
-                style: TextStyle(fontWeight: FontWeight.bold, color: context.textPrimary900))
+            child: !hasAvatar
+                ? Text(
+              user.nickname.isNotEmpty ? user.nickname[0].toUpperCase() : "?",
+              style: TextStyle(fontWeight: FontWeight.bold, color: context.textPrimary900),
+            )
                 : null,
           ),
           SizedBox(width: 12.w),
-
-         Expanded(child: Column(
-           mainAxisSize: MainAxisSize.min,
-           crossAxisAlignment: CrossAxisAlignment.start,
-           children: [
-             // 1. 昵称 (占据主要空间，过长省略)
-             Text(
-               user.nickname,
-               maxLines: 1,
-               overflow: TextOverflow.ellipsis,
-               style: TextStyle(
-                 fontSize: 16.sp,
-                 fontWeight: FontWeight.bold,
-                 color: context.textPrimary900,
-               ),
-             ),
-
-             SizedBox(width: 8.w), // 间距
-
-             // 2. ID (跟在后面)
-             Text(
-               "ID: ${user.id}",
-               maxLines: 1,
-               overflow: TextOverflow.ellipsis,
-               style: TextStyle(
-                 fontSize: 12.sp,
-                 color: context.textSecondary700,
-                 fontWeight: FontWeight.w400,
-               ),
-             )
-           ],
-         ),),
-
+          // 信息
+          Expanded(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  user.nickname,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 16.sp,
+                    fontWeight: FontWeight.bold,
+                    color: context.textPrimary900,
+                  ),
+                ),
+                SizedBox(width: 8.w),
+                Text(
+                  "ID: ${user.id}",
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 12.sp,
+                    color: context.textSecondary700,
+                    fontWeight: FontWeight.w400,
+                  ),
+                )
+              ],
+            ),
+          ),
           SizedBox(width: 8.w),
-
           // 按钮
-          _buildActionButton(context, user)
+          _buildActionButton(context, user),
         ],
       ),
     );
   }
 
   Widget _buildActionButton(BuildContext context, ChatUser user) {
+
+    // 1. 如果已经是好友 -> 显示 "Added" 且不可点击
+    if (user.status == RelationshipStatus.friend) {
+      return Container(
+        padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
+        child: Text(
+          "Added",
+          style: TextStyle(fontSize: 12.sp, color: context.textSecondary700),
+        ),
+      );
+    }
+
+    // 2. 如果已发送申请 (无论是后端返回的，还是刚才点击的) -> 显示 "Sent"
+    if (user.status == RelationshipStatus.sent || _optimisticSent) {
+      return Container(
+        width: 70.w,
+        height: 32.h,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: context.bgSecondary, // 灰色背景
+          borderRadius: BorderRadius.circular(6.r),
+        ),
+        child: Text(
+          "Sent",
+          style: TextStyle(fontSize: 12.sp, color: context.textSecondary700),
+        ),
+      );
+    }
+
+    // 3. 陌生人 -> 显示 "Add" 按钮
     return Button(
       variant: ButtonVariant.primary,
-      disabled: _isSent,
       height: 32.h,
       width: 70.w,
       onPressed: () => _handleAdd(user.id),
-      child: Text( _isSent ? 'Send' : 'Add', style: TextStyle(fontSize: 12.sp)),
+      child: Text('Add', style: TextStyle(fontSize: 12.sp)),
     );
   }
 
   Future<void> _handleAdd(String userId) async {
-    setState(() => _isSent = true);
+    // 乐观更新
+    setState(() => _optimisticSent = true);
+
     final success = await ref.read(addFriendControllerProvider(userId).notifier).execute();
 
     if (!success) {
       if (mounted) {
-        setState(() => _isSent = false);
+        // 失败回滚
+        setState(() => _optimisticSent = false);
         RadixToast.error("Request failed");
       }
     } else {

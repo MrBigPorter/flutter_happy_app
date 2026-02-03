@@ -291,23 +291,6 @@ class CreateDirectChatController extends _$CreateDirectChatController {
 }
 
 
-
-@riverpod
-class UserSearchController extends _$UserSearchController {
-  @override
-  AsyncValue<List<ChatSender>> build() {
-    return const AsyncData([]);
-  }
-
-  Future<void> search(String keyword) async {
-    if (keyword.isEmpty) return;
-    state = const AsyncValue.loading();
-    state = await AsyncValue.guard(() async {
-      return await Api.chatUsersSearchApi(keyword);
-    });
-  }
-}
-
 // [核心修改部分] SWR 策略：缓存优先，网络更新
 // 改为 async* 生成器流
 @riverpod

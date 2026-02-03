@@ -71,7 +71,6 @@ class _AddMenuButton extends StatelessWidget {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.r)),
         color: context.bgPrimary,
         onSelected: (value) {
-          print("Selected menu: $value");
           switch(value) {
             case 'contacts':
               // 打开通讯录页面

@@ -156,6 +156,137 @@ class _UserSearchProviderElement
   String get keyword => (origin as UserSearchProvider).keyword;
 }
 
+String _$chatContactsSearchHash() =>
+    r'ed7aa181eb3c43a3e70516b1a993f2c9e30c948c';
+
+/// See also [chatContactsSearch].
+@ProviderFor(chatContactsSearch)
+const chatContactsSearchProvider = ChatContactsSearchFamily();
+
+/// See also [chatContactsSearch].
+class ChatContactsSearchFamily extends Family<AsyncValue<List<ChatUser>>> {
+  /// See also [chatContactsSearch].
+  const ChatContactsSearchFamily();
+
+  /// See also [chatContactsSearch].
+  ChatContactsSearchProvider call(
+    String keyword,
+  ) {
+    return ChatContactsSearchProvider(
+      keyword,
+    );
+  }
+
+  @override
+  ChatContactsSearchProvider getProviderOverride(
+    covariant ChatContactsSearchProvider provider,
+  ) {
+    return call(
+      provider.keyword,
+    );
+  }
+
+  static const Iterable<ProviderOrFamily>? _dependencies = null;
+
+  @override
+  Iterable<ProviderOrFamily>? get dependencies => _dependencies;
+
+  static const Iterable<ProviderOrFamily>? _allTransitiveDependencies = null;
+
+  @override
+  Iterable<ProviderOrFamily>? get allTransitiveDependencies =>
+      _allTransitiveDependencies;
+
+  @override
+  String? get name => r'chatContactsSearchProvider';
+}
+
+/// See also [chatContactsSearch].
+class ChatContactsSearchProvider
+    extends AutoDisposeFutureProvider<List<ChatUser>> {
+  /// See also [chatContactsSearch].
+  ChatContactsSearchProvider(
+    String keyword,
+  ) : this._internal(
+          (ref) => chatContactsSearch(
+            ref as ChatContactsSearchRef,
+            keyword,
+          ),
+          from: chatContactsSearchProvider,
+          name: r'chatContactsSearchProvider',
+          debugGetCreateSourceHash:
+              const bool.fromEnvironment('dart.vm.product')
+                  ? null
+                  : _$chatContactsSearchHash,
+          dependencies: ChatContactsSearchFamily._dependencies,
+          allTransitiveDependencies:
+              ChatContactsSearchFamily._allTransitiveDependencies,
+          keyword: keyword,
+        );
+
+  ChatContactsSearchProvider._internal(
+    super._createNotifier, {
+    required super.name,
+    required super.dependencies,
+    required super.allTransitiveDependencies,
+    required super.debugGetCreateSourceHash,
+    required super.from,
+    required this.keyword,
+  }) : super.internal();
+
+  final String keyword;
+
+  @override
+  Override overrideWith(
+    FutureOr<List<ChatUser>> Function(ChatContactsSearchRef provider) create,
+  ) {
+    return ProviderOverride(
+      origin: this,
+      override: ChatContactsSearchProvider._internal(
+        (ref) => create(ref as ChatContactsSearchRef),
+        from: from,
+        name: null,
+        dependencies: null,
+        allTransitiveDependencies: null,
+        debugGetCreateSourceHash: null,
+        keyword: keyword,
+      ),
+    );
+  }
+
+  @override
+  AutoDisposeFutureProviderElement<List<ChatUser>> createElement() {
+    return _ChatContactsSearchProviderElement(this);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is ChatContactsSearchProvider && other.keyword == keyword;
+  }
+
+  @override
+  int get hashCode {
+    var hash = _SystemHash.combine(0, runtimeType.hashCode);
+    hash = _SystemHash.combine(hash, keyword.hashCode);
+
+    return _SystemHash.finish(hash);
+  }
+}
+
+mixin ChatContactsSearchRef on AutoDisposeFutureProviderRef<List<ChatUser>> {
+  /// The parameter `keyword` of this provider.
+  String get keyword;
+}
+
+class _ChatContactsSearchProviderElement
+    extends AutoDisposeFutureProviderElement<List<ChatUser>>
+    with ChatContactsSearchRef {
+  _ChatContactsSearchProviderElement(super.provider);
+
+  @override
+  String get keyword => (origin as ChatContactsSearchProvider).keyword;
+}
+
 String _$contactListHash() => r'626086d5842ba5b2a8b14399b5ed561cec5aaaf9';
 
 /// See also [ContactList].
@@ -188,7 +319,7 @@ final friendRequestListProvider = AutoDisposeAsyncNotifierProvider<
 
 typedef _$FriendRequestList = AutoDisposeAsyncNotifier<List<FriendRequest>>;
 String _$addFriendControllerHash() =>
-    r'74f88f9e0d812a54f7b9b36387261e8204b0696a';
+    r'5d0c167b9c61aa4af809ebff214aa300989eb3f3';
 
 abstract class _$AddFriendController
     extends BuildlessAutoDisposeAsyncNotifier<void> {

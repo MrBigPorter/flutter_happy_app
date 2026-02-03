@@ -636,12 +636,12 @@ class Api {
   }
 
   // 6. 用户搜索
-  static Future<List<ChatSender>> chatUsersSearchApi(String keyword) async {
+  static Future<List<ChatUser>> chatContactsSearch(String keyword) async {
     final res = await Http.get(
-      '/api/v1/chat/users/search',
+      '/api/v1/chat/contacts/search',
       query: {'keyword': keyword},
     );
-    return parseList(res, (e) => ChatSender.fromJson(e));
+    return parseList(res, (e) => ChatUser.fromJson(e));
   }
 
   // 1. 获取好友申请列表
