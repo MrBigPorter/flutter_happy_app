@@ -1,63 +1,52 @@
-明白，收到指令。不废话，只保留**v5.0 剩余核心架构规划**与**即刻执行方案**。
+明白，收到指令。
 
-这份是为你准备的 **v5.0 核心架构攻坚战术板 (Battle Plan)**，去除了所有历史包袱，只聚焦当下要啃的硬骨头。
+根据我们已经完成的代码部署（数据库初始化架构、本地全文检索、网络搜索 UI、好友闭环），**“本地全文检索”** 和 **“网络搜索”** 这两个高难度据点实际上已经被攻下。
+
+这是为你刷新后的 **v5.1 核心架构净网战术板 (Sanitized Battle Plan)**。剔除了所有已完成项，只保留当下必须攻克的硬骨头。
 
 ---
 
-# ⚔️ Lucky IM v5.0 核心架构攻坚战术板 (The Battle Plan)
+# ⚔️ Lucky IM v5.1 核心架构剩余战术板 (The Remains)
 
-> **🎯 战略目标**: 从“功能完备”跨越到“工业级体验”。
-> **🔥 当前状态**: UI/UX 已定型，进入**数据底层**与**搜索算法**的深水区。
+> **🎯 当前阶段**: 骨架已成，开始注入灵魂（实时性与离线触达）。
+> **🔥 聚焦重点**: **消息推送 (FCM)** 与 **增量同步 (SeqId)**。
 
-## 🗺️ 核心作战地图 (The Remaining Hardcore)
+## 🗺️ 剩余作战地图 (The Hardcore Remains)
 
-### 🔴 P0: 核心架构升级 (The Core Upgrade)
+### 🔴 P0: 核心数据同步与触达 (The Pulse)
 
-*技术债清偿，决定系统生死的基石。*
+*这是让 App 从“能用”变成“好用”的生死线。*
 
-1. **增量同步协议 (Incremental Sync / SeqId)**
+1. **消息推送 (FCM / APNs)** [Immediate Next]
+* **目标**: App 杀进程后，通过系统通道唤醒，点击通知跳转对应聊天。
+* **动作**: 集成 `firebase_messaging`，处理 Background Handler，实现 `getInitialMessage` 路由跳转。
+
+
+2. **增量同步协议 (Incremental Sync / SeqId)**
 * **目标**: 彻底消灭 `page=1` 的全量拉取，实现毫秒级差量同步。
-* **后端动作**: 实现 `Global Sequence ID` (基于 Redis/DB 自增)。
-* **前端动作**: 维护 `last_seq_id`，重构拉取逻辑为 `sync(since: seqId)`。
+* **动作**: 维护 `last_seq_id`，重构拉取逻辑为 `sync(since: seqId)`。
 
 
-2. **资源预热调度器 (Resource Scheduler)**
-* **目标**: 列表快速滑动“零白块”。
-* **前端动作**: 编写 `ScrollController` 监听器，识别 `Idle` 状态，预计算并下载屏幕外 +2 屏的图片资源。
-
-
-
-### 🟠 P1: 社交生态深水区 (Deep Social)
-
-*通讯录功能的最后拼图。*
-
-1. **本地全文检索 (Local FTS)**
-* **目标**: 离线状态下秒搜联系人与聊天记录。
-* **技术选型**: **Sembast (现有)** + **倒排索引 (Inverted Index)**。
-* **核心动作**:
-* 建立 `_searchIndexStore` (Keyword -> ID List)。
-* 实现中文分词 (Tokenizer)。
-* 实现搜索结果高亮 (Highlighting)。
+3. **Socket 断线重连补洞**
+* **目标**: 网络波动后，自动补齐断线期间丢失的消息。
 
 
 
-
-2. **网络搜索 (Network Search)**
-* **目标**: 基于 ID/手机号查找陌生人。
-* **动作**: 后端接口对接。
-
-
-
-### 🟡 P2: 体验与交互打磨 (UX Polish)
+### 🟠 P1: 体验与交互打磨 (UX Polish)
 
 *消除最后的“顿挫感”。*
 
-1. **发送消息乐观 UI (Optimistic Send)**
-* **目标**: 发送瞬间上屏，后台静默上传。
+1. **资源预热调度器 (Resource Scheduler)**
+* **目标**: 列表快速滑动“零白块”。
+* **动作**: 识别 Scroll `Idle` 状态，预加载屏幕外图片。
+
+
+2. **发送消息乐观 UI (Optimistic Send)**
+* **目标**: 发送瞬间上屏，不转圈，后台静默上传，失败才提示。
 * **动作**: 引入 `tempId` 机制，失败回滚。
 
 
-2. **Hero 无缝转场**
+3. **Hero 无缝转场**
 * **目标**: 头像/图片在页面间平滑飞入。
 
 
@@ -66,22 +55,18 @@
 
 ## 🚀 即刻执行指令 (Immediate Action)
 
-根据战略决策，我们**优先执行 P1 - 本地全文检索 (Local FTS)**，理由是完善社交体验并验证数据结构，且无需后端介入。
+既然**社交关系链**（找人、加人、本地搜人）的代码已经就绪，现在的首要任务是**打通“离线触达”**。如果用户杀掉 App 就收不到消息，IM 就没有灵魂。
 
-### 🛠️ Track C-1: 本地全文检索 (Sembast 版) 执行路线
+**我们下一步攻克：P0 - 消息推送 (FCM) 与 路由唤醒**
 
-**Step 1: 索引层建设 (Index Layer)**
+### 🛠️ Track D-1: FCM 推送集成执行路线
 
-* 修改 `LocalDatabaseService`，增加 `_searchIndexStore`。
-* 编写 `_updateIndex(String text, String id)` 方法，实现分词与索引写入。
+1. **配置层**: 确保 `firebase_messaging` 依赖就位，`main.dart` 后台 Handler 注册无误。
+2. **交互层**:
+* **前台**: `RadixToast` 顶部通知。
+* **后台**: 系统通知栏展示。
 
-**Step 2: 搜索层实现 (Search Layer)**
 
-* 实现 `search(String query)` 接口：分词 -> 查索引 -> 取交集 -> 捞数据。
+3. **路由层**: 点击通知 -> 识别 `type` -> 自动跳进 `ChatPage` 或 `NewFriendPage`。
 
-**Step 3: 交互层落地 (UI Layer)**
-
-* 激活 `ContactListPage` 右上角的搜索按钮。
-* 实现搜索页 UI，支持关键字高亮显示。
-
-**Ready to engage? (准备动手了吗？)**
+**准备好了吗？我们开始搞 FCM！**
