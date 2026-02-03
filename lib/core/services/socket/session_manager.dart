@@ -2,8 +2,8 @@ import 'dart:async';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:jwt_decoder/jwt_decoder.dart';
-import '../api/http_client.dart';
-import '../providers/socket_provider.dart';
+import '../../api/http_client.dart';
+import '../../providers/socket_provider.dart';
 
 /// 这是一个纯逻辑类，不涉及任何 UI 弹窗
 class SessionManager extends WidgetsBindingObserver {

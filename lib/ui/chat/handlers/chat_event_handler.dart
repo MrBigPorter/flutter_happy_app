@@ -3,7 +3,7 @@ import 'package:flutter/widgets.dart'; // 包含 debugPrint
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:rxdart/rxdart.dart';
 
-import 'package:flutter_app/core/services/socket_service.dart';
+import 'package:flutter_app/core/services/socket/socket_service.dart';
 import 'package:flutter_app/ui/chat/models/chat_ui_model.dart';
 import 'package:flutter_app/ui/chat/services/database/local_database_service.dart';
 import 'package:flutter_app/ui/chat/providers/conversation_provider.dart';

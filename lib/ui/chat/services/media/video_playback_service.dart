@@ -3,7 +3,6 @@ import 'package:flutter/foundation.dart';
 import 'package:video_player/video_player.dart';
 import '../../../../utils/asset/asset_manager.dart';
 import '../../models/chat_ui_model.dart';
-import '../../providers/chat_room_provider.dart';
 import '../chat_action_service.dart';
 
 class VideoPlaybackService {

@@ -3,6 +3,7 @@ import 'package:flutter_app/common.dart';
 
 
 
+import '../../../core/providers/socket_provider.dart';
 import '../models/conversation.dart';
 import '../models/friend_request.dart';
 import 'conversation_provider.dart';
@@ -32,6 +33,17 @@ class ContactList extends _$ContactList {
 class FriendRequestList extends _$FriendRequestList {
   @override
   Future<List<FriendRequest>> build() async {
+    //  核心改动：在 Provider 内部监听 Socket
+    final socket = ref.watch(socketServiceProvider);
+
+    // 当收到新申请信号时，自动刷新自己
+    final subscription = socket.contactApplyStream.listen((_) {
+      ref.invalidateSelf();
+    });
+
+    // 销毁时取消订阅
+    ref.onDispose(() => subscription.cancel());
+
     return await Api.getFriendRequestsApi();
   }
 
@@ -117,11 +129,12 @@ class HandleRequestController extends _$HandleRequestController {
       // 成功联动逻辑：
 
       // 1. 刷新好友申请列表 (NewFriendPage 列表更新)
-      ref.read(friendRequestListProvider.notifier).refresh();
+      ref.invalidate(friendRequestListProvider);
 
       // 2. 如果是同意，刷新通讯录 (增加新人)
       if (action == FriendRequestAction.accepted) {
-        ref.read(contactListProvider.notifier).refresh();
+        // 2. 强制使通讯录失效
+        ref.invalidate(contactListProvider);
       }
       return true;
     }

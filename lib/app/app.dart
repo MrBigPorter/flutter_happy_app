@@ -1,7 +1,6 @@
 import 'dart:ui';
 
 import 'package:bot_toast/bot_toast.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_app/common.dart';
 import 'package:flutter_app/core/events/global_handler.dart';

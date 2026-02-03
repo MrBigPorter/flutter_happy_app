@@ -18,7 +18,7 @@ class NewFriendPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // 监听申请列表
+
     final asyncRequests = ref.watch(friendRequestListProvider);
 
     return BaseScaffold(
@@ -88,8 +88,6 @@ class _RequestItem extends ConsumerStatefulWidget {
 }
 
 class _RequestItemState extends ConsumerState<_RequestItem> {
-  // 局部状态：控制按钮显示 "Added"
-  // 默认是 false，点击同意后变为 true
   bool _isAccepted = false;
 
   @override
@@ -100,7 +98,6 @@ class _RequestItemState extends ConsumerState<_RequestItem> {
       padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
       child: Row(
         children: [
-          // 1. 头像
           CircleAvatar(
             radius: 24.r,
             backgroundColor: context.bgBrandSecondary,
@@ -112,8 +109,6 @@ class _RequestItemState extends ConsumerState<_RequestItem> {
                 : null,
           ),
           SizedBox(width: 12.w),
-
-          // 2. 信息 (昵称 + 理由)
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -132,8 +127,6 @@ class _RequestItemState extends ConsumerState<_RequestItem> {
               ],
             ),
           ),
-
-          // 3. 操作区 (接受按钮 或 状态文字)
           _buildActionButtons(context),
         ],
       ),
@@ -141,7 +134,6 @@ class _RequestItemState extends ConsumerState<_RequestItem> {
   }
 
   Widget _buildActionButtons(BuildContext context) {
-    // 如果已同意，显示灰色文字
     if (_isAccepted) {
       return Text(
         "Added",
@@ -149,7 +141,6 @@ class _RequestItemState extends ConsumerState<_RequestItem> {
       );
     }
 
-    // 否则显示接受按钮
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -165,26 +156,27 @@ class _RequestItemState extends ConsumerState<_RequestItem> {
   }
 
   Future<void> _handleAccept() async {
-    // 1. 乐观 UI：立即变灰，给用户即时反馈
     setState(() => _isAccepted = true);
 
-    // 2. 调用 Controller 执行网络请求
     final success = await ref
         .read(handleRequestControllerProvider.notifier)
         .execute(
-      userId: widget.request.id, // 这里传的是申请人的 ID
-      action: FriendRequestAction.accepted, // 传枚举值
+      userId: widget.request.id,
+      action: FriendRequestAction.accepted,
     );
 
-    // 3. 如果失败，回滚状态并提示
     if (!success) {
       if (mounted) {
         setState(() => _isAccepted = false);
         RadixToast.error("Operation failed");
       }
     } else {
-      // 成功其实不需要额外提示，变成 "Added" 就够了
-      // 如果需要，可以 RadixToast.success("Added");
+      //  修改标注：双重失效联动
+      // 1. 刷新好友列表 (让通讯录出现新朋友)
+      ref.invalidate(contactListProvider);
+
+      // 2. 刷新申请列表 (让已处理的消息消失，从而让通讯录红点归零)
+      ref.invalidate(friendRequestListProvider);
     }
   }
 }

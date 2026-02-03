@@ -90,7 +90,6 @@ class _DepositResultPageState extends ConsumerState<DepositResultPage> {
         // -------------------------------------------
 
         // ---  模拟测试逻辑 (测试通过后请删除) ---
-        print("Polling check $_retryCount: ${widget.orderNo}");
         if (_retryCount > 2) {
           _handleSuccess();
           timer.cancel();
@@ -98,7 +97,7 @@ class _DepositResultPageState extends ConsumerState<DepositResultPage> {
         // ---------------------------------------
 
       } catch (e) {
-        print("Polling error: $e");
+        //print("Polling error: $e");
       }
     });
   }

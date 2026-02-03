@@ -5,7 +5,7 @@ import 'package:extended_nested_scroll_view/extended_nested_scroll_view.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_app/components/skeleton.dart';
-import 'package:flutter_app/core/services/socket_service.dart';
+import 'package:flutter_app/core/services/socket/socket_service.dart';
 import 'package:flutter_app/ui/img/app_image.dart';
 import 'package:flutter_countdown_timer/flutter_countdown_timer.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';

@@ -75,9 +75,9 @@ class ImageCompressionService {
 
       await img.onLoad.first; // 等待浏览器解码
 
-      // 3. 计算尺寸 (🚀 修复点：处理 int? 可空类型)
-      int w = img.naturalWidth ?? 0;
-      int h = img.naturalHeight ?? 0;
+      // 3. 计算尺寸 ( 修复点：处理 int? 可空类型)
+      int w = img.naturalWidth;
+      int h = img.naturalHeight;
 
       // 如果获取不到尺寸，说明图片有问题，直接返回原图
       if (w == 0 || h == 0) {
@@ -103,12 +103,7 @@ class ImageCompressionService {
 
       // 5. 导出为 Blob (image/jpeg)
       canvas.toBlob('image/jpeg', quality).then((blob) {
-        html.Url.revokeObjectUrl(url); // 释放内存
-
-        if (blob == null) {
-          completer.complete(file);
-          return;
-        }
+        html.Url.revokeObjectUrl(url);
 
         // 6. 转回 XFile
         final reader = html.FileReader();

@@ -26,6 +26,7 @@ class MePage extends ConsumerStatefulWidget {
 
 class _MePageState extends ConsumerState<MePage>{
 
+
   Future<void> _onRefresh() async {
     ref.read(luckyProvider.notifier).updateWalletBalance();
   }

@@ -7,7 +7,7 @@ import 'package:flutter_app/ui/chat/services/database/local_database_service.dar
 import 'package:flutter_app/core/api/lucky_api.dart';
 import 'package:flutter_app/ui/chat/models/conversation.dart';
 
-import '../../../core/services/socket_service.dart';
+import '../../../core/services/socket/socket_service.dart';
 import '../handlers/chat_event_handler.dart';
 
 // 控制器 Provider
