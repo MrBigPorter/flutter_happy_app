@@ -1,5 +1,8 @@
+import 'dart:ui';
+import 'package:azlistview/azlistview.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_app/app/routes/app_router.dart';
 import 'package:flutter_app/common.dart';
 import 'package:flutter_app/components/base_scaffold.dart';
@@ -8,17 +11,26 @@ import 'package:flutter_app/ui/chat/providers/contact_provider.dart';
 import 'package:flutter_app/utils/url_resolver.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:lpinyin/lpinyin.dart';
+
+import 'models/conversation.dart';
+
+class ContactEntity extends ISuspensionBean {
+  final ChatUser user;
+  String tagIndex;
+
+  ContactEntity({required this.user, this.tagIndex = ""});
+
+  @override
+  String getSuspensionTag() => tagIndex;
+}
 
 class ContactListPage extends ConsumerWidget {
   const ContactListPage({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // 1. 监听好友列表
     final asyncContacts = ref.watch(contactListProvider);
-
-    // 2. 监听好友申请列表 (为了显示小红点)
-    // 这里的 friendRequestListProvider 是我们刚刚在 contact_provider.dart 里加的
     final asyncRequests = ref.watch(friendRequestListProvider);
     final int requestCount = asyncRequests.valueOrNull?.length ?? 0;
 
@@ -26,144 +38,245 @@ class ContactListPage extends ConsumerWidget {
       title: "Contacts",
       actions: [
         IconButton(
-          icon: Icon(Icons.person_add_alt_1_outlined, size: 24.sp, color: context.textPrimary900),
-          onPressed: () {
-            // 跳转到搜索页
-            appRouter.push('/contact/search');
+          icon: Icon(Icons.search_rounded, size: 24.sp, color: context.textPrimary900),
+          onPressed: () => appRouter.push('/contact/search'),
+        ),
+        SizedBox(width: 8.w),
+      ],
+      body: Container(
+        color: context.bgSecondary,
+        width: double.infinity, //  确保宽度撑满
+        height: double.infinity, //  确保高度撑满，防止 AzListView 布局错误
+        child: asyncContacts.when(
+          loading: () => _buildSkeleton(context),
+          error: (err, _) => Center(child: Text("Load Error: $err")),
+          data: (contacts) {
+            // 如果没数据，直接显示空状态，别去算拼音了
+            if (contacts.isEmpty) return _buildEmptyState(context, requestCount);
+
+            // 1. 数据转换
+            final List<ContactEntity> contactModels = _processData(contacts);
+            // 2. 提取索引
+            final List<String> indexData = SuspensionUtil.getTagIndexList(contactModels);
+
+            return Column(
+              children: [
+                // 顶部固定入口
+                Padding(
+                  padding: EdgeInsets.fromLTRB(16.w, 16.h, 16.w, 0),
+                  child: _buildActionSection(context, requestCount),
+                ),
+
+                Expanded(
+                  child: AzListView(
+                    data: contactModels,
+                    itemCount: contactModels.length,
+                    itemBuilder: (context, index) => Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 16.w),
+                      child: _buildContactItem(context, contactModels[index].user),
+                    ),
+                    susItemBuilder: (context, index) => _buildHeader(context,contactModels[index].tagIndex),
+
+                    // 索引条数据
+                    indexBarData: indexData,
+
+                    //  核心配置：索引条样式
+                    indexBarOptions: IndexBarOptions(
+                      needRebuild: true,
+                      selectTextStyle: TextStyle(fontSize: 12.sp, color: Colors.white, fontWeight: FontWeight.bold),
+                      selectItemDecoration: BoxDecoration(shape: BoxShape.circle, color: context.utilityBrand500),
+                      textStyle: TextStyle(fontSize: 10.sp, color: context.textSecondary700),
+                      downTextStyle: TextStyle(fontSize: 12.sp, color: Colors.white),
+                      downItemDecoration: BoxDecoration(shape: BoxShape.circle, color: context.utilityBrand500),
+                    ),
+                    indexHintBuilder: (context, tag) {
+                      return ClipRRect(
+                        borderRadius: BorderRadius.circular(20.r),
+                        child: BackdropFilter(
+                          filter: ImageFilter.blur(sigmaX: 10.0, sigmaY: 10.0),
+                          child: Container(
+                            alignment: Alignment.center,
+                            width: 80.r,
+                            height: 80.r,
+                            decoration: BoxDecoration(
+                              color: Colors.black.withOpacity(0.6), // 半透明黑底
+                              borderRadius: BorderRadius.circular(20.r),
+                            ),
+                            child: Text(
+                              tag,
+                              style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 36.sp,
+                                  fontWeight: FontWeight.bold
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            );
           },
         ),
-      ],
-      body: Column(
-        children: [
-          _buildNewFriendEntry(context, requestCount),
-
-          // 分割线
-          Divider(height: 1, color: context.bgSecondary),
-
-          // 下方：真实的好友列表
-          Expanded(
-            child: asyncContacts.when(
-              loading: () => _buildSkeleton(context),
-              error: (err, stack) => Center(child: Text("Load Error: $err")),
-              data: (contacts) {
-                if (contacts.isEmpty) {
-                  return _buildEmptyState(context);
-                }
-
-                // 暂时简单的 ListView，下一步我们会把它升级成 A-Z 索引列表
-                return ListView.builder(
-                  itemCount: contacts.length,
-                  itemBuilder: (context, index) {
-                    final user = contacts[index];
-                    return ListTile(
-                      contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 4.h),
-                      leading: CircleAvatar(
-                        radius: 20.r,
-                        backgroundColor: context.bgBrandSecondary,
-                        backgroundImage: user.avatar != null
-                            ? CachedNetworkImageProvider(
-                          UrlResolver.resolveImage(context, user.avatar!, logicalWidth: 40),
-                        )
-                            : null,
-                        child: user.avatar == null
-                            ? Text(user.nickname.isNotEmpty ? user.nickname[0].toUpperCase() : "?",
-                            style: TextStyle(color: context.textSecondary700))
-                            : null,
-                      ),
-                      title: Text(
-                        user.nickname,
-                        style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w500, color: context.textPrimary900),
-                      ),
-                      onTap: () {
-                        appRouter.push('/contact/profile/${user.id}');
-                      },
-                    );
-                  },
-                );
-              },
-            ),
-          ),
-        ],
       ),
     );
   }
 
-  /// 构建“新的朋友”入口
-  Widget _buildNewFriendEntry(BuildContext context, int count) {
-    return InkWell(
-      onTap: () {
-        // 跳转到新的朋友申请列表页 (NewFriendPage)
-        // 记得在 router 里注册这个路径
-        appRouter.push('/contact/new-friends');
-      },
-      child: Container(
-        padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+  //  下面是辅助函数，逻辑微调增强健壮性
+
+  List<ContactEntity> _processData(List<ChatUser> contacts) {
+    List<ContactEntity> list = contacts.map((e) {
+      //  增加判空防御
+      if (e.nickname.isEmpty) {
+        return ContactEntity(user: e, tagIndex: "#");
+      }
+      String pinyin = PinyinHelper.getPinyinE(e.nickname);
+      String tag = pinyin.substring(0, 1).toUpperCase();
+      if (!RegExp("[A-Z]").hasMatch(tag)) tag = "#";
+      return ContactEntity(user: e, tagIndex: tag);
+    }).toList();
+
+    SuspensionUtil.sortListBySuspensionTag(list);
+    SuspensionUtil.setShowSuspensionStatus(list);
+    return list;
+  }
+
+  // 样式保持原样，微调颜色
+  Widget _buildHeader(BuildContext context,String tag) {
+    return Container(
+      padding: EdgeInsets.fromLTRB(24.w, 16.h, 16.w, 8.h),
+      alignment: Alignment.centerLeft,
+      // AzListView 的 Header 默认是透明的，如果不给颜色，滑上去的时候背景文字会透出来重叠
+      color: context.bgSecondary, //  必须给 Header 一个不透明背景色！
+      child: Text(
+        tag,
+        style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.bold, color: Colors.grey[500]),
+      ),
+    );
+  }
+
+  Widget _buildActionSection(BuildContext context, int count) {
+    return Container(
+      decoration: BoxDecoration(
         color: context.bgPrimary,
+        borderRadius: BorderRadius.circular(16.r),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 15, offset: const Offset(0, 4)),
+        ],
+      ),
+      child: _buildActionRow(
+        context,
+        icon: Icons.person_add_rounded,
+        color: Colors.orange,
+        title: "New Friends",
+        count: count,
+        onTap: () => appRouter.push('/contact/new-friends'),
+      ),
+    );
+  }
+
+  Widget _buildActionRow(BuildContext context, {required IconData icon, required Color color, required String title, int count = 0, required VoidCallback onTap}) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16.r),
+      child: Padding(
+        padding: EdgeInsets.all(16.r),
         child: Row(
           children: [
-            // 固定图标：橙色背景的添加好友图标
             Container(
-              width: 40.r,
-              height: 40.r,
-              decoration: BoxDecoration(
-                color: Colors.orangeAccent,
-                borderRadius: BorderRadius.circular(8.r),
-              ),
-              child: Icon(Icons.person_add, color: Colors.white, size: 24.sp),
+              padding: EdgeInsets.all(8.r),
+              decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(10.r)),
+              child: Icon(icon, color: color, size: 22.sp),
             ),
-            SizedBox(width: 12.w),
-
-            // 文字
+            SizedBox(width: 14.w),
             Expanded(
-              child: Text(
-                "New Friends",
-                style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w500, color: context.textPrimary900),
-              ),
+              child: Text(title, style: TextStyle(fontSize: 15.sp, fontWeight: FontWeight.w600, color: context.textPrimary900)),
             ),
-
-            // 小红点 (如果有申请)
             if (count > 0)
               Container(
-                padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
-                decoration: BoxDecoration(
-                  color: Colors.red,
-                  borderRadius: BorderRadius.circular(10.r),
-                ),
-                child: Text(
-                  count.toString(),
-                  style: TextStyle(color: Colors.white, fontSize: 12.sp, fontWeight: FontWeight.bold),
-                ),
+                margin: EdgeInsets.only(right: 8.w),
+                padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 2.h),
+                decoration: BoxDecoration(color: Colors.red, borderRadius: BorderRadius.circular(10.r)),
+                child: Text("$count", style: TextStyle(color: Colors.white, fontSize: 11.sp, fontWeight: FontWeight.bold)),
               ),
-
-            SizedBox(width: 8.w),
-            Icon(Icons.arrow_forward_ios, size: 14.sp, color: Colors.grey[300]),
+            Icon(Icons.chevron_right_rounded, size: 20.sp, color: context.textSecondary700.withOpacity(0.3)),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildSkeleton(BuildContext context) {
-    return ListView.builder(
-      itemCount: 10,
-      itemBuilder: (context, index) {
-        return Padding(
-          padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
-          child: Row(
-            children: [
-              Skeleton.react(width: 40.r, height: 40.r, borderRadius: BorderRadius.circular(20.r)),
-              SizedBox(width: 16.w),
-              Skeleton.react(width: 120.w, height: 16.h),
-            ],
-          ),
-        );
-      },
+  Widget _buildContactItem(BuildContext context, ChatUser user) {
+    return Container(
+      margin: EdgeInsets.only(bottom: 8.h),
+      decoration: BoxDecoration(
+        color: context.bgPrimary,
+        borderRadius: BorderRadius.circular(16.r),
+        border: Border.all(color: context.bgSecondary, width: 0.5),
+      ),
+      child: ListTile(
+        onTap: () => appRouter.push('/contact/profile/${user.id}'),
+        contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 4.h),
+        leading: CircleAvatar(
+          radius: 22.r,
+          backgroundColor: context.bgBrandSecondary,
+          backgroundImage: user.avatar != null
+              ? CachedNetworkImageProvider(UrlResolver.resolveImage(context, user.avatar!, logicalWidth: 44))
+              : null,
+          child: user.avatar == null
+              ? Text(user.nickname.isNotEmpty ? user.nickname[0].toUpperCase() : "?",
+              style: TextStyle(fontSize: 16.sp, color: context.utilityBrand500, fontWeight: FontWeight.bold))
+              : null,
+        ),
+        title: Text(
+          user.nickname,
+          style: TextStyle(fontSize: 15.sp, fontWeight: FontWeight.w600, color: context.textPrimary900),
+        ),
+        trailing: Icon(Icons.chevron_right_rounded, size: 18.sp, color: context.textSecondary700.withOpacity(0.2)),
+      ),
     );
   }
 
-  Widget _buildEmptyState(BuildContext context) {
-    return Center(
-      child: Text("No contacts yet", style: TextStyle(color: context.textSecondary700)),
+  Widget _buildSkeleton(BuildContext context) {
+    return ListView.builder(
+      itemCount: 8,
+      padding: EdgeInsets.all(16.r),
+      itemBuilder: (context, index) => Padding(
+        padding: EdgeInsets.only(bottom: 12.h),
+        child: Row(
+          children: [
+            Skeleton.react(width: 44.r, height: 44.r, borderRadius: BorderRadius.circular(22.r)),
+            SizedBox(width: 16.w),
+            Skeleton.react(width: 140.w, height: 16.h),
+          ],
+        ),
+      ),
+    );
+  }
+
+  //  新增：空状态兜底
+  Widget _buildEmptyState(BuildContext context, int requestCount) {
+    return Column(
+      children: [
+        Padding(
+          padding: EdgeInsets.fromLTRB(16.w, 16.h, 16.w, 0),
+          child: _buildActionSection(context, requestCount),
+        ),
+        Expanded(
+          child: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.contacts_rounded, size: 48.sp, color: context.textSecondary700.withOpacity(0.1)),
+                SizedBox(height: 16.h),
+                Text("No contacts found", style: TextStyle(color: context.textSecondary700)),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

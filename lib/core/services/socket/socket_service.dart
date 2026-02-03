@@ -109,9 +109,13 @@ class SocketService extends _SocketBase
 
       disconnect();
       _socket = IO.io('${AppConfig.apiBaseUrl}/events', IO.OptionBuilder()
-          .setTransports(['websocket']).disableAutoConnect()
-          .setQuery({'token': validToken}).setReconnectionAttempts(5)
-          .setAuth({'token': validToken}).build());
+          .setTransports(['websocket'])
+          .disableAutoConnect()
+      // 修复：强制 Map 类型并确保值被正确处理
+          .setQuery(<String, dynamic>{'token': validToken.toString()})
+          .setReconnectionAttempts(5)
+          .setAuth(<String, dynamic>{'token': validToken})
+          .build());
 
       _socket!.onConnect((_) { debugPrint(' [Socket] Connected'); triggerSync(); });
       _socket!.onDisconnect((r) => debugPrint(' [Socket] Disconnected: $r'));
