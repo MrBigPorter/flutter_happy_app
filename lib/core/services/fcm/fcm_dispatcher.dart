@@ -1,6 +1,8 @@
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_app/core/services/fcm/fcm_payload.dart';
 
+import 'fcm_ui_factory.dart';
+import 'handlers/chat_handler.dart';
 import 'handlers/group_handler.dart';
 
 class FcmDispatcher {
@@ -9,6 +11,7 @@ class FcmDispatcher {
 
   // 注入具体的业务执行者
   final _groupHandler = GroupActionHandler();
+  final _chatHandler = ChatActionHandler();
 
   // 架构点：分发入口，区分【前台展示】与【交互跳转】
   void dispatch(RemoteMessage message, {required bool isInteraction}) {
@@ -51,6 +54,8 @@ class FcmDispatcher {
       case FcmType.groupDetail:
         _groupHandler.handle(payload);
         break;
+        case FcmType.chat:
+         _chatHandler.handle(payload);
       case FcmType.system:
         // _systemHandler.handle(payload);
         break;
@@ -62,7 +67,13 @@ class FcmDispatcher {
   // 内部逻辑：处理前台弹窗
   void _handleForeground(FcmPayload payload) {
     print("[FCM Dispatcher] 执行前台展示逻辑: ${payload.title}");
-
-    // 这里将对接未来的 FcmUiFactory (BotToast)
+    FcmUiFactory.showNotification(
+      payload,
+      onTap: () {
+        print("[FCM] 用户点击了前台通知条，触发跳转");
+        // 复用交互逻辑，实现从前台通知点击跳转
+        _handleInteraction(payload);
+      },
+    );
   }
 }

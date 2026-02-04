@@ -1,7 +1,7 @@
 
 import 'package:flutter_app/core/services/fcm/handlers/base_handler.dart';
 
-import '../../../../app/routes/app_router.dart';
+import 'package:flutter_app/app/routes/app_router.dart';
 import '../fcm_payload.dart';
 
 class GroupActionHandler implements FcmActionHandler{
