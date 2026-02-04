@@ -10,6 +10,7 @@
 		1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */ = {isa = PBXBuildFile; fileRef = 1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */; };
 		331C808B294A63AB00263BE5 /* RunnerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 331C807B294A618700263BE5 /* RunnerTests.swift */; };
 		3B3967161E833CAA004F5970 /* AppFrameworkInfo.plist in Resources */ = {isa = PBXBuildFile; fileRef = 3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */; };
+		5650A1096CA14922C5E485A6 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 2136AF4AFEC8F16790C705CE /* GoogleService-Info.plist */; };
 		59253E9ED88D99EAB82B85C6 /* Pods_RunnerTests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 02B7F1A3ACEA272E4A9EFED7 /* Pods_RunnerTests.framework */; };
 		61B8E2C22EFA8D6C00AD3F4D /* amplifyconfiguration.json in Resources */ = {isa = PBXBuildFile; fileRef = 61B8E2C12EFA8D6C00AD3F4D /* amplifyconfiguration.json */; };
 		61CD6F1E2EFA6EA300A669B2 /* LivenessView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61CD6F1D2EFA6E8E00A669B2 /* LivenessView.swift */; };
@@ -49,6 +50,7 @@
 		02B7F1A3ACEA272E4A9EFED7 /* Pods_RunnerTests.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_RunnerTests.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		1498D2321E8E86230040F4C2 /* GeneratedPluginRegistrant.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = GeneratedPluginRegistrant.h; sourceTree = "<group>"; };
 		1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = GeneratedPluginRegistrant.m; sourceTree = "<group>"; };
+		2136AF4AFEC8F16790C705CE /* GoogleService-Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; name = "GoogleService-Info.plist"; path = "Runner/GoogleService-Info.plist"; sourceTree = "<group>"; };
 		2F8E19E2DD1FBC7C130C1193 /* Pods-Runner.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.release.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.release.xcconfig"; sourceTree = "<group>"; };
 		331C807B294A618700263BE5 /* RunnerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunnerTests.swift; sourceTree = "<group>"; };
 		331C8081294A63A400263BE5 /* RunnerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RunnerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -136,6 +138,7 @@
 				331C8082294A63A400263BE5 /* RunnerTests */,
 				54DEA0E4EE705901602B183C /* Pods */,
 				E1DB0EC496E0F4AB83BE30D3 /* Frameworks */,
+				2136AF4AFEC8F16790C705CE /* GoogleService-Info.plist */,
 			);
 			sourceTree = "<group>";
 		};
@@ -279,6 +282,7 @@
 				61B8E2C22EFA8D6C00AD3F4D /* amplifyconfiguration.json in Resources */,
 				97C146FE1CF9000F007C117D /* Assets.xcassets in Resources */,
 				97C146FC1CF9000F007C117D /* Main.storyboard in Resources */,
+				5650A1096CA14922C5E485A6 /* GoogleService-Info.plist in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

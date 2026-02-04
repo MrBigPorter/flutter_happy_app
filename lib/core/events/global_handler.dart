@@ -5,6 +5,7 @@ import 'package:bot_toast/bot_toast.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_app/core/providers/fcm_service_provider.dart';
 import 'package:flutter_app/ui/chat/services/network/offline_queue_manager.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -53,6 +54,9 @@ class _GlobalHandlerState extends ConsumerState<GlobalHandler> {
 
     // 监听本地 EventBus
     _eventBusSub = EventBus().stream.listen((event) => _handleGlobalEvent(event));
+
+    //fcm init
+    ref.read(fcmServiceProvider);
 
     // 启动 Session 管理
     ref.read(sessionManagerProvider);

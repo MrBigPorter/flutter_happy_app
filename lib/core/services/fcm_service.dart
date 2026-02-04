@@ -11,10 +11,10 @@ class FcmService {
 
   FcmService(this.ref);
 
-  // 1. 获取 Token (保持不变)
+  // 1. 获取 Token (适配 Web 端)
   Future<String?> getToken() async {
     try {
-      // iOS / Android 13+ 请求权限
+      // iOS / Android 13+ / Web 请求权限
       NotificationSettings settings = await _firebaseMessaging.requestPermission(
         alert: true,
         badge: true,
@@ -26,7 +26,19 @@ class FcmService {
         return null;
       }
 
-      String? token = await _firebaseMessaging.getToken();
+      // --- 修改这里 ---
+      String? token;
+      if (identical(0, 0.0)) { // 这是一个判断是否在 Web 环境的常用技巧
+        // 如果是 Web 端，必须传入 vapidKey
+        token = await _firebaseMessaging.getToken(
+          vapidKey: "BBbbdJ94sdOcNEhL1O7ejrE_tMvnZvwoiiQfeSO1O_W5X90bhinfo5pK-wpnns7V5xlqzyOS0fYcXlon-44NjQA",
+        );
+      } else {
+        // 如果是手机端，保持原样
+        token = await _firebaseMessaging.getToken();
+      }
+      // ----------------
+
       if (token != null) {
         print(" [FCM] Device Token: $token");
         return token;

@@ -142,9 +142,7 @@ class GroupBuyingCard extends StatelessWidget {
         ? item.recentJoinAvatars!
         : [
       // 兜底假头像，为了让 UI 好看点
-      'https://i.pravatar.cc/150?img=12',
-      'https://i.pravatar.cc/150?img=33',
-      'https://i.pravatar.cc/150?img=5',
+
     ];
 
     return GestureDetector(

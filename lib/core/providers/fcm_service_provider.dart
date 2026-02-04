@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_app/common.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -25,21 +26,29 @@ final fcmInitProvider = FutureProvider<void>((ref) async {
   // 必须定义在前面，或者放在外面，不然下面没法调用
   Future<void> uploadTokenToBackend(String? token) async {
     try {
+      String platformName;
+
+      if (kIsWeb) {
+        platformName = 'web'; // 如果是网页，定义为 web
+      } else if (Platform.isAndroid) {
+        platformName = 'android';
+      } else if (Platform.isIOS) {
+        platformName = 'ios';
+      } else {
+        platformName = 'unknown';
+      }
+
       final dto = FcmNotificationDeviceRegisterDto(
         token: token!,
-        // 注意：Platform.operatingSystem 返回的是 'android' 或 'ios' (小写)
-        // 确保你的后端能接收这个格式，或者做个转换
-        platform: Platform.isAndroid ? 'android' : 'ios',
+        platform: platformName, // 使用我们判断好的变量
       );
 
       print(" [FCM] 上传 Token 到后端: ${dto.toJson()}");
-      // 假设 Api 是静态类可以直接调，如果 Api 也是 Provider，需要 ref.read(apiProvider)
       await Api.fcmNotificationDeviceRegisterApi(dto);
     } catch (e) {
       print("❌ [FCM] 上传失败: $e");
     }
   }
-
 
 
   // B. 尝试获取 Token (调用刚才改过的方法)
