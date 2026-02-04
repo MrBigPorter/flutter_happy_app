@@ -69,12 +69,16 @@ class ChatActionService {
     List<PipelineStep> steps,
   ) async {
     try {
-      await LocalDatabaseService().saveMessage(ctx.initialMsg);
+      // 架构调整点：立即保存到数据库，触发 UI 的 Stream 监听
+      // 注意：这里可以去掉 await，让它同步触发，或者在外面先 save
+       LocalDatabaseService().saveMessage(ctx.initialMsg);
+       // 立即更新会话列表的最后一条消息预览
       _updateConversationSnapshot(
         ctx.initialMsg.content,
         ctx.initialMsg.createdAt,
       );
 
+       // 真正的耗时流水线在后台跑
       for (final step in steps) {
         await step.execute(ctx, this);
       }
@@ -83,7 +87,7 @@ class ChatActionService {
       debugPrint(" Pipeline Crashed: $e");
       await LocalDatabaseService().updateMessageStatus(
         ctx.initialMsg.id,
-        MessageStatus.pending,
+        MessageStatus.failed,// 修正 failed，pending 留给离线队列
       );
       OfflineQueueManager().startFlush();
     }

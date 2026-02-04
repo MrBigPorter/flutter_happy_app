@@ -1,18 +1,35 @@
-非常抱歉！作为架构师，严谨性是第一准则，刚才在整理 v5.1.0 时确实不该为了篇幅而压缩历史记录。**历史战役是项目架构演进的基石，绝对不能少。**
-
-我已经重新校对并恢复了 **v4.0 至今的所有技术细节**，并将最新的 **Web FCM 战役成果** 正确追加到日志最上方。这是完整、无删减的 **Grand Master Log**：
 
 ---
 
-# 📜 Lucky IM Project **Grand Master Log** (v4.0 - v5.1.0)
+# 📜 Lucky IM Project **Grand Master Log** (v4.0 - v5.2.0)
 
-> **🕒 最后更新**: 2026-02-04 12:00 (PST)
-> **🚀 当前版本**: **v5.1.0 (Web FCM & Infrastructure Security)**
-> **🌟 总体进度**: 成功遏制接口风暴，建立全平台 FCM 推送闭环，修复跨平台环境崩溃，确立 Web 端 Service Worker 与安全鉴权标准。
+> **🕒 最后更新**: 2026-02-04 18:45 (PST)
+> **🚀 当前版本**: **v5.2.0 (Self-Healing & Reliability)**
+> **🌟 总体进度**: 建立 FCM+Socket+API 三位一体同步架构，实现基于 `seqId` 的全自动增量同步自愈，彻底闭环重连与生命周期对账。
 
 ---
 
 ## 🏆 第一章：最新战役 (Current Era)
+
+### v5.2.0 - 消息自愈与可靠性保障 (Self-Healing) 🛡️
+
+* **[Sync] 增量同步自愈算法**:
+* **核心逻辑**: 摒弃全量拉取，基于本地 `localMaxSeqId` 向后端精准对账，利用游标递归抓取空洞消息。
+* **断层缝合**: 验证通过“飞行模式”恢复场景，系统在重连后自动识别并填平离线期间的消息断层。
+
+
+* **[Stab] 生命周期与重连触发器**:
+* **冲突修复**: 引入 `Future.microtask` 异步调度机制，彻底解决 Riverpod 初始化期间修改状态导致的 `fail assertion` 报错。
+* **全时监听**: 在 `ChatEventHandler` 中集成 `socket.on('connect')` 监听，配合 `AppLifecycleState.resumed` 状态，确保 App 回到前台即刻对账。
+
+
+* **[Action] 乐观更新架构升级**:
+* **零延迟上屏**: 优化 `ChatActionService` 流水线，在执行耗时压缩/上传前立即 save 到本地 DB 并触发 UI 监听。
+* **状态闭环**: 成功实现消息从 `sending` 到 `success` 的静默回写与 `seqId` 后验。
+
+
+
+---
 
 ### v5.1.0 - Web FCM 推送与跨平台隔离 (Push & Isolation) 📡
 
@@ -123,22 +140,20 @@
 
 ---
 
-## 🛡️ 架构铁律 (The Iron Rules - v5.1.0)
-
-*(前 34 条保持不变，新增 35-37 条)*
+## 🛡️ 架构铁律 (The Iron Rules - v5.2.0)
 
 1. **ID 唯一性**: 前端生成 UUID，确保消息幂等性。
 2. **UI 零抖动**: 利用 `_sessionPathCache` 确保发送瞬间 UI 静止。
 3. **单向数据流**: UI 只听 DB，Pipeline 完成后静默回写数据库。
-   ...
 4. **列表零依赖原则**: Item 组件严禁监听异步详情 Provider，列表数据由列表 API 统一提供。
 5. **SWR 原则**: 列表刷新严禁置为 Loading 状态，保持旧数据直至新数据到达。
 6. **索引分层原则**: 通讯录必须先排序再计算悬浮状态。
 7. **Web 空安全原则**: 处理 JS 互操作的可空类型 (`int?`), 严禁直接赋值。
-8. **Web 环境感知原则 (New)**: 严禁在非 `kIsWeb` 保护下调用 `dart:io`。所有平台判断必须优先识别 `kIsWeb`。
-9. **Service Worker 根路径原则 (New)**: `firebase-messaging-sw.js` 必须位于 `web/` 根目录。
-10. **VAPID 强制化原则 (New)**: Web 端 FCM 获取 Token 必须通过 VAPID 鉴权，作为环境参数统一分发。
+8. **Web 环境感知原则**: 严禁在非 `kIsWeb` 保护下调用 `dart:io`。所有平台判断必须优先识别 `kIsWeb`。
+9. **Service Worker 根路径原则**: `firebase-messaging-sw.js` 必须位于 `web/` 根目录。
+10. **VAPID 强制化原则**: Web 端 FCM 获取 Token 必须通过 VAPID 鉴权。
+11. **异步对账原则 (New)**: 严禁在 Provider 初始化生命周期内同步修改其他 Provider，必须使用 `Future.microtask` 确保状态流转安全。
+12. **三位一体同步原则 (New)**: 可靠性必须由 FCM 信号、Socket 实时流、API 游标对账共同保障，缺一不可。
+13. **本地最大化对账原则 (New)**: 任何同步行为必须以本地数据库 `getMaxSeqId` 为绝对锚点，拒绝全量拉取。
 
 ---
-
-

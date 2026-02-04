@@ -29,8 +29,12 @@ class LocalDatabaseService {
 
   //  基础业务 Store
   static final _messageStore = stringMapStoreFactory.store('messages');
-  static final _detailStore = stringMapStoreFactory.store('conversation_details');
-  static final _conversationStore = stringMapStoreFactory.store('conversations');
+  static final _detailStore = stringMapStoreFactory.store(
+    'conversation_details',
+  );
+  static final _conversationStore = stringMapStoreFactory.store(
+    'conversations',
+  );
 
   //  通讯录 & 搜索 Store
   static final _contactStore = stringMapStoreFactory.store('contacts');
@@ -116,7 +120,12 @@ class LocalDatabaseService {
   // ========================================================================
 
   /// 内部方法：更新倒排索引
-  Future<void> _updateSearchIndex(DatabaseClient txn, String id, String text, String type) async {
+  Future<void> _updateSearchIndex(
+    DatabaseClient txn,
+    String id,
+    String text,
+    String type,
+  ) async {
     if (text.isEmpty) return;
 
     // 1. 分词 (Tokenize)
@@ -132,7 +141,10 @@ class LocalDatabaseService {
     if (RegExp(r'[\u4e00-\u9fa5]').hasMatch(text)) {
       try {
         String pinyinShort = PinyinHelper.getShortPinyin(text).toLowerCase();
-        String pinyinFull = PinyinHelper.getPinyinE(text, separator: "").toLowerCase();
+        String pinyinFull = PinyinHelper.getPinyinE(
+          text,
+          separator: "",
+        ).toLowerCase();
         tokens.add(pinyinShort);
         if (pinyinFull != pinyinShort) tokens.add(pinyinFull);
       } catch (e) {
@@ -202,7 +214,9 @@ class LocalDatabaseService {
 
     if (candidateIds.isNotEmpty) {
       // 命中索引
-      final snapshots = await _contactStore.records(candidateIds.toList()).getSnapshots(db);
+      final snapshots = await _contactStore
+          .records(candidateIds.toList())
+          .getSnapshots(db);
       results = snapshots
           .where((s) => s != null)
           .map((s) => ChatUser.fromJson(s!.value))
@@ -251,7 +265,10 @@ class LocalDatabaseService {
     });
   }
 
-  Future<void> updateMessageStatus(String msgId, MessageStatus newStatus) async {
+  Future<void> updateMessageStatus(
+    String msgId,
+    MessageStatus newStatus,
+  ) async {
     final db = await database;
     await _messageStore.record(msgId).update(db, {'status': newStatus.name});
   }
@@ -317,6 +334,29 @@ class LocalDatabaseService {
     return snapshots.map((s) => ChatUiModel.fromJson(s.value)).toList();
   }
 
+  /// 获取本地数据库中该会话的最大 seqId (查账)
+  Future<int?> getMaxSeqId(String conversationId) async {
+    final db = await database;
+
+    final finder = Finder(
+      filter: Filter.and([
+        Filter.equals('conversationId', conversationId),
+        // 必须有 seqId 的才算数，发送中的临时消息 seqId 为 null，不计入对账
+        Filter.notEquals('seqId', null),
+      ]),
+      // 按 seqId 降序取第一个，取最大值
+      sortOrders: [SortOrder('seqId', false)],
+      limit: 1,
+    );
+
+    final snapshots = await _messageStore.find(db, finder: finder);
+    if (snapshots.isNotEmpty) {
+      final msg = ChatUiModel.fromJson(snapshots.first.value);
+      return msg.seqId;
+    }
+    return null;
+  }
+
   // ========================================================================
   //  会话列表相关
   // ========================================================================
@@ -335,13 +375,16 @@ class LocalDatabaseService {
     final db = await database;
     final finder = Finder(sortOrders: [SortOrder('lastMsgTime', false)]);
     final snapshots = await _conversationStore.find(db, finder: finder);
-    return snapshots.map((s) {
-      try {
-        return Conversation.fromJson(s.value);
-      } catch (e) {
-        return null;
-      }
-    }).whereType<Conversation>().toList();
+    return snapshots
+        .map((s) {
+          try {
+            return Conversation.fromJson(s.value);
+          } catch (e) {
+            return null;
+          }
+        })
+        .whereType<Conversation>()
+        .toList();
   }
 
   Future<void> updateConversation(Conversation item) async {
@@ -364,7 +407,10 @@ class LocalDatabaseService {
   //  流监听
   // ========================================================================
 
-  Stream<List<ChatUiModel>> watchMessages(String conversationId, {int limit = 50}) async* {
+  Stream<List<ChatUiModel>> watchMessages(
+    String conversationId, {
+    int limit = 50,
+  }) async* {
     final db = await database;
     final finder = Finder(
       filter: Filter.equals('conversationId', conversationId),
@@ -372,7 +418,9 @@ class LocalDatabaseService {
       limit: limit,
     );
 
-    yield* _messageStore.query(finder: finder).onSnapshots(db).asyncMap((snapshots) async {
+    yield* _messageStore.query(finder: finder).onSnapshots(db).asyncMap((
+      snapshots,
+    ) async {
       final rawModels = snapshots
           .map((snapshot) => ChatUiModel.fromJson(snapshot.value))
           .toList();
@@ -393,7 +441,9 @@ class LocalDatabaseService {
       offset: offset,
     );
     final snapshots = await _messageStore.find(db, finder: finder);
-    final rawList = snapshots.map((e) => ChatUiModel.fromJson(e.value)).toList();
+    final rawList = snapshots
+        .map((e) => ChatUiModel.fromJson(e.value))
+        .toList();
     return await _prewarmMessages(rawList);
   }
 
@@ -416,12 +466,14 @@ class LocalDatabaseService {
 
       // 处理主文件路径
       if (msg.localPath != null && msg.localPath!.isNotEmpty) {
-        bool isDeadBlob = kIsWeb &&
+        bool isDeadBlob =
+            kIsWeb &&
             msg.localPath!.startsWith('blob:') &&
             msg.status == MessageStatus.success;
 
         if (!isDeadBlob) {
-          if (msg.localPath!.startsWith('http') || msg.localPath!.startsWith('blob:')) {
+          if (msg.localPath!.startsWith('http') ||
+              msg.localPath!.startsWith('blob:')) {
             absPath = _resolveByMsgType(msg.type, msg.localPath);
           } else {
             absPath = await AssetManager.getFullPath(msg.localPath!, msg.type);
@@ -439,7 +491,9 @@ class LocalDatabaseService {
       if (msg.meta != null) {
         String? t = msg.meta!['thumb'] ?? msg.meta!['remote_thumb'];
         if (t != null && t.isNotEmpty) {
-          if (t.startsWith('http') || t.startsWith('blob:') || t.contains('/')) {
+          if (t.startsWith('http') ||
+              t.startsWith('blob:') ||
+              t.contains('/')) {
             thumbPath = UrlResolver.resolveImage(null, t);
           } else {
             thumbPath = await AssetManager.getFullPath(t, MessageType.image);
