@@ -1,15 +1,39 @@
+好的，已根据我们刚刚完成的 **FCM 离线触达（Web/Mobile 双端）** 以及 **后端事件驱动架构重构** 的工作成果，为您更新了 **Grand Master Log**。
+
+当前版本升级为 **v5.2.1**。
 
 ---
 
-# 📜 Lucky IM Project **Grand Master Log** (v4.0 - v5.2.0)
+# 📜 Lucky IM Project **Grand Master Log** (v4.0 - v5.2.1)
 
-> **🕒 最后更新**: 2026-02-04 18:45 (PST)
-> **🚀 当前版本**: **v5.2.0 (Self-Healing & Reliability)**
-> **🌟 总体进度**: 建立 FCM+Socket+API 三位一体同步架构，实现基于 `seqId` 的全自动增量同步自愈，彻底闭环重连与生命周期对账。
+> **🕒 最后更新**: 2026-02-04 23:10 (PST)
+> **🚀 当前版本**: **v5.2.1 (Offline Reachability & Event-Driven)**
+> **🌟 总体进度**: 成功构建基于 Event Emitter 的解耦后端架构，彻底打通 Android/iOS/Web 全平台离线推送与路由跳转，实现高可靠的消息触达闭环。
 
 ---
 
 ## 🏆 第一章：最新战役 (Current Era)
+
+### v5.2.1 - 离线触达与事件驱动架构 (Offline Reachability) 📡 **[NEW]**
+
+* **[Arch] 后端事件驱动解耦 (Event-Driven)**:
+* **架构重构**: 引入 `@nestjs/event-emitter`，将 `ChatService` 转变为纯粹的事件生产者 (Producer)，彻底移除对 `Socket` 和 `Notification` 服务的直接依赖。
+* **独立监听**: 建立 `SocketListener` (实时) 与 `PushListener` (离线) 双消费者模式，实现发送接口 **零阻塞** 与逻辑 **完全解耦**。
+* **适配器模式**: 在 `SocketListener` 中实现 DTO 适配，确保后端架构升级对前端代码 **零侵入** (Zero Breaking Changes)。
+
+
+* **[FCM] 全平台离线触达闭环**:
+* **多端统一**: 打通 Android (High Importance Channel) 与 Web (Service Worker) 的推送通道。
+* **智能分发**: 前端实现 `FcmDispatcher`，精准处理 **前台 (BotToast)**、**后台 (Notification)** 及 **冷启动 (Launch)** 三种状态的路由跳转与交互。
+* **双重保险**: 在后端 `PushListener` 实施 **Data Redundancy** 策略，将 `title/body` 冗余写入 `data` 载荷，完美解决 Web/Android 系统吞没 Notification 对象导致内容丢失的问题。
+
+
+* **[Web] 浏览器原生深度适配**:
+* **Service Worker**: 在 `web/` 根目录部署 `firebase-messaging-sw.js`，实现网页关闭/后台状态下的独立消息接收与系统通知唤起。
+* **VAPID 鉴权**: 动态注入 VAPID Key，实现 Web 端 Token 的安全获取与上报。
+* **跨平台防御**: 在 UI 层 (`FcmUiFactory`) 增加 `kIsWeb` 守卫，修复 `HapticFeedback` 等原生 API 在 Web 端导致的崩溃。
+
+
 
 ### v5.2.0 - 消息自愈与可靠性保障 (Self-Healing) 🛡️
 
@@ -140,7 +164,7 @@
 
 ---
 
-## 🛡️ 架构铁律 (The Iron Rules - v5.2.0)
+## 🛡️ 架构铁律 (The Iron Rules - v5.2.1)
 
 1. **ID 唯一性**: 前端生成 UUID，确保消息幂等性。
 2. **UI 零抖动**: 利用 `_sessionPathCache` 确保发送瞬间 UI 静止。
@@ -152,8 +176,8 @@
 8. **Web 环境感知原则**: 严禁在非 `kIsWeb` 保护下调用 `dart:io`。所有平台判断必须优先识别 `kIsWeb`。
 9. **Service Worker 根路径原则**: `firebase-messaging-sw.js` 必须位于 `web/` 根目录。
 10. **VAPID 强制化原则**: Web 端 FCM 获取 Token 必须通过 VAPID 鉴权。
-11. **异步对账原则 (New)**: 严禁在 Provider 初始化生命周期内同步修改其他 Provider，必须使用 `Future.microtask` 确保状态流转安全。
-12. **三位一体同步原则 (New)**: 可靠性必须由 FCM 信号、Socket 实时流、API 游标对账共同保障，缺一不可。
-13. **本地最大化对账原则 (New)**: 任何同步行为必须以本地数据库 `getMaxSeqId` 为绝对锚点，拒绝全量拉取。
-
----
+11. **异步对账原则**: 严禁在 Provider 初始化生命周期内同步修改其他 Provider，必须使用 `Future.microtask` 确保状态流转安全。
+12. **三位一体同步原则**: 可靠性必须由 FCM 信号、Socket 实时流、API 游标对账共同保障，缺一不可。
+13. **本地最大化对账原则**: 任何同步行为必须以本地数据库 `getMaxSeqId` 为绝对锚点，拒绝全量拉取。
+14. **事件驱动原则 (New)**: 业务 Service (如 Chat) 严禁直接依赖基础设施 (如 FCM)，必须通过 Event Bus 解耦，确保核心链路的高可用与低延迟。
+15. **推送冗余原则 (New)**: FCM 载荷的 `data` 字段必须冗余包含 `title` 和 `body`，以兼容 Web 端及防止 Android 系统吞没 Notification 对象。

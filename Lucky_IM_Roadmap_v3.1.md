@@ -1,15 +1,15 @@
-收到，明白。作为架构师，我将严格执行**“已完成即移除”**的净化准则，确保战术板上只留下未被攻克的旗帜。
+收到。既然 **FCM 离线触达（含后台 Handler 与路由分发）** 已经在 v5.2.1 战役中彻底闭环，我将它们从战术板上**永久移除**。
 
-目前，**本地全文检索**、**网络搜索 UI**、**好友闭环**、以及刚刚验证通过的**增量同步自愈算法**、**Socket 重连对账** 均已转入 **Grand Master Log** 的“历史成就”区。
+现在的战场非常干净，主力部队将全部压上，攻克 **全局一致性** 这一高地。
 
-这是为你精准刷新后的 **Lucky IM v5.2.1 核心架构剩余战术板**。
+这是为你精准刷新后的 **Lucky IM v5.2.2 核心架构剩余战术板**。
 
 ---
 
-# ⚔️ Lucky IM v5.2.1 核心架构剩余战术板 (The Remains)
+# ⚔️ Lucky IM v5.2.2 核心架构剩余战术板 (The Remains)
 
-> **🎯 当前阶段**: 数据同步基石已稳，开始攻克“全局状态”与“后台触达”。
-> **🔥 聚焦重点**: **全局未读数同步** 与 **离线推送闭环**。
+> **🎯 当前阶段**: 消息进得来（Socket/FCM），存得下（DB），现在要解决 **“看没看”** 和 **“剩多少”** 的问题。
+> **🔥 聚焦重点**: **全局未读数管理 (Global Badge)** 与 **多端已读同步自愈**。
 
 ---
 
@@ -17,44 +17,41 @@
 
 ### 🔴 P0: 全局状态一致性 (The Global Consistency)
 
-*确保用户在任何入口看到的未读数、状态都是绝对对齐的。*
+*解决“消息已读但红点不消”的最后一公里。*
 
-1. **全局未读数汇总 (Global Badge)**
-* **目标**: 底部 Tab 栏、App 图标红点实时更新全量未读数。
-* **核心逻辑**: 聚合所有 `Conversation` 的 `unreadCount`，并在 `markAsRead` 时实时消减。
-
-
-2. **多端已读同步 (Read Status Sync)**
-* **目标**: 解决“手机已读，平板/Web 依然显示未读”的痛点。
-* **动作**: 将 `maxReadSeqId` 纳入增量同步协议，利用 `performIncrementalSync` 补齐已读状态自愈。
+1. **全局未读数聚合 (Global In-App Badge)**
+* **目标**: 底部导航栏 "消息" Tab、系统设置页等位置实时显示总未读数。
+* **现状**: 目前仅 `ConversationList` 内部自知，缺乏全局状态管理器。
+* **动作**: 建立 `GlobalUnreadProvider`，监听数据库变更流，实时聚合所有会话的 `unreadCount`。
 
 
-
-### 🟠 P1: 推送与唤醒闭环 (FCM & Routing)
-
-*打通“离线”状态下的最后一百米。*
-
-1. **FCM 后台 Handler 深度集成**
-* **目标**: App 进程被杀后，收到推送能显示发送人头像、消息内容。
-* **动作**: 配置 `firebase_messaging` 的后台处理函数，并在 Web 端确立 Service Worker 稳定监听。
+2. **桌面角标同步 (App Icon Badge)**
+* **目标**: App 即使在后台，桌面图标也能显示未读数字（类似微信/WhatsApp）。
+* **动作**: 集成 `flutter_app_badger`，在 `GlobalUnreadProvider` 变化时同步更新原生系统角标；处理 Android 厂商（小米/华为/三星）的兼容性。
 
 
-2. **推送点击路由分发**
-* **目标**: 点击通知栏，精准解析 `payload` 并通过 `GoRouter` 自动跳入对应 `ChatPage`。
+3. **多端已读同步自愈 (Read Status Self-Healing)**
+* **目标**: 解决“手机 A 点了已读，手机 B 还要点一次”的痛点。
+* **动作**:
+* **后端**: 确保 `MarkAsRead` 操作更新 `Conversation.lastReadSeqId` 并下发 Event。
+* **前端**: 将 `MarkAsRead` 事件纳入 **增量同步 (Incremental Sync)** 范畴，重连时不仅补消息，还要补“已读状态”。
 
 
 
-### 🟡 P2: 媒体体验极限优化 (Multimedia Polish)
 
-*消除最后的“顿挫感”。*
+
+### 🟡 P1: 媒体体验精修 (Multimedia Polish)
+
+*消除列表滑动的最后一点“顿挫感”。*
 
 1. **资源预热调度器 (Resource Scheduler)**
 * **目标**: 列表快速滑动“零白屏”。
-* **动作**: 识别 Scroll `Idle` 状态，预加载屏幕外图片的微缩图。
+* **动作**: 识别 Scroll `Idle` 状态，预加载屏幕外图片的微缩图（利用 `precacheImage`）。
 
 
 2. **视频播放断点续传**
-* **目标**: 针对大视频，支持 Nginx 层级的 `proxy_force_ranges` 拖动秒开。
+* **目标**: 针对大视频，支持拖动秒开。
+* **动作**: 客户端播放器配置 Range Header，配合后端 Nginx `proxy_force_ranges` 实现分段缓冲。
 
 
 
@@ -62,13 +59,14 @@
 
 ## 🚀 即刻执行指令 (Immediate Action)
 
-既然**增量同步**和**重连自愈**的代码已经跑通，我们现在的首要任务是让用户“一眼看到变化”。
+FCM 已经搞定，现在 App 能收到消息了，但用户不知道自己有几条未读，体验很割裂。
 
-**我们下一步攻克：P0 - 全局未读数 (Badge) 汇总与 UI 联动**
+**我们立刻攻克：P0 - 全局未读数聚合 (Global Badge)**
 
 ### 🛠️ 作战路线图
 
-1. **Provider 抽象**: 建立 `totalUnreadProvider` 自动 watch 会话列表。
-2. **UI 绑定**: 将红点挂载到 `Scaffold` 的 `BottomNavigationBar`。
-3. **App 角标**: 集成 `flutter_app_badger`，在 `markAsRead` 成功后同步清理手机桌面数字。
+1. **基础设施**: 创建 `lib/core/providers/global_unread_provider.dart`。
+2. **数据库层**: 编写 Isar 聚合查询语句 `db.conversations.where().unreadCountProperty().sum()`。
+3. **UI 绑定**: 修改 `MainPage` 的 `BottomNavigationBar`，挂载红点组件。
 
+**请确认：我们是先做 Flutter 端的 Provider 聚合，还是先做 App Icon Badge？（建议合并一起做）**

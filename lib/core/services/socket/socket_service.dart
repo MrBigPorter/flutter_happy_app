@@ -126,7 +126,25 @@ class SocketService extends _SocketBase
 
   Future<String?> _ensureValidToken(String token) async {
     if (token.isEmpty) return null;
-    if (JwtDecoder.isExpired(token)) return await _tokenRefresher?.call();
+
+    //  核心修改：把 JwtDecoder 包裹在 try-catch 中
+    // 无论是格式错、类型错、还是过期，统统视为“Token不可用”
+    bool isInvalid = false;
+    try {
+      if (JwtDecoder.isExpired(token)) {
+        isInvalid = true;
+      }
+    } catch (e) {
+      debugPrint("[Socket] Token 解析异常 (可能是旧缓存格式错误): $e");
+      // 只要解析报错，就认为它是坏的，必须刷新
+      isInvalid = true;
+    }
+
+    if (isInvalid) {
+      debugPrint(" [Socket] Token 无效或过期，尝试刷新...");
+      return await _tokenRefresher?.call();
+    }
+
     return token;
   }
 
