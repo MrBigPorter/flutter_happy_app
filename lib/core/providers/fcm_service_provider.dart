@@ -5,7 +5,7 @@ import 'package:flutter_app/common.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/fcm_notification.dart';
-import '../services/fcm_service.dart';
+import '../services/fcm/fcm_service.dart';
 
 //  修改这里：把 FutureProvider 改成 Provider
 // 因为创建 Service 实例本身是瞬间完成的，不需要 Future
