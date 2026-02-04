@@ -17,7 +17,6 @@ import 'package:flutter_app/utils/upload/upload_types.dart';
 import 'package:flutter_app/core/api/lucky_api.dart';
 import 'package:video_compress/video_compress.dart';
 
-import '../../../utils/upload/image_utils.dart';
 import '../../../utils/url_resolver.dart';
 import '../services/media/video_processor.dart';
 import 'blurHash/blur_hash_service.dart';
