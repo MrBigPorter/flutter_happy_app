@@ -48,7 +48,6 @@ class _ChatPageState extends ConsumerState<ChatPage> {
     Future.microtask(() {
       ref.read(activeConversationIdProvider.notifier).state =
           widget.conversationId;
-      ref.read(chatControllerProvider(widget.conversationId)).markAsRead();
     });
   }
 

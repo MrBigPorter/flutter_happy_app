@@ -68,7 +68,12 @@ class ChatViewModel extends StateNotifier<ChatListState> {
 
   Future<void> performIncrementalSync() async {
     if (!mounted) return;
+
+    // 如果已经在初始化中，直接返回，防止重复请求 API
+    if(state.isInitializing) return;
+
     state = state.copyWith(isInitializing: true);
+
 
     try {
       // 1. 查账：获取本地最后一条“正式报纸”的编号
