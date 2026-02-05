@@ -172,6 +172,65 @@ class LocalDatabaseService {
   }
 
   // ========================================================================
+  //   [新增] 全局消息处理 (Global Handler 专用)
+  // ========================================================================
+
+  /// 原子操作：存入消息 + 更新会话摘要 + 累加未读数
+  Future<void> handleIncomingMessage(ChatUiModel msg) async {
+    final db = await database;
+
+    await db.transaction((txn) async {
+      // 1. 存入消息表 (如果已存在会自动覆盖)
+      await _messageStore.record(msg.id).put(txn, msg.toJson());
+
+      // 2. 获取当前会话信息 (为了拿旧的未读数)
+      final convKey = msg.conversationId;
+      final snapshot = await _conversationStore.record(convKey).getSnapshot(txn);
+
+      // 3. 计算新未读数
+      // 逻辑：如果是别人发的消息，旧未读数 + 1；是我自己发的，未读数不变(或为0)
+      int currentUnread = 0;
+      if (snapshot != null) {
+        currentUnread = (snapshot.value['unreadCount'] as int?) ?? 0;
+      }
+
+      final newUnread = msg.isMe ? 0 : currentUnread + 1;
+
+      // 4. 更新会话表 (这步最关键！触发 GlobalUnreadProvider 更新红点)
+      // 使用 merge: true，确保不丢失其他字段(如置顶状态)
+      await _conversationStore.record(convKey).put(txn, {
+        ...(snapshot?.value ?? {'id': convKey, 'type': 0, 'status': 1}),
+        'lastMsgContent': _getPreviewContent(msg),
+        'lastMsgTime': msg.createdAt,
+        'lastMsgType': msg.type.value, // 确保存入 type int值
+        'unreadCount': newUnread,      //  核心：累加未读数
+      }, merge: true);
+    });
+  }
+
+  /// 辅助方法：生成会话列表的预览文本
+  String _getPreviewContent(ChatUiModel msg) {
+    switch (msg.type) {
+      case MessageType.image: return '[Image]';
+      case MessageType.audio: return '[Voice]';
+      case MessageType.video: return '[Video]';
+      case MessageType.file: return '[File]';
+      case MessageType.location: return '[Location]';
+      case MessageType.recalled: return '[Message Recalled]';
+      default: return msg.content;
+    }
+  }
+
+  /// 专门用于聊天页面：进入房间或收到消息时，清空未读数
+  Future<void> clearUnreadCount(String conversationId) async {
+    final db = await database;
+    // 直接更新字段，Sembast 流会自动感知
+    await _conversationStore.record(conversationId).update(db, {
+      'unreadCount': 0,
+    });
+  }
+
+  // ========================================================================
   //  联系人 (整合了搜索能力)
   // ========================================================================
 

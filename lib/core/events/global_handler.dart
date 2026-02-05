@@ -17,7 +17,9 @@ import 'package:flutter_app/utils/events/event_bus.dart';
 import 'package:flutter_app/utils/events/global_events.dart';
 import '../../app/routes/app_router.dart';
 import '../../theme/design_tokens.g.dart';
+import '../../ui/chat/handlers/global_chat_handler.dart';
 import '../../ui/chat/providers/contact_provider.dart';
+import '../../ui/chat/providers/global_unread_provider.dart';
 import '../../ui/toast/radix_toast.dart';
 import '../providers/socket_provider.dart';
 import '../services/socket/session_manager.dart';
@@ -74,6 +76,13 @@ class _GlobalHandlerState extends ConsumerState<GlobalHandler> {
 
   @override
   Widget build(BuildContext context) {
+
+    // 只要 GlobalHandler 活着，这两个 Provider 就会一直工作
+    // 1. 负责收消息存库
+    ref.watch(globalChatHandlerProvider);
+    // 2. 负责更新红点
+    ref.watch(globalUnreadProvider);
+
     // 监听 Provider 变化，自动重连
     ref.listen<SocketService>(socketServiceProvider, (previous, next) {
       debugPrint(' [GlobalHandler] SocketService updated, re-subscribing...');

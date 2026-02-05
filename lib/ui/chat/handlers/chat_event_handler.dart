@@ -20,6 +20,7 @@ class ChatEventHandler {
   final String _currentUserId;
 
   StreamSubscription? _msgSub, _readStatusSub, _recallSub;
+  StreamSubscription? _debounceSub; //新增这个变量来管理防抖订阅
 
   //  优化 1: 使用 BehaviorSubject 或 PublishSubject 做防抖
   final _readReceiptSubject = PublishSubject<void>();
@@ -51,13 +52,14 @@ class ChatEventHandler {
       _socketService.socket?.off('connect');
       // 离开房间
       _socketService.socket?.emit(SocketEvents.leaveChat, {
-        'roomId': conversationId,
+        'conversationId': conversationId,
       });
     } catch (_) {}
 
     _msgSub?.cancel();
     _readStatusSub?.cancel();
     _recallSub?.cancel();
+    _debounceSub?.cancel();
     _readReceiptSubject.close();
   }
 
@@ -81,7 +83,7 @@ class ChatEventHandler {
   void _joinRoom({bool triggerSync = false}) {
     try {
       _socketService.socket?.emit(SocketEvents.joinChat, {
-        'roomId': conversationId,
+        'conversationId': conversationId,
       });
 
       // 只有明确要求同步时（例如重连），才去调用 ViewModel
@@ -116,50 +118,29 @@ class ChatEventHandler {
   //  事件处理
   // ===========================================================================
 
+  // lib/ui/chat/handlers/chat_event_handler.dart
+
   void _onSocketMessage(Map<String, dynamic> data) async {
     final msg = SocketMessage.fromJson(data);
 
-    // 1. 基础过滤
-    if (msg.conversationId != conversationId ||
-        _processedMsgIds.contains(msg.id)) return;
+    // 1. 基础过滤 (不是这个房间的消息不理)
+    if (msg.conversationId != conversationId) return;
 
-    // 2. 标记处理
-    _processedMsgIds.add(msg.id);
-    if (_processedMsgIds.length > 100) _processedMsgIds.remove(_processedMsgIds.first);
-
-    // 3. 存入数据库 (UI 监听流会自动更新)
-    // 先转 UI 模型
-    var uiMsg = ChatUiModelMapper.fromApiModel(
-      ChatMessage(
-        id: msg.id,
-        content: msg.content,
-        type: msg.type,
-        seqId: msg.seqId,
-        createdAt: msg.createdAt,
-        isSelf: false,
-        meta: msg.meta,
-        sender: msg.sender != null ? ChatSender( // 确保 sender 不为空
-            id: msg.sender!.id,
-            nickname: msg.sender!.nickname,
-            avatar: msg.sender!.avatar
-        ) : null,
-      ),
-      conversationId,
-      _currentUserId,
-    );
-
-    await LocalDatabaseService().saveMessage(uiMsg);
-
-    // [Hot Read 核心优化]
-    // 只要收到别人的消息，且 Handler 存活，就视为“正在阅读”
-    // 我们把生命周期判断下沉到 markAsRead 里，这里只负责“触发意图”
+    // 只有当消息是别人发的时候，才需要处理已读和红点
     if (msg.senderId != _currentUserId) {
+
+      // 1. 告诉服务器：我正在看，这消息已读了
+      // (这是副作用，数据库流做不到这点)
       _readReceiptSubject.add(null);
+
+      // 这一步是为了修正 GlobalHandler 的“无脑加一”
+      await LocalDatabaseService().clearUnreadCount(conversationId);
     }
   }
 
   void _onReadStatusUpdate(SocketReadEvent event) async {
-    if (event.conversationId != conversationId || event.readerId == _currentUserId) return;
+    //  [修复 3] 允许处理自己的已读事件 (多端同步)
+   // if (event.conversationId != conversationId || event.readerId == _currentUserId) return;
 
     if (event.lastReadSeqId > _maxReadSeqId) {
       _maxReadSeqId = event.lastReadSeqId;
@@ -184,9 +165,10 @@ class ChatEventHandler {
   void _setupReadReceiptDebounce() {
     //  防抖时间：500ms
     // 这意味着如果对方 0.1s 发一条，连发 10 条，我们只会在最后一条发完后调用一次 API
-    _readReceiptSubject
+    _debounceSub = _readReceiptSubject
         .debounceTime(const Duration(milliseconds: 500))
         .listen((_) {
+      debugPrint(" [Debounce] 防抖结束，执行 markAsRead");
       markAsRead();
     });
   }
@@ -196,7 +178,14 @@ class ChatEventHandler {
   Future<void> markAsRead() async {
     // 1. 省流防守：如果 App 在后台，不发已读
     // (逻辑：用户都没看屏幕，不能算已读)
-    if (WidgetsBinding.instance.lifecycleState != AppLifecycleState.resumed) {
+    final currentState = WidgetsBinding.instance.lifecycleState;
+    //  5. 核心修复：放宽检查
+    // 如果是 null (通常是刚启动) 或者 resumed (前台)，都允许执行。
+    // 只要不是 paused (后台) 或 detached，我们都认为用户在看。
+    if (currentState != null &&
+        currentState != AppLifecycleState.resumed &&
+        currentState != AppLifecycleState.inactive) {
+      debugPrint(" [MarkRead] App 处于后台 ($currentState)，跳过已读上报");
       return;
     }
 
@@ -209,6 +198,12 @@ class ChatEventHandler {
       // 3. 查账 (获取本地最大 SeqId)
       // 我们告诉后端：“这个 ID 之前的所有消息我都看过了”
       final maxSeqId = await LocalDatabaseService().getMaxSeqId(conversationId);
+
+      // 必须显式告诉数据库：这个会话的未读数归零！
+      // 加上这行，GlobalUnreadProvider 才会收到通知，Tab 红点才会消。
+      await LocalDatabaseService().clearUnreadCount(conversationId);
+
+      debugPrint("🧾 [MarkRead] 查账结果: maxSeqId=$maxSeqId"); //  增加日志
 
       if (maxSeqId != null) {
         // 4. 发送 API 请求

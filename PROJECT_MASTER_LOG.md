@@ -1,12 +1,8 @@
-好的，已根据我们刚刚完成的 **FCM 离线触达（Web/Mobile 双端）** 以及 **后端事件驱动架构重构** 的工作成果，为您更新了 **Grand Master Log**。
-
-当前版本升级为 **v5.2.1**。
-
 ---
 
 # 📜 Lucky IM Project **Grand Master Log** (v4.0 - v5.2.1)
 
-> **🕒 最后更新**: 2026-02-04 23:10 (PST)
+> **🕒 最后更新**: 2026-02-04 23:25 (PST)
 > **🚀 当前版本**: **v5.2.1 (Offline Reachability & Event-Driven)**
 > **🌟 总体进度**: 成功构建基于 Event Emitter 的解耦后端架构，彻底打通 Android/iOS/Web 全平台离线推送与路由跳转，实现高可靠的消息触达闭环。
 

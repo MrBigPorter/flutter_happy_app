@@ -76,7 +76,7 @@ Future<void> main() async {
           designSize: const Size(375, 812),
           minTextAdapt: true,
           splitScreenMode: true,
-          builder: (_, __) => const MyApp(),
+          builder: (_, __) => const AppBootstrap(),
         ),
       ),
     ),

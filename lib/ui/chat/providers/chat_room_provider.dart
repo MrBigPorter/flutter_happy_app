@@ -13,8 +13,8 @@ import '../handlers/chat_event_handler.dart';
 // 控制器 Provider
 final chatControllerProvider = Provider.family.autoDispose<ChatRoomController, String>((ref, conversationId) {
   final socketService = ref.read(socketServiceProvider);
-  final currentUserId = ref.read(luckyProvider).userInfo?.id ?? "";
-
+  final currentUserId = ref.watch(luckyProvider.select((s) => s.userInfo?.id)) ?? '';
+  
   final controller = ChatRoomController(
       socketService,
       conversationId,
