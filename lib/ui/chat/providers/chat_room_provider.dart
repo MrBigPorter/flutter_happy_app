@@ -22,6 +22,11 @@ final chatControllerProvider = Provider.family.autoDispose<ChatRoomController, S
       currentUserId
   );
 
+  //  [核心修改] 创建即启动 (自动挡)
+  // Page 一调 watch，这里就执行，Handler 就跑起来了
+  // 这彻底替代了 Page initState 里的逻辑
+  controller.activate();
+
   ref.onDispose(() => controller.dispose());
   return controller;
 });
@@ -38,30 +43,37 @@ class ChatRoomController with WidgetsBindingObserver {
       String currentUserId,
       ) : _eventHandler = ChatEventHandler(conversationId, ref, socketService, currentUserId)
   {
-    // 1. 初始化 Handler (这里面会触发进房！)
-    _eventHandler.init();
-
-    // 2. 监听生命周期
+    // 监听生命周期
     WidgetsBinding.instance.addObserver(this);
   }
 
+  // [新增] 统一启动入口
+  void activate() {
+    debugPrint("🎬 [Controller] 会话激活: $conversationId");
+    // 启动 Handler (它内部会自动处理 Socket 进房、重连监听、初始已读)
+    _eventHandler.init();
+  }
+
   void dispose() {
+    debugPrint(" [Controller] 会话销毁: $conversationId");
     _eventHandler.dispose();
     WidgetsBinding.instance.removeObserver(this);
   }
 
-  // 切回前台时，自动标记已读
+  // 监听前后台切换 (Warm Read)
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
+      debugPrint("📱 [Controller] 切回前台 -> 触发已读");
       _eventHandler.markAsRead();
+      // 注意：这里不需要调 sync，因为 Socket 如果断了会自动连，连上会触发 Handler 的 connect 事件
     }
   }
 
   // 暴露给外部调用的方法
   void markAsRead() => _eventHandler.markAsRead();
 
-  // 辅助功能：撤回 & 删除 (保留你原来的)
+  // 辅助功能：撤回 & 删除
   Future<void> recallMessage(String messageId) async {
     try {
       final res = await Api.messageRecallApi(MessageRecallRequest(

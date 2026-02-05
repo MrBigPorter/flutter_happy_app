@@ -41,20 +41,14 @@ class _ChatPageState extends ConsumerState<ChatPage> {
   // 面板状态控制
   bool _isPanelOpen = false;
 
-  @override
-  void initState() {
-    super.initState();
-    // 1. 初始化：标记活跃会话 + 标为已读
-    Future.microtask(() {
-      ref.read(activeConversationIdProvider.notifier).state =
-          widget.conversationId;
-    });
-  }
+  // 已删除 initState！
+  // 现在的启动逻辑全部由 chatControllerProvider 自动接管
+  // @override void initState() { ... }
 
   @override
   void dispose() {
     _scrollController.dispose();
-    // 离开页面时，清除活跃会话标记
+    // 离开页面时，清除活跃会话标记 (保持这个清理逻辑是安全的)
     try {
       ref.read(activeConversationIdProvider.notifier).state = null;
     } catch (_) {}
@@ -65,13 +59,10 @@ class _ChatPageState extends ConsumerState<ChatPage> {
 
   void _togglePanel() {
     if (_isPanelOpen) {
-      // 关面板，开键盘
       setState(() => _isPanelOpen = false);
       FocusScope.of(context).requestFocus();
     } else {
-      // 关键盘，开面板
       FocusScope.of(context).unfocus();
-      // 延迟一点点，等键盘下去再把面板顶上来，更丝滑
       Future.delayed(const Duration(milliseconds: 100), () {
         if (mounted) setState(() => _isPanelOpen = true);
       });
@@ -87,13 +78,12 @@ class _ChatPageState extends ConsumerState<ChatPage> {
   Future<bool> _onWillPop() async {
     if (_isPanelOpen) {
       setState(() => _isPanelOpen = false);
-      return false; // 拦截返回键
+      return false;
     }
-    return true; // 允许返回
+    return true;
   }
 
   // --- 发送逻辑代理 ---
-  // 这里可以处理一些 UI 层的操作，比如关面板
   void _handleSendText(String text) {
     ref.read(chatActionServiceProvider(widget.conversationId)).sendText(text);
   }
@@ -102,9 +92,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
     final picker = ImagePicker();
     final image = await picker.pickImage(source: ImageSource.gallery);
     if (image != null) {
-      ref
-          .read(chatActionServiceProvider(widget.conversationId))
-          .sendImage(image);
+      ref.read(chatActionServiceProvider(widget.conversationId)).sendImage(image);
     }
   }
 
@@ -112,9 +100,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
     final picker = ImagePicker();
     final image = await picker.pickImage(source: ImageSource.camera);
     if (image != null) {
-      ref
-          .read(chatActionServiceProvider(widget.conversationId))
-          .sendImage(image);
+      ref.read(chatActionServiceProvider(widget.conversationId)).sendImage(image);
     }
   }
 
@@ -122,9 +108,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
     final picker = ImagePicker();
     final video = await picker.pickVideo(source: ImageSource.gallery);
     if (video != null) {
-      ref
-          .read(chatActionServiceProvider(widget.conversationId))
-          .sendVideo(video);
+      ref.read(chatActionServiceProvider(widget.conversationId)).sendVideo(video);
     }
   }
 
@@ -133,29 +117,16 @@ class _ChatPageState extends ConsumerState<ChatPage> {
   }
 
   void _handleTakeLocation() async {
-    // 1. 关面板
     _closePanel();
-
     try {
-
-
-      // 2. 获取坐标
       final pos = await LocationService.getCurrentPosition();
-
       if (pos != null) {
-        // 3. 获取地址
-        final String address = await LocationService.getAddress(
-            pos.latitude,
-            pos.longitude
-        );
-
+        final String address = await LocationService.getAddress(pos.latitude, pos.longitude);
         String title = "Current Location";
-        print("Resolved address: $address");
         if (address.contains("市")) {
           title = address.split("市").last;
         }
 
-        // 4. 发送
         ref.read(chatActionServiceProvider(widget.conversationId)).sendLocation(
           latitude: pos.latitude,
           longitude: pos.longitude,
@@ -165,13 +136,10 @@ class _ChatPageState extends ConsumerState<ChatPage> {
       }
     } catch (e) {
       debugPrint("Location error: $e");
-
-      //  核心修复：捕获“永久拒绝”异常，引导用户去设置
       final errorStr = e.toString();
       if (errorStr.contains('permanently denied')) {
-        _showPermissionDialog(); // 弹出挽回弹窗
+        _showPermissionDialog();
       } else if (errorStr.contains('Location services are disabled')) {
-        // 提示用户开 GPS
         Geolocator.openLocationSettings();
       } else {
         RadixToast.info("Failed to get location.");
@@ -179,7 +147,6 @@ class _ChatPageState extends ConsumerState<ChatPage> {
     }
   }
 
-  //  新增：权限挽回弹窗
   void _showPermissionDialog() {
     showDialog(
       context: context,
@@ -196,13 +163,9 @@ class _ChatPageState extends ConsumerState<ChatPage> {
           TextButton(
             onPressed: () {
               Navigator.pop(ctx);
-              //  核心魔法：直接跳到 App 设置页
               Geolocator.openAppSettings();
             },
-            child: const Text(
-              'Open Settings',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
+            child: const Text('Open Settings', style: TextStyle(fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -211,36 +174,34 @@ class _ChatPageState extends ConsumerState<ChatPage> {
 
   @override
   Widget build(BuildContext context) {
-    // 使用 ref.watch 监听 Controller。
-    // 虽然我们不需要它的返回值，但这行代码告诉 Riverpod：
-    // "只要这个 ChatPage 还在屏幕上，就千万别销毁 chatControllerProvider！"
+    // 只要这行代码在，Controller 就会被创建并 activate()
+    // 进房、Socket监听、增量同步、已读标记... 全部自动运行！
     ref.watch(chatControllerProvider(widget.conversationId));
+
+    // 顺便在这里维护一下活跃 ID (为了列表页高亮)，这属于 UI 状态
+    Future.microtask(() {
+      if (mounted) {
+        ref.read(activeConversationIdProvider.notifier).state = widget.conversationId;
+      }
+    });
 
     // 1. 数据源
     final chatState = ref.watch(chatViewModelProvider(widget.conversationId));
-    final viewModel = ref.read(
-      chatViewModelProvider(widget.conversationId).notifier,
-    );
+    final viewModel = ref.read(chatViewModelProvider(widget.conversationId).notifier);
     final messages = chatState.messages;
 
     // 2. 发送服务
-    final actionService = ref.read(
-      chatActionServiceProvider(widget.conversationId),
-    );
+    final actionService = ref.read(chatActionServiceProvider(widget.conversationId));
 
     // 3. 详情信息
     final asyncDetail = ref.watch(chatDetailProvider(widget.conversationId));
-    final bool isGroup =
-        asyncDetail.valueOrNull?.type == ConversationType.group;
+    final bool isGroup = asyncDetail.valueOrNull?.type == ConversationType.group;
 
     return WillPopScope(
       onWillPop: _onWillPop,
       child: Scaffold(
         backgroundColor: context.bgPrimary,
-        // 关键：允许键盘顶起 Body
         resizeToAvoidBottomInset: true,
-
-        // ================= APP BAR =================
         appBar: AppBar(
           backgroundColor: context.bgPrimary,
           surfaceTintColor: Colors.transparent,
@@ -249,18 +210,8 @@ class _ChatPageState extends ConsumerState<ChatPage> {
           titleSpacing: 0,
           leadingWidth: 40,
           leading: IconButton(
-            icon: Icon(
-              Icons.arrow_back_ios_new,
-              color: context.textPrimary900,
-              size: 22.sp,
-            ),
-            onPressed: () {
-              if (context.canPop()) {
-                context.pop();
-              } else {
-                context.go('/conversations');
-              }
-            },
+            icon: Icon(Icons.arrow_back_ios_new, color: context.textPrimary900, size: 22.sp),
+            onPressed: () => context.canPop() ? context.pop() : context.go('/conversations'),
           ),
           title: Row(
             children: [
@@ -269,19 +220,11 @@ class _ChatPageState extends ConsumerState<ChatPage> {
                 backgroundColor: Colors.grey[200],
                 backgroundImage: asyncDetail.valueOrNull?.avatar != null
                     ? CachedNetworkImageProvider(
-                        UrlResolver.resolveImage(
-                          context,
-                          asyncDetail.value!.avatar!,
-                          logicalWidth: 36,
-                        ),
-                      )
+                  UrlResolver.resolveImage(context, asyncDetail.value!.avatar!, logicalWidth: 36),
+                )
                     : null,
                 child: asyncDetail.valueOrNull?.avatar == null
-                    ? Icon(
-                        Icons.person,
-                        color: context.textSecondary700,
-                        size: 20.sp,
-                      )
+                    ? Icon(Icons.person, color: context.textSecondary700, size: 20.sp)
                     : null,
               ),
               SizedBox(width: 10.w),
@@ -291,11 +234,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
                   children: [
                     Text(
                       asyncDetail.valueOrNull?.name ?? widget.title,
-                      style: TextStyle(
-                        fontSize: 17.sp,
-                        fontWeight: FontWeight.w600,
-                        color: context.textPrimary900,
-                      ),
+                      style: TextStyle(fontSize: 17.sp, fontWeight: FontWeight.w600, color: context.textPrimary900),
                       overflow: TextOverflow.ellipsis,
                     ),
                   ],
@@ -305,44 +244,26 @@ class _ChatPageState extends ConsumerState<ChatPage> {
           ),
           actions: [
             IconButton(
-              icon: Icon(
-                Icons.more_horiz,
-                color: context.textPrimary900,
-                size: 24.sp,
-              ),
+              icon: Icon(Icons.more_horiz, color: context.textPrimary900, size: 24.sp),
               onPressed: () {
                 if (isGroup) {
-                  appRouter.push(
-                    '/chat/group/profile/${widget.conversationId}',
-                  );
+                  appRouter.push('/chat/group/profile/${widget.conversationId}');
                 } else {
-                  appRouter.push(
-                    '/chat/direct/profile/${widget.conversationId}',
-                  );
+                  appRouter.push('/chat/direct/profile/${widget.conversationId}');
                 }
               },
             ),
             SizedBox(width: 8.w),
           ],
         ),
-
-        // ================= BODY =================
         body: Column(
           children: [
-            // 1. 消息列表 (占满剩余空间)
             Expanded(
-              //  修改点：使用 Builder 包裹，处理 Loading 和 空状态
               child: Builder(
                 builder: (context) {
-                  // A. 只有在【完全没数据】且【正在初始化】时，才显示全屏 Loading
                   if (messages.isEmpty && chatState.isInitializing) {
-                    return  Center(child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: context.textBrandPrimary900,
-                    ));
+                    return Center(child: CircularProgressIndicator(strokeWidth: 2, color: context.textBrandPrimary900));
                   }
-
-                  // B. 【完全没数据】且【初始化结束】 -> 显示空状态插画
                   if (messages.isEmpty && !chatState.isInitializing) {
                     return Center(
                       child: Column(
@@ -355,9 +276,6 @@ class _ChatPageState extends ConsumerState<ChatPage> {
                       ),
                     );
                   }
-
-                  // C. 【有数据】 -> 直接显示列表 (Data First)
-                  // 原来的 GestureDetector 代码放这里
                   return GestureDetector(
                     onTap: () {
                       FocusScope.of(context).unfocus();
@@ -374,20 +292,17 @@ class _ChatPageState extends ConsumerState<ChatPage> {
                       },
                       child: ListView.builder(
                         controller: _scrollController,
-                        reverse: true, // 倒序
+                        reverse: true,
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                        // +1 是为了显示顶部的 loading/没有更多 提示
                         itemCount: messages.length + 1,
                         itemBuilder: (context, index) {
-                          // --- 顶部状态栏 ---
                           if (index == messages.length) {
                             if (chatState.hasMore) {
                               return Container(
                                 padding: const EdgeInsets.symmetric(vertical: 15),
                                 alignment: Alignment.center,
                                 child: SizedBox(
-                                    width: 20,
-                                    height: 20,
+                                    width: 20, height: 20,
                                     child: CircularProgressIndicator(strokeWidth: 2, color: context.textBrandPrimary900)
                                 ),
                               );
@@ -395,18 +310,12 @@ class _ChatPageState extends ConsumerState<ChatPage> {
                               return Container(
                                 padding: const EdgeInsets.symmetric(vertical: 15),
                                 alignment: Alignment.center,
-                                child: Text(
-                                  "—— No more history ——",
-                                  style: TextStyle(color: Colors.grey[400], fontSize: 12),
-                                ),
+                                child: Text("—— No more history ——", style: TextStyle(color: Colors.grey[400], fontSize: 12)),
                               );
                             }
                           }
-
-                          // --- 消息气泡 ---
                           final msg = messages[index];
                           bool showReadStatus = msg.isMe && msg.status == MessageStatus.read && index == 0;
-
                           return ChatBubble(
                             key: ValueKey(msg.id),
                             isGroup: isGroup,
@@ -421,63 +330,29 @@ class _ChatPageState extends ConsumerState<ChatPage> {
                 },
               ),
             ),
-
-            // 2. 输入框 (始终在底部，会被键盘顶起)
             ModernChatInputBar(
               conversationId: widget.conversationId,
-              // --- 基础回调 ---
               onSend: _handleSendText,
               onSendVoice: actionService.sendVoiceMessage,
-              // --- 这些其实不需要了，因为逻辑都在 Menu 里，为了兼容旧接口先留着空 ---
               onSendImage: (file) => actionService.sendImage(file),
               onSendVideo: (file) => actionService.sendVideo(file),
-
-              // ---  核心交互回调 ---
               onAddPressed: _togglePanel,
-              // 点击加号 -> 切换面板
-              onTextFieldTap: _closePanel, // 点击输入框 -> 收起面板
+              onTextFieldTap: _closePanel,
             ),
-
-            // 3. 全能菜单面板 (隐藏在最下方)
-            // 当 _isPanelOpen 为 true 时，它会撑开高度，把上面的 InputBar 顶上去
             AnimatedContainer(
               duration: const Duration(milliseconds: 250),
               curve: Curves.easeOutQuad,
-              height: _isPanelOpen
-                  ? 280.h + MediaQuery.of(context).padding.bottom
-                  : 0,
+              height: _isPanelOpen ? 280.h + MediaQuery.of(context).padding.bottom : 0,
               color: context.bgPrimary,
-              // 适配 iPhone 底部横条
               child: SingleChildScrollView(
                 physics: const NeverScrollableScrollPhysics(),
                 child: ChatActionSheet(
                   actions: [
-                    ActionItem(
-                      label: "Photos",
-                      icon: Icons.photo_library,
-                      onTap: _handlePickImage,
-                    ),
-                    ActionItem(
-                      label: "Camera",
-                      icon: Icons.camera_alt,
-                      onTap: _handleTakePhoto,
-                    ),
-                    ActionItem(
-                      label: "Video",
-                      icon: Icons.videocam,
-                      onTap: _handlePickVideo,
-                    ),
-                    // 预留位置
-                    ActionItem(
-                      label: "File",
-                      icon: Icons.folder,
-                      onTap: _handleTakeFile,
-                    ),
-                    ActionItem(
-                      label: "Location",
-                      icon: Icons.location_on,
-                      onTap: _handleTakeLocation,
-                    ),
+                    ActionItem(label: "Photos", icon: Icons.photo_library, onTap: _handlePickImage),
+                    ActionItem(label: "Camera", icon: Icons.camera_alt, onTap: _handleTakePhoto),
+                    ActionItem(label: "Video", icon: Icons.videocam, onTap: _handlePickVideo),
+                    ActionItem(label: "File", icon: Icons.folder, onTap: _handleTakeFile),
+                    ActionItem(label: "Location", icon: Icons.location_on, onTap: _handleTakeLocation),
                   ],
                 ),
               ),
