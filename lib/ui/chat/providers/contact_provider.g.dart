@@ -302,7 +302,7 @@ final contactListProvider =
 );
 
 typedef _$ContactList = AutoDisposeAsyncNotifier<List<ChatUser>>;
-String _$friendRequestListHash() => r'bb11941069d639b8029f12f13fbec9712464740e';
+String _$friendRequestListHash() => r'f0f1b2cc5038301d597d6540df99ef25550d9b88';
 
 /// See also [FriendRequestList].
 @ProviderFor(FriendRequestList)
@@ -464,7 +464,7 @@ class _AddFriendControllerProviderElement
 }
 
 String _$handleRequestControllerHash() =>
-    r'756247829bf0265191d0bf9d86eb762153a9cf94';
+    r'e2ae1f0b17b807e1493dc323bd04b394f1e2978f';
 
 /// See also [HandleRequestController].
 @ProviderFor(HandleRequestController)

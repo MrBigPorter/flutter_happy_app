@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:rxdart/rxdart.dart';
 
 import 'package:flutter_app/core/services/socket/socket_service.dart';
-import 'package:flutter_app/ui/chat/models/chat_ui_model.dart';
 import 'package:flutter_app/ui/chat/services/database/local_database_service.dart';
 import 'package:flutter_app/ui/chat/providers/conversation_provider.dart';
 import 'package:flutter_app/core/api/lucky_api.dart';
@@ -20,9 +19,9 @@ class ChatEventHandler {
   final String _currentUserId;
 
   StreamSubscription? _msgSub, _readStatusSub, _recallSub;
-  StreamSubscription? _debounceSub; //新增这个变量来管理防抖订阅
+  StreamSubscription? _debounceSub; // New variable to manage debounce subscription
 
-  //  优化 1: 使用 BehaviorSubject 或 PublishSubject 做防抖
+  // Optimization 1: Use BehaviorSubject or PublishSubject for debouncing
   final _readReceiptSubject = PublishSubject<void>();
   final Set<String> _processedMsgIds = {};
 
@@ -36,21 +35,19 @@ class ChatEventHandler {
       );
 
   void init() {
-
     _setupSubscriptions();
     _setupReadReceiptDebounce();
     _setupJoinRoomLogic();
 
     Future.microtask(() => markAsRead());
-
   }
 
   void dispose() {
-    debugPrint(" [ChatEventHandler] 销毁: $conversationId");
+    debugPrint(" [ChatEventHandler] Disposed: $conversationId");
 
     try {
       _socketService.socket?.off('connect');
-      // 离开房间
+      // Leave room
       _socketService.socket?.emit(SocketEvents.leaveChat, {
         'conversationId': conversationId,
       });
@@ -64,14 +61,14 @@ class ChatEventHandler {
   }
 
   // ===========================================================================
-  // 进房逻辑
+  // Join Room Logic
   // ===========================================================================
 
   void _setupJoinRoomLogic() {
     final socket = _socketService.socket;
 
     socket?.on('connect', (_) {
-      debugPrint(" [WS] Socket 重连成功，重新进房: $conversationId");
+      debugPrint(" [WS] Socket reconnected, re-joining room: $conversationId");
       _joinRoom(triggerSync: true);
     });
 
@@ -86,7 +83,7 @@ class ChatEventHandler {
         'conversationId': conversationId,
       });
 
-      // 只有明确要求同步时（例如重连），才去调用 ViewModel
+      // Only call ViewModel when synchronization is explicitly requested (e.g., reconnection)
       if (triggerSync) {
         Future.microtask(() {
           try {
@@ -95,17 +92,17 @@ class ChatEventHandler {
             );
             notifier.performIncrementalSync();
           } catch (e) {
-            debugPrint(" [WS-Path] 触发同步失败: $e");
+            debugPrint(" [WS-Path] Trigger sync failed: $e");
           }
         });
       }
     } catch (e) {
-      debugPrint(" [WS] 进房失败: $e");
+      debugPrint(" [WS] Join room failed: $e");
     }
   }
 
   // ===========================================================================
-  //  Socket 监听
+  // Socket Listeners
   // ===========================================================================
 
   void _setupSubscriptions() {
@@ -115,32 +112,30 @@ class ChatEventHandler {
   }
 
   // ===========================================================================
-  //  事件处理
+  // Event Handling
   // ===========================================================================
-
-  // lib/ui/chat/handlers/chat_event_handler.dart
 
   void _onSocketMessage(Map<String, dynamic> data) async {
     final msg = SocketMessage.fromJson(data);
 
-    // 1. 基础过滤 (不是这个房间的消息不理)
+    // 1. Basic filtering (ignore messages not from this room)
     if (msg.conversationId != conversationId) return;
 
-    // 只有当消息是别人发的时候，才需要处理已读和红点
+    // Only process read status and red dots when the message is sent by others
     if (msg.senderId != _currentUserId) {
 
-      // 1. 告诉服务器：我正在看，这消息已读了
-      // (这是副作用，数据库流做不到这点)
+      // 1. Tell server: I am reading, this message is read
+      // (Side effect, DB stream cannot do this)
       _readReceiptSubject.add(null);
 
-      // 这一步是为了修正 GlobalHandler 的“无脑加一”
+      // This step is to fix the "mindless increment" of GlobalHandler
       await LocalDatabaseService().clearUnreadCount(conversationId);
     }
   }
 
   void _onReadStatusUpdate(SocketReadEvent event) async {
-    //  [修复 3] 允许处理自己的已读事件 (多端同步)
-   // if (event.conversationId != conversationId || event.readerId == _currentUserId) return;
+    // [Fix 3] Allow processing own read events (multi-device sync)
+    // if (event.conversationId != conversationId || event.readerId == _currentUserId) return;
 
     if (event.lastReadSeqId > _maxReadSeqId) {
       _maxReadSeqId = event.lastReadSeqId;
@@ -159,64 +154,65 @@ class ChatEventHandler {
   }
 
   // ===========================================================================
-  //  已读回执逻辑 (核心闭环)
+  // Read Receipt Logic (Core Loop)
   // ===========================================================================
 
   void _setupReadReceiptDebounce() {
-    //  防抖时间：500ms
-    // 这意味着如果对方 0.1s 发一条，连发 10 条，我们只会在最后一条发完后调用一次 API
+    // Debounce time: 500ms
+    // This means if the other party sends 10 messages every 0.1s,
+    // we only call API once after the last one.
     _debounceSub = _readReceiptSubject
         .debounceTime(const Duration(milliseconds: 500))
         .listen((_) {
-      debugPrint(" [Debounce] 防抖结束，执行 markAsRead");
+      debugPrint(" [Debounce] Debounce ended, executing markAsRead");
       markAsRead();
     });
   }
 
-  /// 标记已读 (全能入口)
-  /// 支持 Cold Read (进房), Warm Read (切回), Hot Read (在线)
+  /// Mark as read (Universal Entry)
+  /// Supports Cold Read (Join), Warm Read (Switch back), Hot Read (Online)
   Future<void> markAsRead() async {
-    // 1. 省流防守：如果 App 在后台，不发已读
-    // (逻辑：用户都没看屏幕，不能算已读)
+    // 1. Traffic saving defense: If App is in background, do not send read receipt
+    // (Logic: user is not looking at screen, counts as unread)
     final currentState = WidgetsBinding.instance.lifecycleState;
-    //  5. 核心修复：放宽检查
-    // 如果是 null (通常是刚启动) 或者 resumed (前台)，都允许执行。
-    // 只要不是 paused (后台) 或 detached，我们都认为用户在看。
+    // 5. Core Fix: Relax checks.
+    // If null (usually fresh start) or resumed (foreground), execution is allowed.
+    // As long as it's not paused (background) or detached, we assume the user is watching.
     if (currentState != null &&
         currentState != AppLifecycleState.resumed &&
         currentState != AppLifecycleState.inactive) {
-      debugPrint(" [MarkRead] App 处于后台 ($currentState)，跳过已读上报");
+      debugPrint(" [MarkRead] App is in background ($currentState), skipping read report");
       return;
     }
 
     try {
-      // 2. 乐观更新 (Optimistic Update)
-      // 先把本地红点消了，让用户觉得“秒回”
-      // 这一步会更新数据库 Conversation 表，触发 GlobalUnreadProvider
+      // 2. Optimistic Update
+      // Clear local red dot first to make user feel "instant response"
+      // This step updates the Conversation table in DB, triggering GlobalUnreadProvider
       _ref.read(conversationListProvider.notifier).clearUnread(conversationId);
 
-      // 3. 查账 (获取本地最大 SeqId)
-      // 我们告诉后端：“这个 ID 之前的所有消息我都看过了”
+      // 3. Audit (Get local max SeqId)
+      // We tell backend: "I have read all messages before this ID"
       final maxSeqId = await LocalDatabaseService().getMaxSeqId(conversationId);
 
-      // 必须显式告诉数据库：这个会话的未读数归零！
-      // 加上这行，GlobalUnreadProvider 才会收到通知，Tab 红点才会消。
+      // Must explicitly tell DB: Unread count for this conversation is zero!
+      // With this line, GlobalUnreadProvider gets notified, and Tab red dot disappears.
       await LocalDatabaseService().clearUnreadCount(conversationId);
 
-      debugPrint("🧾 [MarkRead] 查账结果: maxSeqId=$maxSeqId"); //  增加日志
+      debugPrint("🧾 [MarkRead] Audit result: maxSeqId=$maxSeqId"); // Added log
 
       if (maxSeqId != null) {
-        // 4. 发送 API 请求
+        // 4. Send API request
         await Api.messageMarkAsReadApi(
           MessageMarkReadRequest(
             conversationId: conversationId,
             maxSeqId: maxSeqId,
           ),
         );
-        debugPrint(" [MarkRead] 已读上报成功: maxSeqId=$maxSeqId");
+        debugPrint(" [MarkRead] Read report successful: maxSeqId=$maxSeqId");
       }
     } catch (e) {
-      debugPrint(" [MarkRead] 已读上报失败: $e");
+      debugPrint(" [MarkRead] Read report failed: $e");
     }
   }
 
