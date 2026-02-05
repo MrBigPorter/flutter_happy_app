@@ -1,8 +1,5 @@
 
-import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_app/ui/chat/services/database/local_database_service.dart';
-import 'package:flutter_app_badger/flutter_app_badger.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sembast/sembast.dart';
 
@@ -30,36 +27,7 @@ final globalUnreadProvider = StreamProvider<int>((ref) async* {
     return total;
   });
 
-  // 4. yield the stream
-  await for(final total in stream) {
-    // update app icon badge
-    _updateAppIconBadge(total);
-    // yield total unread count
-    yield total;
-  }
-
+  // give unread count to ui
+  yield* stream;
 });
 
-// update app icon badge count
-void _updateAppIconBadge(int count) {
-  if(kIsWeb){
-    final String title = count > 0 ? '($count) ' : '';
-    // 1. 修改点：直接修改 document.title 来显示未读数
-    SystemChrome.setApplicationSwitcherDescription(
-      ApplicationSwitcherDescription(
-        label: '$title Chat',
-        primaryColor: 0xFF000000,
-      ),
-    );
-    return;
-  }
-  FlutterAppBadger.isAppBadgeSupported().then((supported) {
-    if (supported) {
-      if (count > 0) {
-        FlutterAppBadger.updateBadgeCount(count);
-      } else {
-        FlutterAppBadger.removeBadge();
-      }
-    }
-  });
-}

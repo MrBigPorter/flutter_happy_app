@@ -174,16 +174,16 @@ class ChatEventHandler {
   Future<void> markAsRead() async {
     // 1. Traffic saving defense: If App is in background, do not send read receipt
     // (Logic: user is not looking at screen, counts as unread)
-    final currentState = WidgetsBinding.instance.lifecycleState;
+    //final currentState = WidgetsBinding.instance.lifecycleState;
     // 5. Core Fix: Relax checks.
     // If null (usually fresh start) or resumed (foreground), execution is allowed.
     // As long as it's not paused (background) or detached, we assume the user is watching.
-    if (currentState != null &&
+    /*if (currentState != null &&
         currentState != AppLifecycleState.resumed &&
         currentState != AppLifecycleState.inactive) {
       debugPrint(" [MarkRead] App is in background ($currentState), skipping read report");
       return;
-    }
+    }*/
 
     try {
       // 2. Optimistic Update
@@ -197,7 +197,7 @@ class ChatEventHandler {
 
       // Must explicitly tell DB: Unread count for this conversation is zero!
       // With this line, GlobalUnreadProvider gets notified, and Tab red dot disappears.
-      await LocalDatabaseService().clearUnreadCount(conversationId);
+      await LocalDatabaseService().markMessagesAsRead(conversationId, maxSeqId ?? 0);
 
       debugPrint("🧾 [MarkRead] Audit result: maxSeqId=$maxSeqId"); // Added log
 

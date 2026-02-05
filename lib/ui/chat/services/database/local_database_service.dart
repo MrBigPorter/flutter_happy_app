@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart'; // kIsWeb
+import 'package:flutter/services.dart';
 import 'package:flutter_app/utils/url_resolver.dart';
+import 'package:flutter_app_badger/flutter_app_badger.dart';
 import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:sembast/sembast.dart';
@@ -206,6 +208,52 @@ class LocalDatabaseService {
         'unreadCount': newUnread,      //  核心：累加未读数
       }, merge: true);
     });
+
+    // =================================================================
+    //  核心修复：把更新角标的逻辑从 UI 搬到这里！
+    // 只要消息入库成功，立刻计算全局总数并刷新角标，不依赖 UI 层。
+    // =================================================================
+    _syncGlobalBadge();
+  }
+
+  /// [新增] 私有方法：计算总未读并更新桌面角标
+  Future<void> _syncGlobalBadge() async {
+    try {
+      final db = await database;
+      final snapshots = await _conversationStore.find(db);
+
+      int total = 0;
+      for (var snap in snapshots) {
+        final count = (snap.value['unreadCount'] as int?) ?? 0;
+        total += count;
+      }
+
+
+      if(kIsWeb){
+        final String title = total > 0 ? '($total) ' : '';
+        // 1. 修改点：直接修改 document.title 来显示未读数
+        SystemChrome.setApplicationSwitcherDescription(
+          ApplicationSwitcherDescription(
+            label: '$title Chat',
+            primaryColor: 0xFF000000,
+          ),
+        );
+        return;
+      }
+
+
+      // 直接调用原生层更新，即使 App 在后台也能跑
+      if (await FlutterAppBadger.isAppBadgeSupported()) {
+        if (total > 0) {
+          FlutterAppBadger.updateBadgeCount(total);
+          debugPrint(" [DB] 后台角标更新成功: $total");
+        } else {
+          FlutterAppBadger.removeBadge();
+        }
+      }
+    } catch (e) {
+      debugPrint(" [DB] 角标更新失败: $e");
+    }
   }
 
   /// 辅助方法：生成会话列表的预览文本
@@ -339,20 +387,52 @@ class LocalDatabaseService {
 
   Future<void> markMessagesAsRead(String conversationId, int maxSeqId) async {
     final db = await database;
-    final finder = Finder(
-      filter: Filter.and([
+
+    await db.transaction((txn) async {
+      // 1. 找出需要标记为已读的消息 (Finder 用在这里是对的，因为 find() 需要 Finder)
+      final finder = Finder(
+        filter: Filter.and([
+          Filter.equals('conversationId', conversationId),
+          Filter.equals('isMe', false),
+          Filter.lessThanOrEquals('seqId', maxSeqId),
+          Filter.notEquals('status', 'read'),
+        ]),
+      );
+
+      final records = await _messageStore.find(txn, finder: finder);
+
+      if (records.isEmpty) return;
+
+      // 2. 批量更新状态
+      for (var record in records) {
+        var map = Map<String, dynamic>.from(record.value);
+        map['status'] = 'read';
+        await _messageStore.record(record.key).put(txn, map);
+      }
+
+
+      final unreadFilter = Filter.and([
         Filter.equals('conversationId', conversationId),
-        Filter.equals('isMe', true),
-        Filter.lessThanOrEquals('seqId', maxSeqId),
+        Filter.equals('isMe', false),
         Filter.notEquals('status', 'read'),
-      ]),
-    );
-    final records = await _messageStore.find(db, finder: finder);
-    for (var record in records) {
-      var map = Map<String, dynamic>.from(record.value);
-      map['status'] = 'read';
-      await _messageStore.record(record.key).put(db, map);
-    }
+      ]);
+
+      final remainingUnreadCount = await _messageStore.count(txn, filter: unreadFilter);
+
+      // 4. 更新会话表
+      final convRecord = _conversationStore.record(conversationId);
+      final convSnapshot = await convRecord.getSnapshot(txn);
+
+      if (convSnapshot != null) {
+        await convRecord.update(txn, {
+          'unreadCount': remainingUnreadCount,
+        });
+        debugPrint(" [DB] 已读同步: 会话 $conversationId 未读数修正为 $remainingUnreadCount");
+      }
+    });
+
+    // 5. 刷新角标
+    _syncGlobalBadge();
   }
 
   Future<void> deleteMessage(String msgId) async {
