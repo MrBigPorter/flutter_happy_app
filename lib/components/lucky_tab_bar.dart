@@ -1,14 +1,13 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_app/core/store/auth/auth_provider.dart';
-import 'package:flutter_app/core/store/lucky_store.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_app/common.dart';
 import 'package:flutter_app/motion/motion_ext.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 
-import '../ui/chat/providers/conversation_provider.dart';
+import '../ui/chat/providers/global_unread_provider.dart';
 
 class LuckyTabBar extends ConsumerWidget {
   final Widget child;
@@ -55,19 +54,9 @@ class LuckyTabBar extends ConsumerWidget {
     );
     if (currentIndex == -1) currentIndex = 0;
 
-    // 2. 监听总未读数
-    final totalUnread = isAuthenticated
-        ? ref.watch(
-            conversationListProvider.select(
-              (asyncList) =>
-                  asyncList.valueOrNull?.fold<int>(
-                    0,
-                    (sum, item) => sum + item.unreadCount,
-                  ) ??
-                  0, // 如果正在加载或数据为空，则返回 0
-            ),
-          )
-        : 0;
+    //  修改点：直接监听 globalUnreadProvider
+    final totalUnreadAsync = ref.watch(globalUnreadProvider);
+    final totalUnread = totalUnreadAsync.value ?? 0; // 默认 0
 
     return Scaffold(
       body: child,

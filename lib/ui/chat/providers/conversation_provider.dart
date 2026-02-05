@@ -115,6 +115,11 @@ class ConversationList extends _$ConversationList {
       newList.insert(0, newConv);
 
       state = AsyncData(newList);
+
+      //  [新增核心代码] 同步写入数据库！
+      // 只有这行执行了，GlobalUnreadProvider 才会收到通知！
+      await LocalDatabaseService().saveConversations([newConv]);
+
     } else {
       // [优化 1] 收到新消息但不在列表中时，建议使用 refresh() 触发分页拉取
       // 而不是一个个去查详情，这样能保证列表的连续性
