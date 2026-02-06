@@ -199,7 +199,7 @@ class ChatEventHandler {
       // With this line, GlobalUnreadProvider gets notified, and Tab red dot disappears.
       await LocalDatabaseService().markMessagesAsRead(conversationId, maxSeqId ?? 0);
 
-      debugPrint("🧾 [MarkRead] Audit result: maxSeqId=$maxSeqId"); // Added log
+      debugPrint(" [MarkRead] Audit result: maxSeqId=$maxSeqId"); // Added log
 
       if (maxSeqId != null) {
         // 4. Send API request

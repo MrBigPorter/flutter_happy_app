@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 import 'package:flutter/foundation.dart'; // kIsWeb
 import 'package:flutter/services.dart';
 import 'package:flutter_app/utils/url_resolver.dart';
@@ -16,20 +15,20 @@ import '../../models/conversation.dart';
 import '../../../../utils/asset/asset_manager.dart';
 
 class LocalDatabaseService {
-  /// 构造函数保持为空
+  /// Constructor remains empty
   LocalDatabaseService();
 
   // ---------------------------------------------------------------------------
-  //  核心：静态连接管理 & 挂起等待机制 (Completer)
+  //  Core: Static Connection Management & Suspension/Wait Mechanism (Completer)
   // ---------------------------------------------------------------------------
 
   static Database? _db;
   static String? _currentUserId;
 
-  // 这是一个“红绿灯”。如果数据库还没好，所有请求都会在这里排队等待。
+  // This is a "traffic light". If the database is not ready, all requests will queue here.
   static Completer<Database> _dbCompleter = Completer<Database>();
 
-  //  基础业务 Store
+  //  Basic Business Stores
   static final _messageStore = stringMapStoreFactory.store('messages');
   static final _detailStore = stringMapStoreFactory.store(
     'conversation_details',
@@ -38,39 +37,39 @@ class LocalDatabaseService {
     'conversations',
   );
 
-  //  通讯录 & 搜索 Store
+  //  Contacts & Search Store
   static final _contactStore = stringMapStoreFactory.store('contacts');
 
-  //  倒排索引 Store (Value 必须是 List<Object?> 以兼容数组)
+  //  Inverted Index Store (Value must be List<Object?> to be compatible with arrays)
   static final _indexStore = StoreRef<String, List<Object?>>('search_index');
 
-  /// [核心修改] 获取数据库实例
-  /// 如果数据库未初始化，它不会报错，而是会【卡住等待】，直到 init() 完成。
+  /// [Core Modification] Get database instance
+  /// If the database is not initialized, it won't throw an error but will [pause and wait] until init() completes.
   Future<Database> get database async {
-    // 1. 如果已经好了，直接返回 (最快路径)
+    // 1. If already ready, return directly (fastest path)
     if (_db != null) {
       return _db!;
     }
 
-    // 2. 如果还没好，返回 Future 让调用者等待 (解决 OfflineQueue 报错的关键)
+    // 2. If not ready, return Future to let the caller wait (Key to solving OfflineQueue errors)
     debugPrint(" [LocalDB] Database not ready yet. Waiting...");
     return _dbCompleter.future;
   }
 
-  /// 初始化：传入 userId，打开专属数据库
+  /// Initialize: Open exclusive database for the passed userId
   static Future<void> init(String userId) async {
-    // 1. 如果已经是这个用户的库，且已就绪
+    // 1. If it's already this user's DB and it's ready
     if (_db != null && _currentUserId == userId) {
       if (!_dbCompleter.isCompleted) _dbCompleter.complete(_db);
       return;
     }
 
-    // 2. 如果之前有别的用户登录，先关掉旧的，并重置等待器
+    // 2. If a previous user was logged in, close the old one and reset the waiter
     if (_db != null) {
       debugPrint(" [LocalDB] Closing DB for previous user: $_currentUserId");
       await _db!.close();
       _db = null;
-      _dbCompleter = Completer<Database>(); // 重置红绿灯
+      _dbCompleter = Completer<Database>(); // Reset traffic light
     }
 
     _currentUserId = userId;
@@ -91,7 +90,7 @@ class LocalDatabaseService {
 
       _db = dbInstance;
 
-      //  [关键] 通知所有正在等待的组件 (如 OfflineQueue) 继续执行
+      //  [Key] Notify all waiting components (like OfflineQueue) to proceed
       if (!_dbCompleter.isCompleted) {
         _dbCompleter.complete(_db);
       }
@@ -99,47 +98,47 @@ class LocalDatabaseService {
       debugPrint(" [LocalDB] Initialized successfully: $dbName");
     } catch (e) {
       debugPrint(" [LocalDB] Init failed: $e");
-      // 如果失败，告诉等待者出错了，防止永久卡死
+      // If failed, tell waiters an error occurred to prevent permanent deadlock
       if (!_dbCompleter.isCompleted) _dbCompleter.completeError(e);
       rethrow;
     }
   }
 
-  /// 关闭数据库
+  /// Close database
   static Future<void> close() async {
     if (_db != null) {
       await _db!.close();
       _db = null;
       _currentUserId = null;
-      // 重置等待器，确保后续调用会再次等待 init
+      // Reset waiter, ensuring subsequent calls wait for init again
       _dbCompleter = Completer<Database>();
       debugPrint("🔒 [LocalDB] Database closed.");
     }
   }
 
   // ========================================================================
-  //   搜索引擎内核 (Search Kernel - Sembast Implementation)
+  //   Search Engine Kernel (Sembast Implementation)
   // ========================================================================
 
-  /// 内部方法：更新倒排索引
+  /// Internal method: Update inverted index
   Future<void> _updateSearchIndex(
-    DatabaseClient txn,
-    String id,
-    String text,
-    String type,
-  ) async {
+      DatabaseClient txn,
+      String id,
+      String text,
+      String type,
+      ) async {
     if (text.isEmpty) return;
 
-    // 1. 分词 (Tokenize)
+    // 1. Tokenize
     final Set<String> tokens = {};
     final cleanText = text.toLowerCase();
 
-    // A. 单字切分
+    // A. Single character splitting
     for (int i = 0; i < cleanText.length; i++) {
       tokens.add(cleanText[i]);
     }
 
-    // B. 拼音处理
+    // B. Pinyin processing
     if (RegExp(r'[\u4e00-\u9fa5]').hasMatch(text)) {
       try {
         String pinyinShort = PinyinHelper.getShortPinyin(text).toLowerCase();
@@ -154,7 +153,7 @@ class LocalDatabaseService {
       }
     }
 
-    // 2. 写入倒排索引表
+    // 2. Write to inverted index store
     for (final token in tokens) {
       final key = '$type:$token';
       final record = _indexStore.record(key);
@@ -162,7 +161,7 @@ class LocalDatabaseService {
 
       Set<String> idSet = {};
       if (snapshot != null) {
-        // 这里的 value 是 List<Object?>，需要强转
+        // value here is List<Object?>, needs casting
         idSet = Set<String>.from(snapshot.value as List);
       }
 
@@ -174,49 +173,76 @@ class LocalDatabaseService {
   }
 
   // ========================================================================
-  //   [新增] 全局消息处理 (Global Handler 专用)
+  //   [New] Global Message Handling (Dedicated to Global Handler)
   // ========================================================================
 
-  /// 原子操作：存入消息 + 更新会话摘要 + 累加未读数
+  /// Atomic operation: Save message + Path protection + Update conversation summary + Accumulate unread count
   Future<void> handleIncomingMessage(ChatUiModel msg) async {
     final db = await database;
 
     await db.transaction((txn) async {
-      // 1. 存入消息表 (如果已存在会自动覆盖)
-      await _messageStore.record(msg.id).put(txn, msg.toJson());
+      // 1. Prepare new data (This is from Socket/Sync, contains only URL, no localPath)
+      var finalJson = msg.toJson();
+      final msgId = msg.id;
 
-      // 2. 获取当前会话信息 (为了拿旧的未读数)
+      // ---------------------------------------------------------
+      // 🛡️ Core Fix 1: Path Protection (Retrieve lost localPath)
+      // ---------------------------------------------------------
+
+      // A. Check existing record
+      final existingRecord = await _messageStore.record(msgId).getSnapshot(txn);
+      final exists = existingRecord != null; // Flag if already exists
+
+      if (exists) {
+        final oldData = existingRecord.value;
+        final oldLocalPath = oldData['localPath'] as String?;
+
+        // B. If old data has path, and new data doesn't, force restore it!
+        if (oldLocalPath != null && oldLocalPath.isNotEmpty) {
+          final newPath = finalJson['localPath'] as String?;
+          if (newPath == null || newPath.isEmpty) {
+            finalJson['localPath'] = oldLocalPath; // 👈 Rescued!
+            // debugPrint("🛡️ [DB] Successfully preserved local path: $oldLocalPath");
+          }
+        }
+      }
+
+      // 2. Save blended perfect data (Overwrites old, but path is preserved)
+      await _messageStore.record(msgId).put(txn, finalJson);
+
+      // ---------------------------------------------------------
+      // 🛡️ Core Fix 2: Anti-Chaos Red Dot (Prevent double counting)
+      // ---------------------------------------------------------
+
       final convKey = msg.conversationId;
       final snapshot = await _conversationStore.record(convKey).getSnapshot(txn);
 
-      // 3. 计算新未读数
-      // 逻辑：如果是别人发的消息，旧未读数 + 1；是我自己发的，未读数不变(或为0)
+      // A. Get old unread count
       int currentUnread = 0;
       if (snapshot != null) {
         currentUnread = (snapshot.value['unreadCount'] as int?) ?? 0;
       }
 
-      final newUnread = msg.isMe ? 0 : currentUnread + 1;
+      // B. Only allow +1 if message [did not exist before] AND [is not from me]
+      // (Prevents unread count explosion due to Socket reconnects or duplicate FCM pushes)
+      final shouldIncrement = !exists && !msg.isMe;
+      final newUnread = shouldIncrement ? currentUnread + 1 : currentUnread;
 
-      // 4. 更新会话表 (这步最关键！触发 GlobalUnreadProvider 更新红点)
-      // 使用 merge: true，确保不丢失其他字段(如置顶状态)
+      // 3. Update conversation store (Merge mode)
       await _conversationStore.record(convKey).put(txn, {
         ...(snapshot?.value ?? {'id': convKey, 'type': 0, 'status': 1}),
         'lastMsgContent': _getPreviewContent(msg),
         'lastMsgTime': msg.createdAt,
-        'lastMsgType': msg.type.value, // 确保存入 type int值
-        'unreadCount': newUnread,      //  核心：累加未读数
+        'lastMsgType': msg.type.value,
+        'unreadCount': newUnread,
       }, merge: true);
     });
 
-    // =================================================================
-    //  核心修复：把更新角标的逻辑从 UI 搬到这里！
-    // 只要消息入库成功，立刻计算全局总数并刷新角标，不依赖 UI 层。
-    // =================================================================
+    // 4. Finally refresh global badge
     _syncGlobalBadge();
   }
 
-  /// [新增] 私有方法：计算总未读并更新桌面角标
+  /// [New] Private method: Calculate total unread and update desktop badge
   Future<void> _syncGlobalBadge() async {
     try {
       final db = await database;
@@ -228,10 +254,9 @@ class LocalDatabaseService {
         total += count;
       }
 
-
       if(kIsWeb){
         final String title = total > 0 ? '($total) ' : '';
-        // 1. 修改点：直接修改 document.title 来显示未读数
+        // 1. Modification: Directly modify document.title to show unread count
         SystemChrome.setApplicationSwitcherDescription(
           ApplicationSwitcherDescription(
             label: '$title Chat',
@@ -241,22 +266,21 @@ class LocalDatabaseService {
         return;
       }
 
-
-      // 直接调用原生层更新，即使 App 在后台也能跑
+      // Directly call native layer update, works even if App is in background
       if (await FlutterAppBadger.isAppBadgeSupported()) {
         if (total > 0) {
           FlutterAppBadger.updateBadgeCount(total);
-          debugPrint(" [DB] 后台角标更新成功: $total");
+          debugPrint(" [DB] Background badge update success: $total");
         } else {
           FlutterAppBadger.removeBadge();
         }
       }
     } catch (e) {
-      debugPrint(" [DB] 角标更新失败: $e");
+      debugPrint(" [DB] Badge update failed: $e");
     }
   }
 
-  /// 辅助方法：生成会话列表的预览文本
+  /// Helper method: Generate preview text for conversation list
   String _getPreviewContent(ChatUiModel msg) {
     switch (msg.type) {
       case MessageType.image: return '[Image]';
@@ -269,46 +293,46 @@ class LocalDatabaseService {
     }
   }
 
-  /// 专门用于聊天页面：进入房间或收到消息时，清空未读数
+  /// Specifically for Chat Page: Clear unread count when entering room or receiving message
   Future<void> clearUnreadCount(String conversationId) async {
     final db = await database;
-    // 直接更新字段，Sembast 流会自动感知
+    // Directly update field, Sembast stream will automatically detect
     await _conversationStore.record(conversationId).update(db, {
       'unreadCount': 0,
     });
   }
 
   // ========================================================================
-  //  联系人 (整合了搜索能力)
+  //  Contacts (Integrated Search Capability)
   // ========================================================================
 
-  /// 批量保存联系人 -> 自动触发建索引
+  /// Batch save contacts -> Automatically triggers indexing
   Future<void> saveContacts(List<ChatUser> users) async {
-    final db = await database; // 这里会等待 init 完成
+    final db = await database; // Waits for init completion
     await db.transaction((txn) async {
       for (var user in users) {
-        // 1. 存原始数据
+        // 1. Save raw data
         await _contactStore.record(user.id).put(txn, user.toJson());
-        // 2. 建索引
+        // 2. Build index
         await _updateSearchIndex(txn, user.id, user.nickname, 'user');
       }
     });
   }
 
-  /// 获取所有联系人
+  /// Get all contacts
   Future<List<ChatUser>> getAllContacts() async {
     final db = await database;
     final snapshots = await _contactStore.find(db);
     return snapshots.map((s) => ChatUser.fromJson(s.value)).toList();
   }
 
-  ///  全文检索 (对外暴露接口)
+  /// Full-text search (Exposed interface)
   Future<List<ChatUser>> searchContacts(String query) async {
     if (query.isEmpty) return [];
     final db = await database;
     final cleanQuery = query.toLowerCase();
 
-    // 1. 优先查倒排索引
+    // 1. Prioritize inverted index search
     final indexKey = 'user:$cleanQuery';
     final indexSnapshot = await _indexStore.record(indexKey).getSnapshot(db);
 
@@ -320,7 +344,7 @@ class LocalDatabaseService {
     List<ChatUser> results = [];
 
     if (candidateIds.isNotEmpty) {
-      // 命中索引
+      // Index hit
       final snapshots = await _contactStore
           .records(candidateIds.toList())
           .getSnapshots(db);
@@ -329,7 +353,7 @@ class LocalDatabaseService {
           .map((s) => ChatUser.fromJson(s!.value))
           .toList();
     } else {
-      // 未命中索引，走正则兜底
+      // Index miss, fallback to regex
       final finder = Finder(
         filter: Filter.custom((record) {
           final user = ChatUser.fromJson(record.value as Map<String, dynamic>);
@@ -345,7 +369,7 @@ class LocalDatabaseService {
   }
 
   // ========================================================================
-  //  消息相关业务 (CRUD)
+  //  Message Related Business (CRUD)
   // ========================================================================
 
   Future<void> saveMessage(ChatUiModel msg) async {
@@ -373,9 +397,9 @@ class LocalDatabaseService {
   }
 
   Future<void> updateMessageStatus(
-    String msgId,
-    MessageStatus newStatus,
-  ) async {
+      String msgId,
+      MessageStatus newStatus,
+      ) async {
     final db = await database;
     await _messageStore.record(msgId).update(db, {'status': newStatus.name});
   }
@@ -389,7 +413,7 @@ class LocalDatabaseService {
     final db = await database;
 
     await db.transaction((txn) async {
-      // 1. 找出需要标记为已读的消息 (Finder 用在这里是对的，因为 find() 需要 Finder)
+      // 1. Find messages that need to be marked as read (Finder is correct here as find() needs Finder)
       final finder = Finder(
         filter: Filter.and([
           Filter.equals('conversationId', conversationId),
@@ -403,13 +427,16 @@ class LocalDatabaseService {
 
       if (records.isEmpty) return;
 
-      // 2. 批量更新状态
+      // 2. Batch update status
       for (var record in records) {
         var map = Map<String, dynamic>.from(record.value);
         map['status'] = 'read';
         await _messageStore.record(record.key).put(txn, map);
       }
 
+      // -----------------------------------------------------------
+      // 🔥 Correction: Use Filter directly when counting remaining unread!
+      // -----------------------------------------------------------
 
       final unreadFilter = Filter.and([
         Filter.equals('conversationId', conversationId),
@@ -417,9 +444,10 @@ class LocalDatabaseService {
         Filter.notEquals('status', 'read'),
       ]);
 
+      // ✅ Corrected: Parameter name is filter, not finder
       final remainingUnreadCount = await _messageStore.count(txn, filter: unreadFilter);
 
-      // 4. 更新会话表
+      // 4. Update conversation table
       final convRecord = _conversationStore.record(conversationId);
       final convSnapshot = await convRecord.getSnapshot(txn);
 
@@ -427,11 +455,11 @@ class LocalDatabaseService {
         await convRecord.update(txn, {
           'unreadCount': remainingUnreadCount,
         });
-        debugPrint(" [DB] 已读同步: 会话 $conversationId 未读数修正为 $remainingUnreadCount");
+        debugPrint(" [DB] Read Sync: Conversation $conversationId unread count corrected to $remainingUnreadCount");
       }
     });
 
-    // 5. 刷新角标
+    // 5. Refresh badge
     _syncGlobalBadge();
   }
 
@@ -473,17 +501,17 @@ class LocalDatabaseService {
     return snapshots.map((s) => ChatUiModel.fromJson(s.value)).toList();
   }
 
-  /// 获取本地数据库中该会话的最大 seqId (查账)
+  /// Get max seqId for the conversation in local DB (Audit)
   Future<int?> getMaxSeqId(String conversationId) async {
     final db = await database;
 
     final finder = Finder(
       filter: Filter.and([
         Filter.equals('conversationId', conversationId),
-        // 必须有 seqId 的才算数，发送中的临时消息 seqId 为 null，不计入对账
+        // Must have seqId to count. Sending temp messages have null seqId, excluded from audit.
         Filter.notEquals('seqId', null),
       ]),
-      // 按 seqId 降序取第一个，取最大值
+      // Take the first one by seqId descending order (Max value)
       sortOrders: [SortOrder('seqId', false)],
       limit: 1,
     );
@@ -497,7 +525,7 @@ class LocalDatabaseService {
   }
 
   // ========================================================================
-  //  会话列表相关
+  //  Conversation List Related
   // ========================================================================
 
   Future<void> saveConversations(List<Conversation> list) async {
@@ -516,12 +544,12 @@ class LocalDatabaseService {
     final snapshots = await _conversationStore.find(db, finder: finder);
     return snapshots
         .map((s) {
-          try {
-            return Conversation.fromJson(s.value);
-          } catch (e) {
-            return null;
-          }
-        })
+      try {
+        return Conversation.fromJson(s.value);
+      } catch (e) {
+        return null;
+      }
+    })
         .whereType<Conversation>()
         .toList();
   }
@@ -543,13 +571,13 @@ class LocalDatabaseService {
   }
 
   // ========================================================================
-  //  流监听
+  //  Stream Listeners
   // ========================================================================
 
   Stream<List<ChatUiModel>> watchMessages(
-    String conversationId, {
-    int limit = 50,
-  }) async* {
+      String conversationId, {
+        int limit = 50,
+      }) async* {
     final db = await database;
     final finder = Finder(
       filter: Filter.equals('conversationId', conversationId),
@@ -558,8 +586,8 @@ class LocalDatabaseService {
     );
 
     yield* _messageStore.query(finder: finder).onSnapshots(db).asyncMap((
-      snapshots,
-    ) async {
+        snapshots,
+        ) async {
       final rawModels = snapshots
           .map((snapshot) => ChatUiModel.fromJson(snapshot.value))
           .toList();
@@ -592,7 +620,7 @@ class LocalDatabaseService {
   }
 
   // ========================================================================
-  //  数据预热 (路径处理)
+  //  Data Pre-warming (Path Processing)
   // ========================================================================
 
   Future<List<ChatUiModel>> _prewarmMessages(List<ChatUiModel> models) async {
@@ -603,12 +631,12 @@ class LocalDatabaseService {
       String? thumbPath;
       bool needsUpdate = false;
 
-      // 处理主文件路径
+      // Process main file path
       if (msg.localPath != null && msg.localPath!.isNotEmpty) {
         bool isDeadBlob =
             kIsWeb &&
-            msg.localPath!.startsWith('blob:') &&
-            msg.status == MessageStatus.success;
+                msg.localPath!.startsWith('blob:') &&
+                msg.status == MessageStatus.success;
 
         if (!isDeadBlob) {
           if (msg.localPath!.startsWith('http') ||
@@ -626,7 +654,7 @@ class LocalDatabaseService {
         needsUpdate = true;
       }
 
-      // 处理缩略图路径
+      // Process thumbnail path
       if (msg.meta != null) {
         String? t = msg.meta!['thumb'] ?? msg.meta!['remote_thumb'];
         if (t != null && t.isNotEmpty) {
