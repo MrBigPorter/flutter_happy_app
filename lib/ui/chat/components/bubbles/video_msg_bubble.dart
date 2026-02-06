@@ -1,10 +1,11 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_app/utils/url_resolver.dart';
+import 'package:flutter_app/utils/media/url_resolver.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:video_player/video_player.dart';
 
+import '../../../../utils/media/media_path.dart';
 import '../../models/chat_ui_model.dart';
 import '../../../img/app_image.dart';
 import '../../services/media/video_playback_service.dart';
@@ -46,23 +47,37 @@ class _VideoMsgBubbleState extends State<VideoMsgBubble> {
 
     // A: localPath
     final lp = widget.message.localPath;
-    if (lp != null && lp.startsWith('/')) {
-      final f = File(lp);
-      if (f.existsSync()) return f;
+    if (lp != null) {
+      //  CHANGED
+      final t = MediaPath.classify(lp);
+      if (t == MediaPathType.localAbs || t == MediaPathType.fileUri) {
+        final f = lp.startsWith('file://') ? File(Uri.parse(lp).toFilePath()) : File(lp);
+        if (f.existsSync()) return f;
+      }
     }
 
     // B: resolvedPath
     final rp = widget.message.resolvedPath;
-    if (rp != null && rp.startsWith('/')) {
-      final f = File(rp);
-      if (f.existsSync()) return f;
+    if (rp != null) {
+      //  CHANGED
+      final t = MediaPath.classify(rp);
+      if (t == MediaPathType.localAbs || t == MediaPathType.fileUri) {
+        final f = rp.startsWith('file://') ? File(Uri.parse(rp).toFilePath()) : File(rp);
+        if (f.existsSync()) return f;
+      }
     }
 
     // C: cache
     final cachedPath = ChatActionService.getPathFromCache(widget.message.id);
-    if (cachedPath != null && cachedPath.startsWith('/')) {
-      final f = File(cachedPath);
-      if (f.existsSync()) return f;
+    if (cachedPath != null) {
+      //  CHANGED
+      final t = MediaPath.classify(cachedPath);
+      if (t == MediaPathType.localAbs || t == MediaPathType.fileUri) {
+        final f = cachedPath.startsWith('file://')
+            ? File(Uri.parse(cachedPath).toFilePath())
+            : File(cachedPath);
+        if (f.existsSync()) return f;
+      }
     }
 
     return null;
@@ -93,13 +108,22 @@ class _VideoMsgBubbleState extends State<VideoMsgBubble> {
       if (localFile != null) {
         newController = VideoPlayerController.file(localFile);
       } else {
+        //  CHANGED: 选择远端源：优先 resolvedPath(若是远端)，否则 content
         String netSource = widget.message.content;
-        if (widget.message.resolvedPath != null &&
-            widget.message.resolvedPath!.startsWith('http')) {
-          netSource = widget.message.resolvedPath!;
+        final rp = widget.message.resolvedPath;
+
+        if (rp != null && MediaPath.isRemote(rp)) {
+          netSource = rp;
         }
 
         final url = _resolveNetworkUrl(netSource);
+
+        //  CHANGED: 防呆：url 必须是远端（http/uploads/relative），否则不要走 networkUrl
+        final t = MediaPath.classify(url);
+        if (t == MediaPathType.localAbs || t == MediaPathType.fileUri) {
+          throw ArgumentError('Video network url resolved to local path: $url');
+        }
+
         newController = VideoPlayerController.networkUrl(Uri.parse(url));
       }
 
@@ -147,9 +171,9 @@ class _VideoMsgBubbleState extends State<VideoMsgBubble> {
       finalSource = localFile.path;
     } else {
       String netSource = widget.message.content;
-      if (widget.message.resolvedPath != null &&
-          widget.message.resolvedPath!.startsWith('http')) {
-        netSource = widget.message.resolvedPath!;
+      final rp = widget.message.resolvedPath;
+      if (rp != null && MediaPath.isRemote(rp)) {
+        netSource = rp;
       }
       finalSource = _resolveNetworkUrl(netSource);
     }

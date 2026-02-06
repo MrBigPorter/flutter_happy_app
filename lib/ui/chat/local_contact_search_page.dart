@@ -7,7 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_app/common.dart';
-import 'package:flutter_app/utils/url_resolver.dart';
+import 'package:flutter_app/utils/media/url_resolver.dart';
 
 import '../toast/radix_toast.dart';
 import 'models/conversation.dart';

@@ -9,7 +9,7 @@ import 'package:flutter_app/ui/chat/providers/conversation_provider.dart';
 import 'package:flutter_app/ui/chat/services/chat_action_service.dart';
 import 'package:flutter_app/ui/chat/services/media/location_service.dart';
 import 'package:flutter_app/ui/index.dart';
-import 'package:flutter_app/utils/url_resolver.dart';
+import 'package:flutter_app/utils/media/url_resolver.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:geolocator/geolocator.dart';

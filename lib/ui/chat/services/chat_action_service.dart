@@ -17,7 +17,8 @@ import 'package:flutter_app/utils/upload/upload_types.dart';
 import 'package:flutter_app/core/api/lucky_api.dart';
 import 'package:video_compress/video_compress.dart';
 
-import '../../../utils/url_resolver.dart';
+import '../../../utils/media/media_path.dart';
+import '../../../utils/media/url_resolver.dart';
 import '../services/media/video_processor.dart';
 import 'blurHash/blur_hash_service.dart';
 import 'compression/image_compression_service.dart';
@@ -40,7 +41,7 @@ class PipelineContext {
 
   PipelineContext(this.initialMsg) {
     if (initialMsg.meta != null) metadata.addAll(initialMsg.meta!);
-    remoteThumbUrl = initialMsg.meta?['remote_thumb'];
+    remoteThumbUrl = initialMsg.meta?['thumb'] ?? initialMsg.meta?['remote_thumb'];
     currentAbsolutePath = initialMsg.localPath;
   }
 }
@@ -71,7 +72,7 @@ class ChatActionService {
     try {
       // 架构调整点：立即保存到数据库，触发 UI 的 Stream 监听
       // 注意：这里可以去掉 await，让它同步触发，或者在外面先 save
-       LocalDatabaseService().saveMessage(ctx.initialMsg);
+      await LocalDatabaseService().saveMessage(ctx.initialMsg);
        // 立即更新会话列表的最后一条消息预览
       _updateConversationSnapshot(
         ctx.initialMsg.content,
@@ -128,6 +129,7 @@ class ChatActionService {
       localPath: processedFile.path,
       previewBytes: quickPreview,
     );
+    
 
     _sessionPathCache[msg.id] = processedFile.path;
 
@@ -363,28 +365,35 @@ class ChatActionService {
 class PersistStep implements PipelineStep {
   @override
   Future<void> execute(PipelineContext ctx, ChatActionService service) async {
-    if (kIsWeb) {
-      ctx.currentAbsolutePath = ctx.initialMsg.localPath;
-      return;
-    }
+    if (kIsWeb) return;
+    final lp = ctx.initialMsg.localPath;
+    if (lp == null || lp.isEmpty) return; // CHANGED: 防止空路径崩溃
 
+    // 1. 保存到本地沙盒
     final assetId = await AssetManager.save(
       XFile(ctx.initialMsg.localPath!),
       ctx.initialMsg.type,
     );
 
+    // 2. 立即解析出绝对路径
     final String? resolved = await AssetManager.getFullPath(
       assetId,
       ctx.initialMsg.type,
     );
 
     if (resolved != null) {
-      ctx.currentAbsolutePath = resolved;
+      ctx.currentAbsolutePath = resolved; //  让后续 step 都用这个绝对路径
     }
 
-    await LocalDatabaseService().updateMessage(ctx.initialMsg.id, {
+    //  CHANGED: 同时固化 localPath(资产ID) + resolvedPath(本地绝对路径) 到 DB
+    final updates = <String, dynamic>{
       'localPath': assetId,
-    });
+    };
+    if (resolved != null && resolved.isNotEmpty) {
+      updates['resolvedPath'] = resolved;
+    }
+
+    await LocalDatabaseService().updateMessage(ctx.initialMsg.id, updates);
   }
 }
 
@@ -506,31 +515,55 @@ class UploadStep implements PipelineStep {
   @override
   Future<void> execute(PipelineContext ctx, ChatActionService service) async {
     // 1. 封面上传
-    bool hasRemoteThumb =
-        ctx.remoteThumbUrl != null &&
-        (ctx.remoteThumbUrl!.startsWith('http') ||
-            ctx.remoteThumbUrl!.startsWith('uploads/'));
+
+    //  CHANGED: 统一用 MediaPath 判断是否已经是远端
+    // 远端包括：http / uploads / relative
+    final bool hasRemoteThumb = MediaPath.isRemote(ctx.remoteThumbUrl);
 
     if (!hasRemoteThumb) {
       if (ctx.thumbAssetId != null) {
         String? path;
+
+        // 原逻辑保留：Web 的 blob / 超长 data-like
         if (kIsWeb &&
             (ctx.thumbAssetId!.startsWith('blob:') ||
                 ctx.thumbAssetId!.length > 200)) {
           path = ctx.thumbAssetId;
         } else {
+          // 原逻辑保留：Native 走 AssetManager
           path = await AssetManager.getFullPath(
             ctx.thumbAssetId!,
             MessageType.image,
           );
         }
 
+        //  CHANGED: Native 端 file:// -> 真实路径（更稳）
+        if (!kIsWeb && path != null && MediaPath.classify(path) == MediaPathType.fileUri) {
+          try {
+            path = Uri.parse(path).toFilePath();
+          } catch (_) {}
+        }
+
+        //  CHANGED: Native 端兜底：如果 path 不是本地绝对路径（可能拿到的是 assetId），再解析一次
+        if (!kIsWeb &&
+            path != null &&
+            path.isNotEmpty &&
+            MediaPath.classify(path) != MediaPathType.localAbs &&
+            !MediaPath.isRemote(path)) {
+          final resolved = await AssetManager.getFullPath(path, MessageType.image);
+          if (resolved != null && resolved.isNotEmpty) {
+            path = resolved;
+          }
+        }
+
         if (path != null && (kIsWeb || File(path).existsSync())) {
           XFile thumbFile = XFile(path);
+
           if (kIsWeb &&
               (thumbFile.name.isEmpty || !thumbFile.name.contains('.'))) {
             thumbFile = XFile(path, name: 'thumb_${const Uuid().v4()}.jpg');
           }
+
           ctx.remoteThumbUrl = await service._uploadService.uploadFile(
             file: thumbFile,
             module: UploadModule.chat,
@@ -541,20 +574,47 @@ class UploadStep implements PipelineStep {
     }
 
     // 2. 主文件上传
-    bool hasRemoteContent =
-        ctx.initialMsg.content.startsWith('http') ||
-        ctx.initialMsg.content.startsWith('uploads/');
+
+    // CHANGED: 统一用 MediaPath 判断 content 是否已经是远端
+    // 远端包括：http / uploads / relative
+    final bool hasRemoteContent = MediaPath.isRemote(ctx.initialMsg.content);
+
     if (!hasRemoteContent) {
-      final String? uploadPath =
-          ctx.currentAbsolutePath ?? ctx.initialMsg.localPath;
+      //  CHANGED: 原来是 final，这里需要可变，因为我们可能要把 assetId / fileUri 解析成真实路径
+      String? uploadPath = ctx.currentAbsolutePath ?? ctx.initialMsg.localPath;
+
+      //  CHANGED: Native 端先把 uploadPath 归一化成“可 File.existsSync”的真实路径
+      if (!kIsWeb && uploadPath != null && uploadPath.isNotEmpty) {
+        // 2.1 file:// -> 真实路径
+        if (MediaPath.classify(uploadPath) == MediaPathType.fileUri) {
+          try {
+            uploadPath = Uri.parse(uploadPath).toFilePath();
+          } catch (_) {}
+        }
+
+        // 2.2 如果不是本地绝对路径（很可能是 assetId），用 AssetManager 再解析一次
+        if (uploadPath != null &&
+            uploadPath.isNotEmpty &&
+            MediaPath.classify(uploadPath) != MediaPathType.localAbs &&
+            !MediaPath.isRemote(uploadPath)) {
+          final resolved = await AssetManager.getFullPath(uploadPath, ctx.initialMsg.type);
+          if (resolved != null && resolved.isNotEmpty) {
+            uploadPath = resolved;
+            ctx.currentAbsolutePath = resolved; //  CHANGED: 顺便补回 ctx，后续步骤也受益
+          }
+        }
+      }
+
       if (uploadPath != null && (kIsWeb || File(uploadPath).existsSync())) {
         XFile fileToUpload;
+
         if (kIsWeb &&
             ctx.sourceFile != null &&
             uploadPath == ctx.sourceFile!.path) {
           fileToUpload = ctx.sourceFile!;
         } else {
           fileToUpload = XFile(uploadPath);
+
           if (kIsWeb &&
               (fileToUpload.name.isEmpty || !fileToUpload.name.contains('.'))) {
             // 尝试从 meta 获取后缀，没有则根据类型判断
@@ -572,6 +632,7 @@ class UploadStep implements PipelineStep {
             );
           }
         }
+
         ctx.remoteUrl = await service._uploadService.uploadFile(
           file: fileToUpload,
           module: UploadModule.chat,
@@ -623,16 +684,40 @@ class SyncStep implements PipelineStep {
       meta: apiMeta,
     );
 
-    //  数据回写：合并后端权威数据 (如 seqId) 并清理本地 meta
+    debugPrint("SEND api: clientId=${ctx.initialMsg.id} serverId=${serverMsg.id}");
+
+    // CHANGED: 保护本地 thumb（assetId），不要被服务端 thumb 覆盖
+    final serverMeta = serverMsg.meta ?? {};
+    final serverThumb = serverMeta['thumb']?.toString();
+    final localThumb = ctx.metadata['thumb']?.toString();
+
+
+    // CHANGED: 先合并 serverMeta，但稍后我们会把 thumb “纠正回本地”
     final Map<String, dynamic> dbMeta = {
       ...ctx.metadata,
-      ...serverMsg.meta ?? {},
-      'remote_thumb': serverMsg.meta?['thumb'] ?? ctx.remoteThumbUrl,
+      ...serverMeta,
     };
+
+    // CHANGED: remote_thumb 永远存远端 thumb（优先服务端，其次本次上传得到的）
+    final String? remoteThumb =
+    (serverThumb != null && serverThumb.isNotEmpty) ? serverThumb : ctx.remoteThumbUrl;
+    if (remoteThumb != null && remoteThumb.isNotEmpty) {
+      dbMeta['remote_thumb'] = remoteThumb;
+    }
+
+    // CHANGED: 如果本地 thumb 存在且不是远端（assetId / 本地key），则强制保留
+    if (localThumb != null && localThumb.isNotEmpty && !MediaPath.isRemote(localThumb)) {
+      dbMeta['thumb'] = localThumb; // 保住本地封面
+    } else {
+      // CHANGED: 否则 thumb 就让它用服务端（例如你根本没生成本地封面）
+      if (serverThumb != null && serverThumb.isNotEmpty) {
+        dbMeta['thumb'] = serverThumb;
+      }
+    }
 
     await LocalDatabaseService().updateMessage(ctx.initialMsg.id, {
       'status': MessageStatus.success.name,
-      'content': serverMsg.content,
+       'content': serverMsg.content,
       'meta': dbMeta,
     });
   }

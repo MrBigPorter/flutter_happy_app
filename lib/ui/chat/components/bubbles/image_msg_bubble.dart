@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_app/utils/url_resolver.dart';
+import 'package:flutter_app/utils/media/url_resolver.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:intl/intl.dart';
 
@@ -30,6 +30,7 @@ class ImageMsgBubble extends StatelessWidget {
     // 4. 统一路径获取
     final String? readyPath = message.resolvedPath ?? message.localPath ??
         (message.content != '[Image]' ? message.content : null);
+    
 
     return RepaintBoundary(
       child: GestureDetector(

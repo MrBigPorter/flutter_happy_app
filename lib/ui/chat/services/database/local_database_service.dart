@@ -1,7 +1,9 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:io'; // [Modified] Added for File checking
 import 'package:flutter/foundation.dart'; // kIsWeb
 import 'package:flutter/services.dart';
-import 'package:flutter_app/utils/url_resolver.dart';
+import 'package:flutter_app/utils/media/url_resolver.dart';
 import 'package:flutter_app_badger/flutter_app_badger.dart';
 import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
@@ -10,6 +12,7 @@ import 'package:sembast/sembast_io.dart'; // Mobile
 import 'package:sembast_web/sembast_web.dart'; // Web
 import 'package:lpinyin/lpinyin.dart';
 
+import '../../../../utils/media/media_path.dart';
 import '../../models/chat_ui_model.dart';
 import '../../models/conversation.dart';
 import '../../../../utils/asset/asset_manager.dart';
@@ -43,33 +46,27 @@ class LocalDatabaseService {
   //  Inverted Index Store (Value must be List<Object?> to be compatible with arrays)
   static final _indexStore = StoreRef<String, List<Object?>>('search_index');
 
-  /// [Core Modification] Get database instance
-  /// If the database is not initialized, it won't throw an error but will [pause and wait] until init() completes.
+  /// Get database instance
   Future<Database> get database async {
-    // 1. If already ready, return directly (fastest path)
     if (_db != null) {
       return _db!;
     }
-
-    // 2. If not ready, return Future to let the caller wait (Key to solving OfflineQueue errors)
     debugPrint(" [LocalDB] Database not ready yet. Waiting...");
     return _dbCompleter.future;
   }
 
   /// Initialize: Open exclusive database for the passed userId
   static Future<void> init(String userId) async {
-    // 1. If it's already this user's DB and it's ready
     if (_db != null && _currentUserId == userId) {
       if (!_dbCompleter.isCompleted) _dbCompleter.complete(_db);
       return;
     }
 
-    // 2. If a previous user was logged in, close the old one and reset the waiter
     if (_db != null) {
       debugPrint(" [LocalDB] Closing DB for previous user: $_currentUserId");
       await _db!.close();
       _db = null;
-      _dbCompleter = Completer<Database>(); // Reset traffic light
+      _dbCompleter = Completer<Database>();
     }
 
     _currentUserId = userId;
@@ -90,7 +87,6 @@ class LocalDatabaseService {
 
       _db = dbInstance;
 
-      //  [Key] Notify all waiting components (like OfflineQueue) to proceed
       if (!_dbCompleter.isCompleted) {
         _dbCompleter.complete(_db);
       }
@@ -98,7 +94,6 @@ class LocalDatabaseService {
       debugPrint(" [LocalDB] Initialized successfully: $dbName");
     } catch (e) {
       debugPrint(" [LocalDB] Init failed: $e");
-      // If failed, tell waiters an error occurred to prevent permanent deadlock
       if (!_dbCompleter.isCompleted) _dbCompleter.completeError(e);
       rethrow;
     }
@@ -110,7 +105,6 @@ class LocalDatabaseService {
       await _db!.close();
       _db = null;
       _currentUserId = null;
-      // Reset waiter, ensuring subsequent calls wait for init again
       _dbCompleter = Completer<Database>();
       debugPrint("🔒 [LocalDB] Database closed.");
     }
@@ -120,7 +114,6 @@ class LocalDatabaseService {
   //   Search Engine Kernel (Sembast Implementation)
   // ========================================================================
 
-  /// Internal method: Update inverted index
   Future<void> _updateSearchIndex(
       DatabaseClient txn,
       String id,
@@ -129,16 +122,13 @@ class LocalDatabaseService {
       ) async {
     if (text.isEmpty) return;
 
-    // 1. Tokenize
     final Set<String> tokens = {};
     final cleanText = text.toLowerCase();
 
-    // A. Single character splitting
     for (int i = 0; i < cleanText.length; i++) {
       tokens.add(cleanText[i]);
     }
 
-    // B. Pinyin processing
     if (RegExp(r'[\u4e00-\u9fa5]').hasMatch(text)) {
       try {
         String pinyinShort = PinyinHelper.getShortPinyin(text).toLowerCase();
@@ -153,7 +143,6 @@ class LocalDatabaseService {
       }
     }
 
-    // 2. Write to inverted index store
     for (final token in tokens) {
       final key = '$type:$token';
       final record = _indexStore.record(key);
@@ -161,7 +150,6 @@ class LocalDatabaseService {
 
       Set<String> idSet = {};
       if (snapshot != null) {
-        // value here is List<Object?>, needs casting
         idSet = Set<String>.from(snapshot.value as List);
       }
 
@@ -173,62 +161,36 @@ class LocalDatabaseService {
   }
 
   // ========================================================================
-  //   [New] Global Message Handling (Dedicated to Global Handler)
+  //   Global Message Handling (Dedicated to Global Handler)
   // ========================================================================
 
   /// Atomic operation: Save message + Path protection + Update conversation summary + Accumulate unread count
   Future<void> handleIncomingMessage(ChatUiModel msg) async {
+    debugPrint("SOCKET msgId=${msg.id} conversationId=${msg.conversationId}");
     final db = await database;
+    print(" [DB] Handling incoming message: ${msg.id} in conversation ${msg.conversationId}");
 
     await db.transaction((txn) async {
-      // 1. Prepare new data (This is from Socket/Sync, contains only URL, no localPath)
-      var finalJson = msg.toJson();
       final msgId = msg.id;
-
-      // ---------------------------------------------------------
-      // 🛡️ Core Fix 1: Path Protection (Retrieve lost localPath)
-      // ---------------------------------------------------------
-
-      // A. Check existing record
       final existingRecord = await _messageStore.record(msgId).getSnapshot(txn);
-      final exists = existingRecord != null; // Flag if already exists
 
-      if (exists) {
-        final oldData = existingRecord.value;
-        final oldLocalPath = oldData['localPath'] as String?;
+      Map<String, dynamic> finalJson = msg.toJson();
 
-        // B. If old data has path, and new data doesn't, force restore it!
-        if (oldLocalPath != null && oldLocalPath.isNotEmpty) {
-          final newPath = finalJson['localPath'] as String?;
-          if (newPath == null || newPath.isEmpty) {
-            finalJson['localPath'] = oldLocalPath; // 👈 Rescued!
-            // debugPrint("🛡️ [DB] Successfully preserved local path: $oldLocalPath");
-          }
-        }
+      if (existingRecord != null) {
+        // [Preserved Fix] If record exists, merge new data with existing to protect paths
+        finalJson = _mergeData(existingRecord.value, finalJson);
       }
 
-      // 2. Save blended perfect data (Overwrites old, but path is preserved)
+      // 确保存入的是合并后的 finalJson
       await _messageStore.record(msgId).put(txn, finalJson);
 
-      // ---------------------------------------------------------
-      // 🛡️ Core Fix 2: Anti-Chaos Red Dot (Prevent double counting)
-      // ---------------------------------------------------------
-
+      // Update conversation summary and unread count
       final convKey = msg.conversationId;
       final snapshot = await _conversationStore.record(convKey).getSnapshot(txn);
+      int currentUnread = (snapshot?.value['unreadCount'] as int?) ?? 0;
+      final exists = existingRecord != null;
+      final newUnread = (!exists && !msg.isMe) ? currentUnread + 1 : currentUnread;
 
-      // A. Get old unread count
-      int currentUnread = 0;
-      if (snapshot != null) {
-        currentUnread = (snapshot.value['unreadCount'] as int?) ?? 0;
-      }
-
-      // B. Only allow +1 if message [did not exist before] AND [is not from me]
-      // (Prevents unread count explosion due to Socket reconnects or duplicate FCM pushes)
-      final shouldIncrement = !exists && !msg.isMe;
-      final newUnread = shouldIncrement ? currentUnread + 1 : currentUnread;
-
-      // 3. Update conversation store (Merge mode)
       await _conversationStore.record(convKey).put(txn, {
         ...(snapshot?.value ?? {'id': convKey, 'type': 0, 'status': 1}),
         'lastMsgContent': _getPreviewContent(msg),
@@ -237,12 +199,9 @@ class LocalDatabaseService {
         'unreadCount': newUnread,
       }, merge: true);
     });
-
-    // 4. Finally refresh global badge
     _syncGlobalBadge();
   }
-
-  /// [New] Private method: Calculate total unread and update desktop badge
+  /// Private method: Calculate total unread and update desktop badge
   Future<void> _syncGlobalBadge() async {
     try {
       final db = await database;
@@ -254,9 +213,8 @@ class LocalDatabaseService {
         total += count;
       }
 
-      if(kIsWeb){
+      if (kIsWeb) {
         final String title = total > 0 ? '($total) ' : '';
-        // 1. Modification: Directly modify document.title to show unread count
         SystemChrome.setApplicationSwitcherDescription(
           ApplicationSwitcherDescription(
             label: '$title Chat',
@@ -266,11 +224,9 @@ class LocalDatabaseService {
         return;
       }
 
-      // Directly call native layer update, works even if App is in background
       if (await FlutterAppBadger.isAppBadgeSupported()) {
         if (total > 0) {
           FlutterAppBadger.updateBadgeCount(total);
-          debugPrint(" [DB] Background badge update success: $total");
         } else {
           FlutterAppBadger.removeBadge();
         }
@@ -280,7 +236,6 @@ class LocalDatabaseService {
     }
   }
 
-  /// Helper method: Generate preview text for conversation list
   String _getPreviewContent(ChatUiModel msg) {
     switch (msg.type) {
       case MessageType.image: return '[Image]';
@@ -293,46 +248,38 @@ class LocalDatabaseService {
     }
   }
 
-  /// Specifically for Chat Page: Clear unread count when entering room or receiving message
   Future<void> clearUnreadCount(String conversationId) async {
     final db = await database;
-    // Directly update field, Sembast stream will automatically detect
     await _conversationStore.record(conversationId).update(db, {
       'unreadCount': 0,
     });
   }
 
   // ========================================================================
-  //  Contacts (Integrated Search Capability)
+  //  Contacts
   // ========================================================================
 
-  /// Batch save contacts -> Automatically triggers indexing
   Future<void> saveContacts(List<ChatUser> users) async {
-    final db = await database; // Waits for init completion
+    final db = await database;
     await db.transaction((txn) async {
       for (var user in users) {
-        // 1. Save raw data
         await _contactStore.record(user.id).put(txn, user.toJson());
-        // 2. Build index
         await _updateSearchIndex(txn, user.id, user.nickname, 'user');
       }
     });
   }
 
-  /// Get all contacts
   Future<List<ChatUser>> getAllContacts() async {
     final db = await database;
     final snapshots = await _contactStore.find(db);
     return snapshots.map((s) => ChatUser.fromJson(s.value)).toList();
   }
 
-  /// Full-text search (Exposed interface)
   Future<List<ChatUser>> searchContacts(String query) async {
     if (query.isEmpty) return [];
     final db = await database;
     final cleanQuery = query.toLowerCase();
 
-    // 1. Prioritize inverted index search
     final indexKey = 'user:$cleanQuery';
     final indexSnapshot = await _indexStore.record(indexKey).getSnapshot(db);
 
@@ -344,7 +291,6 @@ class LocalDatabaseService {
     List<ChatUser> results = [];
 
     if (candidateIds.isNotEmpty) {
-      // Index hit
       final snapshots = await _contactStore
           .records(candidateIds.toList())
           .getSnapshots(db);
@@ -353,7 +299,6 @@ class LocalDatabaseService {
           .map((s) => ChatUser.fromJson(s!.value))
           .toList();
     } else {
-      // Index miss, fallback to regex
       final finder = Finder(
         filter: Filter.custom((record) {
           final user = ChatUser.fromJson(record.value as Map<String, dynamic>);
@@ -369,21 +314,44 @@ class LocalDatabaseService {
   }
 
   // ========================================================================
-  //  Message Related Business (CRUD)
+  //  Message CRUD
   // ========================================================================
 
   Future<void> saveMessage(ChatUiModel msg) async {
     final db = await database;
-    await _messageStore.record(msg.id).put(db, msg.toJson());
+    await db.transaction((txn) async {
+      final msgId = msg.id;
+      final existingRecord = await _messageStore.record(msgId).getSnapshot(txn);
+
+      Map<String, dynamic> finalJson = msg.toJson();
+
+      if (existingRecord != null) {
+        finalJson = _mergeData(existingRecord.value, finalJson);
+      }
+
+      await _messageStore.record(msgId).put(txn, finalJson);
+    });
   }
 
   Future<void> saveMessages(List<ChatUiModel> msgs) async {
     if (msgs.isEmpty) return;
     final db = await database;
+
     await db.transaction((txn) async {
       for (final msg in msgs) {
-        if (msg.id.trim().isEmpty) continue;
-        await _messageStore.record(msg.id).put(txn, msg.toJson());
+        final id = msg.id.trim();
+        if (id.isEmpty) continue;
+
+        final record = _messageStore.record(id);
+        final snapshot = await record.getSnapshot(txn);
+
+        Map<String, dynamic> json = msg.toJson();
+        if (snapshot != null) {
+          json = _mergeData(snapshot.value, json); // 保护 localPath/resolvedPath
+        }
+
+
+        await record.put(txn, json);
       }
     });
   }
@@ -406,14 +374,27 @@ class LocalDatabaseService {
 
   Future<void> updateMessage(String id, Map<String, dynamic> updates) async {
     final db = await database;
-    await _messageStore.record(id).update(db, updates);
+    await db.transaction((txn) async {
+      final record = _messageStore.record(id);
+      final snapshot = await record.getSnapshot(txn);
+
+      Map<String, dynamic> finalUpdates = updates;
+
+      if (snapshot != null) {
+        //  这里会保护已经存入数据库的 resolvedPath
+        finalUpdates = _mergeData(snapshot.value, updates);
+      }
+
+      //  确保存入的是合并后的 finalUpdates
+      await record.put(txn, finalUpdates, merge: true);
+    });
   }
 
   Future<void> markMessagesAsRead(String conversationId, int maxSeqId) async {
     final db = await database;
 
     await db.transaction((txn) async {
-      // 1. Find messages that need to be marked as read (Finder is correct here as find() needs Finder)
+      // 1. Find messages to mark as read
       final finder = Finder(
         filter: Filter.and([
           Filter.equals('conversationId', conversationId),
@@ -427,7 +408,7 @@ class LocalDatabaseService {
 
       if (records.isEmpty) return;
 
-      // 2. Batch update status
+      // 2. Batch update
       for (var record in records) {
         var map = Map<String, dynamic>.from(record.value);
         map['status'] = 'read';
@@ -435,16 +416,14 @@ class LocalDatabaseService {
       }
 
       // -----------------------------------------------------------
-      // 🔥 Correction: Use Filter directly when counting remaining unread!
+      // [Preserved Fix] Count remaining unread using Filter (not Finder)
       // -----------------------------------------------------------
-
       final unreadFilter = Filter.and([
         Filter.equals('conversationId', conversationId),
         Filter.equals('isMe', false),
         Filter.notEquals('status', 'read'),
       ]);
 
-      // ✅ Corrected: Parameter name is filter, not finder
       final remainingUnreadCount = await _messageStore.count(txn, filter: unreadFilter);
 
       // 4. Update conversation table
@@ -459,7 +438,6 @@ class LocalDatabaseService {
       }
     });
 
-    // 5. Refresh badge
     _syncGlobalBadge();
   }
 
@@ -501,17 +479,13 @@ class LocalDatabaseService {
     return snapshots.map((s) => ChatUiModel.fromJson(s.value)).toList();
   }
 
-  /// Get max seqId for the conversation in local DB (Audit)
   Future<int?> getMaxSeqId(String conversationId) async {
     final db = await database;
-
     final finder = Finder(
       filter: Filter.and([
         Filter.equals('conversationId', conversationId),
-        // Must have seqId to count. Sending temp messages have null seqId, excluded from audit.
         Filter.notEquals('seqId', null),
       ]),
-      // Take the first one by seqId descending order (Max value)
       sortOrders: [SortOrder('seqId', false)],
       limit: 1,
     );
@@ -620,60 +594,26 @@ class LocalDatabaseService {
   }
 
   // ========================================================================
-  //  Data Pre-warming (Path Processing)
+  //  [Modified] Data Pre-warming (Refactored Path Processing)
+  //  Divided into: Entry -> ResolveMain -> ResolveThumb -> Helpers
   // ========================================================================
 
+  /// Entry method: Iterates and dispatches resolution
   Future<List<ChatUiModel>> _prewarmMessages(List<ChatUiModel> models) async {
     if (models.isEmpty) return [];
 
     final futures = models.map((msg) async {
-      String? absPath;
-      String? thumbPath;
-      bool needsUpdate = false;
+      // 1. Resolve Main File Path
+      final String? resolvedPath = await _resolveMainPath(msg);
+      print(" [Prewarm] Message ${msg.id} resolvedPath: $resolvedPath");
 
-      // Process main file path
-      if (msg.localPath != null && msg.localPath!.isNotEmpty) {
-        bool isDeadBlob =
-            kIsWeb &&
-                msg.localPath!.startsWith('blob:') &&
-                msg.status == MessageStatus.success;
+      // 2. Resolve Thumbnail Path
+      final String? thumbPath = await _resolveThumbPath(msg);
 
-        if (!isDeadBlob) {
-          if (msg.localPath!.startsWith('http') ||
-              msg.localPath!.startsWith('blob:')) {
-            absPath = _resolveByMsgType(msg.type, msg.localPath);
-          } else {
-            absPath = await AssetManager.getFullPath(msg.localPath!, msg.type);
-          }
-        }
-      }
-      if (absPath == null) {
-        absPath = _resolveByMsgType(msg.type, msg.content);
-      }
-      if (absPath != null && absPath != msg.resolvedPath) {
-        needsUpdate = true;
-      }
-
-      // Process thumbnail path
-      if (msg.meta != null) {
-        String? t = msg.meta!['thumb'] ?? msg.meta!['remote_thumb'];
-        if (t != null && t.isNotEmpty) {
-          if (t.startsWith('http') ||
-              t.startsWith('blob:') ||
-              t.contains('/')) {
-            thumbPath = UrlResolver.resolveImage(null, t);
-          } else {
-            thumbPath = await AssetManager.getFullPath(t, MessageType.image);
-          }
-        }
-        if (thumbPath != null && thumbPath != msg.resolvedThumbPath) {
-          needsUpdate = true;
-        }
-      }
-
-      if (needsUpdate) {
+      // 3. Performance Optimization: Only copyWith if changed
+      if (resolvedPath != msg.resolvedPath || thumbPath != msg.resolvedThumbPath) {
         return msg.copyWith(
-          resolvedPath: absPath,
+          resolvedPath: resolvedPath,
           resolvedThumbPath: thumbPath,
         );
       }
@@ -683,15 +623,156 @@ class LocalDatabaseService {
     return await Future.wait(futures);
   }
 
-  String? _resolveByMsgType(MessageType type, String? raw) {
-    if (raw == null || raw.isEmpty) return null;
-    switch (type) {
-      case MessageType.video:
-        return UrlResolver.resolveVideo(raw);
-      case MessageType.image:
-        return UrlResolver.resolveImage(null, raw);
-      default:
-        return UrlResolver.resolveFile(raw);
+  // ---------------------------------------------------------------------------
+  //  Core 1: Main Path Resolution Strategy
+  // ---------------------------------------------------------------------------
+
+  bool _isLocalAbs(String s) => s.startsWith('/') || s.startsWith('file://') || s.startsWith('blob:');
+
+  Future<String?> _resolveMainPath(ChatUiModel msg) async {
+    final rp = msg.resolvedPath;
+    if (rp != null && _isLocalAbs(rp)) return rp;
+
+    final lp = msg.localPath;
+    if (lp != null && lp.isNotEmpty) {
+      final localHit = await _tryFindLocalFile(lp, msg.type);
+      if (localHit != null) return localHit; // 返回本地绝对路径
     }
+
+    return _resolveRemoteUrlByType(msg.type, msg.content); // 只返回远端 URL
+  }
+
+
+  // ---------------------------------------------------------------------------
+  //  Core 2: Thumbnail Resolution Strategy
+  // ---------------------------------------------------------------------------
+
+  Future<String?> _resolveThumbPath(ChatUiModel msg) async {
+    if (msg.meta == null) return null;
+
+    // Prioritize 'thumb' field, then 'remote_thumb'
+    final String? t = msg.meta!['thumb'] ?? msg.meta!['remote_thumb'];
+    if (t == null || t.isEmpty) return null;
+
+    // A. Priority 1: Brute-force check local file
+    final String? localHit = await _tryFindLocalFile(t, MessageType.image);
+    if (localHit != null) return localHit;
+
+    // B. Priority 2: Generate Network URL
+    return UrlResolver.resolveImage(null, t);
+  }
+
+  // ---------------------------------------------------------------------------
+  //  Common Helper: Try Find Local File (Clean Logic)
+  // ---------------------------------------------------------------------------
+
+  /// Accepts a path or ID, attempts to return a real existing local absolute path.
+  /// Returns null if not found.
+  Future<String?> _tryFindLocalFile(String rawPath, MessageType type) async {
+    // 1. Web Logic (Trust blindly as file system is inaccessible)
+    if (kIsWeb) {
+      if (rawPath.startsWith('blob:') || rawPath.length > 50) {
+        return rawPath;
+      }
+      return null;
+    }
+
+    // 2. Ignore HTTP links
+    if (rawPath.startsWith('http')) return null;
+
+    // 2. Direct File Check
+    final file = File(rawPath);
+    if (file.existsSync()) return rawPath;
+
+    // 3. Mobile Logic: Use AssetManager to resolve potential local paths
+    final String? assetPath = await AssetManager.getFullPath(rawPath, type);
+    if (assetPath != null) {
+      bool exists = File(assetPath).existsSync();
+      //  Log 4: 追踪 AssetManager 结果
+      //debugPrint(" [LocalDB-Finder] AssetManager: $rawPath -> $assetPath (Exists: $exists)");
+      if (exists) return assetPath;
+    }
+
+    // 4. Fallback Directory Check
+    try {
+      final docDir = await getApplicationDocumentsDirectory();
+      final subDir = type == MessageType.video ? 'chat_video' : 'chat_images';
+      final fallback = join(docDir.path, subDir, rawPath);
+      if (File(fallback).existsSync()) {
+       // debugPrint(" [LocalDB-Finder] Subdir Hit: $fallback");
+        return fallback;
+      }
+    } catch (_) {}
+
+    return null; // Really no local file found
+  }
+
+  // ---------------------------------------------------------------------------
+  //  Common Helper: Network URL Mapping
+  // ---------------------------------------------------------------------------
+
+  String? _resolveRemoteUrlByType(MessageType type, String? content) {
+    if (content == null || content.isEmpty) return null;
+
+    switch (type) {
+      case MessageType.image:
+        return UrlResolver.resolveImage(null, content);
+      case MessageType.video:
+        return UrlResolver.resolveVideo(content);
+      case MessageType.audio:
+      case MessageType.file:
+      case MessageType.location: // Location usually has no remote url, or content is url
+        return UrlResolver.resolveFile(content);
+      default:
+        return content;
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  //  [Modified] Data Merge Helper (For Future Use, Not Currently Invoked)
+  //  This can be used in future update scenarios to intelligently merge new data with existing records
+  // ---------------------------------------------------------------------------
+  //  CHANGED: 本地优先合并策略（远端不能覆盖本地）
+  Map<String, dynamic> _mergeData(Map<String, dynamic> oldData, Map<String, dynamic> newData) {
+    final Map<String, dynamic> merged = Map<String, dynamic>.from(newData);
+
+    //  这些字段属于“本地资产锚点”，必须本地优先
+    final protectedKeys = ['localPath', 'resolvedPath', 'resolvedThumbPath'];
+
+    for (final key in protectedKeys) {
+      final newVal = (newData[key] ?? '').toString().trim();
+      final oldVal = (oldData[key] ?? '').toString().trim();
+
+      if (oldVal.isEmpty) continue;
+
+      // 1) 新值为空：保旧（你原来的逻辑）
+      if (newVal.isEmpty) {
+        merged[key] = oldVal;
+        continue;
+      }
+
+      // 2)  本地优先：旧值本地，新值远端 → 保旧
+      if (MediaPath.isLocal(oldVal) && MediaPath.isRemote(newVal)) {
+        merged[key] = oldVal;
+        continue;
+      }
+
+      // 3) = 旧值是“更具体”的本地绝对路径，新值只是 uploads key → 保旧
+      // （这是最常见的：本地 /var/... 被服务端 uploads/... 覆盖）
+      if (MediaPath.classify(oldVal) == MediaPathType.localAbs &&
+          MediaPath.classify(newVal) == MediaPathType.uploads) {
+        merged[key] = oldVal;
+        continue;
+      }
+
+      // 4)  同为远端：统一成 key（uploads/...），避免时而存完整域名、时而存 key
+      // （可选但推荐，能减少“比较/去重/缓存命中”的混乱）
+      if (MediaPath.isRemote(oldVal) && MediaPath.isRemote(newVal)) {
+        merged[key] = MediaPath.normalizeRemoteKey(newVal);
+        continue;
+      }
+    }
+
+    return merged;
   }
 }

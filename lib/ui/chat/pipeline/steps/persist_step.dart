@@ -11,10 +11,8 @@ class PersistStep extends PipelineStep<ChatPipelineContext> {
 
     // 2. chack if there is a valid message to persist
     if (ctx.uiMsg == null) return;
-
     // 3. save the message to local database
     await LocalDatabaseService().handleIncomingMessage(ctx.uiMsg!);
 
-    print("[Pipeline] Message persisted: ${ctx.uiMsg!.content}");
   }
 }

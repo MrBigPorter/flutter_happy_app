@@ -6,6 +6,11 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:just_audio/just_audio.dart';
 import '../../services/voice/audio_player_manager.dart';
 
+// CHANGED: 引入统一路径判断工具
+import 'package:flutter_app/utils/media/media_path.dart';
+//  CHANGED: 用现有 UrlResolver 把 uploads/ 相对 key 转成可播放的远端 URL
+import 'package:flutter_app/utils/media/url_resolver.dart';
+
 class VoiceBubble extends StatefulWidget {
   final ChatUiModel message;
   final bool isMe;
@@ -37,6 +42,45 @@ class _VoiceBubbleState extends State<VoiceBubble> {
     });
   }
 
+  //  CHANGED: 统一“音频源”选择与归一化（本地优先、远端补全域名）
+  String _pickAudioSource() {
+    // 1) 候选顺序：resolvedPath > localPath > content
+    final candidates = <String?>[
+      widget.message.resolvedPath,
+      widget.message.localPath,
+      widget.message.content,
+    ];
+
+    for (final c in candidates) {
+      final raw = (c ?? '').trim();
+      if (raw.isEmpty) continue;
+
+      final t = MediaPath.classify(raw);
+
+      // 本地：直接用
+      if (t == MediaPathType.localAbs || t == MediaPathType.fileUri) {
+        return raw;
+      }
+
+      // blob：直接用（web 可能出现）
+      if (t == MediaPathType.blob) {
+        return raw;
+      }
+
+      // 远端：http / uploads / relative → 归一化成可播放 URL
+      if (t == MediaPathType.http) return raw;
+
+      if (t == MediaPathType.uploads || t == MediaPathType.relative) {
+        // 语音通常不需要走 cdn-cgi/image，直接 resolveFile（走资源域名）
+        return UrlResolver.resolveFile(raw);
+      }
+
+      // unknown：继续下一个
+    }
+
+    return '';
+  }
+
   @override
   Widget build(BuildContext context) {
     final double minWidth = 140.w;
@@ -45,11 +89,8 @@ class _VoiceBubbleState extends State<VoiceBubble> {
     // 动态计算气泡宽度
     final double bubbleWidth = (minWidth + (dbDuration * 5.w)).clamp(minWidth, maxWidth);
 
-    //  核心重构：同步获取播放源 (0 IO, 0 Future)
-    // 优先级：Service预热好的本地路径 > 原始本地路径 > 网络URL
-    final String audioSource = widget.message.resolvedPath ??
-        widget.message.localPath ??
-        widget.message.content;
+    //  CHANGED: 使用统一工具选择播放源
+    final String audioSource = _pickAudioSource();
 
     // --- 样式配置 ---
     final Color bubbleBgColor = widget.isMe ? const Color(0xFF0084FF) : const Color(0xFFE4E6EB);
@@ -69,7 +110,8 @@ class _VoiceBubbleState extends State<VoiceBubble> {
           final bool isSelected = _playerManager.currentPlayingId == widget.message.id;
 
           // Loading 状态：选中了当前 ID，且处于缓冲或加载中
-          final bool isLoading = isSelected && (processingState == ProcessingState.loading || processingState == ProcessingState.buffering);
+          final bool isLoading = isSelected &&
+              (processingState == ProcessingState.loading || processingState == ProcessingState.buffering);
 
           return InkWell(
             onTap: () async {

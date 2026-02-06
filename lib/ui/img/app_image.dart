@@ -4,11 +4,15 @@ import 'dart:typed_data';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_app/utils/url_resolver.dart';
+import 'package:flutter_app/utils/media/url_resolver.dart';
 import 'package:flutter_blurhash/flutter_blurhash.dart';
 import 'package:shimmer/shimmer.dart';
 
 import '../chat/photo_preview_page.dart';
+
+//  CHANGED: 引入统一的路径判断工具（只负责判断，不负责拼接）
+// 如果你的文件路径不是这个，请改成你真实的路径
+import 'package:flutter_app/utils/media/media_path.dart';
 
 class AppCachedImage extends StatelessWidget {
   final dynamic src;
@@ -101,7 +105,8 @@ class AppCachedImage extends StatelessWidget {
       );
     }
 
-    final String path = src?.toString() ?? '';
+    //  CHANGED: 统一 trim，避免路径前后空白导致判断失效
+    final String path = (src?.toString() ?? '').trim();
 
     if (path.isEmpty || path == '[Image]') {
       if (previewBytes != null && previewBytes!.isNotEmpty) {
@@ -117,26 +122,49 @@ class AppCachedImage extends StatelessWidget {
     final int? memW = _calcMemSize(cacheWidth ?? width, dpr);
     final int? memH = _calcMemSize(cacheHeight ?? height, dpr);
 
+    //  CHANGED: 使用统一工具判断路径类型（Single Source of Truth）
+    final type = MediaPath.classify(path);
+
     if (kIsWeb) {
-      final isRemote = !path.startsWith('blob:') && !path.startsWith('assets/');
-      if (isRemote) return _buildNetworkImage(context, path, memW, memH);
-      return _wrapper(
-        context,
-        Image.network(path, width: width, height: height, fit: fit, gaplessPlayback: true),
-      );
+      //  CHANGED: Web 端也按统一类型分流，避免误把本地/特殊串进网络下载器
+      if (type == MediaPathType.blob) {
+        return _wrapper(
+          context,
+          Image.network(path, width: width, height: height, fit: fit, gaplessPlayback: true),
+        );
+      }
+
+      if (type == MediaPathType.asset) {
+        return _wrapper(
+          context,
+          Image.asset(path, width: width, height: height, fit: fit, cacheWidth: memW, gaplessPlayback: true),
+        );
+      }
+
+      // web 上基本不会出现 localAbs/fileUri；出现就兜底，避免走 CachedNetworkImageProvider 报错
+      if (type == MediaPathType.localAbs || type == MediaPathType.fileUri) {
+        if (previewBytes != null && previewBytes!.isNotEmpty) {
+          return _wrapper(
+            context,
+            Image.memory(previewBytes!, width: width, height: height, fit: fit, gaplessPlayback: true),
+          );
+        }
+        return _err(width, height);
+      }
+
+      // http/uploads/relative/unknown → 统一走网络（由 UrlResolver 处理 uploads）
+      return _buildNetworkImage(context, path, memW, memH);
     }
 
-    final isAsset = path.startsWith('assets/');
-    final isFile = path.startsWith('/') || path.startsWith('file://');
-
-    if (!isAsset && !isFile) {
-      return _buildNetworkImage(context, path, memW, memH);
-    } else if (isAsset) {
+    //  CHANGED: Native 端也按统一类型分流
+    if (type == MediaPathType.asset) {
       return _wrapper(
         context,
         Image.asset(path, width: width, height: height, fit: fit, cacheWidth: memW, gaplessPlayback: true),
       );
-    } else {
+    }
+
+    if (type == MediaPathType.fileUri || type == MediaPathType.localAbs) {
       final file = path.startsWith('file://') ? File(Uri.parse(path).toFilePath()) : File(path);
       if (!file.existsSync()) {
         if (previewBytes != null && previewBytes!.isNotEmpty) {
@@ -152,6 +180,9 @@ class AppCachedImage extends StatelessWidget {
         Image.file(file, width: width, height: height, fit: fit, cacheWidth: memW, gaplessPlayback: true),
       );
     }
+
+    // uploads/http/relative/unknown → 网络
+    return _buildNetworkImage(context, path, memW, memH);
   }
 
   Widget _buildNetworkImage(BuildContext context, String path, int? memW, int? memH) {
@@ -189,7 +220,6 @@ class AppCachedImage extends StatelessWidget {
 
     assert(() {
       if ((url.contains('/cdn-cgi/image/') || url.contains('/uploads/')) && _debugged.add(url)) {
-        // 这里你要 debug HEAD 的话再打开
         // debugImageHeaders(url);
       }
       return true;
@@ -223,7 +253,7 @@ class AppCachedImage extends StatelessWidget {
         fit: fit,
         memCacheWidth: memW,
         memCacheHeight: memH,
-        httpHeaders: buildImgHttpHeaders(), // ✅ CHANGED
+        httpHeaders: buildImgHttpHeaders(), //  CHANGED
         fadeOutDuration: animDuration,
         fadeInDuration: animDuration,
         placeholderFadeInDuration: Duration.zero,

@@ -11,7 +11,7 @@ import 'package:flutter_app/utils/asset/asset_manager.dart';
 import 'package:flutter_app/ui/chat/models/chat_ui_model.dart';
 import 'package:flutter_app/ui/chat/services/database/local_database_service.dart';
 //  1. 引入 UrlResolver
-import 'package:flutter_app/utils/url_resolver.dart';
+import 'package:flutter_app/utils/media/url_resolver.dart';
 import 'package:flutter_app/core/network/http_adapter/http_adapter_factory.dart';
 
 final fileDownloadServiceProvider = Provider((ref) => FileDownloadService());

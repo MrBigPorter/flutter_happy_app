@@ -152,4 +152,6 @@ class ChatUiModel {
       resolvedThumbPath: resolvedThumbPath ?? this.resolvedThumbPath,
     );
   }
+
+
 }

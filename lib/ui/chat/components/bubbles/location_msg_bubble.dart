@@ -13,7 +13,7 @@ import 'package:intl/intl.dart';
 
 import 'package:flutter_app/core/api/http_client.dart'; // 确保引入 Http 类
 import 'package:flutter_app/ui/chat/models/chat_ui_model.dart';
-import 'package:flutter_app/utils/url_resolver.dart';
+import 'package:flutter_app/utils/media/url_resolver.dart';
 import 'package:flutter_app/ui/chat/services/media/map_launcher_service.dart';
 
 import '../../../../core/store/auth/auth_provider.dart';

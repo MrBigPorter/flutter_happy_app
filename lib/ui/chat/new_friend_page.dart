@@ -9,7 +9,7 @@ import 'package:flutter_app/ui/chat/providers/contact_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
-import '../../../../utils/url_resolver.dart';
+import '../../utils/media/url_resolver.dart';
 import '../toast/radix_toast.dart';
 import 'models/friend_request.dart';
 

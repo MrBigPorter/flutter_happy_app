@@ -6,6 +6,8 @@ import 'package:video_player/video_player.dart';
 import '../img/app_image.dart';
 import 'services/media/video_playback_service.dart';
 
+//  CHANGED: 引入统一路径判断工具
+import 'package:flutter_app/utils/media/media_path.dart';
 
 class VideoPlayerPage extends StatefulWidget {
   final String videoSource;
@@ -39,17 +41,21 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
   }
 
   Future<void> _initVideo() async {
-
+    //】 CHANGED: trim + 统一判断类型
+    final src = widget.videoSource.trim();
+    final t = MediaPath.classify(src);
 
     //  核心修改：不再盲目调用 Service，而是自己判断路径类型
     // 如果是本地文件，必须用 .file()，否则 iOS 必报 -12939 错误
     try {
-      if (!kIsWeb && (widget.videoSource.startsWith('/') || widget.videoSource.startsWith('file://'))) {
-        final f = File(widget.videoSource.replaceFirst('file://', ''));
+      if (!kIsWeb && (t == MediaPathType.localAbs || t == MediaPathType.fileUri)) {
+        //  CHANGED: file:// 统一转成本地路径
+        final filePath = src.startsWith('file://') ? Uri.parse(src).toFilePath() : src;
+        final f = File(filePath);
         _controller = VideoPlayerController.file(f);
       } else {
-        // 网络视频 (或 Web Blob)
-        _controller = VideoPlayerController.networkUrl(Uri.parse(widget.videoSource));
+        //  CHANGED: 防呆：这里必须是远端/可 parse 的 URI（http/blob 等）
+        _controller = VideoPlayerController.networkUrl(Uri.parse(src));
       }
 
       await _controller.initialize();
@@ -103,43 +109,28 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
         child: Stack(
           alignment: Alignment.center,
           children: [
-            // ===========================================
-            // Layer 1: 核心渲染层 (Hero 占位 + VideoPlayer)
-            // ===========================================
             GestureDetector(
               onTap: _toggleControls,
               child: Center(
-                // 核心修改：使用 Stack 叠加 Hero 占位图和真实播放器
                 child: Stack(
                   alignment: Alignment.center,
                   children: [
-                    // 1. Hero 占位图层 (始终存在，作为背景)
-                    // 当 _isInitialized 为 false 时，用户看到的是这个 Hero 飞过来的动画
                     Positioned.fill(
                       child: Hero(
                         tag: widget.heroTag,
-                        // 占位图构建逻辑
                         child: _buildPlaceholderThumbnail(),
                       ),
                     ),
-
-                    // 2. 真实视频层 (初始化完成后覆盖在上面)
                     if (_isInitialized)
                       AspectRatio(
                         aspectRatio: _controller.value.aspectRatio,
                         child: VideoPlayer(_controller),
                       ),
-
-                    // 注意：这里不需要再写 Loading 了，因为有 Hero 封面图垫底，
-                    // 用户会觉得是在看封面，体验比转圈圈好得多。
                   ],
                 ),
               ),
             ),
 
-            // ===========================================
-            // Layer 2: 返回按钮
-            // ===========================================
             Positioned(
               top: 10,
               left: 10,
@@ -149,9 +140,6 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
               ),
             ),
 
-            // ===========================================
-            // Layer 3: 大播放图标
-            // ===========================================
             if (_isInitialized && !_isPlaying)
               IgnorePointer(
                 child: Container(
@@ -164,9 +152,6 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
                 ),
               ),
 
-            // ===========================================
-            // Layer 4: 底部进度条
-            // ===========================================
             if (_isInitialized && (_showControls || !_isPlaying))
               Positioned(
                 bottom: 20,
@@ -210,39 +195,43 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
     );
   }
 
-  //  新增：构建 Hero 占位缩略图
-  // (逻辑与气泡里的一致，确保 Hero 动画平滑)
   Widget _buildPlaceholderThumbnail() {
+    //  CHANGED: cachedThumbUrl 也必须分流（可能传进来的是本地路径）
+    final cached = widget.cachedThumbUrl?.trim();
+    if (cached != null && cached.isNotEmpty) {
+      final ct = MediaPath.classify(cached);
+      if (!kIsWeb && (ct == MediaPathType.localAbs || ct == MediaPathType.fileUri)) {
+        final filePath = cached.startsWith('file://') ? Uri.parse(cached).toFilePath() : cached;
+        final f = File(filePath);
+        if (f.existsSync()) return Image.file(f, fit: BoxFit.contain);
+      }
 
-    //  3. 核心修改：如果有 cachedThumbUrl，直接用 CachedNetworkImage 加载它
-    // 这样能 100% 命中列表页的缓存，实现零延迟
-    if (widget.cachedThumbUrl != null && widget.cachedThumbUrl!.isNotEmpty) {
+      // 远端才用 CachedNetworkImage
       return CachedNetworkImage(
-        imageUrl: widget.cachedThumbUrl!,
+        imageUrl: cached,
         fit: BoxFit.contain,
-        // 既然是缓存图，不需要再做淡入动画，直接显示
         fadeInDuration: Duration.zero,
         placeholder: (context, url) => Container(color: Colors.black),
       );
     }
 
-    if (widget.thumbSource.isEmpty) {
-      return const SizedBox.shrink();
-    }
+    final thumb = widget.thumbSource.trim(); //  CHANGED
+    if (thumb.isEmpty) return const SizedBox.shrink();
 
-    //  核心修改 1: 优先处理本地绝对路径 (发送者视角)
-    if (!kIsWeb && (widget.thumbSource.startsWith('/') || widget.thumbSource.startsWith('file://'))) {
-      final f = File(widget.thumbSource.replaceFirst('file://', ''));
+    //  CHANGED: 本地缩略图分流用 MediaPath
+    final tt = MediaPath.classify(thumb);
+    if (!kIsWeb && (tt == MediaPathType.localAbs || tt == MediaPathType.fileUri)) {
+      final filePath = thumb.startsWith('file://') ? Uri.parse(thumb).toFilePath() : thumb;
+      final f = File(filePath);
       if (f.existsSync()) {
         return Image.file(f, fit: BoxFit.contain);
       }
     }
 
-    //  核心修改 2: 其他情况 (http, uploads/..., blob) 统统交给 AppCachedImage
-    // 我们之前已经修复了 AppCachedImage，它会自动把 uploads/ 拼上域名
+    // 其他情况交给 AppCachedImage（它内部已经用 MediaPath 分流 + uploads 拼接）
     return AppCachedImage(
-      widget.thumbSource,
-      fit: BoxFit.contain, // 保持比例
+      thumb,
+      fit: BoxFit.contain,
       enablePreview: false,
     );
   }
