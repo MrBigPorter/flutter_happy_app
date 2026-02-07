@@ -8,6 +8,7 @@ import 'services/media/video_playback_service.dart';
 
 //  CHANGED: 引入统一路径判断工具
 import 'package:flutter_app/utils/media/media_path.dart';
+import 'package:flutter_app/utils/asset/asset_manager.dart';
 
 class VideoPlayerPage extends StatefulWidget {
   final String videoSource;
@@ -41,37 +42,24 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
   }
 
   Future<void> _initVideo() async {
-    //】 CHANGED: trim + 统一判断类型
-    final src = widget.videoSource.trim();
-    final t = MediaPath.classify(src);
+    // 🔥 利用 AssetManager 统一还原路径（它是同步的，不需要 await）
+    final String src = AssetManager.getRuntimePath(widget.videoSource.trim());
 
-    //  核心修改：不再盲目调用 Service，而是自己判断路径类型
-    // 如果是本地文件，必须用 .file()，否则 iOS 必报 -12939 错误
     try {
-      if (!kIsWeb && (t == MediaPathType.localAbs || t == MediaPathType.fileUri)) {
-        //  CHANGED: file:// 统一转成本地路径
-        final filePath = src.startsWith('file://') ? Uri.parse(src).toFilePath() : src;
-        final f = File(filePath);
-        _controller = VideoPlayerController.file(f);
+      // 这里的判断逻辑变得非常清晰：只要不是 http/blob，就是本地文件
+      if (!kIsWeb && !src.startsWith('http') && !src.startsWith('blob:')) {
+        _controller = VideoPlayerController.file(File(src));
       } else {
-        //  CHANGED: 防呆：这里必须是远端/可 parse 的 URI（http/blob 等）
         _controller = VideoPlayerController.networkUrl(Uri.parse(src));
       }
 
       await _controller.initialize();
-
-      // 停止列表里的小窗播放
-      VideoPlaybackService().stopAll();
-
+      VideoPlaybackService().stopAll(); // 停止小窗播放
       await _controller.play();
 
-      if (mounted) {
-        setState(() {
-          _isInitialized = true;
-        });
-      }
+      if (mounted) setState(() => _isInitialized = true);
     } catch (e) {
-      debugPrint("Full screen init failed: $e");
+      debugPrint("❌ Full screen init failed: $e, Source: $src");
     }
   }
 
@@ -196,41 +184,19 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
   }
 
   Widget _buildPlaceholderThumbnail() {
-    //  CHANGED: cachedThumbUrl 也必须分流（可能传进来的是本地路径）
-    final cached = widget.cachedThumbUrl?.trim();
-    if (cached != null && cached.isNotEmpty) {
-      final ct = MediaPath.classify(cached);
-      if (!kIsWeb && (ct == MediaPathType.localAbs || ct == MediaPathType.fileUri)) {
-        final filePath = cached.startsWith('file://') ? Uri.parse(cached).toFilePath() : cached;
-        final f = File(filePath);
-        if (f.existsSync()) return Image.file(f, fit: BoxFit.contain);
-      }
+    // 优先使用缓存的 URL，如果没有则使用原始缩略图源
+    final String? source = (widget.cachedThumbUrl?.isNotEmpty == true)
+        ? widget.cachedThumbUrl
+        : widget.thumbSource;
 
-      // 远端才用 CachedNetworkImage
-      return CachedNetworkImage(
-        imageUrl: cached,
-        fit: BoxFit.contain,
-        fadeInDuration: Duration.zero,
-        placeholder: (context, url) => Container(color: Colors.black),
-      );
-    }
+    if (source == null || source.isEmpty) return const SizedBox.shrink();
 
-    final thumb = widget.thumbSource.trim(); //  CHANGED
-    if (thumb.isEmpty) return const SizedBox.shrink();
-
-    //  CHANGED: 本地缩略图分流用 MediaPath
-    final tt = MediaPath.classify(thumb);
-    if (!kIsWeb && (tt == MediaPathType.localAbs || tt == MediaPathType.fileUri)) {
-      final filePath = thumb.startsWith('file://') ? Uri.parse(thumb).toFilePath() : thumb;
-      final f = File(filePath);
-      if (f.existsSync()) {
-        return Image.file(f, fit: BoxFit.contain);
-      }
-    }
-
-    // 其他情况交给 AppCachedImage（它内部已经用 MediaPath 分流 + uploads 拼接）
+    // 🔥 直接交给 AppCachedImage，它内部已经处理了：
+    // 1. AssetManager.getRuntimePath 还原绝对路径
+    // 2. 判断 File 还是 Network
+    // 3. 处理自动拼接的域名/uploads前缀
     return AppCachedImage(
-      thumb,
+      source,
       fit: BoxFit.contain,
       enablePreview: false,
     );

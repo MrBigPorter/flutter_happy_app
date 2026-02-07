@@ -2,6 +2,6 @@
 import 'package:flutter/material.dart';
 
 ImageProvider? tryBuildFileImageProviderImpl(String source) {
-  // ✅ CHANGED: Web 下不支持 FileImage，直接返回 null
+  //  CHANGED: Web 下不支持 FileImage，直接返回 null
   return null;
 }

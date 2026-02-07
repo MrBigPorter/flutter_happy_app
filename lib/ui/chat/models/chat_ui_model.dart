@@ -127,6 +127,32 @@ class ChatUiModel extends Equatable {
     );
   }
 
+  ChatUiModel merge(ChatUiModel serverMsg) {
+    return copyWith(
+      // 1. 状态：信服务器的 (比如从 sending 变成了 success)
+      status: serverMsg.status == MessageStatus.success ? MessageStatus.success : status,
+
+      // 2. 🔥 重点：服务器没有 localPath，但我有，绝对不能丢！
+      localPath: (serverMsg.localPath != null && serverMsg.localPath!.isNotEmpty)
+          ? serverMsg.localPath
+          : localPath,
+
+      // 3. 预览图同理，服务器通常不给 bytes，保留本地的
+      previewBytes: (serverMsg.previewBytes != null && serverMsg.previewBytes!.isNotEmpty)
+          ? serverMsg.previewBytes
+          : previewBytes,
+
+      // 4. 其他字段，服务器准没错，直接覆盖
+      seqId: serverMsg.seqId ?? seqId,
+      content: serverMsg.content.isNotEmpty ? serverMsg.content : content,
+      // 如果 serverMsg.meta 是空的，不要覆盖本地已有的 meta (比如宽高等信息)
+      meta: (serverMsg.meta == null || serverMsg.meta!.isEmpty) ? meta : serverMsg.meta,
+
+      // 必须更新的时间戳等
+      createdAt: serverMsg.createdAt > 0 ? serverMsg.createdAt : createdAt,
+    );
+  }
+
   // --- CopyWith (保持不变) ---
   ChatUiModel copyWith({
     String? id,

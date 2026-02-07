@@ -1,6 +1,6 @@
 import 'dart:math';
 import 'package:flutter/widgets.dart';
-import '../../core/config/app_config.dart'; // 👈 确保这里引用了你的 AppConfig
+import '../../core/config/app_config.dart'; //  确保这里引用了你的 AppConfig
 import 'media_path.dart';
 
 class RemoteUrlBuilder {

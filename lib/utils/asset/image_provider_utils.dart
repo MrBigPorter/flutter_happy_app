@@ -1,12 +1,11 @@
-// lib/utils/image_provider_utils.dart
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
-// ✅ CHANGED: 条件导入：Web 不会编译 dart:io
+// CHANGED: 条件导入：Web 不会编译 dart:io
 import 'image_provider_utils_stub.dart'
 if (dart.library.io) 'image_provider_utils_io.dart';
 
-/// ✅ CHANGED: 统一图片请求头（让 CF 更稳返回 webp/avif，且不再是 Dart UA）
+/// CHANGED: 统一图片请求头（让 CF 更稳返回 webp/avif，且不再是 Dart UA）
 /// 注意：headers 不是必须，但对你排查“CF 到底返回什么”非常有帮助
 Map<String, String> buildImgHeaders() {
   if (kIsWeb) return const {};
@@ -38,7 +37,7 @@ Map<String, String> buildImgHeaders() {
   return headers;
 }
 
-/// ✅ CHANGED: 获取本地文件 ImageProvider（Web 下永远返回 null）
+/// CHANGED: 获取本地文件 ImageProvider（Web 下永远返回 null）
 ImageProvider? tryBuildFileImageProvider(String source) {
   return tryBuildFileImageProviderImpl(source);
 }

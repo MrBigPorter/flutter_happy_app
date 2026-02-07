@@ -17,6 +17,7 @@ import 'app/app.dart';
 import 'app/app_startup.dart';
 import 'core/api/http_client.dart';
 import 'core/store/auth/auth_initial.dart';
+import 'package:flutter_app/utils/asset/asset_manager.dart';
 
 // FCM 背景消息处理（必须在顶级作用域）
 @pragma('vm:entry-point')
@@ -30,6 +31,9 @@ Future<void> main() async {
   if (kIsWeb) usePathUrlStrategy();
   GoRouter.optionURLReflectsImperativeAPIs = true;
   WidgetsFlutterBinding.ensureInitialized();
+
+  // 初始化资源管理器
+  await AssetManager.init();
 
   // 2. 初始化全局错误捕获
   _initErrorHandlers();

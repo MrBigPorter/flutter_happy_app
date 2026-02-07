@@ -52,7 +52,7 @@ class UrlResolver {
 
     final raw = path!.trim();
 
-    // 🔥 双重保险：如果是本地/未知路径，直接返回原字符串，绝不进 CDN 逻辑
+    //  双重保险：如果是本地/未知路径，直接返回原字符串，绝不进 CDN 逻辑
     if (MediaPath.isLocal(raw)) return raw; //
 
     if (raw.contains(RemoteUrlBuilder.cdnPrefix)) return raw;

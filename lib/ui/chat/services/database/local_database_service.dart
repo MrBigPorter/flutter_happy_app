@@ -9,11 +9,8 @@ import 'package:sembast/sembast_io.dart';
 import 'package:sembast_web/sembast_web.dart';
 import 'package:lpinyin/lpinyin.dart';
 
-import '../../../../utils/media/media_path.dart';
-import 'package:flutter_app/utils/media/url_resolver.dart';
 import '../../models/chat_ui_model.dart';
 import '../../models/conversation.dart';
-import '../../../../utils/asset/asset_manager.dart';
 
 class LocalDatabaseService {
   static final LocalDatabaseService _instance = LocalDatabaseService._internal();
@@ -112,7 +109,7 @@ class LocalDatabaseService {
   }
 
   // ========================================================================
-  // 🔥🔥🔥 核心防守逻辑：Socket 消息入口 (死保本地路径) 🔥🔥🔥
+  //  核心防守逻辑：Socket 消息入口 (死保本地路径)
   // ========================================================================
   Future<void> handleIncomingMessage(ChatUiModel msg) async {
     final db = await database;
@@ -124,33 +121,8 @@ class LocalDatabaseService {
       final record = _messageStore.record(msgId);
       final snapshot = await record.getSnapshot(txn);
 
-      Map<String, dynamic> dataToSave = msg.toJson();
-
       // 如果本地已经有记录，执行防守策略
-      if (snapshot != null) {
-        final oldData = snapshot.value;
-        final oldLocal = oldData['localPath']?.toString();
-
-        // 只要旧数据有正经的本地路径 (blob: 或 /var/...)，必须强行保留
-        if (oldLocal != null && oldLocal.isNotEmpty && !oldLocal.startsWith('http')) {
-
-          // 保住 localPath
-          dataToSave['localPath'] = oldLocal;
-          // 保住 resolvedPath
-          dataToSave['resolvedPath'] = oldData['resolvedPath'];
-          // 保住 previewBytes (封面内存图)
-          if (oldData['previewBytes'] != null) {
-            dataToSave['previewBytes'] = oldData['previewBytes'];
-          }
-          // 保住 Meta (宽、高、blurHash)
-          final oldMeta = oldData['meta'] as Map<String, dynamic>? ?? {};
-          final newMeta = dataToSave['meta'] as Map<String, dynamic>? ?? {};
-          dataToSave['meta'] = {
-            ...newMeta,
-            ...oldMeta, // 本地优先
-          };
-        }
-      }
+      final dataToSave = _mergeMessageData(snapshot?.value, msg.toJson());
 
       await record.put(txn, dataToSave);
 
@@ -367,22 +339,43 @@ class LocalDatabaseService {
 
   Future<void> saveMessage(ChatUiModel msg) async {
     final db = await database;
-    await _messageStore.record(msg.id).put(db, msg.toJson());
-    await _conversationStore.record(msg.conversationId).update(db, {
-      'lastMsgContent': _getPreviewContent(msg),
-      'lastMsgTime': msg.createdAt,
-      'lastMsgType': msg.type.value,
+
+    await db.transaction((txn) async {
+      // 1. 先查旧数据 (Snapshot)
+      final record = _messageStore.record(msg.id);
+      final snapshot = await record.getSnapshot(txn);
+
+
+      final dataToSave = _mergeMessageData(snapshot?.value, msg.toJson());
+
+      // 4. 保存合并后的数据
+      await record.put(txn, dataToSave);
+
+      // 5. 更新会话列表最后一条消息
+      await _conversationStore.record(msg.conversationId).update(txn, {
+        'lastMsgContent': _getPreviewContent(msg),
+        'lastMsgTime': msg.createdAt,
+        'lastMsgType': msg.type.value,
+      });
     });
   }
 
   // 批量保存 (ChatViewModel 用)
+// 批量保存 (ChatViewModel 用)
   Future<void> saveMessages(List<ChatUiModel> msgs) async {
     if (msgs.isEmpty) return;
     final db = await database;
+
     await db.transaction((txn) async {
       for (final msg in msgs) {
         if (msg.id.trim().isEmpty) continue;
-        await _messageStore.record(msg.id).put(txn, msg.toJson());
+
+        final record = _messageStore.record(msg.id);
+        final snapshot = await record.getSnapshot(txn);
+
+        final dataToSave = _mergeMessageData(snapshot?.value, msg.toJson());
+
+        await record.put(txn, dataToSave);
       }
     });
   }
@@ -485,5 +478,33 @@ class LocalDatabaseService {
         await record.put(txn, recalledMsg.toJson());
       }
     });
+  }
+
+  //  [全局核心] 统一处理新旧数据合并
+  Map<String, dynamic> _mergeMessageData(Map<String, dynamic>? oldData, Map<String, dynamic> newData) {
+    if (oldData == null) return newData;
+
+    // 以新数据（通常是服务器数据）为基准
+    final merged = Map<String, dynamic>.from(newData);
+
+    //  关键防守：如果新数据没路径（服务器不返），强行找回本地资产
+    final String? oldLocal = oldData['localPath']?.toString();
+    if ((merged['localPath'] == null || merged['localPath'].toString().isEmpty) &&
+        (oldLocal != null && oldLocal.isNotEmpty && !oldLocal.startsWith('http'))) {
+      merged['localPath'] = oldLocal;
+      merged['resolvedPath'] = oldData['resolvedPath'];
+    }
+
+    //  关键防守：保护封面图和二进制数据
+    if (merged['previewBytes'] == null && oldData['previewBytes'] != null) {
+      merged['previewBytes'] = oldData['previewBytes'];
+    }
+
+    // 关键防守：Meta 信息深度合并 (防止服务器返回的部分 meta 覆盖了本地解析的宽高)
+    final oldMeta = oldData['meta'] as Map<String, dynamic>? ?? {};
+    final newMeta = merged['meta'] as Map<String, dynamic>? ?? {};
+    merged['meta'] = {...oldMeta, ...newMeta};
+
+    return merged;
   }
 }
