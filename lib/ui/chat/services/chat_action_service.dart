@@ -1,57 +1,32 @@
 import 'dart:async';
 import 'dart:io';
-import 'dart:ui' as ui;
-import 'package:file_picker/file_picker.dart';
-import 'package:flutter/foundation.dart'; // kIsWeb
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:uuid/uuid.dart';
-import 'package:cross_file/cross_file.dart';
+import 'dart:typed_data';
 
-import 'package:flutter_app/ui/chat/models/chat_ui_model.dart';
-import 'package:flutter_app/ui/chat/services/network/offline_queue_manager.dart';
-import 'package:flutter_app/ui/chat/services/database/local_database_service.dart';
-import 'package:flutter_app/ui/chat/providers/conversation_provider.dart';
-import 'package:flutter_app/utils/asset/asset_manager.dart';
-import 'package:flutter_app/utils/upload/global_upload_service.dart';
-import 'package:flutter_app/utils/upload/upload_types.dart';
-import 'package:flutter_app/core/api/lucky_api.dart';
+import 'package:cross_file/cross_file.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:video_compress/video_compress.dart';
 
-import '../../../utils/media/media_path.dart';
+import 'package:flutter_app/ui/chat/models/chat_ui_model.dart';
+import 'package:flutter_app/ui/chat/providers/conversation_provider.dart';
+import 'package:flutter_app/ui/chat/services/network/offline_queue_manager.dart';
+import 'package:flutter_app/utils/upload/global_upload_service.dart';
+import 'package:flutter_app/utils/upload/upload_types.dart';
+
+import '../../../utils/asset/web/web_blob_url.dart';
+import '../repository/message_repository.dart';
 import '../../../utils/media/url_resolver.dart';
-import '../services/media/video_processor.dart';
+import '../pipeline/pipeline_types.dart';
+import '../pipeline/pipeline_steps.dart';
 import 'blurHash/blur_hash_service.dart';
+import 'chat_message_factory.dart';
 import 'compression/image_compression_service.dart';
+import 'media/web_video_thumbnail_service.dart';
 
 // ===========================================================================
-// 1. 管道核心定义
-// ===========================================================================
-
-class PipelineContext {
-  final ChatUiModel initialMsg;
-  String? currentAbsolutePath;
-  String? thumbAssetId;
-  String? remoteUrl;
-  String? remoteThumbUrl;
-  Map<String, dynamic> metadata = {};
-
-  //  核心修复 A：增加 sourceFile 字段
-  // 专门用于在 Web 端传递原始的 XFile，防止文件名和后缀丢失
-  XFile? sourceFile;
-
-  PipelineContext(this.initialMsg) {
-    if (initialMsg.meta != null) metadata.addAll(initialMsg.meta!);
-    remoteThumbUrl = initialMsg.meta?['thumb'] ?? initialMsg.meta?['remote_thumb'];
-    currentAbsolutePath = initialMsg.localPath;
-  }
-}
-
-abstract class PipelineStep {
-  Future<void> execute(PipelineContext ctx, ChatActionService service);
-}
-
-// ===========================================================================
-// 2. ChatActionService：业务调度中心
+// ChatActionService
 // ===========================================================================
 
 class ChatActionService {
@@ -59,37 +34,58 @@ class ChatActionService {
   final Ref _ref;
   final GlobalUploadService _uploadService;
 
-  static final Map<String, String> _sessionPathCache = {};
-
-  static String? getPathFromCache(String msgId) => _sessionPathCache[msgId];
-
   ChatActionService(this.conversationId, this._ref, this._uploadService);
 
-  Future<void> _runPipeline(
-    PipelineContext ctx,
-    List<PipelineStep> steps,
-  ) async {
+  MessageRepository get repo => _ref.read(messageRepositoryProvider);
+
+  // 静态缓存路径
+  static final Map<String, String> _sessionPathCache = {};
+
+  static String? getPathFromCache(String msgId) {
+    if (_sessionPathCache.containsKey(msgId)) return _sessionPathCache[msgId];
+    return null;
+  }
+
+  ChatMessageFactory get _msg => ChatMessageFactory(conversationId: conversationId);
+
+  Future<String> uploadChatFile(XFile file) {
+    return _uploadService.uploadFile(
+      file: file,
+      module: UploadModule.chat,
+      onProgress: (_) {},
+    );
+  }
+
+  // ===========================================================================
+  // 🔥 核心管道执行器
+  // ===========================================================================
+  Future<void> _runPipeline(PipelineContext ctx, List<PipelineStep> steps) async {
     try {
-      // 架构调整点：立即保存到数据库，触发 UI 的 Stream 监听
-      // 注意：这里可以去掉 await，让它同步触发，或者在外面先 save
-      await LocalDatabaseService().saveMessage(ctx.initialMsg);
-       // 立即更新会话列表的最后一条消息预览
+      // 1. 初始存库 (带本地路径和封面)
+      await repo.saveOrUpdate(ctx.initialMsg);
+
+      // 2. 更新列表快照
       _updateConversationSnapshot(
         ctx.initialMsg.content,
         ctx.initialMsg.createdAt,
       );
 
-       // 真正的耗时流水线在后台跑
+      // 3. 执行步骤
       for (final step in steps) {
         await step.execute(ctx, this);
       }
-      debugPrint("Pipeline Success: ${ctx.initialMsg.id}");
-    } catch (e) {
-      debugPrint(" Pipeline Crashed: $e");
-      await LocalDatabaseService().updateMessageStatus(
-        ctx.initialMsg.id,
-        MessageStatus.failed,// 修正 failed，pending 留给离线队列
-      );
+      debugPrint("✅ Pipeline Success: ${ctx.initialMsg.id}");
+    } catch (e, st) {
+      debugPrint("❌ Pipeline Crashed: $e");
+      final failedMsg = ctx.initialMsg.copyWith(status: MessageStatus.failed);
+      await repo.saveOrUpdate(failedMsg);
+
+      final errStr = e.toString();
+      if (errStr.contains("Fatal") ||
+          errStr.contains("文件丢失") ||
+          errStr.contains("同步中止")) {
+        return;
+      }
       OfflineQueueManager().startFlush();
     }
   }
@@ -100,91 +96,128 @@ class ChatActionService {
 
   Future<void> sendText(String text) async {
     if (text.trim().isEmpty) return;
-    final msg = _createBaseMessage(content: text, type: MessageType.text);
+    final msg = _msg.text(text);
     await _runPipeline(PipelineContext(msg), [SyncStep()]);
   }
 
   Future<void> sendImage(XFile file) async {
-    // 1.  前置压缩：解决上传慢、流量大的问题
-    // (Web 端会走 Canvas 加速，不卡顿；App 端走 Native，飞快)
-    final XFile processedFile = await ImageCompressionService.compressForUpload(
-      file,
-    );
-
-    // 2.  秒出预览图：解决消息上屏白屏的问题
-    // (因为是对 150KB 的小图做处理，耗时 <10ms，几乎无感)
+    final XFile processedFile = await ImageCompressionService.compressForUpload(file);
     Uint8List? quickPreview;
     try {
-      quickPreview = await ImageCompressionService.getTinyThumbnail(
-        processedFile,
-      );
+      quickPreview = await ImageCompressionService.getTinyThumbnail(processedFile);
     } catch (e) {
-      debugPrint(" 预览图生成失败: $e");
+      debugPrint("预览图生成失败: $e");
     }
 
-    // 3. 创建消息 (直接带上 previewBytes，UI 渲染时直接显示，无需等待)
-    final msg = _createBaseMessage(
-      content: "[Image]",
-      type: MessageType.image,
+    final msg = _msg.image(
       localPath: processedFile.path,
       previewBytes: quickPreview,
+      meta: {
+        'fileExt': processedFile.name.split('.').last,
+        'fileName': processedFile.name,
+      },
     );
-    
 
     _sessionPathCache[msg.id] = processedFile.path;
 
-    // 4. 初始化 Pipeline
-    final ctx = PipelineContext(msg);
-    //  核心逻辑：必须把【处理后的文件】传给 Pipeline，否则 Web 端会传原图！
-    ctx.sourceFile = processedFile;
+    // 立即存库，防止闪烁
+    await repo.saveOrUpdate(msg);
 
-    // 5. 执行管道
-    await _runPipeline(ctx, [
-      PersistStep(),
-      ImageProcessStep(), // 这里的 BlurHash 计算现在是锦上添花，因为 previewBytes 已经有了
-      UploadStep(),
-      SyncStep(),
-    ]);
-  }
-
-  Future<void> sendVoiceMessage(String path, int duration) async {
-    final msg = _createBaseMessage(
-      content: "[Voice]",
-      type: MessageType.audio,
-      localPath: path,
-      duration: duration,
-      meta: {'duration': duration},
-    );
-    // 语音通常是录音文件，路径是确定的，一般不需要 sourceFile
-    await _runPipeline(PipelineContext(msg), [
-      PersistStep(),
-      UploadStep(),
-      SyncStep(),
-    ]);
+    final ctx = PipelineContext(msg)..sourceFile = processedFile;
+    await _runPipeline(ctx, [PersistStep(), ImageProcessStep(), UploadStep(), SyncStep()]);
   }
 
   Future<void> sendVideo(XFile file) async {
-    Uint8List? quickPreview;
-    try {
-      quickPreview = await VideoCompress.getByteThumbnail(
-        file.path,
-        quality: 20,
-      );
-    } catch (e) {
-      debugPrint("Pre-process preview failed: $e");
+    XFile fileToUse = file;
+
+    // 1. Web 平台：强制生成 Blob URL
+    if (kIsWeb) {
+      bool invalidPath = file.path.isEmpty || !file.path.startsWith('blob:');
+      if (invalidPath) {
+        try {
+          final bytes = await file.readAsBytes();
+          final blobUrl = WebBlobUrl.fromBytes(bytes, mime: 'video/mp4');
+          fileToUse = XFile(blobUrl, name: file.name, bytes: bytes);
+        } catch (e) {
+          debugPrint("Web video blob gen failed: $e");
+        }
+      }
     }
 
-    final msg = _createBaseMessage(
-      content: "[Video]",
-      type: MessageType.video,
-      localPath: file.path,
-      previewBytes: quickPreview,
-    );
-    _sessionPathCache[msg.id] = file.path;
+    Uint8List? quickPreview;
+    String? blurHash;
+    int? w;
+    int? h;
+    XFile? webThumbFile;
 
-    //  核心修复 B：初始化 Context 时把 sourceFile 塞进去
-    final ctx = PipelineContext(msg);
-    ctx.sourceFile = file;
+    // 2. 🔥🔥🔥 封面生成 (加强版) 🔥🔥🔥
+    if (kIsWeb) {
+      try {
+        final videoBytes = await fileToUse.readAsBytes();
+        final thumbJpeg = await WebVideoThumbnailService.extractJpegThumb(
+          videoBytes,
+          atSeconds: 0.1,
+          maxWidth: 320,
+          quality: 0.85,
+        );
+
+        if (thumbJpeg != null && thumbJpeg.isNotEmpty) {
+          quickPreview = thumbJpeg;
+          webThumbFile = XFile.fromData(
+            thumbJpeg,
+            name: 'thumb_${DateTime.now().millisecondsSinceEpoch}.jpg',
+            mimeType: 'image/jpeg',
+          );
+          // 顺便算 BlurHash
+          final blur = await ThumbBlurHashService.build(thumbJpeg);
+          if (blur != null) {
+            blurHash = blur.blurHash;
+            w = blur.thumbW;
+            h = blur.thumbH;
+          }
+        }
+      } catch (e) {
+        debugPrint("Web video thumb failed: $e");
+      }
+    } else {
+      // Mobile 端：双重保险获取封面
+      try {
+        // A计划：直接获取 Bytes
+        quickPreview = await VideoCompress.getByteThumbnail(fileToUse.path, quality: 30);
+
+        // B计划：如果 A 失败，尝试生成文件再读取
+        if (quickPreview == null || quickPreview.isEmpty) {
+          final File thumbFile = await VideoCompress.getFileThumbnail(fileToUse.path, quality: 30);
+          if (await thumbFile.exists()) {
+            quickPreview = await thumbFile.readAsBytes();
+          }
+        }
+      } catch (e) {
+        debugPrint("Video preview failed: $e");
+      }
+    }
+
+    // 3. 创建消息 (带上 previewBytes)
+    final msg = _msg.video(
+      localPath: fileToUse.path,
+      previewBytes: quickPreview, // 👈 只要这里不为空，界面就不会闪
+      meta: {
+        if (blurHash != null && blurHash!.isNotEmpty) 'blurHash': blurHash,
+        if (w != null) 'w': w,
+        if (h != null) 'h': h,
+      },
+    );
+
+    _sessionPathCache[msg.id] = fileToUse.path;
+
+    // 立即存库
+    await repo.saveOrUpdate(msg);
+
+    final ctx = PipelineContext(msg)
+      ..sourceFile = fileToUse
+      ..webThumbFile = webThumbFile;
+
+    ctx.metadata.addAll(msg.meta ?? {});
 
     await _runPipeline(ctx, [
       PersistStep(),
@@ -194,80 +227,58 @@ class ChatActionService {
     ]);
   }
 
-  Future<void> sendFile() async {
+  Future<void> sendFile([PlatformFile? pFile]) async {
     try {
-      // 1. 唤起系统文件选择器
-      ///核心修复：Web 端强制使用 FileType.any，防止 MIME Type 识别失败导致不弹窗
-      FilePickerResult? result = await FilePicker.platform.pickFiles(
-        allowMultiple: false,
-        // Web端：为了兼容性，允许所有类型 (any)
-        // Native端：为了体验，只允许特定后缀 (custom)
-        type: FileType.custom,
-        // Native端才传后缀列表，Web端传了可能会导致不弹窗
-        allowedExtensions: [
-          'pdf',
-          'doc',
-          'docx',
-          'xls',
-          'xlsx',
-          'ppt',
-          'pptx',
-          'zip',
-          'rar',
-          'txt',
-          'apk',
-        ],
-        withData: kIsWeb,
-        // Web 端必须读入内存
-        withReadStream: !kIsWeb, // App 端可以用流式读取优化
-      );
+      PlatformFile? fileToUse = pFile;
 
-      if (result == null || result.files.isEmpty) return; // 用户取消选择
+      if (fileToUse == null) {
+        final result = await FilePicker.platform.pickFiles(
+          allowMultiple: false,
+          type: FileType.custom,
+          allowedExtensions: ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'zip', 'rar', 'txt', 'apk'],
+          withData: kIsWeb,
+          withReadStream: !kIsWeb,
+        );
+        if (result == null || result.files.isEmpty) return;
+        fileToUse = result.files.first;
+      }
 
-      final PlatformFile pFile = result.files.first;
+      final fileName = fileToUse.name;
+      final fileSize = fileToUse.size;
+      final fileExt = fileToUse.extension ?? (fileName.contains('.') ? fileName.split('.').last : 'bin');
 
-      // 2. 兼容性处理：构建 XFile (Web 拿 blob, App 拿 path)
       XFile xFile;
       if (kIsWeb) {
-        // Web 端用内存字节流构建 XFile
-        if (pFile.bytes == null) return;
-        xFile = XFile.fromData(pFile.bytes!, name: pFile.name);
+        if (fileToUse.bytes == null) return;
+        final blobUrl = WebBlobUrl.fromBytes(fileToUse.bytes!);
+        xFile = XFile(blobUrl, name: fileName, bytes: fileToUse.bytes!);
       } else {
-        if (pFile.path == null) return;
-        xFile = XFile(pFile.path!, name: pFile.name);
+        if (fileToUse.path == null) return;
+        xFile = XFile(fileToUse.path!, name: fileName);
       }
 
-      // 5. 元数据解析
-      final String fileName = pFile.name;
-      final int fileSize = pFile.size; // 字节大小
-      // 优先用 pick 出来的后缀，如果没有则从文件名解析
-      final String fileExt =
-          pFile.extension ??
-          (fileName.contains('.') ? fileName.split('.').last : 'bin');
-
-      // 6. 创建消息模型
-      final msg = _createBaseMessage(
-        content: "[File]",
-        type: MessageType.file,
+      final msg = _msg.file(
         localPath: xFile.path,
-        meta: {'fileName': fileName, 'fileSize': fileSize, 'fileExt': fileExt},
+        fileName: fileName,
+        fileSize: fileSize,
+        fileExt: fileExt,
       );
 
-      // 5. Cache (UI 零抖动)
-      // 此时 fullPath 就是 xFile.path，UI 会先读这个临时路径显示
-      if (msg.localPath != null) {
-        _sessionPathCache[msg.id] = msg.localPath!;
-      }
+      if (msg.localPath != null) _sessionPathCache[msg.id] = msg.localPath!;
 
-      // 7. 初始化管道上下文
-      final ctx = PipelineContext(msg);
-      ctx.sourceFile = xFile; // 传递原始 XFile 以保留文件名等信息
+      await repo.saveOrUpdate(msg);
 
-      // 8. 执行管道 (文件不需要压缩/处理，直接上传 + 同步)
+      final ctx = PipelineContext(msg)..sourceFile = xFile;
       await _runPipeline(ctx, [PersistStep(), UploadStep(), SyncStep()]);
-    } catch (e) {
-      debugPrint(" Send file failed: $e");
+    } catch (e, st) {
+      debugPrint("Send file failed: $e\n$st");
     }
+  }
+
+  Future<void> sendVoiceMessage(String path, int duration) async {
+    final msg = _msg.voice(localPath: path, duration: duration);
+    await repo.saveOrUpdate(msg);
+    await _runPipeline(PipelineContext(msg), [PersistStep(), UploadStep(), SyncStep()]);
   }
 
   Future<void> sendLocation({
@@ -276,491 +287,41 @@ class ChatActionService {
     required String address,
     String? title,
   }) async {
-    // 1. 生成静态预览图 URL
-    final String staticMapUrl = UrlResolver.getStaticMapUrl(
-      latitude,
-      longitude,
+    final staticMapUrl = UrlResolver.getStaticMapUrl(latitude, longitude);
+    final msg = _msg.location(
+      latitude: latitude,
+      longitude: longitude,
+      address: address,
+      title: title,
+      thumb: staticMapUrl,
     );
-    // 2. 创建消息实体
-    // 这里传入的 meta 会被 PipelineContext 捕获，最终被 SyncStep 提取
-    final msg = _createBaseMessage(
-      content: "[Location]",
-      type: MessageType.location,
-      meta: {
-        'latitude': latitude,
-        'longitude': longitude,
-        'address': address,
-        'title': title,
-        'thumb': staticMapUrl, // 对应后端的 thumb 字段
-      },
-    );
-
-    // 使用 _runPipeline 标准流程：
-    // 它会自动负责：LocalDB保存(Sending状态) -> 更新会话快照 -> 执行Step -> 异常处理(离线队列)
+    await repo.saveOrUpdate(msg);
     await _runPipeline(PipelineContext(msg), [SyncStep()]);
   }
 
   Future<void> resend(String msgId) async {
-    final target = await LocalDatabaseService().getMessageById(msgId);
+    final target = await repo.get(msgId);
     if (target == null) return;
-
     final msg = target.copyWith(
       status: MessageStatus.sending,
       createdAt: DateTime.now().millisecondsSinceEpoch,
     );
-
-    await LocalDatabaseService().updateMessageStatus(
-      msgId,
-      MessageStatus.sending,
-    );
-
-    // 重发时没有 sourceFile，只能依赖 UploadStep 里的兜底逻辑
-    await _runPipeline(PipelineContext(msg), [
-      RecoverStep(),
-      UploadStep(),
-      SyncStep(),
-    ]);
-  }
-
-  ChatUiModel _createBaseMessage({
-    required String content,
-    required MessageType type,
-    String? localPath,
-    Map<String, dynamic>? meta,
-    int? duration,
-    Uint8List? previewBytes,
-  }) {
-    return ChatUiModel(
-      id: const Uuid().v4(),
-      conversationId: conversationId,
-      content: content,
-      type: type,
-      isMe: true,
-      status: MessageStatus.sending,
-      createdAt: DateTime.now().millisecondsSinceEpoch,
-      localPath: localPath,
-      meta: meta,
-      duration: duration,
-      previewBytes: previewBytes,
-    );
+    await repo.saveOrUpdate(msg);
+    await _runPipeline(PipelineContext(msg), [RecoverStep(), UploadStep(), SyncStep()]);
   }
 
   void _updateConversationSnapshot(String content, int time) {
     try {
-      _ref
-          .read(conversationListProvider.notifier)
-          .updateLocalItem(
-            conversationId: conversationId,
-            lastMsgContent: content,
-            lastMsgTime: time,
-          );
+      _ref.read(conversationListProvider.notifier).updateLocalItem(
+        conversationId: conversationId,
+        lastMsgContent: content,
+        lastMsgTime: time,
+      );
     } catch (_) {}
   }
 }
 
-// ===========================================================================
-// 3. 原子步骤实现 (严格对齐 w, h 协议)
-// ===========================================================================
-
-class PersistStep implements PipelineStep {
-  @override
-  Future<void> execute(PipelineContext ctx, ChatActionService service) async {
-    if (kIsWeb) return;
-    final lp = ctx.initialMsg.localPath;
-    if (lp == null || lp.isEmpty) return; // CHANGED: 防止空路径崩溃
-
-    // 1. 保存到本地沙盒
-    final assetId = await AssetManager.save(
-      XFile(ctx.initialMsg.localPath!),
-      ctx.initialMsg.type,
-    );
-
-    // 2. 立即解析出绝对路径
-    final String? resolved = await AssetManager.getFullPath(
-      assetId,
-      ctx.initialMsg.type,
-    );
-
-    if (resolved != null) {
-      ctx.currentAbsolutePath = resolved; //  让后续 step 都用这个绝对路径
-    }
-
-    //  CHANGED: 同时固化 localPath(资产ID) + resolvedPath(本地绝对路径) 到 DB
-    final updates = <String, dynamic>{
-      'localPath': assetId,
-    };
-    if (resolved != null && resolved.isNotEmpty) {
-      updates['resolvedPath'] = resolved;
-    }
-
-    await LocalDatabaseService().updateMessage(ctx.initialMsg.id, updates);
-  }
-}
-
-class RecoverStep implements PipelineStep {
-  @override
-  Future<void> execute(PipelineContext ctx, ChatActionService service) async {
-    final assetId = ctx.initialMsg.localPath;
-    if (assetId != null && !assetId.startsWith('http')) {
-      ctx.currentAbsolutePath = await AssetManager.getFullPath(
-        assetId,
-        ctx.initialMsg.type,
-      );
-
-      if (!kIsWeb) {
-        if (ctx.currentAbsolutePath == null ||
-            !File(ctx.currentAbsolutePath!).existsSync()) {
-          final fileName = assetId.split('/').last;
-          ctx.currentAbsolutePath = await AssetManager.getFullPath(
-            fileName,
-            ctx.initialMsg.type,
-          );
-        }
-      }
-    }
-
-    final thumbId = ctx.initialMsg.meta?['thumb'];
-    if (thumbId != null && !thumbId.toString().startsWith('http')) {
-      ctx.thumbAssetId = thumbId.toString();
-    }
-  }
-}
-
-class VideoProcessStep implements PipelineStep {
-  @override
-  Future<void> execute(PipelineContext ctx, ChatActionService service) async {
-    // 1. Web 端逻辑：直接从预热的 previewBytes 恢复
-    if (kIsWeb) {
-      final bytes = ctx.initialMsg.previewBytes;
-      if (bytes != null && bytes.isNotEmpty) {
-        final result = await ThumbBlurHashService.build(bytes);
-        if (result != null) {
-          ctx.metadata.addAll({
-            'w': result.thumbW,
-            'h': result.thumbH,
-            'blurHash': result.blurHash,
-          });
-          await LocalDatabaseService().updateMessage(ctx.initialMsg.id, {
-            'meta': ctx.metadata,
-          });
-        }
-      }
-      return;
-    }
-
-    // 2. Mobile 端逻辑：压缩 + 封面指纹化
-    final result = await VideoProcessor.process(
-      XFile(ctx.currentAbsolutePath!),
-    );
-    if (result == null) throw "Video Compression Failed";
-
-    final thumbBytes = await File(result.thumbnailFile.path).readAsBytes();
-
-    //  关键：给视频封面也跑一遍图片服务，获取微缩图和 BlurHash
-    final thumbResult = await ThumbBlurHashService.build(thumbBytes);
-
-    ctx.currentAbsolutePath = result.videoFile.path;
-    ctx.thumbAssetId = await AssetManager.save(
-      XFile(result.thumbnailFile.path),
-      MessageType.image,
-    );
-
-    ctx.metadata.addAll({
-      'w': result.width,
-      'h': result.height,
-      'duration': result.duration,
-      'thumb': ctx.thumbAssetId,
-      'blurHash': thumbResult?.blurHash ?? "",
-    });
-
-    await LocalDatabaseService().updateMessage(ctx.initialMsg.id, {
-      'meta': ctx.metadata,
-      'previewBytes': thumbResult?.thumbBytes ?? thumbBytes,
-    });
-  }
-}
-
-class ImageProcessStep implements PipelineStep {
-  @override
-  Future<void> execute(PipelineContext ctx, ChatActionService service) async {
-    final path = ctx.currentAbsolutePath ?? ctx.initialMsg.localPath;
-    if (path == null) return;
-
-    try {
-      final bytes = await XFile(path).readAsBytes();
-
-      //  一站式服务：处理缩放、指纹、宽高
-      final result = await ThumbBlurHashService.build(bytes);
-
-      if (result != null) {
-        ctx.metadata.addAll({
-          'blurHash': result.blurHash,
-          'w': result.thumbW,
-          'h': result.thumbH,
-        });
-
-        // 写入本地 DB，UI 监听到 previewBytes 后会立刻显示微缩图
-        await LocalDatabaseService().updateMessage(ctx.initialMsg.id, {
-          'meta': ctx.metadata,
-          'previewBytes': result.thumbBytes,
-        });
-      }
-    } catch (e) {
-      debugPrint(" [ImageProcessStep] 异常: $e");
-    }
-  }
-}
-
-class UploadStep implements PipelineStep {
-  @override
-  Future<void> execute(PipelineContext ctx, ChatActionService service) async {
-    // 1. 封面上传
-
-    //  CHANGED: 统一用 MediaPath 判断是否已经是远端
-    // 远端包括：http / uploads / relative
-    final bool hasRemoteThumb = MediaPath.isRemote(ctx.remoteThumbUrl);
-
-    if (!hasRemoteThumb) {
-      if (ctx.thumbAssetId != null) {
-        String? path;
-
-        // 原逻辑保留：Web 的 blob / 超长 data-like
-        if (kIsWeb &&
-            (ctx.thumbAssetId!.startsWith('blob:') ||
-                ctx.thumbAssetId!.length > 200)) {
-          path = ctx.thumbAssetId;
-        } else {
-          // 原逻辑保留：Native 走 AssetManager
-          path = await AssetManager.getFullPath(
-            ctx.thumbAssetId!,
-            MessageType.image,
-          );
-        }
-
-        //  CHANGED: Native 端 file:// -> 真实路径（更稳）
-        if (!kIsWeb && path != null && MediaPath.classify(path) == MediaPathType.fileUri) {
-          try {
-            path = Uri.parse(path).toFilePath();
-          } catch (_) {}
-        }
-
-        //  CHANGED: Native 端兜底：如果 path 不是本地绝对路径（可能拿到的是 assetId），再解析一次
-        if (!kIsWeb &&
-            path != null &&
-            path.isNotEmpty &&
-            MediaPath.classify(path) != MediaPathType.localAbs &&
-            !MediaPath.isRemote(path)) {
-          final resolved = await AssetManager.getFullPath(path, MessageType.image);
-          if (resolved != null && resolved.isNotEmpty) {
-            path = resolved;
-          }
-        }
-
-        if (path != null && (kIsWeb || File(path).existsSync())) {
-          XFile thumbFile = XFile(path);
-
-          if (kIsWeb &&
-              (thumbFile.name.isEmpty || !thumbFile.name.contains('.'))) {
-            thumbFile = XFile(path, name: 'thumb_${const Uuid().v4()}.jpg');
-          }
-
-          ctx.remoteThumbUrl = await service._uploadService.uploadFile(
-            file: thumbFile,
-            module: UploadModule.chat,
-            onProgress: (_) {},
-          );
-        }
-      }
-    }
-
-    // 2. 主文件上传
-
-    // CHANGED: 统一用 MediaPath 判断 content 是否已经是远端
-    // 远端包括：http / uploads / relative
-    final bool hasRemoteContent = MediaPath.isRemote(ctx.initialMsg.content);
-
-    if (!hasRemoteContent) {
-      //  CHANGED: 原来是 final，这里需要可变，因为我们可能要把 assetId / fileUri 解析成真实路径
-      String? uploadPath = ctx.currentAbsolutePath ?? ctx.initialMsg.localPath;
-
-      //  CHANGED: Native 端先把 uploadPath 归一化成“可 File.existsSync”的真实路径
-      if (!kIsWeb && uploadPath != null && uploadPath.isNotEmpty) {
-        // 2.1 file:// -> 真实路径
-        if (MediaPath.classify(uploadPath) == MediaPathType.fileUri) {
-          try {
-            uploadPath = Uri.parse(uploadPath).toFilePath();
-          } catch (_) {}
-        }
-
-        // 2.2 如果不是本地绝对路径（很可能是 assetId），用 AssetManager 再解析一次
-        if (uploadPath != null &&
-            uploadPath.isNotEmpty &&
-            MediaPath.classify(uploadPath) != MediaPathType.localAbs &&
-            !MediaPath.isRemote(uploadPath)) {
-          final resolved = await AssetManager.getFullPath(uploadPath, ctx.initialMsg.type);
-          if (resolved != null && resolved.isNotEmpty) {
-            uploadPath = resolved;
-            ctx.currentAbsolutePath = resolved; //  CHANGED: 顺便补回 ctx，后续步骤也受益
-          }
-        }
-      }
-
-      if (uploadPath != null && (kIsWeb || File(uploadPath).existsSync())) {
-        XFile fileToUpload;
-
-        if (kIsWeb &&
-            ctx.sourceFile != null &&
-            uploadPath == ctx.sourceFile!.path) {
-          fileToUpload = ctx.sourceFile!;
-        } else {
-          fileToUpload = XFile(uploadPath);
-
-          if (kIsWeb &&
-              (fileToUpload.name.isEmpty || !fileToUpload.name.contains('.'))) {
-            // 尝试从 meta 获取后缀，没有则根据类型判断
-            String ext = ctx.metadata['fileExt'] ?? 'bin';
-            if (ext == 'bin') {
-              if (ctx.initialMsg.type == MessageType.video) {
-                ext = 'mp4';
-              } else if (ctx.initialMsg.type == MessageType.image) {
-                ext = 'jpg';
-              }
-            }
-            fileToUpload = XFile(
-              uploadPath,
-              name: 'upload_${const Uuid().v4()}.$ext',
-            );
-          }
-        }
-
-        ctx.remoteUrl = await service._uploadService.uploadFile(
-          file: fileToUpload,
-          module: UploadModule.chat,
-          onProgress: (_) {},
-        );
-      }
-    } else {
-      ctx.remoteUrl = ctx.initialMsg.content;
-    }
-  }
-}
-
-class SyncStep implements PipelineStep {
-  @override
-  Future<void> execute(PipelineContext ctx, ChatActionService service) async {
-    if (ctx.initialMsg.type == MessageType.image ||
-        ctx.initialMsg.type == MessageType.video) {
-      if (ctx.remoteUrl == null || ctx.remoteUrl!.isEmpty) throw "【同步中止】上传未完成";
-    }
-
-    //  严格按照后端 DTO 构建 meta 命名空间
-    final Map<String, dynamic> apiMeta = {
-      'blurHash': ctx.metadata['blurHash'],
-      'w': ctx.metadata['w'],
-      'h': ctx.metadata['h'],
-      'duration': ctx.metadata['duration'],
-      'thumb': ctx.remoteThumbUrl ?? ctx.metadata['remote_thumb'] ?? "",
-
-      //  新增：文件字段 (从 ctx.metadata 透传给后端)
-      'fileName': ctx.metadata['fileName'],
-      'fileSize': ctx.metadata['fileSize'],
-      'fileExt': ctx.metadata['fileExt'],
-
-      // --- 新增：位置字段透传 (修复点) ---
-      'latitude': ctx.metadata['latitude'],
-      'longitude': ctx.metadata['longitude'],
-      'address': ctx.metadata['address'],
-      'title': ctx.metadata['title'],
-    };
-
-    // 移除 null 值，保持 Payload 干净
-    apiMeta.removeWhere((key, value) => value == null || value == "");
-
-    final serverMsg = await Api.sendMessage(
-      id: ctx.initialMsg.id,
-      conversationId: service.conversationId,
-      content: ctx.remoteUrl ?? ctx.initialMsg.content,
-      type: ctx.initialMsg.type.value,
-      meta: apiMeta,
-    );
-
-    debugPrint("SEND api: clientId=${ctx.initialMsg.id} serverId=${serverMsg.id}");
-
-    // CHANGED: 保护本地 thumb（assetId），不要被服务端 thumb 覆盖
-    final serverMeta = serverMsg.meta ?? {};
-    final serverThumb = serverMeta['thumb']?.toString();
-    final localThumb = ctx.metadata['thumb']?.toString();
-
-
-    // CHANGED: 先合并 serverMeta，但稍后我们会把 thumb “纠正回本地”
-    final Map<String, dynamic> dbMeta = {
-      ...ctx.metadata,
-      ...serverMeta,
-    };
-
-    // CHANGED: remote_thumb 永远存远端 thumb（优先服务端，其次本次上传得到的）
-    final String? remoteThumb =
-    (serverThumb != null && serverThumb.isNotEmpty) ? serverThumb : ctx.remoteThumbUrl;
-    if (remoteThumb != null && remoteThumb.isNotEmpty) {
-      dbMeta['remote_thumb'] = remoteThumb;
-    }
-
-    // CHANGED: 如果本地 thumb 存在且不是远端（assetId / 本地key），则强制保留
-    if (localThumb != null && localThumb.isNotEmpty && !MediaPath.isRemote(localThumb)) {
-      dbMeta['thumb'] = localThumb; // 保住本地封面
-    } else {
-      // CHANGED: 否则 thumb 就让它用服务端（例如你根本没生成本地封面）
-      if (serverThumb != null && serverThumb.isNotEmpty) {
-        dbMeta['thumb'] = serverThumb;
-      }
-    }
-
-    await LocalDatabaseService().updateMessage(ctx.initialMsg.id, {
-      'status': MessageStatus.success.name,
-       'content': serverMsg.content,
-      'meta': dbMeta,
-    });
-  }
-}
-
-extension LocationActionExtension on ChatActionService {
-  Future<void> sendLocationMessage(
-    double latitude,
-    double longitude,
-    String address,
-    String? title,
-  ) async {
-    // 1. 获取静态图 URL 作为预览（
-    final String staticMapUrl = UrlResolver.getStaticMapUrl(
-      latitude,
-      longitude,
-    );
-
-    final msg = _createBaseMessage(
-      content: "[Location]",
-      type: MessageType.location,
-      meta: {
-        'latitude': latitude,
-        'longitude': longitude,
-        'address': address,
-        'title': title,
-        'thumb': staticMapUrl, // 对应后端的 thumb 字段
-      },
-    );
-
-    // 3. 执行极简管道
-    // 位置消息是纯 Meta 驱动的，直接走同步即可
-    final ctx = PipelineContext(msg);
-
-    await _runPipeline(PipelineContext(msg), [SyncStep()]);
-  }
-}
-
-// ===========================================================================
-// 4. Provider 定义
-// ===========================================================================
-
-final chatActionServiceProvider = Provider.family
-    .autoDispose<ChatActionService, String>((ref, conversationId) {
-      return ChatActionService(conversationId, ref, GlobalUploadService());
-    });
+// Provider
+final chatActionServiceProvider = Provider.family.autoDispose<ChatActionService, String>((ref, conversationId) {
+  return ChatActionService(conversationId, ref, GlobalUploadService());
+});

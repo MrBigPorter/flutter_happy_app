@@ -176,7 +176,7 @@ class ChatBubble extends ConsumerWidget {
       case MessageType.audio:
         return VoiceBubble(message: message, isMe: message.isMe);
       case MessageType.video:
-        return VideoMsgBubble(message: message);
+        return VideoMsgBubble(message: message,isMe: message.isMe);
       case MessageType.file:
         return FileMsgBubble(message: message);
       case MessageType.location:
@@ -280,7 +280,6 @@ class ChatBubble extends ConsumerWidget {
         width: 40.w,
         height: 40.w,
         fit: BoxFit.cover,
-        quality: 50,
         enablePreview: false,
       ),
     );

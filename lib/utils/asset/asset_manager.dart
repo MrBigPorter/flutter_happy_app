@@ -1,61 +1,52 @@
-import 'dart:io';
-
+import 'dart:typed_data';
 import 'package:convert/convert.dart';
 import 'package:crypto/crypto.dart';
-import 'package:flutter/foundation.dart';
 import 'package:cross_file/cross_file.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
 import 'package:path/path.dart' as p;
-import '../../ui/chat/models/chat_ui_model.dart';
-import 'asset_store.dart'; // 引用 MessageType
 
+import 'asset_store.dart'; // 引入接口
+import '../../ui/chat/models/chat_ui_model.dart'; // 引用 MessageType
+
+// 如果是 HTML 环境（Web），导入 web 实现；否则导入 mobile 实现。
+// 两个文件里都必须有一个叫 `PlatformAssetStore` 的类。
+import 'asset_store_mobile.dart' if (dart.library.html) 'asset_store_web.dart';
 
 class AssetManager {
   AssetManager._();
 
-  //  1. 初始化策略：根据平台自动选择 (单例模式)
-  static final AssetStore _store = kIsWeb
-      ? WebAssetStore()
-      : MobileAssetStore();
+  // 1. 初始化：直接实例化 PlatformAssetStore，编译器会自动选择对应的文件
+  static final AssetStore _store = PlatformAssetStore();
 
-  //  2. 定义目录映射 (以后加 Video/File 就在这里加)
+  // 2. 目录映射
   static String getSubDir(MessageType type) {
     switch (type) {
-      case MessageType.audio:
-        return 'chat_audio';
-      case MessageType.video:
-        return 'chat_video'; // 未来扩展非常容易
-      case MessageType.file:
-        return 'chat_files';
+      case MessageType.audio: return 'chat_audio';
+      case MessageType.video: return 'chat_video';
+      case MessageType.file:  return 'chat_files';
       case MessageType.image:
-      default:
-        return 'chat_images';
+      default: return 'chat_images';
     }
   }
 
-  // 头像目录
-  static const String _avatarDir = 'group_avatars';
-
-  //  3. 定义后缀映射
+  // 3. 后缀映射
   static String _getExtension(String originalPath, MessageType type) {
-    final ext = p.extension(originalPath);
+    String ext = '';
+    try {
+      ext = p.extension(originalPath);
+    } catch (_) {} // Web blob 路径可能导致 path 解析异常，加个 try-catch
+
     if (ext.isNotEmpty) return ext;
 
     // 兜底逻辑
     switch (type) {
-      case MessageType.audio:
-        return '.m4a';
-      case MessageType.video:
-        return '.mp4';
-      case MessageType.file:
-        return '.bin'; //  文件如果没有后缀，给个 .bin
-      default:
-        return '.jpg';
+      case MessageType.audio: return '.m4a';
+      case MessageType.video: return '.mp4';
+      case MessageType.file:  return '.bin';
+      default: return '.jpg';
     }
   }
 
-  //  4. 头像专用方法：生成唯一 Key
   static String generateAvatarKey(List<String> urls) {
     if (urls.isEmpty) return 'default_group';
     final sortedUrls = List<String>.from(urls)..sort();
@@ -66,59 +57,32 @@ class AssetManager {
 
   // ================= 业务方法 =================
 
-  ///  [保存]：业务层只管传文件和类型，剩下的交给底层
+  /// [保存]
   static Future<String> save(XFile rawFile, MessageType type) async {
     final fileName = "${const Uuid().v4()}${_getExtension(rawFile.path, type)}";
     final subDir = getSubDir(type);
 
     await _store.saveFile(rawFile, fileName, subDir);
 
-    return fileName; // 返回给数据库的纯文件名
+    return fileName;
   }
 
-  /// [获取]：还原路径
+  /// [获取]
   static Future<String?> getFullPath(String? fileName, MessageType type) async {
     if (fileName == null || fileName.isEmpty) return null;
     return await _store.getFullPath(fileName, getSubDir(type));
   }
 
-  // =================  群头像缓存业务 (新增) =================
-  // 注意：头像缓存主要用于 Native 端优化，Web 端交给浏览器
-  /// [查] 获取本地缓存的头像文件
-  static Future<File?> getCachedAvatar(String key) async {
-    if (kIsWeb) return null; // Web 端不缓存
+  // ================= 群头像缓存业务 =================
 
-    try {
-      final dir = await getTemporaryDirectory();
-      final path = '${dir.path}/$_avatarDir/$key.png';
-      final file = File(path);
-      if (file.existsSync() && await file.length() > 0) {
-        return file;
-      }
-    } catch (e) {
-      debugPrint("Get Cached Avatar Error: $e");
-    }
-    return null;
+  /// [查] 获取本地缓存的头像路径
+  /// 注意：这里返回 String? 而不是 File?，因为 Web 端没有 File 类
+  static Future<String?> getCachedAvatar(String key) async {
+    return await _store.getCachedAvatarPath(key);
   }
 
-  /// [存] 将合成好的 Bytes 写入本地
-  static Future<File?> saveAvatar(String key, Uint8List bytes) async {
-    if (kIsWeb) return null; // Web 端不缓存
-
-    try {
-      final dir = await getTemporaryDirectory();
-      // 确保目录存在
-      final avatarDir = Directory('${dir.path}/$_avatarDir');
-      if (!await avatarDir.exists()) {
-        await avatarDir.create(recursive: true);
-      }
-      final path = '${avatarDir.path}/$key.png';
-      final file = File(path);
-      await file.writeAsBytes(bytes);
-      return file;
-    } catch (e) {
-      debugPrint("Save Avatar Error: $e");
-    }
-    return null;
+  /// [存]
+  static Future<void> saveAvatar(String key, Uint8List bytes) async {
+    await _store.saveAvatar(key, bytes);
   }
 }

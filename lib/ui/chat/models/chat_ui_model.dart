@@ -1,4 +1,6 @@
 import 'dart:typed_data';
+
+import 'package:equatable/equatable.dart';
 export 'chat_ui_model_ext.dart';
 export 'chat_ui_model_mapper.dart';
 
@@ -24,7 +26,7 @@ enum MessageType {
   );
 }
 
-class ChatUiModel {
+class ChatUiModel extends Equatable {
   final String id;
   final int? seqId;
   final String content;
@@ -64,6 +66,19 @@ class ChatUiModel {
     this.resolvedPath,
     this.resolvedThumbPath,
   });
+
+  @override
+  List<Object?> get props => [
+    id,
+    content,
+    status,
+    localPath,
+    resolvedPath,
+    previewBytes,
+    meta,
+    seqId,
+    // 把所有参与 UI 显示的字段都写在这里
+  ];
 
   // --- 持久化逻辑 (逻辑保持不变) ---
   Map<String, dynamic> toJson() => {

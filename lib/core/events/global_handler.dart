@@ -69,7 +69,7 @@ class _GlobalHandlerState extends ConsumerState<GlobalHandler> {
     });
     
     WidgetsBinding.instance.addPostFrameCallback((_){
-      OfflineQueueManager().init(ref);
+      OfflineQueueManager().init(ProviderScope.containerOf(context));
       debugPrint(' [GlobalHandler] OfflineQueueManager initialized.');
     });
   }

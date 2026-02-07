@@ -1,21 +1,28 @@
 import 'dart:io';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart'; // kIsWeb
 import 'package:flutter/material.dart';
-import 'package:flutter_app/utils/media/url_resolver.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:video_player/video_player.dart';
+import 'package:path_provider/path_provider.dart'; // 🔥 必须引入
+import 'package:path/path.dart' as p; // 🔥 用于路径拼接
 
-import '../../../../utils/media/media_path.dart';
-import '../../models/chat_ui_model.dart';
-import '../../../img/app_image.dart';
-import '../../services/media/video_playback_service.dart';
-import '../../video_player_page.dart';
-import '../../services/chat_action_service.dart';
+import 'package:flutter_app/ui/chat/models/chat_ui_model.dart';
+import 'package:flutter_app/utils/media/url_resolver.dart';
+import 'package:flutter_app/utils/media/media_path.dart';
+import 'package:flutter_app/ui/chat/video_player_page.dart';
+import 'package:flutter_app/ui/img/app_image.dart';
+
+// 全局互斥锁
+final ValueNotifier<String?> _playingMsgId = ValueNotifier(null);
 
 class VideoMsgBubble extends StatefulWidget {
   final ChatUiModel message;
+  final bool isMe;
 
-  const VideoMsgBubble({super.key, required this.message});
+  const VideoMsgBubble({
+    super.key,
+    required this.message,
+    required this.isMe,
+  });
 
   @override
   State<VideoMsgBubble> createState() => _VideoMsgBubbleState();
@@ -24,382 +31,278 @@ class VideoMsgBubble extends StatefulWidget {
 class _VideoMsgBubbleState extends State<VideoMsgBubble> {
   VideoPlayerController? _controller;
   bool _isPlaying = false;
-  bool _isInitializing = false;
-  final _playbackService = VideoPlaybackService();
+  bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _playingMsgId.addListener(_onGlobalPlayChanged);
+  }
 
   @override
   void dispose() {
-    if (_controller != null) {
-      _controller!.pause();
-      _controller!.dispose();
-    }
+    _playingMsgId.removeListener(_onGlobalPlayChanged);
+    _disposeController();
     super.dispose();
   }
 
-  /// 视频 URL：统一走 buildVideo（你现有策略）
-  String _resolveNetworkUrl(String rawPath) {
-    return UrlResolver.resolveVideo(rawPath);
+  void _onGlobalPlayChanged() {
+    if (_playingMsgId.value != widget.message.id) {
+      if (_controller != null) {
+        _disposeController();
+        if (mounted) setState(() {});
+      }
+    }
   }
 
-  /// 尽可能找到本地文件（避免在线播放失败）
-  File? _findLocalFile() {
-    if (kIsWeb) return null;
-
-    // A: localPath
-    final lp = widget.message.localPath;
-    if (lp != null) {
-      //  CHANGED
-      final t = MediaPath.classify(lp);
-      if (t == MediaPathType.localAbs || t == MediaPathType.fileUri) {
-        final f = lp.startsWith('file://') ? File(Uri.parse(lp).toFilePath()) : File(lp);
-        if (f.existsSync()) return f;
-      }
-    }
-
-    // B: resolvedPath
-    final rp = widget.message.resolvedPath;
-    if (rp != null) {
-      //  CHANGED
-      final t = MediaPath.classify(rp);
-      if (t == MediaPathType.localAbs || t == MediaPathType.fileUri) {
-        final f = rp.startsWith('file://') ? File(Uri.parse(rp).toFilePath()) : File(rp);
-        if (f.existsSync()) return f;
-      }
-    }
-
-    // C: cache
-    final cachedPath = ChatActionService.getPathFromCache(widget.message.id);
-    if (cachedPath != null) {
-      //  CHANGED
-      final t = MediaPath.classify(cachedPath);
-      if (t == MediaPathType.localAbs || t == MediaPathType.fileUri) {
-        final f = cachedPath.startsWith('file://')
-            ? File(Uri.parse(cachedPath).toFilePath())
-            : File(cachedPath);
-        if (f.existsSync()) return f;
-      }
-    }
-
-    return null;
+  void _disposeController() {
+    _controller?.pause();
+    _controller?.dispose();
+    _controller = null;
+    _isPlaying = false;
+    _isLoading = false;
   }
 
-  Future<void> _playVideo() async {
-    // 已初始化：直接切换播放/暂停
-    if (_controller != null && _controller!.value.isInitialized) {
-      setState(() {
-        if (_controller!.value.isPlaying) {
-          _controller!.pause();
-          _isPlaying = false;
+  // 🔥 核心修复：异步解析真实路径
+  Future<String> _resolvePlayableUrl() async {
+    String? local = widget.message.localPath;
+
+    // 1. 如果没有本地路径，直接走远程
+    if (local == null || local.isEmpty) {
+      return UrlResolver.resolveVideo(widget.message.content);
+    }
+
+    // 2. Web 平台直接返回 (Blob URL)
+    if (kIsWeb) return local;
+
+    // 3. 处理 file:// 前缀
+    String fsPath = local;
+    if (fsPath.startsWith('file://')) {
+      try { fsPath = Uri.parse(fsPath).toFilePath(); } catch (_) {}
+    }
+
+    // 4. 尝试一：当作绝对路径检查
+    final fileAbs = File(fsPath);
+    if (fileAbs.existsSync()) {
+      debugPrint("✅ [Video] Found absolute path: $fsPath");
+      return fsPath;
+    }
+
+    // 5. 尝试二：当作文件名，拼接 chat_video 目录检查 (对应 AssetManager 逻辑)
+    // 只有当路径不包含 '/' 时才尝试拼接，避免重复拼接
+    if (!fsPath.contains('/') && !fsPath.contains(Platform.pathSeparator)) {
+      try {
+        final docDir = await getApplicationDocumentsDirectory();
+        // AssetManager 里视频存在 'chat_video' 目录下
+        final fullPath = p.join(docDir.path, 'chat_video', fsPath);
+        final fileRel = File(fullPath);
+
+        if (fileRel.existsSync()) {
+          debugPrint("✅ [Video] Found relative path: $fullPath");
+          return fullPath;
         } else {
-          _playbackService.requestPlay(_controller!);
-          _controller!.play();
-          _isPlaying = true;
+          debugPrint("⚠️ [Video] Relative file not found: $fullPath");
         }
-      });
+      } catch (e) {
+        debugPrint("❌ [Video] Path resolution error: $e");
+      }
+    }
+
+    // 6. 实在找不到，降级走网络
+    debugPrint("🌐 [Video] Local missing, fallback to network.");
+    return UrlResolver.resolveVideo(widget.message.content);
+  }
+
+  Future<void> _togglePlay() async {
+    // 暂停逻辑
+    if (_isPlaying && _controller != null) {
+      _controller!.pause();
+      setState(() => _isPlaying = false);
       return;
     }
 
-    setState(() => _isInitializing = true);
+    // 恢复播放逻辑
+    if (_controller != null && _controller!.value.isInitialized) {
+      _playingMsgId.value = widget.message.id;
+      await _controller!.play();
+      setState(() => _isPlaying = true);
+      return;
+    }
+
+    // 初始化逻辑
+    setState(() => _isLoading = true);
 
     try {
-      VideoPlayerController newController;
+      // 🔥 等待路径解析
+      final url = await _resolvePlayableUrl();
 
-      final localFile = _findLocalFile();
-      if (localFile != null) {
-        newController = VideoPlayerController.file(localFile);
-      } else {
-        //  CHANGED: 选择远端源：优先 resolvedPath(若是远端)，否则 content
-        String netSource = widget.message.content;
-        final rp = widget.message.resolvedPath;
-
-        if (rp != null && MediaPath.isRemote(rp)) {
-          netSource = rp;
-        }
-
-        final url = _resolveNetworkUrl(netSource);
-
-        //  CHANGED: 防呆：url 必须是远端（http/uploads/relative），否则不要走 networkUrl
-        final t = MediaPath.classify(url);
-        if (t == MediaPathType.localAbs || t == MediaPathType.fileUri) {
-          throw ArgumentError('Video network url resolved to local path: $url');
-        }
-
-        newController = VideoPlayerController.networkUrl(Uri.parse(url));
+      if (url.isEmpty) {
+        setState(() => _isLoading = false);
+        return;
       }
 
-      // 如果之前有 controller，先释放（避免多实例造成黑屏/资源占用）
-      _controller?.dispose();
-      _controller = newController;
+      _playingMsgId.value = widget.message.id;
+
+      // 判断是网络还是本地
+      if (kIsWeb || MediaPath.isHttp(url)) {
+        _controller = VideoPlayerController.networkUrl(Uri.parse(url));
+      } else {
+        _controller = VideoPlayerController.file(File(url));
+      }
 
       await _controller!.initialize();
-      _playbackService.requestPlay(_controller!);
-      await _controller!.play();
-
-      if (!mounted) return;
-      setState(() {
-        _isInitializing = false;
-        _isPlaying = true;
-      });
 
       _controller!.addListener(() {
-        if (!mounted || _controller == null) return;
-        final v = _controller!.value;
-        if (v.isInitialized &&
-            v.position >= v.duration &&
-            _isPlaying) {
-          setState(() {
-            _isPlaying = false;
-            _controller!.seekTo(Duration.zero);
-            _controller!.pause();
-          });
+        if (_controller != null && _controller!.value.position >= _controller!.value.duration) {
+          _controller!.seekTo(Duration.zero);
+          _controller!.pause();
+          if (mounted) setState(() => _isPlaying = false);
         }
       });
+
+      await _controller!.play();
+      if (mounted) {
+        setState(() {
+          _isPlaying = true;
+          _isLoading = false;
+        });
+      }
+
     } catch (e) {
-      debugPrint('❌ [VideoMsg] play error: $e');
-      if (mounted) setState(() => _isInitializing = false);
+      debugPrint("❌ Video init failed: $e");
+      _disposeController();
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  void _openFullScreen() {
+  Future<void> _openFullScreen() async {
     _controller?.pause();
     if (mounted) setState(() => _isPlaying = false);
 
-    String finalSource = '';
-    final localFile = _findLocalFile();
+    // 🔥 全屏也需要异步解析路径
+    final url = await _resolvePlayableUrl();
+    if (url.isEmpty || !mounted) return;
 
-    if (localFile != null) {
-      finalSource = localFile.path;
-    } else {
-      String netSource = widget.message.content;
-      final rp = widget.message.resolvedPath;
-      if (rp != null && MediaPath.isRemote(rp)) {
-        netSource = rp;
-      }
-      finalSource = _resolveNetworkUrl(netSource);
-    }
-
-    final String thumbRaw = widget.message.resolvedThumbPath ??
-        widget.message.meta?['thumb'] ??
-        widget.message.meta?['remote_thumb'] ??
-        '';
-
-    //  2. 核心修正：手动计算列表页刚才渲染的 URL
-    // 必须和 build 方法里计算 maxWidth 的逻辑一模一样！
-    final meta = widget.message.meta ?? {};
-    final int w = _parseInt(meta['w']) ?? 16;
-    final int h = _parseInt(meta['h']) ?? 9;
-    final double aspectRatio = (w / h).clamp(0.6, 1.8);
-    final double maxWidth = 0.6.sw; //  列表页用的宽度
-
-    String? cachedUrl;
-    if (thumbRaw.isNotEmpty) {
-      // 调用 ImageUrl.build 生成完全一致的 CDN 链接
-      cachedUrl = UrlResolver.resolveImage(
-        context,
-        thumbRaw,
-        logicalWidth: maxWidth, // 关键：宽度对齐
-        quality: 50,            // 关键：质量对齐 (AppCachedImage 默认 50)
-        fit: BoxFit.cover,      // 关键：裁剪对齐
-        format: kIsWeb ? 'auto' : 'webp', // 关键：格式对齐
-      );
-    }
-
-    if (finalSource.isEmpty) return;
+    final remoteThumb = UrlResolver.resolveImage(context, widget.message.meta?['thumb']);
 
     Navigator.of(context).push(
-      PageRouteBuilder(
-        transitionDuration: const Duration(milliseconds: 300),
-        pageBuilder: (_, __, ___) => VideoPlayerPage(
-          videoSource: finalSource,
-          heroTag: widget.message.id,
-          thumbSource: thumbRaw,
-          cachedThumbUrl: cachedUrl,
+      MaterialPageRoute(
+        builder: (_) => VideoPlayerPage(
+          videoSource: url,
+          heroTag: 'video_${widget.message.id}',
+          thumbSource: widget.message.localPath ?? widget.message.meta?['thumb'] ?? '',
+          cachedThumbUrl: remoteThumb,
         ),
-        transitionsBuilder: (_, animation, __, child) =>
-            FadeTransition(opacity: animation, child: child),
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final meta = widget.message.meta ?? {};
+    final source = widget.message.previewBytes ?? widget.message.meta?['thumb'];
+    
 
-    final int w = _parseInt(meta['w']) ?? 16;
-    final int h = _parseInt(meta['h']) ?? 9;
+    final double w = (widget.message.meta?['w'] ?? 16).toDouble();
+    final double h = (widget.message.meta?['h'] ?? 9).toDouble();
     final double aspectRatio = (w / h).clamp(0.6, 1.8);
 
-    final double maxWidth = 0.6.sw;
-    final double height = maxWidth / aspectRatio;
+    final bool showVideo = _controller != null &&
+        _controller!.value.isInitialized &&
+        _isPlaying;
 
-    final String durationStr = _formatDuration(_parseInt(meta['duration']) ?? 0);
-    final bool isSending = widget.message.status == MessageStatus.sending;
-
-    // 封面路径（thumb）
-    final String? thumbPath = widget.message.resolvedThumbPath ??
-        (meta['thumb'] != null && meta['thumb'].toString().isNotEmpty
-            ? meta['thumb'].toString()
-            : null) ??
-        (meta['remote_thumb'] != null && meta['remote_thumb'].toString().isNotEmpty
-            ? meta['remote_thumb'].toString()
-            : null);
-
-    // 关键：给封面 meta 补 blurHash（字段名兼容）
-    final Map<String, dynamic> thumbMeta = {
-      ...meta,
-      'blurHash': meta['thumbBlurHash'] ??
-          meta['thumb_blur_hash'] ??
-          meta['blurHash'] ??
-          meta['blur_hash'],
-    };
-
-    return RepaintBoundary(
-      child: Hero(
-        tag: widget.message.id,
-        child: Material(
-          //  不要纯黑 Material，当封面还没来时会“黑一下”
-          color: Colors.transparent,
-          borderRadius: BorderRadius.circular(12.r),
-          clipBehavior: Clip.antiAlias,
-          child: SizedBox(
-            width: maxWidth,
-            height: height,
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                //  底层占位：你可以改成更浅（F5F5F5）
-                Container(color: const Color(0xFF111111)),
-
-                // Layer 1：发送中内存预览图（最先显示）
-                if (widget.message.previewBytes != null &&
-                    widget.message.previewBytes!.isNotEmpty)
-                  Image.memory(
-                    widget.message.previewBytes!,
-                    width: maxWidth,
-                    height: height,
+    return GestureDetector(
+      onTap: _togglePlay,
+      onDoubleTap: _openFullScreen,
+      child: Container(
+        width: 240,
+        height: 240 / aspectRatio,
+        constraints: const BoxConstraints(maxWidth: 240, maxHeight: 320),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.grey.withOpacity(0.1)),
+          color: Colors.black,
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              // 1. 封面图
+              if (!showVideo)
+                Positioned.fill(
+                  child: AppCachedImage(
+                    source,
                     fit: BoxFit.cover,
-                    gaplessPlayback: true,
+                    previewBytes: widget.message.previewBytes,
+                    metadata: widget.message.meta,
+                    placeholder: Container(color: Colors.black12),
                   ),
-
-                // Layer 2：封面（关键：不传 placeholder，让 AppCachedImage 自己出 blur/shimmer）
-                if (thumbPath != null && thumbPath.isNotEmpty)
-                  AppCachedImage(
-                    thumbPath,
-                    width: maxWidth,
-                    height: height,
-                    fit: BoxFit.cover,
-                    enablePreview: false,
-                    metadata: thumbMeta,
-                    // 失败不显示红叉，避免盖住底层
-                    error: const SizedBox.shrink(),
-                    // 不要传 placeholder！否则 blur/shimmer 永远不显示
-                    // placeholder: const SizedBox.shrink(),
-                  ),
-
-                // Layer 3：播放器（初始化后覆盖封面）
-                if (_controller != null && _controller!.value.isInitialized)
-                  SizedBox.expand( // 1. 强制撑满整个气泡容器
-                    child: FittedBox(
-                      fit: BoxFit.cover, // 2. 核心：像图片一样裁剪并填满，不留缝隙
-                      child: SizedBox(
-                        // 3. 必须指定视频的原始尺寸，FittedBox 才知道怎么缩放
-                        width: _controller!.value.size.width,
-                        height: _controller!.value.size.height,
-                        child: VideoPlayer(_controller!),
-                      ),
-                    ),
-                  ),
-
-                // Layer 4：交互
-                GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onTap: isSending ? null : _playVideo,
-                  onDoubleTap: isSending ? null : _openFullScreen,
-                  child: Container(color: Colors.transparent),
                 ),
 
-                // Layer 5：UI overlays
-                _buildUIOverlays(isSending, durationStr),
-              ],
-            ),
+              // 2. 视频层 (Cover)
+              if (showVideo)
+                Positioned.fill(
+                  child: FittedBox(
+                    fit: BoxFit.cover,
+                    child: SizedBox(
+                      width: _controller!.value.size.width,
+                      height: _controller!.value.size.height,
+                      child: VideoPlayer(_controller!),
+                    ),
+                  ),
+                ),
+
+              // 3. UI 状态
+              if (_isLoading)
+                const Center(child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+              else if (!_isPlaying)
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.4),
+                    shape: BoxShape.circle,
+                  ),
+                  padding: const EdgeInsets.all(12),
+                  child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 32),
+                ),
+
+              // 4. 时长
+              if (!_isPlaying && widget.message.duration != null)
+                Positioned(
+                  bottom: 8,
+                  right: 8,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.6),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      _formatDuration(widget.message.duration!),
+                      style: const TextStyle(color: Colors.white, fontSize: 10),
+                    ),
+                  ),
+                ),
+
+              // 5. 发送状态
+              if (widget.message.status == MessageStatus.sending)
+                Positioned.fill(
+                  child: Container(
+                    color: Colors.black26,
+                    child: const Center(
+                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                    ),
+                  ),
+                ),
+            ],
           ),
         ),
       ),
     );
   }
 
-  Widget _buildUIOverlays(bool isSending, String durationStr) {
-    return Stack(
-      children: [
-        if (isSending)
-          Container(
-            color: Colors.black26,
-            child: Center(
-              child: SizedBox(
-                width: 24.w,
-                height: 24.w,
-                child: const CircularProgressIndicator(
-                  color: Colors.white,
-                  strokeWidth: 2,
-                ),
-              ),
-            ),
-          ),
-        if (!isSending && !_isPlaying && !_isInitializing)
-          Center(
-            child: IgnorePointer(
-              child: Container(
-                padding: EdgeInsets.all(12.r),
-                decoration: BoxDecoration(
-                  color: Colors.black54,
-                  shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white, width: 2),
-                ),
-                child: Icon(Icons.play_arrow, color: Colors.white, size: 30.sp),
-              ),
-            ),
-          ),
-        if (_isInitializing && !isSending)
-          Center(
-            child: SizedBox(
-              width: 30.w,
-              height: 30.w,
-              child: const CircularProgressIndicator(
-                color: Colors.white,
-                strokeWidth: 3,
-              ),
-            ),
-          ),
-        if (!_isPlaying && !isSending)
-          Positioned(
-            bottom: 8.h,
-            right: 8.w,
-            child: Container(
-              padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
-              decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.7),
-                borderRadius: BorderRadius.circular(4.r),
-              ),
-              child: Text(
-                durationStr,
-                style: TextStyle(color: Colors.white, fontSize: 10.sp),
-              ),
-            ),
-          ),
-      ],
-    );
-  }
-
-  int? _parseInt(dynamic value) {
-    if (value is int) return value;
-    if (value is double) return value.toInt();
-    if (value is String) return int.tryParse(value);
-    return null;
-  }
-
   String _formatDuration(int seconds) {
-    final m = seconds ~/ 60;
-    final s = seconds % 60;
-    return '$m:${s.toString().padLeft(2, '0')}';
+    final int min = seconds ~/ 60;
+    final int sec = seconds % 60;
+    return '${min.toString().padLeft(2, '0')}:${sec.toString().padLeft(2, '0')}';
   }
 }

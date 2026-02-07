@@ -25,6 +25,7 @@ class ConversationList extends _$ConversationList {
   @override
   FutureOr<List<Conversation>> build() async {
     final currentUserId = ref.watch(luckyProvider.select((s) => s.userInfo?.id));
+    
 
     if(currentUserId == null || currentUserId.isEmpty){
       return [];
@@ -60,6 +61,8 @@ class ConversationList extends _$ConversationList {
     final list = await Api.chatListApi(page: 1);
     await LocalDatabaseService().saveConversations(list);
     final currentActiveId = ref.read(activeConversationIdProvider);
+    
+    print(" [ConversationList] Fetched ${list.length} conversations from network. Active Conversation ID: $currentActiveId");
 
     state = AsyncData(list);
 
