@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/widgets.dart';
+import 'package:flutter_app/ui/chat/repository/message_repository.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_app/core/providers/socket_provider.dart';
 import 'package:flutter_app/core/store/lucky_store.dart';
@@ -14,12 +15,14 @@ import '../handlers/chat_event_handler.dart';
 final chatControllerProvider = Provider.family.autoDispose<ChatRoomController, String>((ref, conversationId) {
   final socketService = ref.read(socketServiceProvider);
   final currentUserId = ref.watch(luckyProvider.select((s) => s.userInfo?.id)) ?? '';
+  final repo = ref.read(messageRepositoryProvider);
   
   final controller = ChatRoomController(
       socketService,
       conversationId,
       ref,
-      currentUserId
+      currentUserId,
+      repo
   );
 
   //  [核心修改] 创建即启动 (自动挡)
@@ -35,12 +38,15 @@ class ChatRoomController with WidgetsBindingObserver {
   final String conversationId;
   // 强引用 Handler，防止被 GC
   final ChatEventHandler _eventHandler;
+  final MessageRepository _repo;
+
 
   ChatRoomController(
       SocketService socketService,
       this.conversationId,
       Ref ref,
       String currentUserId,
+      this._repo
       ) : _eventHandler = ChatEventHandler(conversationId, ref, socketService, currentUserId)
   {
     // 监听生命周期
@@ -52,6 +58,8 @@ class ChatRoomController with WidgetsBindingObserver {
     debugPrint("🎬 [Controller] 会话激活: $conversationId");
     // 启动 Handler (它内部会自动处理 Socket 进房、重连监听、初始已读)
     _eventHandler.init();
+    // 激活时检查并上报已读 (Cold Read)
+    checkAndMarkRead();
   }
 
   void dispose() {
@@ -63,15 +71,38 @@ class ChatRoomController with WidgetsBindingObserver {
   // 监听前后台切换 (Warm Read)
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    debugPrint(" [Lifecycle] 状态变更为: $state");
     if (state == AppLifecycleState.resumed) {
       debugPrint("📱 [Controller] 切回前台 -> 触发已读");
-      _eventHandler.markAsRead();
-      // 注意：这里不需要调 sync，因为 Socket 如果断了会自动连，连上会触发 Handler 的 connect 事件
+      checkAndMarkRead();
     }
   }
 
+
   // 暴露给外部调用的方法
   void markAsRead() => _eventHandler.markAsRead();
+
+  //  使用注入的 Repo 进行检查
+  Future<void> checkAndMarkRead() async {
+    try {
+      // 1. 查本地状态 (调用 Repo)
+      final conv = await _repo.getConversation(conversationId);
+      final unread = conv?.unreadCount ?? 0;
+
+       debugPrint("[Controller] 检查本地未读数: $unread");
+
+      // 2. 只有当确实有未读消息时，才去调 API
+      if (unread > 0) {
+        debugPrint(" [Controller] 发现 $unread 条未读，执行上报...");
+        _eventHandler.markAsRead();
+      } else {
+        // 这行日志能证明拦截生效了
+        debugPrint(" [Controller] 本地未读为 0，拦截了一次多余的 API 请求");
+      }
+    } catch (e) {
+      debugPrint("Check read failed: $e");
+    }
+  }
 
   // 辅助功能：撤回 & 删除
   Future<void> recallMessage(String messageId) async {

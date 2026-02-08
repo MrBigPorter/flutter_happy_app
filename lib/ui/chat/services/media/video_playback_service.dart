@@ -40,7 +40,14 @@ class VideoPlaybackService {
   /// 2. 统一创建控制器
   VideoPlayerController createController(String source) {
     if (source.startsWith('http') || source.startsWith('blob:')) {
-      return VideoPlayerController.networkUrl(Uri.parse(source));
+      // 这告诉服务器："我支持分片，请不要一次性把 500MB 全给我"
+      // 配合你的 Nginx 206，这将实现：
+      // 1. 打开视频只下载前 1MB (秒开)
+      // 2. 拖动进度条时，只下载对应片段
+      return VideoPlayerController.networkUrl(
+        Uri.parse(source),
+        httpHeaders: const {'Range': 'bytes=0-'},
+      );
     } else {
       return VideoPlayerController.file(File(source));
     }

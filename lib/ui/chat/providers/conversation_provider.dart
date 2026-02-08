@@ -7,15 +7,13 @@ import '../../../core/providers/socket_provider.dart';
 import '../../../core/store/lucky_store.dart';
 import '../models/chat_ui_model.dart';
 import '../models/conversation.dart';
+import '../models/chat_ui_model_mapper.dart';
 import '../services/database/local_database_service.dart';
 
 part 'conversation_provider.g.dart';
 
-// --- 状态提供者 ---
-
 final activeConversationIdProvider = StateProvider<String?>((ref) => null);
 
-// --- 会话列表控制器 ---
 
 @Riverpod(keepAlive: true)
 class ConversationList extends _$ConversationList {
@@ -25,12 +23,12 @@ class ConversationList extends _$ConversationList {
   @override
   FutureOr<List<Conversation>> build() async {
     final currentUserId = ref.watch(luckyProvider.select((s) => s.userInfo?.id));
-    
 
     if(currentUserId == null || currentUserId.isEmpty){
       return [];
     }
 
+    // 1. 初始化数据库
     await LocalDatabaseService.init(currentUserId);
 
     final socketService = ref.watch(socketServiceProvider);
@@ -46,33 +44,49 @@ class ConversationList extends _$ConversationList {
       _conversationUpdateSub?.cancel();
     });
 
+    // 2. 先加载本地旧数据 (秒开)
     final localData = await LocalDatabaseService().getConversations();
-
     if(localData.isNotEmpty){
       state = AsyncData(localData);
     }
 
+    // 3.启动时强制同步列表 (全局自愈核心)
+    // 这一步会把服务器的最新状态（包括已读/未读）拉下来，覆盖本地
     _fetchList();
 
     return localData;
   }
 
   Future<List<Conversation>> _fetchList() async {
-    final list = await Api.chatListApi(page: 1);
-    await LocalDatabaseService().saveConversations(list);
-    final currentActiveId = ref.read(activeConversationIdProvider);
-    
-    print(" [ConversationList] Fetched ${list.length} conversations from network. Active Conversation ID: $currentActiveId");
+    try {
+      // A. 拉取服务器最新列表 (Server Truth)
+      // 如果你在 A 手机读过了，这里返回的 unreadCount 就是 0
+      final list = await Api.chatListApi(page: 1);
 
-    state = AsyncData(list);
+      // B. 关键：入库覆盖！
+      // LocalDatabaseService.saveConversations 默认是 put (覆盖) 操作
+      // 所以这一步执行完，数据库里的 "8" 就会变成 "0"
+      await LocalDatabaseService().saveConversations(list);
 
-    if (currentActiveId != null) {
-      return list.map((c) {
+      final currentActiveId = ref.read(activeConversationIdProvider);
+      debugPrint(" [ConversationList] Synced ${list.length} conversations from server.");
+
+      // C. 更新内存状态 (UI 刷新)
+      // 如果当前正停留在某个会话里，强制把那个会话的未读数设为 0
+      final processedList = list.map((c) {
         if (c.id == currentActiveId) return c.copyWith(unreadCount: 0);
         return c;
       }).toList();
+
+      state = AsyncData(processedList);
+      return processedList;
+
+    } catch (e) {
+      debugPrint(" [ConversationList] Sync failed: $e");
+      // 如果网络失败，保持显示本地数据
+      if (state.hasValue) return state.value!;
+      return [];
     }
-    return list;
   }
 
   Future<void> refresh() async {
@@ -96,7 +110,8 @@ class ConversationList extends _$ConversationList {
     final bool isMe = senderId.isNotEmpty && (senderId == myUserId);
     final convId = msg.conversationId;
 
-    _saveMessageToLocal(msg, isMe, myUserId, convId);
+    // 1. 存消息
+    await _saveMessageToLocal(msg, isMe, myUserId, convId);
 
     final index = currentList.indexWhere((conv) => conv.id == convId);
     if (index != -1) {
@@ -104,6 +119,7 @@ class ConversationList extends _$ConversationList {
       final currentActiveId = ref.read(activeConversationIdProvider);
       final bool isViewingNow = (currentActiveId == convId);
 
+      // 如果是我发的，或者我正看着这个会话，未读数不增加
       final newUnreadCount = (isMe || isViewingNow) ? 0 : (oldConv.unreadCount + 1);
 
       final newConv = oldConv.copyWith(
@@ -119,13 +135,11 @@ class ConversationList extends _$ConversationList {
 
       state = AsyncData(newList);
 
-      //  [新增核心代码] 同步写入数据库！
-      // 只有这行执行了，GlobalUnreadProvider 才会收到通知！
+      // 2. 同步更新会话列表数据库
       await LocalDatabaseService().saveConversations([newConv]);
 
     } else {
-      // [优化 1] 收到新消息但不在列表中时，建议使用 refresh() 触发分页拉取
-      // 而不是一个个去查详情，这样能保证列表的连续性
+      // 如果是新会话，触发刷新
       refresh();
     }
   }
@@ -136,14 +150,13 @@ class ConversationList extends _$ConversationList {
 
     final String convId = data['id'];
     final String? newAvatar = data['avatar'];
-    final String? newName = data['name']; // [新增] 同时也处理名称更新
+    final String? newName = data['name'];
 
     final currentList = state.value!;
     final index = currentList.indexWhere((c) => c.id == convId);
 
     if (index != -1) {
       final oldConv = currentList[index];
-      // [优化 2] 增加判断逻辑，只有真正变化时才更新
       bool isChanged = false;
       var newConv = oldConv;
 
@@ -160,15 +173,8 @@ class ConversationList extends _$ConversationList {
         final newList = [...currentList];
         newList[index] = newConv;
         state = AsyncData(newList);
-        // 记得同步本地数据库
-        LocalDatabaseService().saveConversations([newConv]);
+        await LocalDatabaseService().saveConversations([newConv]);
       }
-    } else {
-      // [核心优化 3] 移除 else 分支中的 ref.read(chatDetailProvider...)
-      // 理由：Socket 信号可能非常频繁（风暴），如果该会话不在当前列表显示范围内（比如在第二页），
-      // 我们没必要为了一个头像更新去请求网络详情接口。
-      // 策略：静默忽略，等用户滚动或手动刷新时自然会获取到最新数据。
-      debugPrint(" [ConversationList] Skip attribute update for non-existent conversation: $convId");
     }
   }
 
@@ -186,10 +192,11 @@ class ConversationList extends _$ConversationList {
     if (index != -1) {
       final oldConv = currentList[index];
       final newConv = oldConv.copyWith(
-        lastMsgContent: lastMsgContent,
-        lastMsgTime: lastMsgTime,
-        unreadCount: 0,
-        lastMsgStatus: lastMsgStatus,
+        lastMsgContent: lastMsgContent ?? oldConv.lastMsgContent,
+        lastMsgTime: lastMsgTime ?? oldConv.lastMsgTime,
+        // 这里不应该强制清零 unreadCount，除非明确要求
+        // unreadCount: 0,
+        lastMsgStatus: lastMsgStatus ?? oldConv.lastMsgStatus,
       );
       final newList = [...currentList];
       newList.removeAt(index);
@@ -210,17 +217,24 @@ class ConversationList extends _$ConversationList {
     state = AsyncData(newList);
   }
 
-  void _saveMessageToLocal(SocketMessage msg, bool isMe, String myUserId, String convId) async {
+  Future<void> _saveMessageToLocal(SocketMessage msg, bool isMe, String myUserId, String convId) async {
     try {
       final apiMsg = ChatMessage(
-        id: msg.id, content: msg.content, type: msg.type,
-        seqId: msg.seqId, createdAt: msg.createdAt, isSelf: isMe,
+        id: msg.id,
+        content: msg.content,
+        type: msg.type,
+        seqId: msg.seqId,
+        createdAt: msg.createdAt,
+        isSelf: isMe,
         meta: msg.meta,
         sender: msg.sender == null ? null : ChatSender(
-          id: msg.sender!.id, nickname: msg.sender!.nickname, avatar: msg.sender!.avatar,
+          id: msg.sender!.id,
+          nickname: msg.sender!.nickname ?? 'Unknown',
+          avatar: msg.sender!.avatar,
         ),
       );
-      final uiMsg = ChatUiModelMapper.fromApiModel(apiMsg, convId, myUserId);
+      final uiMsg = ChatUiModelMapper.fromApiModel(apiMsg, convId);
+      // 使用 saveMessage (内部含 merge 逻辑)
       await LocalDatabaseService().saveMessage(uiMsg);
     } catch (e) {
       debugPrint(" [ConversationList] DB Save Error: $e");
@@ -229,17 +243,16 @@ class ConversationList extends _$ConversationList {
 
   String _getPreviewContent(dynamic type, String rawContent) {
     final int typeInt = int.tryParse(type.toString()) ?? 0;
-    final messageType = MessageType.fromValue(typeInt);
-    switch (messageType) {
-      case MessageType.text: return rawContent;
-      case MessageType.image: return '[Image]';
-      case MessageType.audio: return '[Voice]';
-      case MessageType.video: return '[Video]';
-      case MessageType.file: return '[File]';
-      case MessageType.location : return '[Location]';
-      case MessageType.recalled: return '[Message recalled]';
-      default: return rawContent;
-    }
+
+    // 简单的类型判断，你可以用 MessageType 枚举
+    if (typeInt == 1) return '[Image]';
+    if (typeInt == 2) return '[Voice]';
+    if (typeInt == 3) return '[Video]';
+    if (typeInt == 4) return '[File]';
+    if (typeInt == 5) return '[Location]';
+    if (typeInt == 99) return '[Message recalled]';
+
+    return rawContent;
   }
 }
 
@@ -292,7 +305,6 @@ Stream<ConversationDetail> chatDetail(
     yield networkData;
   }catch(e){
     debugPrint(" [chatDetail] Network Fetch Error: $e");
-    // [优化 4] 如果网络请求失败且本地也没有数据，再抛出异常
     if(localData == null) throw e;
   }
 }

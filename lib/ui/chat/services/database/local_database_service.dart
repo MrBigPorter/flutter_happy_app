@@ -56,7 +56,7 @@ class LocalDatabaseService {
     try {
       if (kIsWeb) {
         _db = await databaseFactoryWeb.openDatabase(dbName);
-        // 🔥🔥🔥 关键修复：Web 端启动时，清理死掉的 Blob 路径 🔥🔥🔥
+        //  关键修复：Web 端启动时，清理死掉的 Blob 路径
         await _clearDeadBlobs();
       } else {
         final appDir = await getApplicationDocumentsDirectory();
@@ -80,7 +80,7 @@ class LocalDatabaseService {
     }
   }
 
-  // 🔥🔥🔥 Web 刷新修复逻辑：清理失效的 Blob 🔥🔥🔥
+  // Web 刷新修复逻辑：清理失效的 Blob 
   Future<void> _clearDeadBlobs() async {
     if (!kIsWeb || _db == null) return;
     try {
@@ -91,7 +91,7 @@ class LocalDatabaseService {
       final records = await _messageStore.find(_db!, finder: finder);
 
       if (records.isNotEmpty) {
-        debugPrint("🧹 [Web Clean] Found ${records.length} dead blobs. Cleaning...");
+        debugPrint(" [Web Clean] Found ${records.length} dead blobs. Cleaning...");
         await _db!.transaction((txn) async {
           for (var record in records) {
             // 将 localPath 置空，这样 UI 就会自动去读 content (远程 URL)
@@ -151,9 +151,12 @@ class LocalDatabaseService {
     _syncGlobalBadge();
   }
 
-  // ========================================================================
-  // ✅ 基础 CRUD 方法 (已补全)
-  // ========================================================================
+  /// 获取单条会话  （状态自愈)
+  Future<Conversation?> getConversation(String id) async{
+    final db = await database;
+    final snapshot = await _conversationStore.record(id).getSnapshot(db);
+    return snapshot !=null ? Conversation.fromJson(snapshot.value) : null;
+  }
 
   /// 获取单条消息
   Future<ChatUiModel?> getMessageById(String msgId) async {
@@ -213,6 +216,7 @@ class LocalDatabaseService {
       });
     });
   }
+
 
   /// 更新消息状态
   Future<void> updateMessageStatus(String msgId, MessageStatus newStatus) async {

@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_app/core/api/lucky_api.dart';
 import '../models/chat_ui_model.dart';
 import '../models/conversation.dart';
+import '../models/chat_ui_model_mapper.dart';
+import '../repository/message_repository.dart';
 import '../services/database/local_database_service.dart';
 
 class ChatListState {
@@ -36,19 +38,25 @@ class ChatListState {
 
 class ChatViewModel extends StateNotifier<ChatListState> {
   final String conversationId;
+  final Ref ref; // 2. 需要 ref 才能读取 Repository Provider
+
+  // 3. 声明 Repository
+  late final MessageRepository _repo;
+
+  // _dbService 依然保留，用于 watchMessages 流监听（Repo主要负责写，DB负责读流）
   final LocalDatabaseService _dbService = LocalDatabaseService();
 
   StreamSubscription? _subscription;
   int _currentLimit = 50;
 
-  // 1. 构造函数：创建即启动 (First Load)
-  ChatViewModel(this.conversationId) : super(ChatListState()) {
+  // 4. 构造函数注入 ref 并初始化 _repo
+  ChatViewModel(this.conversationId, this.ref) : super(ChatListState()) {
+    _repo = ref.read(messageRepositoryProvider);
     _init();
   }
 
   void _init() {
     _subscribeToStream();
-    //  入口 A：首次进房，ViewModel 自动发起同步
     performIncrementalSync();
   }
 
@@ -62,25 +70,19 @@ class ChatViewModel extends StateNotifier<ChatListState> {
   }
 
   // ============================================================
-  //  核心：增量同步算法 (空洞检测 + 递归补齐)
+  //  核心：增量同步算法 (空洞检测 + 递归补齐 + 状态自愈)
   // ============================================================
 
   Future<void> performIncrementalSync() async {
     if (!mounted) return;
-
-    //  [核心修改] 防重入锁 (Re-entry Lock)
-    // 如果已经在初始化中（正在拉API），直接挡回去，防止 Handler 和 Constructor 同时调用
-    if (state.isInitializing) {
-      debugPrint(" [ViewModel] $conversationId 正在同步中，拦截重复请求");
-      return;
-    }
+    if (state.isInitializing) return;
 
     // 上锁
     state = state.copyWith(isInitializing: true);
 
     try {
-      // 1. 查账：获取本地最后一条“正式报纸”的编号
-      final localMaxSeqId = await _dbService.getMaxSeqId(conversationId);
+      // 5. 改为使用 Repo 获取 SeqId
+      final localMaxSeqId = await _repo.getMaxSeqId(conversationId);
 
       // 2. 问询：拉取服务器最新的第一页
       final response = await Api.chatMessagesApi(
@@ -94,15 +96,15 @@ class ChatViewModel extends StateNotifier<ChatListState> {
       if (!mounted) return;
 
       if (response.list.isNotEmpty) {
-        // 3. 对比：服务器最顶端的编号
-        final serverMaxSeqId = response.list.first.seqId ?? 0;
+        final firstMsg = response.list.first;
+        final int serverMaxSeqId = (firstMsg.seqId ?? 0);
 
         // 4. 决策：是否存在空洞？
-        if (localMaxSeqId != null && serverMaxSeqId > localMaxSeqId) {
-          // 情况 A：发现空洞！
+        if (localMaxSeqId > 0 && serverMaxSeqId > localMaxSeqId) {
           debugPrint(" [Sync] 发现消息空洞: 本地 $localMaxSeqId, 服务器 $serverMaxSeqId");
 
-          final oldestInThisPage = response.list.last.seqId ?? 0;
+          final lastMsg = response.list.last;
+          final int oldestInThisPage = (lastMsg.seqId ?? 0);
 
           if (oldestInThisPage <= localMaxSeqId) {
             // A-1: 缝合成功
@@ -119,14 +121,50 @@ class ChatViewModel extends StateNotifier<ChatListState> {
         }
       }
 
-      // 如果数据不足一页，标记没有更多历史
       if (response.list.length < 20) {
         state = state.copyWith(hasMore: false);
       }
+
+      // =====================================================
+      // 冷启动状态自愈
+      // =====================================================
+      try {
+        // A. 问服务器：“这个会话我现在有多少未读？”
+        final remoteConv = await Api.chatDetailApi(conversationId);
+
+        // B. 问本地数据库
+        final localConv = await _repo.getConversation(conversationId);
+        final int localUnread = localConv?.unreadCount ?? 0;
+
+        // C. 决策逻辑：服务器说0，本地说>0 -> 强制自愈
+        if (remoteConv.unreadCount == 0 && localUnread > 0) {
+          debugPrint(" [Sync] 发现状态不同步！正在静默修复...");
+
+          // 1. 计算当前已知的最大 SeqId，把之前的消息都标为已读
+          // (为了让本地数据库里的 message status 变成 read)
+          int targetReadSeqId = localMaxSeqId;
+          if (response.list.isNotEmpty) {
+            final firstMsg = response.list.first;
+            final int serverTopSeq = (firstMsg.seqId ?? 0);
+            if (serverTopSeq > targetReadSeqId) {
+              targetReadSeqId = serverTopSeq;
+            }
+          }
+          await _repo.markAsReadLocally(conversationId, targetReadSeqId);
+
+          // 2. 强制把红点抹平！(只调用一次)
+          await _repo.forceClearUnread(conversationId);
+
+          debugPrint(" [Sync] 红点已静默消除。");
+        }
+      } catch (e) {
+        debugPrint(" [Sync] Self-healing check failed: $e");
+      }
+      // =====================================================
+
     } catch (e) {
       debugPrint(" [Sync] 增量同步失败: $e");
     } finally {
-      //  [核心修改] 无论成功失败，一定要解锁
       if (mounted) state = state.copyWith(isInitializing: false);
     }
   }
@@ -134,34 +172,43 @@ class ChatViewModel extends StateNotifier<ChatListState> {
   /// 辅助：递归向后追溯
   Future<void> _recursiveSyncGap(int targetSeqId, int currentCursor) async {
     debugPrint("  [Sync] 正在抓取 cursor 之前的消息: $currentCursor");
-    final response = await Api.chatMessagesApi(
-      MessageHistoryRequest(
-        conversationId: conversationId,
-        pageSize: 50,
-        cursor: currentCursor,
-      ),
-    );
+    try {
+      final response = await Api.chatMessagesApi(
+        MessageHistoryRequest(
+          conversationId: conversationId,
+          pageSize: 50,
+          cursor: currentCursor,
+        ),
+      );
 
-    if (response.list.isEmpty) return;
+      if (response.list.isEmpty) return;
 
-    await _saveApiMessages(response.list);
+      await _saveApiMessages(response.list);
 
-    final oldestSeq = response.list.last.seqId ?? 0;
-    if (oldestSeq > targetSeqId) {
-      await _recursiveSyncGap(targetSeqId, oldestSeq);
-    } else {
-      debugPrint(" [Sync] 鸿沟已完全缝合！");
+      final lastMsg = response.list.last;
+      final int oldestSeq = (lastMsg.seqId ?? 0);
+
+      if (oldestSeq > targetSeqId) {
+        await _recursiveSyncGap(targetSeqId, oldestSeq);
+      } else {
+        debugPrint(" [Sync] 鸿沟已完全缝合！");
+      }
+    } catch(e) {
+      debugPrint("  [Sync] 递归失败: $e");
     }
   }
 
   /// 内部工具：入库
-  Future<void> _saveApiMessages(List<ChatMessage> apiMsgs) async {
+  Future<void> _saveApiMessages(List<dynamic> apiMsgs) async {
     final uiMsgs = apiMsgs.map((m) => ChatUiModelMapper.fromApiModel(m, conversationId)).toList();
-    await _dbService.saveMessages(uiMsgs);
+
+    // 8. [关键防御] 改为使用 Repo.saveBatch
+    // 这确保了如果服务器没返回图片路径，本地的高清图不会被覆盖
+    await _repo.saveBatch(uiMsgs);
   }
 
   // ============================================================
-  //  上拉加载更多 (保持不变)
+  //  上拉加载更多
   // ============================================================
 
   Future<void> loadMore() async {
@@ -227,8 +274,9 @@ class ChatViewModel extends StateNotifier<ChatListState> {
   }
 }
 
+// 9. Provider 定义也要改，传入 ref
 final chatViewModelProvider = StateNotifierProvider.family.autoDispose<ChatViewModel, ChatListState, String>(
       (ref, conversationId) {
-    return ChatViewModel(conversationId);
+    return ChatViewModel(conversationId, ref);
   },
 );

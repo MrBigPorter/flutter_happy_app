@@ -16,8 +16,16 @@ class GlobalUploadService {
 
   static Dio _createS3Dio() {
     final dio = Dio(BaseOptions(
-      connectTimeout: const Duration(seconds: 15),
+      // 1. 连接超时 (30秒足够)
+      connectTimeout: const Duration(seconds: 30),
+
+      // 2. 发送超时 (上传大文件必须长！建议 20-30 分钟)
+      // 这是指发送数据的过程，如果你传 500MB 视频，15秒肯定不够
       sendTimeout: const Duration(minutes: 30),
+
+      // 3. 接收超时 (等待服务器响应的时间)
+      // 上传完成后，S3/后端 处理可能需要几秒
+      receiveTimeout: const Duration(minutes: 30),
     ));
 
     //  Safe Adapter Assignment

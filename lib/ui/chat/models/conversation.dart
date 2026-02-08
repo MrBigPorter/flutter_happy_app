@@ -1,11 +1,9 @@
-
 import 'package:json_annotation/json_annotation.dart';
-
 import 'chat_ui_model.dart';
 
 part 'conversation.g.dart';
 
-// 1. 优化：统一枚举命名风格 (Dart 推荐小驼峰)
+// 1. 优化：统一枚举命名风格
 enum ConversationType {
   @JsonValue('DIRECT') direct,
   @JsonValue('GROUP') group,
@@ -22,7 +20,6 @@ enum RelationshipStatus {
   bool get isFriend => this == RelationshipStatus.friend;
   bool get isStranger => this == RelationshipStatus.stranger;
   bool get isSent => this == RelationshipStatus.sent;
-
 }
 
 @JsonSerializable(checked: true)
@@ -36,6 +33,11 @@ class Conversation {
   final int unreadCount;
   final bool isPinned;
   final bool isMuted;
+
+  // 同步断点字段
+  @JsonKey(defaultValue: 0)
+  final int lastMsgSeqId;
+
   // unknownEnumValue: 防止后端返回了无法识别的状态时报错，默认回退到 success
   @JsonKey(unknownEnumValue: MessageStatus.success)
   final MessageStatus lastMsgStatus;
@@ -50,6 +52,7 @@ class Conversation {
     this.unreadCount = 0,
     this.isPinned = false,
     this.isMuted = false,
+    this.lastMsgSeqId = 0,
     this.lastMsgStatus = MessageStatus.success,
   });
 
@@ -63,6 +66,7 @@ class Conversation {
     int? unreadCount,
     bool? isPinned,
     bool? isMuted,
+    int? lastMsgSeqId,
     MessageStatus? lastMsgStatus,
   }) {
     return Conversation(
@@ -75,6 +79,7 @@ class Conversation {
       unreadCount: unreadCount ?? this.unreadCount,
       isPinned: isPinned ?? this.isPinned,
       isMuted: isMuted ?? this.isMuted,
+      lastMsgSeqId: lastMsgSeqId ?? this.lastMsgSeqId,
       lastMsgStatus: lastMsgStatus ?? this.lastMsgStatus,
     );
   }
@@ -92,7 +97,6 @@ class ChatSender {
   final String id;
   final String nickname;
   final String? avatar;
-  // 仅通讯录列表会有 phone，搜索结果可能有也可能没有
   final String? phone;
 
   ChatSender({required this.id, required this.nickname, this.avatar, this.phone});
@@ -114,9 +118,8 @@ class ChatMessage {
   final int? seqId;
   final bool isRecalled;
 
-  // [新增] 核心字段
   final Map<String, dynamic>? meta;
-  // 接收后端的 isSelf 字段
+
   @JsonKey(defaultValue: false)
   final bool isSelf;
 
@@ -162,24 +165,33 @@ class ChatMember {
   Map<String, dynamic> toJson() => _$ChatMemberToJson(this);
 }
 
-// ==========================================
-// 详情模型
-// ==========================================
-// lib/ui/chat/models/conversation.dart
+// 详情模型 (ConversationDetail)
 
 class ConversationDetail {
   final String id;
   final String name;
   final String? avatar;
+  final int unreadCount;
   final ConversationType type;
   final List<ChatMember> members;
+
+  // [NEW] 详情页补充字段
+  final int lastMsgSeqId;
+  final int myLastReadSeqId;
+  final bool isPinned;
+  final bool isMuted;
 
   ConversationDetail({
     required this.id,
     required this.name,
     this.avatar,
+    this.unreadCount = 0,
     required this.type,
     required this.members,
+    this.lastMsgSeqId = 0,
+    this.myLastReadSeqId = 0,
+    this.isPinned = false,
+    this.isMuted = false,
   });
 
   factory ConversationDetail.fromJson(Map<String, dynamic> json) {
@@ -188,17 +200,23 @@ class ConversationDetail {
 
     final typeEnum = ConversationType.values.firstWhere(
           (e) => e.name.toUpperCase() == typeStr,
-      orElse: () => ConversationType.group, // 匹配不到默认为群聊
+      orElse: () => ConversationType.group,
     );
 
     return ConversationDetail(
       id: json['id'],
       name: json['name'],
       avatar: json['avatar'],
+      unreadCount: json['unreadCount'] ?? 0,
       type: typeEnum,
       members: (json['members'] as List<dynamic>?)
           ?.map((e) => ChatMember.fromJson(e))
           .toList() ?? [],
+
+      lastMsgSeqId: json['lastMsgSeqId'] ?? 0,
+      myLastReadSeqId: json['myLastReadSeqId'] ?? 0,
+      isPinned: json['isPinned'] ?? false,
+      isMuted: json['isMuted'] ?? false,
     );
   }
 
@@ -207,16 +225,22 @@ class ConversationDetail {
       'id': id,
       'name': name,
       'avatar': avatar,
-
-      // 这样本地数据库存的就是 "GROUP" 而不是 0 或 1，更直观且不怕枚举顺序改变
+      'unreadCount': unreadCount,
       'type': type.name.toUpperCase(),
-
       'members': members.map((m) => m.toJson()).toList(),
+      'lastMsgSeqId': lastMsgSeqId,
+      'myLastReadSeqId': myLastReadSeqId,
+      'isPinned': isPinned,
+      'isMuted': isMuted,
     };
   }
 
   int get memberCount => members.length;
 }
+
+// ==========================================
+//  其他 API 请求/响应模型 (保持不变)
+// ==========================================
 
 @JsonSerializable(checked: true)
 class ConversationIdResponse {
@@ -233,18 +257,11 @@ class ConversationIdResponse {
   String toString() => toJson().toString();
 }
 
-// ==========================================
-//  新增：历史消息请求参数 Request
-// ==========================================
-@JsonSerializable(createFactory: false) // 我们只需要 toJson 发送给后端
+@JsonSerializable(createFactory: false)
 class MessageHistoryRequest {
   final String conversationId;
-
-  // 后端接收的是 'cursor'，所以这里把 Dart 的 beforeMessageId 映射过去
-  // 当然你也可以直接改名叫 cursor
   final int? cursor;
-
-  final int pageSize; // 你可以用 pageSize, 映射为后端的 limit
+  final int pageSize;
 
   MessageHistoryRequest({
     required this.conversationId,
@@ -255,16 +272,11 @@ class MessageHistoryRequest {
   Map<String, dynamic> toJson() => _$MessageHistoryRequestToJson(this);
 }
 
-// ==========================================
-//  新增：历史消息响应 Wrapper Response
-// 对应后端的 { list: [], nextCursor: "..." }
-// ==========================================
 @JsonSerializable(checked: true)
 class MessageListResponse {
   @JsonKey(defaultValue: [])
   final List<ChatMessage> list;
 
-  // 下一页游标，如果为 null 说明没有更多数据了
   final int? nextCursor;
   final int partnerLastReadSeqId;
 
@@ -308,7 +320,7 @@ class SocketMessage {
     required this.createdAt,
     this.sender,
     this.tempId,
-     this.isSelf,
+    this.isSelf,
     this.seqId,
     this.meta,
   });
@@ -362,7 +374,7 @@ class MessageMarkReadResponse {
   final int lastReadSeqId;
 
   MessageMarkReadResponse({
-     this.unreadCount = 0,
+    this.unreadCount = 0,
     required this.lastReadSeqId,
   });
 
@@ -387,7 +399,7 @@ class SocketReadEvent {
     required this.conversationId,
     required this.readerId,
     required this.lastReadSeqId,
-     this.isSelf,
+    this.isSelf,
   });
 
   factory SocketReadEvent.fromJson(Map<String, dynamic> json) =>
@@ -473,19 +485,14 @@ class MessageDeleteResponse {
   String toString() => toJson().toString();
 }
 
-// ==========================================
-//  搜索用户/联系人基础模型
-// ==========================================
 @JsonSerializable(checked: true)
 class ChatUser {
   final String id;
   final String nickname;
   final String? avatar;
-  final String? phone; // 搜索时可能返回手机号
+  final String? phone;
   @JsonKey(unknownEnumValue: RelationshipStatus.stranger)
-  final RelationshipStatus status; //  新增: 0=陌生人, 1=好友, 2=已申请
-
-
+  final RelationshipStatus status;
 
   ChatUser({
     required this.id,
@@ -499,15 +506,10 @@ class ChatUser {
   Map<String, dynamic> toJson() => _$ChatUserToJson(this);
 }
 
-
-
-// ==========================================
-//  创建群聊请求参数
-// ==========================================
 @JsonSerializable(createFactory: false)
 class CreateGroupRequest {
   final String name;
-  final List<String> memberIds; // 选中的好友 ID 列表
+  final List<String> memberIds;
 
   CreateGroupRequest({
     required this.name,
@@ -517,14 +519,11 @@ class CreateGroupRequest {
   Map<String, dynamic> toJson() => _$CreateGroupRequestToJson(this);
 }
 
-// ==========================================
-//  建群成功响应 (通常后端会返回创建成功的会话详情)
-// ==========================================
 @JsonSerializable(checked: true)
 class CreateGroupResponse {
-  final String id;          // 对应 Conversation ID
+  final String id;
   final String name;
-  final String type;        // "GROUP"
+  final String type;
   final String ownerId;
   final int? createdAt;
 
@@ -533,7 +532,7 @@ class CreateGroupResponse {
     required this.name,
     required this.type,
     required this.ownerId,
-     this.createdAt,
+    this.createdAt,
   });
 
   factory CreateGroupResponse.fromJson(Map<String, dynamic> json) =>
