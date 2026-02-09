@@ -157,7 +157,7 @@ class _ChatDetailProviderElement
   String get conversationId => (origin as ChatDetailProvider).conversationId;
 }
 
-String _$conversationListHash() => r'4c951e6ea2ed88f86951acf1f058f14bbf9fd98f';
+String _$conversationListHash() => r'2d3ed9d2096ecbbbb2186f515d54e31420a330c2';
 
 /// See also [ConversationList].
 @ProviderFor(ConversationList)

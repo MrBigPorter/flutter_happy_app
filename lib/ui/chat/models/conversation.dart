@@ -1,5 +1,6 @@
 import 'package:json_annotation/json_annotation.dart';
 import 'chat_ui_model.dart';
+import 'group_role.dart';
 
 part 'conversation.g.dart';
 
@@ -34,6 +35,10 @@ class Conversation {
   final bool isPinned;
   final bool isMuted;
 
+  final String? announcement; // 群公告
+  final bool isMuteAll; // 全员禁言开关
+  final bool joinNeedApproval; // 加群是否需要审批
+
   // 同步断点字段
   @JsonKey(defaultValue: 0)
   final int lastMsgSeqId;
@@ -54,6 +59,10 @@ class Conversation {
     this.isMuted = false,
     this.lastMsgSeqId = 0,
     this.lastMsgStatus = MessageStatus.success,
+
+    this.announcement,
+    this.isMuteAll = false,
+    this.joinNeedApproval = false,
   });
 
   Conversation copyWith({
@@ -68,6 +77,10 @@ class Conversation {
     bool? isMuted,
     int? lastMsgSeqId,
     MessageStatus? lastMsgStatus,
+
+      String? announcement,
+      bool? isMuteAll,
+      bool? joinNeedApproval,
   }) {
     return Conversation(
       id: id ?? this.id,
@@ -81,6 +94,10 @@ class Conversation {
       isMuted: isMuted ?? this.isMuted,
       lastMsgSeqId: lastMsgSeqId ?? this.lastMsgSeqId,
       lastMsgStatus: lastMsgStatus ?? this.lastMsgStatus,
+
+      announcement: announcement ?? this.announcement,
+      isMuteAll: isMuteAll ?? this.isMuteAll,
+      joinNeedApproval: joinNeedApproval ?? this.joinNeedApproval,
     );
   }
 
@@ -150,14 +167,29 @@ class ChatMember {
   final String userId;
   final String nickname;
   final String? avatar;
-  final String role;
+  final GroupRole role; // 必填，默认 MEMBER
+  final DateTime? mutedUntil; // 可空
 
   ChatMember({
     required this.userId,
     required this.nickname,
     this.avatar,
     required this.role,
+    this.mutedUntil,
   });
+
+  // computed property to check if currently muted
+  bool get isMuted {
+    if (mutedUntil == null) return false;
+    return DateTime.now().isBefore(mutedUntil!);
+  }
+
+  // return seconds left to unmute, or 0 if not muted
+  int get muteSecondsLeft {
+    if (mutedUntil == null) return 0;
+    final diff = mutedUntil!.difference(DateTime.now()).inSeconds;
+    return diff > 0 ? diff : 0;
+  }
 
   factory ChatMember.fromJson(Map<String, dynamic> json) =>
       _$ChatMemberFromJson(json);

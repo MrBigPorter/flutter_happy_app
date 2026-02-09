@@ -258,3 +258,206 @@ class GroupSettings {
 * [ ] 实现“灰条系统消息” (System Message Bubble)，用于显示“XXX 修改了群名”、“XXX 被移出群聊”。
 
 
+你现在的 `ChatService` 已经涵盖了 **v5.x 核心基建** 的大部分功能（收发消息、已读同步、撤回、会话列表、群组创建）。
+
+但为了支撑我们刚才规划的 **v6.0 高级群管理 (RBAC)**，目前的 Service 还缺不少东西，代码结构也需要为了应对复杂的权限逻辑进行分层。
+
+以下是基于 **v6.0 架构标准** 的 Gap Analysis（差异分析）与重构规划。
+
+---
+
+# 🏗️ v6.0 ChatService 升级架构蓝图
+
+> **🎯 目标**: 引入权限控制 (RBAC)、完善群管理功能、规范化 DTO。
+
+## 1. 缺失功能列表 (Gap List)
+
+### A. 核心权限 (RBAC) [缺]
+
+目前代码里 `leaveGroup` 和 `inviteToGroup` 逻辑非常简单，没有权限判定。
+
+* **缺**: `transferOwner` (转让群主)
+* **缺**: `kickMember` (踢人 - 仅管理员/群主可操作)
+* **缺**: `muteMember` (禁言 - 包含定时任务/Redis过期)
+* **缺**: `updateGroupInfo` (修改群名/公告 - 权限控制)
+* **缺**: `setAdmin` (升降职管理员)
+
+### B. 群设置 (Settings) [缺]
+
+目前 `Conversation` 表字段不够，Service 也没处理。
+
+* **缺**: `toggleMuteAll` (全员禁言开关)
+* **缺**: `toggleJoinApproval` (加群审批开关)
+* **缺**: `updateAnnouncement` (发布群公告 + 强提醒)
+
+### C. 消息与交互 [缺]
+
+* **缺**: 系统消息 (`createSystemMessage`)。比如“张三被踢出群聊”，这种消息没有 senderId，属于 SYSTEM 类型。
+* **缺**: 消息转发 (`forwardMessage`)。
+
+---
+
+## 2. 目录结构规范 (Project Structure)
+
+为了清晰，建议将 DTO 分拆，不要全堆在 `chat/dto` 下。
+
+```text
+src/api/common/chat/
+├── dto/
+│   ├── req/                  # Request DTOs (前端传进来的)
+│   │   ├── create-message.dto.ts
+│   │   ├── group-manage.dto.ts  # [New] 包含 Kick, Mute, Transfer 等
+│   │   ├── update-group.dto.ts  # [New] 修改群名、公告
+│   │   └── join-group.dto.ts
+│   └── res/                  # Response DTOs (返回给前端的)
+│       ├── message.res.dto.ts
+│       ├── conversation.res.dto.ts
+│       └── group-member.res.dto.ts # [New] 包含 role, mutedUntil
+├── events/                   # 事件定义 (保持现状)
+└── chat.service.ts           # 核心逻辑
+
+```
+
+---
+
+## 3. DTO 设计规划 (Schema Definition)
+
+### Request DTOs (输入)
+
+**1. 群成员管理 (`group-manage.dto.ts`)**
+
+```typescript
+export class KickMemberDto {
+  @IsNotEmpty() conversationId: string;
+  @IsNotEmpty() targetUserId: string; // 被踢的人
+}
+
+export class MuteMemberDto {
+  @IsNotEmpty() conversationId: string;
+  @IsNotEmpty() targetUserId: string;
+  @IsNumber() duration: number; // 禁言时长(秒), 0代表解除
+}
+
+export class TransferOwnerDto {
+  @IsNotEmpty() conversationId: string;
+  @IsNotEmpty() newOwnerId: string;
+}
+
+export class SetAdminDto {
+  @IsNotEmpty() conversationId: string;
+  @IsNotEmpty() targetUserId: string;
+  @IsBoolean() isAdmin: boolean; // true=升职, false=降职
+}
+
+```
+
+**2. 群信息修改 (`update-group.dto.ts`)**
+
+```typescript
+export class UpdateGroupDto {
+  @IsNotEmpty() conversationId: string;
+  
+  @IsOptional() @IsString() name?: string;
+  @IsOptional() @IsString() announcement?: string; // [New] 公告
+  @IsOptional() @IsBoolean() isMuteAll?: boolean;  // [New] 全员禁言
+  @IsOptional() @IsBoolean() joinNeedApproval?: boolean;
+}
+
+```
+
+### Response DTOs (输出)
+
+**1. 群成员详情 (`group-member.res.dto.ts`)**
+
+```typescript
+export class GroupMemberResDto {
+  userId: string;
+  nickname: string;
+  avatar: string;
+  role: 'OWNER' | 'ADMIN' | 'MEMBER';
+  isMuted: boolean;      // 动态计算: now < mutedUntil
+  mutedUntil?: number;   // 时间戳
+  joinedAt: number;
+}
+
+```
+
+---
+
+## 4. Service 逻辑重构建议
+
+为了避免 `ChatService` 变成几千行的“上帝类”，建议将 **群管理逻辑** 抽离，或者在内部划分私有方法。
+
+### 新增：权限守卫方法 (`_checkPermission`)
+
+这是 v6.0 的核心。所有群操作前，必须先调这个。
+
+```typescript
+// 在 ChatService 内部
+private async _checkPermission(
+  operatorId: string, 
+  conversationId: string, 
+  requiredRole: GroupRole[] // ['OWNER', 'ADMIN']
+) {
+  const member = await this.prisma.chatMember.findUnique({
+    where: { conversationId_userId: { conversationId, userId: operatorId } }
+  });
+  
+  if (!member) throw new ForbiddenException('Not a member');
+  if (!requiredRole.includes(member.role)) {
+    throw new ForbiddenException('Permission denied');
+  }
+  return member;
+}
+
+```
+
+### 新增：系统消息生成 (`_createSystemMessage`)
+
+踢人、修改公告时，必须发一条灰色的系统消息。
+
+```typescript
+private async _createSystemMessage(conversationId: string, content: string) {
+  return this.prisma.chatMessage.create({
+    data: {
+      conversationId,
+      senderId: null, // 系统消息 sender 为空
+      type: MESSAGE_TYPE.SYSTEM, // 99
+      content,
+      seqId: await this._getNextSeqId(conversationId)
+    }
+  });
+  // 别忘了通过 Socket/Event 推送出去
+}
+
+```
+
+---
+
+### 5. 待实现的业务方法清单
+
+请按照这个清单来补充 `chat.service.ts`：
+
+1. **`kickMember(operatorId, dto)`**:
+* Check: 操作者必须是 Owner/Admin。
+* Check: 不能踢自己，Owner 不能被踢，Admin 不能踢 Owner。
+* Action: 删除 `ChatMember` 记录。
+* Action: 发送系统消息 "XXX 被移出群聊"。
+* Event: 触发 `MEMBER_KICKED` 事件（前端强制跳转）。
+
+
+2. **`muteMember(operatorId, dto)`**:
+* Check: 权限校验。
+* Action: 更新 `ChatMember.mutedUntil`。
+* Action: 发送 Socket 事件通知被禁言者（前端输入框变灰）。
+
+
+3. **`updateGroupSettings(operatorId, dto)`**:
+* Check: 只有 Owner/Admin 能改。
+* Action: 更新 `Conversation` 表。
+* **Special**: 如果是 `announcement` 更新，发送 `@All` 强提醒。
+
+
+
+---
+
