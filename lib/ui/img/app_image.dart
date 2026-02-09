@@ -6,7 +6,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_blurhash/flutter_blurhash.dart';
 import 'package:shimmer/shimmer.dart';
 
-// 🚀 核心引入：使用我们之前封装的资产管理器
+// 核心引入：使用我们之前封装的资产管理器
 import 'package:flutter_app/utils/asset/asset_manager.dart';
 import 'package:flutter_app/utils/media/url_resolver.dart';
 import 'package:flutter_app/ui/chat/photo_preview_page.dart';
@@ -66,7 +66,7 @@ class AppCachedImage extends StatelessWidget {
     final String path = (src?.toString() ?? '').trim();
     if (path.isEmpty || path == '[Image]') return _buildFallback();
 
-    // 🚀 [核心重构]：利用 AssetManager 统一还原路径
+    //  [核心重构]：利用 AssetManager 统一还原路径
     // 它会自动处理：相对路径还原、file:// 转换、物理存在检查
     if (!kIsWeb && AssetManager.existsSync(path)) {
       final String fullPath = AssetManager.getRuntimePath(path);

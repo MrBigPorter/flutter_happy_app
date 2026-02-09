@@ -2,6 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_app/app/routes/app_router.dart';
 import 'package:flutter_app/common.dart';
+import 'package:flutter_app/components/preloader/scroll_aware_preloader.dart';
 import 'package:flutter_app/ui/chat/components/chat_action_sheet.dart';
 import 'package:flutter_app/ui/chat/providers/chat_room_provider.dart';
 import 'package:flutter_app/ui/chat/providers/chat_view_model.dart';
@@ -290,41 +291,48 @@ class _ChatPageState extends ConsumerState<ChatPage> {
                         }
                         return false;
                       },
-                      child: ListView.builder(
-                        controller: _scrollController,
-                        reverse: true,
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                        itemCount: messages.length + 1,
-                        itemBuilder: (context, index) {
-                          if (index == messages.length) {
-                            if (chatState.hasMore) {
-                              return Container(
-                                padding: const EdgeInsets.symmetric(vertical: 15),
-                                alignment: Alignment.center,
-                                child: SizedBox(
-                                    width: 20, height: 20,
-                                    child: CircularProgressIndicator(strokeWidth: 2, color: context.textBrandPrimary900)
-                                ),
-                              );
-                            } else {
-                              return Container(
-                                padding: const EdgeInsets.symmetric(vertical: 15),
-                                alignment: Alignment.center,
-                                child: Text("—— No more history ——", style: TextStyle(color: Colors.grey[400], fontSize: 12)),
-                              );
+                      child: ScrollAwarePreloader(
+                        items: messages,             // 1. 传入当前消息列表
+                        itemAverageHeight: 250.0,    // 2. 估算气泡高度 (可以用 ScreenUtil)
+                        preloadWindow: 6,            // 3. 预加载窗口大小
+                        predictWidth: 240.0,       // 4. 预测宽度 (可以根据设计稿调整)
+
+                        child: ListView.builder(
+                          controller: _scrollController,
+                          reverse: true,
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                          itemCount: messages.length + 1,
+                          itemBuilder: (context, index) {
+                            if (index == messages.length) {
+                              if (chatState.hasMore) {
+                                return Container(
+                                  padding: const EdgeInsets.symmetric(vertical: 15),
+                                  alignment: Alignment.center,
+                                  child: SizedBox(
+                                      width: 20, height: 20,
+                                      child: CircularProgressIndicator(strokeWidth: 2, color: context.textBrandPrimary900)
+                                  ),
+                                );
+                              } else {
+                                return Container(
+                                  padding: const EdgeInsets.symmetric(vertical: 15),
+                                  alignment: Alignment.center,
+                                  child: Text("—— No more history ——", style: TextStyle(color: Colors.grey[400], fontSize: 12)),
+                                );
+                              }
                             }
-                          }
-                          final msg = messages[index];
-                          bool showReadStatus = msg.isMe && msg.status == MessageStatus.read && index == 0;
-                          return ChatBubble(
-                            key: ValueKey(msg.id),
-                            isGroup: isGroup,
-                            message: msg,
-                            showReadStatus: showReadStatus,
-                            onRetry: () => actionService.resend(msg.id),
-                          );
-                        },
-                      ),
+                            final msg = messages[index];
+                            bool showReadStatus = msg.isMe && msg.status == MessageStatus.read && index == 0;
+                            return ChatBubble(
+                              key: ValueKey(msg.id),
+                              isGroup: isGroup,
+                              message: msg,
+                              showReadStatus: showReadStatus,
+                              onRetry: () => actionService.resend(msg.id),
+                            );
+                          },
+                        ),
+                      )
                     ),
                   );
                 },

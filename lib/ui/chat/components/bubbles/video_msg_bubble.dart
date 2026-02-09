@@ -159,8 +159,8 @@ class _VideoMsgBubbleState extends State<VideoMsgBubble> {
   @override
   Widget build(BuildContext context) {
     final source = widget.message.previewBytes ?? widget.message.meta?['thumb'];
-    
 
+    const double bubbleWidth = 240.0;
     final double w = (widget.message.meta?['w'] ?? 16).toDouble();
     final double h = (widget.message.meta?['h'] ?? 9).toDouble();
     final double aspectRatio = (w / h).clamp(0.6, 1.8);
@@ -173,8 +173,8 @@ class _VideoMsgBubbleState extends State<VideoMsgBubble> {
       onTap: _togglePlay,
       onDoubleTap: _openFullScreen,
       child: Container(
-        width: 240,
-        height: 240 / aspectRatio,
+        width: bubbleWidth,
+        height: bubbleWidth / aspectRatio,
         constraints: const BoxConstraints(maxWidth: 240, maxHeight: 320),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(12),
@@ -191,6 +191,8 @@ class _VideoMsgBubbleState extends State<VideoMsgBubble> {
                 Positioned.fill(
                   child: AppCachedImage(
                     source,
+                    width: bubbleWidth,
+                    height: bubbleWidth / aspectRatio,
                     fit: BoxFit.cover,
                     previewBytes: widget.message.previewBytes,
                     metadata: widget.message.meta,

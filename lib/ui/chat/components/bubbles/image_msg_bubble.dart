@@ -15,6 +15,11 @@ class ImageMsgBubble extends StatelessWidget {
     // 列表页显示的宽度
     const double bubbleWidth = 240;
     final Map<String, dynamic> meta = message.meta ?? {};
+    //  2. 计算宽高比：防止图片加载前高度为 0 导致列表抖动
+    final double w = (meta['w'] ?? meta['width'] ?? 1.0).toDouble();
+    final double h = (meta['h'] ?? meta['height'] ?? 1.0).toDouble();
+    final double aspectRatio = (w / h).clamp(0.5, 2.0); // 限制比例，防止长图太长
+
     final timeStr = DateFormat('HH:mm').format(
       DateTime.fromMillisecondsSinceEpoch(message.createdAt),
     );
@@ -25,7 +30,8 @@ class ImageMsgBubble extends StatelessWidget {
     return GestureDetector(
       onTap: () => _openPreview(context, source),
       child: Container(
-        constraints: const BoxConstraints(maxWidth: bubbleWidth, maxHeight: 320),
+        width: bubbleWidth,
+        height: bubbleWidth / aspectRatio,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: Colors.grey.withOpacity(0.1)),
@@ -39,11 +45,11 @@ class ImageMsgBubble extends StatelessWidget {
                 tag: 'img_${message.id}',
                 child: AppCachedImage(
                   source,
-                  width: bubbleWidth,
-                  height: null, // 高度自适应 (由 AppCachedImage 内部 AspectRatio 控制)
+                  width: bubbleWidth, //  4. 显式传宽，配合 Preloader
+                  height: bubbleWidth / aspectRatio, // 显式传高
                   fit: BoxFit.cover,
 
-                  // 🔥 传这些是为了防闪烁和占位
+                  //  传这些是为了防闪烁和占位
                   previewBytes: message.previewBytes,
                   metadata: meta,
 
