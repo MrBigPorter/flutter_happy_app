@@ -18,7 +18,7 @@ class ScrollAwarePreloader extends StatefulWidget {
     required this.child,
     required this.items,
     this.itemAverageHeight = 300.0,
-    this.preloadWindow = 30,
+    this.preloadWindow = 15,
     this.predictWidth,
   });
 

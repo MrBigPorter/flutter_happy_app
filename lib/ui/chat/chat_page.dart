@@ -53,7 +53,6 @@ class _ChatPageState extends ConsumerState<ChatPage> {
     // 离开页面时，清除活跃会话标记 (保持这个清理逻辑是安全的)
     try {
       ref.read(activeConversationIdProvider.notifier).state = null;
-      PreloadMetrics.reset();
     } catch (_) {}
     super.dispose();
   }
@@ -286,8 +285,10 @@ class _ChatPageState extends ConsumerState<ChatPage> {
                     },
                     child: NotificationListener<ScrollNotification>(
                       onNotification: (ScrollNotification scrollInfo) {
+                        //  建议：从 500 改为 2000
+                        // 这样用户还没滑到底，新数据就悄悄接上了，真正实现“无限滚动”
                         if (chatState.hasMore && !chatState.isLoadingMore) {
-                          if (scrollInfo.metrics.extentAfter < 500) {
+                          if (scrollInfo.metrics.extentAfter < 2000) {
                             viewModel.loadMore();
                           }
                         }
