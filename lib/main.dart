@@ -5,6 +5,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_app/components/performance_dashboard.dart';
 import 'package:flutter_app/theme/theme_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart' as riverpod;
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -72,7 +73,7 @@ Future<void> main() async {
     // 9. 使用 UncontrolledProviderScope 绑定容器
     riverpod.UncontrolledProviderScope(
       container: container,
-      child: EasyLocalization(
+      child:EasyLocalization(
         supportedLocales: const [Locale('en'), Locale('tl')],
         path: 'assets/locales',
         fallbackLocale: const Locale('en'),
@@ -82,7 +83,7 @@ Future<void> main() async {
           splitScreenMode: true,
           builder: (_, __) => const AppBootstrap(),
         ),
-      ),
+      )
     ),
   );
 }
@@ -127,6 +128,7 @@ class AppBootstrap extends riverpod.ConsumerWidget {
       // 为了体验最好，这里建议放一张和你原生 LaunchScreen 一模一样的图
       loading: () => MaterialApp(
         debugShowCheckedModeBanner: false,
+        showPerformanceOverlay: true, // 开启性能图表
         home: Scaffold(
           // 背景色要和启动图一致
           backgroundColor: Colors.white,

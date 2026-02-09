@@ -22,6 +22,7 @@ class RemoteUrlBuilder {
   }
 
   /// 生成带 CDN 参数的 URL
+  // 直接替换 imageCdn 方法
   static String imageCdn(
       BuildContext? context,
       String remotePath, {
@@ -32,22 +33,26 @@ class RemoteUrlBuilder {
         double pixelRatio = 2.0,
       }) {
     final key = MediaPath.normalizeRemoteKey(remotePath);
-    if (key.isEmpty) return '';
 
-    double dpr = pixelRatio;
-    if (context != null) {
-      dpr = MediaQuery.maybeOf(context)?.devicePixelRatio ?? pixelRatio;
+    // 1. 这里的 DPR 必须是整数阶梯，防止 3.75 这种碎数字
+    double dpr = (context != null) ? MediaQuery.of(context).devicePixelRatio : 3.0;
+    if (dpr > 2.5) {
+      dpr = 3.0;
+    } else {
+      dpr = 2.0;
     }
 
-    final targetW = logicalWidth ?? 600;
-    final w = (targetW * dpr).round();
-    // 限制最大宽度，防止请求过大图片
-    final finalW = min(w, 2048);
+    // 2. 核心：不论 UI 传什么，宽度强行锁定为 240 或 480
+    // 这样 Preloader 和 UI 就再也不可能产生第三种宽度参数了
+    int targetW = (logicalWidth != null && logicalWidth > 300) ? 480 : 240;
 
-    final fitMode = fit == BoxFit.contain ? "contain" : "scale-down";
-    final params = 'width=$finalW,quality=$quality,f=$format,fit=$fitMode';
+    // 3. 最终物理像素：240*3=720 或 480*3=1440
+    int finalW = (targetW * dpr).toInt();
 
-    // 拼接：BaseUrl + CDN前缀 + 参数 + Key
-    return '${AppConfig.imgBaseUrl}$cdnPrefix$params/$key';
+    // 4. 强制 Fit 模式 (这个不对齐也必死)
+    String fitParam = (fit == BoxFit.contain) ? "contain" : "scale-down";
+
+    final params = 'width=$finalW,quality=75,f=auto,fit=$fitParam';
+    return '${AppConfig.imgBaseUrl}${RemoteUrlBuilder.cdnPrefix}$params/$key';
   }
 }

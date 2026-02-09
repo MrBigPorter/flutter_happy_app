@@ -1,3 +1,4 @@
+import 'dart:developer' as dev;
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
@@ -6,10 +7,10 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_blurhash/flutter_blurhash.dart';
 import 'package:shimmer/shimmer.dart';
 
-// 核心引入：使用我们之前封装的资产管理器
 import 'package:flutter_app/utils/asset/asset_manager.dart';
 import 'package:flutter_app/utils/media/url_resolver.dart';
 import 'package:flutter_app/ui/chat/photo_preview_page.dart';
+
 
 class AppCachedImage extends StatelessWidget {
   final dynamic src;
@@ -40,6 +41,8 @@ class AppCachedImage extends StatelessWidget {
         this.previewBytes,
         this.metadata,
       });
+
+
 
   @override
   Widget build(BuildContext context) {
@@ -95,18 +98,44 @@ class AppCachedImage extends StatelessWidget {
   }
 
   Widget _buildNetworkImage(BuildContext context, String path) {
-    final url = UrlResolver.resolveImage(context, path, logicalWidth: width, fit: fit);
+    // 1. 确保逻辑宽度归一化 (和你 Preloader 逻辑一致)
+    final double fixedWidth = width?.toInt().toDouble() ?? 240.0;
+    final url = UrlResolver.resolveImage(context, path, logicalWidth: fixedWidth, fit: fit);
+
     if (url.isEmpty) return _buildFallback();
 
-    return CachedNetworkImage(
-      imageUrl: url,
-      width: width,
-      height: height,
-      fit: fit,
-      //  优化：占位符优先使用内存预览图或 BlurHash
-      placeholder: (context, url) => _buildFallback(isPlaceholder: true),
-      errorWidget: (context, url, err) => _buildFallback(),
-      fadeInDuration: fadeInDuration ?? const Duration(milliseconds: 200),
+    // 3.  Stack 方案：物理防闪烁 + 完美兜底
+    return Stack(
+      fit: StackFit.passthrough,
+      children: [
+        // 底层：永远垫着 previewBytes
+        // 这样 Nginx 挂了，这里就一直显示这张图，用户根本感觉不到网络崩了
+        if (previewBytes != null && previewBytes!.isNotEmpty)
+          Image.memory(
+              previewBytes!,
+              width: width,
+              height: height,
+              fit: fit,
+              gaplessPlayback: true
+          )
+        else
+          Container(color: placeholderColor, width: width, height: height),
+
+        // 顶层：尝试加载高清图
+        CachedNetworkImage(
+          imageUrl: url,
+          cacheKey: url,
+          width: width,
+          height: height,
+          fit: fit,
+          // 彻底关掉动画，防止和底图叠加时闪烁
+          fadeInDuration: Duration.zero,
+          fadeOutDuration: Duration.zero,
+          // 占位和错误都设为透明，直接透出底层的 previewBytes
+          placeholder: (context, url) => const SizedBox.shrink(),
+          errorWidget: (context, url, err) => const SizedBox.shrink(),
+        ),
+      ],
     );
   }
 

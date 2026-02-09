@@ -17,6 +17,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../utils/metrics/preload_metrics.dart';
 import 'components/chat_bubble.dart';
 import 'components/chat_input/modern_chat_input_bar.dart';
 import 'models/chat_ui_model.dart';
@@ -52,6 +53,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
     // 离开页面时，清除活跃会话标记 (保持这个清理逻辑是安全的)
     try {
       ref.read(activeConversationIdProvider.notifier).state = null;
+      PreloadMetrics.reset();
     } catch (_) {}
     super.dispose();
   }
@@ -293,8 +295,8 @@ class _ChatPageState extends ConsumerState<ChatPage> {
                       },
                       child: ScrollAwarePreloader(
                         items: messages,             // 1. 传入当前消息列表
-                        itemAverageHeight: 250.0,    // 2. 估算气泡高度 (可以用 ScreenUtil)
-                        preloadWindow: 6,            // 3. 预加载窗口大小
+                        itemAverageHeight: 300.0,    // 2. 估算气泡高度 (可以用 ScreenUtil)
+                        preloadWindow: 30,            // 3. 预加载窗口大小
                         predictWidth: 240.0,       // 4. 预测宽度 (可以根据设计稿调整)
 
                         child: ListView.builder(
