@@ -168,7 +168,7 @@ class ChatMember {
   final String nickname;
   final String? avatar;
   final GroupRole role; // 必填，默认 MEMBER
-  final DateTime? mutedUntil; // 可空
+  final int? mutedUntil;
 
   ChatMember({
     required this.userId,
@@ -181,20 +181,38 @@ class ChatMember {
   // computed property to check if currently muted
   bool get isMuted {
     if (mutedUntil == null) return false;
-    return DateTime.now().isBefore(mutedUntil!);
+    final until = DateTime.fromMillisecondsSinceEpoch(mutedUntil!);
+    return DateTime.now().isBefore(until);
   }
 
   // return seconds left to unmute, or 0 if not muted
-  int get muteSecondsLeft {
-    if (mutedUntil == null) return 0;
-    final diff = mutedUntil!.difference(DateTime.now()).inSeconds;
-    return diff > 0 ? diff : 0;
+  Duration get muteRemaining {
+    if (mutedUntil == null) return Duration.zero;
+    final until = DateTime.fromMillisecondsSinceEpoch(mutedUntil!);
+    final diff = until.difference(DateTime.now());
+    return diff.isNegative ? Duration.zero : diff;
   }
 
   factory ChatMember.fromJson(Map<String, dynamic> json) =>
       _$ChatMemberFromJson(json);
 
   Map<String, dynamic> toJson() => _$ChatMemberToJson(this);
+
+  ChatMember copyWith({
+    String? userId,
+    String? nickname,
+    String? avatar,
+    GroupRole? role,
+    int? mutedUntil,
+  }) {
+    return ChatMember(
+      userId: userId ?? this.userId,
+      nickname: nickname ?? this.nickname,
+      avatar: avatar ?? this.avatar,
+      role: role ?? this.role,
+      mutedUntil: mutedUntil ?? this.mutedUntil,
+    );
+  }
 }
 
 // 详情模型 (ConversationDetail)
@@ -225,6 +243,32 @@ class ConversationDetail {
     this.isPinned = false,
     this.isMuted = false,
   });
+
+  ConversationDetail copyWith({
+    String? id,
+    String? name,
+    String? avatar,
+    int? unreadCount,
+    ConversationType? type,
+    List<ChatMember>? members,
+    int? lastMsgSeqId,
+    int? myLastReadSeqId,
+    bool? isPinned,
+    bool? isMuted,
+  }) {
+    return ConversationDetail(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      avatar: avatar ?? this.avatar,
+      unreadCount: unreadCount ?? this.unreadCount,
+      type: type ?? this.type,
+      members: members ?? this.members,
+      lastMsgSeqId: lastMsgSeqId ?? this.lastMsgSeqId,
+      myLastReadSeqId: myLastReadSeqId ?? this.myLastReadSeqId,
+      isPinned: isPinned ?? this.isPinned,
+      isMuted: isMuted ?? this.isMuted,
+    );
+  }
 
   factory ConversationDetail.fromJson(Map<String, dynamic> json) {
     // 后端返回的是 "GROUP", "DIRECT" 等字符串

@@ -143,8 +143,8 @@ ChatMember _$ChatMemberFromJson(Map<String, dynamic> json) => $checkedCreate(
           avatar: $checkedConvert('avatar', (v) => v as String?),
           role: $checkedConvert(
               'role', (v) => $enumDecode(_$GroupRoleEnumMap, v)),
-          mutedUntil: $checkedConvert('mutedUntil',
-              (v) => v == null ? null : DateTime.parse(v as String)),
+          mutedUntil:
+              $checkedConvert('mutedUntil', (v) => (v as num?)?.toInt()),
         );
         return val;
       },
@@ -156,7 +156,7 @@ Map<String, dynamic> _$ChatMemberToJson(ChatMember instance) =>
       'nickname': instance.nickname,
       'avatar': instance.avatar,
       'role': _$GroupRoleEnumMap[instance.role]!,
-      'mutedUntil': instance.mutedUntil?.toIso8601String(),
+      'mutedUntil': instance.mutedUntil,
     };
 
 const _$GroupRoleEnumMap = {
