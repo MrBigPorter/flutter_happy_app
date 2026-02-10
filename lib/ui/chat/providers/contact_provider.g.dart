@@ -29,16 +29,24 @@ class _SystemHash {
   }
 }
 
-/// See also [userSearch].
+/// General user search by keyword
+///
+/// Copied from [userSearch].
 @ProviderFor(userSearch)
 const userSearchProvider = UserSearchFamily();
 
-/// See also [userSearch].
+/// General user search by keyword
+///
+/// Copied from [userSearch].
 class UserSearchFamily extends Family<AsyncValue<List<ChatUser>>> {
-  /// See also [userSearch].
+  /// General user search by keyword
+  ///
+  /// Copied from [userSearch].
   const UserSearchFamily();
 
-  /// See also [userSearch].
+  /// General user search by keyword
+  ///
+  /// Copied from [userSearch].
   UserSearchProvider call(
     String keyword,
   ) {
@@ -71,9 +79,13 @@ class UserSearchFamily extends Family<AsyncValue<List<ChatUser>>> {
   String? get name => r'userSearchProvider';
 }
 
-/// See also [userSearch].
+/// General user search by keyword
+///
+/// Copied from [userSearch].
 class UserSearchProvider extends AutoDisposeFutureProvider<List<ChatUser>> {
-  /// See also [userSearch].
+  /// General user search by keyword
+  ///
+  /// Copied from [userSearch].
   UserSearchProvider(
     String keyword,
   ) : this._internal(
@@ -159,16 +171,24 @@ class _UserSearchProviderElement
 String _$chatContactsSearchHash() =>
     r'ed7aa181eb3c43a3e70516b1a993f2c9e30c948c';
 
-/// See also [chatContactsSearch].
+/// Search within existing chat contacts
+///
+/// Copied from [chatContactsSearch].
 @ProviderFor(chatContactsSearch)
 const chatContactsSearchProvider = ChatContactsSearchFamily();
 
-/// See also [chatContactsSearch].
+/// Search within existing chat contacts
+///
+/// Copied from [chatContactsSearch].
 class ChatContactsSearchFamily extends Family<AsyncValue<List<ChatUser>>> {
-  /// See also [chatContactsSearch].
+  /// Search within existing chat contacts
+  ///
+  /// Copied from [chatContactsSearch].
   const ChatContactsSearchFamily();
 
-  /// See also [chatContactsSearch].
+  /// Search within existing chat contacts
+  ///
+  /// Copied from [chatContactsSearch].
   ChatContactsSearchProvider call(
     String keyword,
   ) {
@@ -201,10 +221,14 @@ class ChatContactsSearchFamily extends Family<AsyncValue<List<ChatUser>>> {
   String? get name => r'chatContactsSearchProvider';
 }
 
-/// See also [chatContactsSearch].
+/// Search within existing chat contacts
+///
+/// Copied from [chatContactsSearch].
 class ChatContactsSearchProvider
     extends AutoDisposeFutureProvider<List<ChatUser>> {
-  /// See also [chatContactsSearch].
+  /// Search within existing chat contacts
+  ///
+  /// Copied from [chatContactsSearch].
   ChatContactsSearchProvider(
     String keyword,
   ) : this._internal(
@@ -480,22 +504,5 @@ final handleRequestControllerProvider =
 );
 
 typedef _$HandleRequestController = AutoDisposeAsyncNotifier<void>;
-String _$groupMemberActionControllerHash() =>
-    r'54f41bb837651b875c840f0bf5e2156c1ec8860e';
-
-/// See also [GroupMemberActionController].
-@ProviderFor(GroupMemberActionController)
-final groupMemberActionControllerProvider = AutoDisposeNotifierProvider<
-    GroupMemberActionController, AsyncValue<void>>.internal(
-  GroupMemberActionController.new,
-  name: r'groupMemberActionControllerProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$groupMemberActionControllerHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
-
-typedef _$GroupMemberActionController = AutoDisposeNotifier<AsyncValue<void>>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member

@@ -167,7 +167,7 @@ class ChatMember {
   final String userId;
   final String nickname;
   final String? avatar;
-  final GroupRole role; // 必填，默认 MEMBER
+  final GroupRole role;
   final int? mutedUntil;
 
   ChatMember({
@@ -216,7 +216,7 @@ class ChatMember {
 }
 
 // 详情模型 (ConversationDetail)
-
+@JsonSerializable(checked: true)
 class ConversationDetail {
   final String id;
   final String name;
@@ -224,6 +224,12 @@ class ConversationDetail {
   final int unreadCount;
   final ConversationType type;
   final List<ChatMember> members;
+  final String ownerId;
+
+  // [NEW] v6.0 群设置补充字段
+  final String? announcement;      // 群公告
+  final bool isMuteAll;            // 全员禁言开关
+  final bool joinNeedApproval;    // 加群是否需要审批
 
   // [NEW] 详情页补充字段
   final int lastMsgSeqId;
@@ -234,14 +240,21 @@ class ConversationDetail {
   ConversationDetail({
     required this.id,
     required this.name,
+    required this.ownerId,
+    required this.members,
+    required this.type,
+
+
     this.avatar,
     this.unreadCount = 0,
-    required this.type,
-    required this.members,
     this.lastMsgSeqId = 0,
     this.myLastReadSeqId = 0,
     this.isPinned = false,
     this.isMuted = false,
+
+    this.announcement,
+    this.isMuteAll = false,
+    this.joinNeedApproval = false,
   });
 
   ConversationDetail copyWith({
@@ -255,6 +268,10 @@ class ConversationDetail {
     int? myLastReadSeqId,
     bool? isPinned,
     bool? isMuted,
+
+    String? announcement,
+    bool? isMuteAll,
+    bool? joinNeedApproval,
   }) {
     return ConversationDetail(
       id: id ?? this.id,
@@ -267,6 +284,10 @@ class ConversationDetail {
       myLastReadSeqId: myLastReadSeqId ?? this.myLastReadSeqId,
       isPinned: isPinned ?? this.isPinned,
       isMuted: isMuted ?? this.isMuted,
+      announcement: announcement ?? this.announcement,
+      isMuteAll: isMuteAll ?? this.isMuteAll,
+      joinNeedApproval: joinNeedApproval ?? this.joinNeedApproval,
+      ownerId: ownerId,
     );
   }
 
@@ -293,6 +314,10 @@ class ConversationDetail {
       myLastReadSeqId: json['myLastReadSeqId'] ?? 0,
       isPinned: json['isPinned'] ?? false,
       isMuted: json['isMuted'] ?? false,
+      announcement: json['announcement'],
+      isMuteAll: json['isMuteAll'] ?? false,
+      joinNeedApproval: json['joinNeedApproval'] ?? false,
+      ownerId: json['ownerId']
     );
   }
 

@@ -165,6 +165,58 @@ const _$GroupRoleEnumMap = {
   GroupRole.member: 'MEMBER',
 };
 
+ConversationDetail _$ConversationDetailFromJson(Map<String, dynamic> json) =>
+    $checkedCreate(
+      'ConversationDetail',
+      json,
+      ($checkedConvert) {
+        final val = ConversationDetail(
+          id: $checkedConvert('id', (v) => v as String),
+          name: $checkedConvert('name', (v) => v as String),
+          ownerId: $checkedConvert('ownerId', (v) => v as String),
+          members: $checkedConvert(
+              'members',
+              (v) => (v as List<dynamic>)
+                  .map((e) => ChatMember.fromJson(e as Map<String, dynamic>))
+                  .toList()),
+          type: $checkedConvert(
+              'type', (v) => $enumDecode(_$ConversationTypeEnumMap, v)),
+          avatar: $checkedConvert('avatar', (v) => v as String?),
+          unreadCount:
+              $checkedConvert('unreadCount', (v) => (v as num?)?.toInt() ?? 0),
+          lastMsgSeqId:
+              $checkedConvert('lastMsgSeqId', (v) => (v as num?)?.toInt() ?? 0),
+          myLastReadSeqId: $checkedConvert(
+              'myLastReadSeqId', (v) => (v as num?)?.toInt() ?? 0),
+          isPinned: $checkedConvert('isPinned', (v) => v as bool? ?? false),
+          isMuted: $checkedConvert('isMuted', (v) => v as bool? ?? false),
+          announcement: $checkedConvert('announcement', (v) => v as String?),
+          isMuteAll: $checkedConvert('isMuteAll', (v) => v as bool? ?? false),
+          joinNeedApproval:
+              $checkedConvert('joinNeedApproval', (v) => v as bool? ?? false),
+        );
+        return val;
+      },
+    );
+
+Map<String, dynamic> _$ConversationDetailToJson(ConversationDetail instance) =>
+    <String, dynamic>{
+      'id': instance.id,
+      'name': instance.name,
+      'avatar': instance.avatar,
+      'unreadCount': instance.unreadCount,
+      'type': _$ConversationTypeEnumMap[instance.type]!,
+      'members': instance.members,
+      'ownerId': instance.ownerId,
+      'announcement': instance.announcement,
+      'isMuteAll': instance.isMuteAll,
+      'joinNeedApproval': instance.joinNeedApproval,
+      'lastMsgSeqId': instance.lastMsgSeqId,
+      'myLastReadSeqId': instance.myLastReadSeqId,
+      'isPinned': instance.isPinned,
+      'isMuted': instance.isMuted,
+    };
+
 ConversationIdResponse _$ConversationIdResponseFromJson(
         Map<String, dynamic> json) =>
     $checkedCreate(

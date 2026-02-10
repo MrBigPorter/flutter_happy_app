@@ -6,7 +6,7 @@ part of 'chat_group_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$chatGroupHash() => r'b31cc4048f499906bde0c4b3165f5ef89d8796b4';
+String _$chatGroupHash() => r'ffed0abcae92ff04c7ed40dd8916c397716f371f';
 
 /// Copied from Dart SDK
 class _SystemHash {
@@ -168,5 +168,23 @@ class _ChatGroupProviderElement extends AutoDisposeAsyncNotifierProviderElement<
   @override
   String get conversationId => (origin as ChatGroupProvider).conversationId;
 }
+
+String _$groupCreateControllerHash() =>
+    r'1ad58013e49fdf29c91b1de1c9c3d827e8431ae8';
+
+/// See also [GroupCreateController].
+@ProviderFor(GroupCreateController)
+final groupCreateControllerProvider =
+    AutoDisposeAsyncNotifierProvider<GroupCreateController, String?>.internal(
+  GroupCreateController.new,
+  name: r'groupCreateControllerProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$groupCreateControllerHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+typedef _$GroupCreateController = AutoDisposeAsyncNotifier<String?>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member

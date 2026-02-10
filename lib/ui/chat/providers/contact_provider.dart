@@ -1,17 +1,14 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:flutter_app/common.dart';
 
-
-
 import '../../../core/providers/socket_provider.dart';
 import '../models/conversation.dart';
 import '../models/friend_request.dart';
-import 'conversation_provider.dart';
 
 part 'contact_provider.g.dart';
 
 // ===========================================================================
-// 1. 通讯录列表 (Contact List)
+// 1. Contact List Provider
 // ===========================================================================
 @riverpod
 class ContactList extends _$ContactList {
@@ -20,47 +17,51 @@ class ContactList extends _$ContactList {
     return await Api.getContactsApi();
   }
 
-  /// 静默刷新
+  /// Silently refreshes the contact list state
   Future<void> refresh() async {
     state = await AsyncValue.guard(() => Api.getContactsApi());
   }
 }
 
 // ===========================================================================
-// 2. 好友申请列表 (Friend Requests) -  恢复并启用
+// 2. Friend Request List Provider (Restored and Enabled)
 // ===========================================================================
 @riverpod
 class FriendRequestList extends _$FriendRequestList {
   @override
   Future<List<FriendRequest>> build() async {
-    //  核心改动：在 Provider 内部监听 Socket
+    // Core Change: Listen to Socket events within the Provider
     final socket = ref.watch(socketServiceProvider);
 
-    // 当收到新申请信号时，自动刷新自己
+    // Automatically refresh self when a new application signal is received
     final subscription = socket.contactApplyStream.listen((_) {
       ref.invalidateSelf();
     });
 
-    // 销毁时取消订阅
+    // Cancel subscription when the provider is disposed
     ref.onDispose(() => subscription.cancel());
 
     return await Api.getFriendRequestsApi();
   }
 
+  /// Manually refreshes the friend request list
   Future<void> refresh() async {
     state = await AsyncValue.guard(() => Api.getFriendRequestsApi());
   }
 }
 
 // ===========================================================================
-// 3. 搜索用户 (User Search) -  统一改为注解写法
+// 3. User Search Providers (Unified with Annotation Syntax)
 // ===========================================================================
+
+/// General user search by keyword
 @riverpod
 Future<List<ChatUser>> userSearch(UserSearchRef ref, String keyword) async {
   if (keyword.trim().isEmpty) return [];
   return await Api.searchUserApi(keyword);
 }
 
+/// Search within existing chat contacts
 @riverpod
 Future<List<ChatUser>> chatContactsSearch(ChatContactsSearchRef ref, String keyword) async {
   if (keyword.trim().isEmpty) return [];
@@ -68,9 +69,9 @@ Future<List<ChatUser>> chatContactsSearch(ChatContactsSearchRef ref, String keyw
 }
 
 // ===========================================================================
-// 4. 控制器：添加好友 (Add Friend)
+// 4. Controller: Add Friend
 // ===========================================================================
-// 使用 family 使得每个用户的添加按钮状态独立 (loading 不会互串)
+// Uses family so that each user's "Add" button state is independent (avoids shared loading states)
 @riverpod
 class AddFriendController extends _$AddFriendController {
   @override
@@ -78,26 +79,25 @@ class AddFriendController extends _$AddFriendController {
     return null;
   }
 
-  /// 执行添加
+  /// Executes the friend request
   Future<bool> execute({String? reason}) async {
-
+    // Keep the provider alive during the asynchronous operation
     final link = ref.keepAlive();
 
     state = const AsyncLoading();
 
     final newState = await AsyncValue.guard(() async {
-      // userId 来自 family 参数 (this.userId)
+      // userId comes from the family parameter (this.userId)
       await Api.addFriendApi(userId, reason: reason);
     });
 
-    // 2. 只有当 Provider 没有被 dispose 时才更新状态 (双重保险)
-    // 虽然有 keepAlive，但是一个好的习惯
+    // Only update state if the Provider has not been disposed (Double-guarding)
     if(state.hasValue || state.isLoading || state.hasError) {
       state = newState;
     }
 
-    // 3. 请求结束，释放保活锁。
-    // 如果此时 UI 已经销毁，这个 Provider 也会随之销毁。
+    // Release the keep-alive lock once the request is complete.
+    // If the UI was destroyed during the request, this Provider will now dispose.
     link.close();
 
     return !newState.hasError;
@@ -105,14 +105,14 @@ class AddFriendController extends _$AddFriendController {
 }
 
 // ===========================================================================
-// 5. 控制器：处理申请 (Handle Request)
+// 5. Controller: Handle Friend Request
 // ===========================================================================
 @riverpod
 class HandleRequestController extends _$HandleRequestController {
   @override
   FutureOr<void> build() => null;
 
-  /// 执行处理 (同意/拒绝)
+  /// Executes request handling (Accept/Reject)
   Future<bool> execute({
     required String userId,
     required FriendRequestAction action,
@@ -126,91 +126,17 @@ class HandleRequestController extends _$HandleRequestController {
     state = newState;
 
     if (!newState.hasError) {
-      // 成功联动逻辑：
+      // Linked Logic on Success:
 
-      // 1. 刷新好友申请列表 (NewFriendPage 列表更新)
+      // 1. Refresh the friend request list (Updates NewFriendPage list)
       ref.invalidate(friendRequestListProvider);
 
-      // 2. 如果是同意，刷新通讯录 (增加新人)
+      // 2. If accepted, refresh the Contact List to include the new friend
       if (action == FriendRequestAction.accepted) {
-        // 2. 强制使通讯录失效
         ref.invalidate(contactListProvider);
       }
       return true;
     }
     return false;
-  }
-}
-
-// ===========================================================================
-// 6. 群组成员操作 (Group Actions) - 保持原有逻辑
-// ===========================================================================
-@riverpod
-class GroupMemberActionController extends _$GroupMemberActionController {
-  @override
-  AsyncValue<void> build() {
-    return const AsyncData(null);
-  }
-
-  /// 动作 A: 邀请成员
-  Future<int?> inviteMember({
-    required String groupId,
-    required List<String> memberIds,
-  }) async {
-    state = const AsyncValue.loading();
-
-    final newState = await AsyncValue.guard(
-          () => Api.groupInviteApi(
-        InviteToGroupRequest(groupId: groupId, memberIds: memberIds),
-      ),
-    );
-
-    state = newState;
-
-    // 刷新群详情
-    if(newState.value == null) {
-      ref.invalidate(chatDetailProvider(groupId));
-    }
-
-    return newState.value?.count;
-  }
-
-  /// 动作 B: 创建群聊
-  Future<String?> createGroup({
-    required String name,
-    required List<String> memberIds,
-  }) async {
-    state = const AsyncValue.loading();
-
-    final newState = await AsyncValue.guard(() async {
-      final res = await Api.createGroupApi(name, memberIds);
-      return res.id; // 假设 CreateGroupResponse 有 id 字段
-    });
-
-    state = newState;
-
-    if (newState.hasValue) {
-      // 创建群后刷新会话列表
-      ref.read(conversationListProvider.notifier).refresh();
-      return newState.value;
-    }
-    return null;
-  }
-
-  /// 动作 C: 退群
-  Future<bool?> leaveGroup({required String groupId}) async {
-    state = const AsyncValue.loading();
-    final newState = await AsyncValue.guard(() async {
-      final res = await Api.groupLeaveApi(LeaveGroupRequest(groupId: groupId));
-      return res.success;
-    });
-    state = newState;
-
-    if(newState.hasValue && newState.value == true) {
-      // 退群后，刷新列表
-      ref.read(conversationListProvider.notifier).refresh();
-      return true;
-    }
-    return null;
   }
 }
