@@ -22,7 +22,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:flutter_app/components/lucky_tab_bar.dart';
-import 'package:flutter_app/ui/chat/chat_page.dart';
+import 'package:flutter_app/ui/chat/chat_room/chat_page.dart';
 import 'package:flutter_app/ui/chat/contact_list_page.dart';
 import 'package:flutter_app/ui/chat/contact_profile_page.dart';
 import 'package:flutter_app/ui/chat/contact_search_page.dart';

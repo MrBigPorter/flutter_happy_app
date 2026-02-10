@@ -1,21 +1,12 @@
-import 'package:flutter_app/ui/chat/models/conversation.dart';
+import '../../models/conversation.dart';
 
-extension ChatPermissions on List<ChatMember> {
-
-  // it's me
-  ChatMember? me(String myUserId) {
+extension ChatListExt on List<ChatMember> {
+  //  只有 List 才能做的事：根据 ID 找到成员对象
+  ChatMember? findMember(String userId) {
     try {
-      return firstWhere((m) => m.userId == myUserId);
+      return firstWhere((m) => m.userId == userId);
     } catch (_) {
       return null;
     }
-  }
-
-  bool canManage(String myUserId, ChatMember target) {
-    final myMember = me(myUserId);
-    if (myMember == null) return false;
-    if (target.userId == myUserId) return false; // 不能动自己
-
-    return myMember.role.canManageMembers(target.role);
   }
 }

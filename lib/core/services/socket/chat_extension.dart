@@ -1,5 +1,7 @@
 part of 'socket_service.dart';
 
+
+
 mixin SocketChatMixin on _SocketBase, SocketDispatcherMixin {
   final _chatMessageController = StreamController<Map<String, dynamic>>.broadcast();
   Stream<Map<String, dynamic>> get chatMessageStream => _chatMessageController.stream;
@@ -15,6 +17,10 @@ mixin SocketChatMixin on _SocketBase, SocketDispatcherMixin {
 
   final _conversationUpdateStream = StreamController<Map<String, dynamic>>.broadcast();
   Stream<Map<String, dynamic>> get conversationUpdateStream => _conversationUpdateStream.stream;
+
+  // group events are handled in SocketNotificationMixin as business events, so no need to handle them here\
+  final _groupEventController = StreamController<SocketGroupEvent>.broadcast();
+  Stream<SocketGroupEvent> get groupEventStream => _groupEventController.stream;
 
   @override
   void _onChatMessage(dynamic data) {
@@ -46,6 +52,19 @@ mixin SocketChatMixin on _SocketBase, SocketDispatcherMixin {
   void _onConversationUpdated(dynamic data) {
     if (data != null && !_conversationUpdateStream.isClosed) {
       _conversationUpdateStream.add(Map<String, dynamic>.from(data));
+    }
+  }
+
+  @override
+  void _onGroupEvent(String type, dynamic data) {
+    if(data != null && !_groupEventController.isClosed){
+      try{
+        final mapData = Map<String, dynamic>.from(data);
+        _groupEventController.add(SocketGroupEvent.fromJson(type, mapData));
+        debugPrint("Received group event: type=$type, data=$mapData");
+      }catch(e){
+        debugPrint("Failed to parse group event: $e");
+      }
     }
   }
 

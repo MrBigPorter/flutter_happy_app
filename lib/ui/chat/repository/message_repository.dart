@@ -12,7 +12,7 @@ class MessageRepository {
   final LocalDatabaseService _db = LocalDatabaseService();
 
   // ==========================================
-  //  基础查询
+  //  基础查询 (Existing + Enhanced)
   // ==========================================
 
   Future<ChatUiModel?> get(String id) async {
@@ -29,8 +29,58 @@ class MessageRepository {
     return await _db.getConversation(id);
   }
 
+  // [新增] 获取群详情缓存
+  Future<ConversationDetail?> getGroupDetail(String id) async {
+    return await _db.getConversationDetail(id);
+  }
+
+  // [新增] 保存群详情缓存
+  Future<void> saveGroupDetail(ConversationDetail detail) async {
+    await _db.saveConversationDetail(detail);
+  }
+
+  /// [删除会话] 用于解散群、被踢、退群
+  Future<void> deleteConversation(String conversationId) async {
+    await _db.deleteConversation(conversationId);
+  }
+
+  /// [更新会话信息] 用于 Socket 推送群名/头像变更
+  Future<void> updateConversationInfo(String conversationId, {String? name, String? avatar}) async {
+    final Map<String, dynamic> updates = {};
+
+    if (name != null) updates['name'] = name;
+    if (avatar != null) updates['avatar'] = avatar;
+
+    if (updates.isNotEmpty) {
+      await _db.updateConversation(conversationId, updates);
+    }
+  }
+
+  //  [新增] 分页拉取历史消息 (UI下拉刷新专用)
+  Future<List<ChatUiModel>> getHistory({
+    required String conversationId,
+    int offset = 0,
+    int limit = 50,
+  }) async {
+    return await _db.getHistoryMessages(
+      conversationId: conversationId,
+      offset: offset,
+      limit: limit,
+    );
+  }
+
+  //  [新增] 实时监听消息列表 (UI 聊天气泡自动上屏专用)
+  Stream<List<ChatUiModel>> watchMessages(String conversationId) {
+    return _db.watchMessages(conversationId);
+  }
+
+  //  [新增] 获取发送失败/发送中的消息 (App启动重发专用)
+  Future<List<ChatUiModel>> getPendingMessages() async {
+    return await _db.getPendingMessages();
+  }
+
   // ==========================================
-  //  核心写入逻辑 (带防守)
+  //  核心写入逻辑 (Existing - 保持原样)
   // ==========================================
 
   /// [场景 1：初始发送 / 同步入库]
@@ -50,8 +100,7 @@ class MessageRepository {
 
   /// [批量入库] (用于同步下来的列表)
   Future<void> saveBatch(List<ChatUiModel> msgs) async {
-    // 这里循环调用 saveOrUpdate 虽然慢一点点，但是为了安全（Merge逻辑），值得！
-    // 如果性能有瓶颈，可以在 _db 里实现批量 merge，但目前几十条消息没问题。
+    // 保持你原有的安全循环逻辑
     for (var msg in msgs) {
       await saveOrUpdate(msg);
     }
@@ -86,8 +135,13 @@ class MessageRepository {
     await _db.updateMessage(msgId, updates);
   }
 
+  //  [新增] 快捷更新状态 (发送中 -> 成功/失败)
+  Future<void> updateStatus(String msgId, MessageStatus status) async {
+    await _db.updateMessageStatus(msgId, status);
+  }
+
   // ==========================================
-  //  P0 核心业务：已读状态管理
+  //  P0 核心业务：已读状态管理 (Existing)
   // ==========================================
 
   /// 静默标记已读 (只改本地库，不调 API)
@@ -98,5 +152,19 @@ class MessageRepository {
 
   Future<void> forceClearUnread(String conversationId) async {
     await _db.clearUnreadCount(conversationId);
+  }
+
+  // ==========================================
+  //  用户操作 (新增 - New Features)
+  // ==========================================
+
+  //  [新增] 删除消息
+  Future<void> delete(String msgId) async {
+    await _db.deleteMessage(msgId);
+  }
+
+  //  [新增] 撤回消息
+  Future<void> recallMessage(String msgId, String tipText) async {
+    await _db.doLocalRecall(msgId, tipText);
   }
 }

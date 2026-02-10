@@ -465,6 +465,19 @@ class LocalDatabaseService {
     return json != null ? ConversationDetail.fromJson(json) : null;
   }
 
+  /// 删除指定会话 (用于解散群、被踢)
+  Future<void> deleteConversation(String id) async {
+    final db = await database;
+    await _conversationStore.record(id).delete(db);
+  }
+
+  /// 更新会话字段 (用于改名、改头像)
+  Future<void> updateConversation(String id, Map<String, dynamic> updates) async {
+    final db = await database;
+    // 使用 update 只更新指定字段，不覆盖整个对象
+    await _conversationStore.record(id).update(db, updates);
+  }
+
   Future<void> doLocalRecall(String messageId, String tip) async {
     final db = await database;
     await db.transaction((txn) async {

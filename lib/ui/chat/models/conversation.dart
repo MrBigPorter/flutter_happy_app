@@ -125,6 +125,100 @@ class ChatSender {
   String toString() => toJson().toString();
 }
 
+@JsonSerializable(createToJson: false) // 只需反序列化
+class ChatSocketPayload {
+  // 1. 核心三要素 (Context, Subject, Object)
+  final String conversationId;
+  final String? operatorId; // 操作人
+  final String? targetId;   // 目标人 (标准化后)
+
+  // 2. 附加信息 (Details)
+  final Map<String, dynamic> updates; // 群信息更新内容
+  final int? mutedUntil;              // 禁言截止时间
+  final String? newRole;              // 新角色
+  final int? timestamp;               // 时间戳
+
+  // 3. 复杂对象 (Complex Objects)
+  final ChatMember? member; // 入群等事件携带的完整成员信息
+
+  // 兼容旧字段 (不参与构造，仅用于逻辑辅助，或者直接在 fromJson 映射掉)
+  @JsonKey(includeFromJson: false)
+  final String? kickedUserId;
+
+  ChatSocketPayload({
+    required this.conversationId,
+    this.operatorId,
+    this.targetId,
+    this.updates = const {},
+    this.mutedUntil,
+    this.newRole,
+    this.timestamp,
+    this.member,
+    this.kickedUserId,
+  });
+
+  /// 万能解析工厂 (手动实现以处理复杂的兼容逻辑)
+  factory ChatSocketPayload.fromJson(Map<String, dynamic> json) {
+    return ChatSocketPayload(
+      conversationId: json['conversationId']?.toString() ?? '',
+
+      //  统一读取 operatorId
+      operatorId: json['operatorId']?.toString(),
+
+      //  统一读取 targetId (强力兼容后端旧字段)
+      targetId: json['targetId']?.toString()
+          ?? json['memberId']?.toString()
+          ?? json['userId']?.toString()
+          ?? json['kickedUserId']?.toString()
+          ?? json['newOwnerId']?.toString(),
+
+      //  解析 updates (防空、防嵌套)
+      updates: (json['updates'] is Map)
+          ? Map<String, dynamic>.from(json['updates'])
+          : {},
+
+      //  解析具体业务字段
+      mutedUntil: json['mutedUntil'] is int ? json['mutedUntil'] : null,
+      newRole: json['newRole']?.toString(),
+      timestamp: json['timestamp'] is int ? json['timestamp'] : null,
+
+      //  直接解析为 ChatMember 对象 (因为在同一个文件，可以直接用)
+      member: json['member'] != null
+          ? ChatMember.fromJson(json['member'])
+          : null,
+    );
+  }
+
+  @override
+  String toString() {
+    return 'ChatSocketPayload(targetId: $targetId, operatorId: $operatorId, updates: $updates, mutedUntil: $mutedUntil)';
+  }
+}
+
+class SocketGroupEvent {
+  final String type;                 // 事件类型 (e.g. member_kicked)
+  final Map<String, dynamic> rawData; // 原始数据
+  late final ChatSocketPayload payload; // 解析后的强类型数据
+
+  // 快捷访问器
+  String get groupId => payload.conversationId;
+
+  SocketGroupEvent({
+    required this.type,
+    required this.rawData,
+  }) {
+    // 初始化时自动解析 Payload
+    payload = ChatSocketPayload.fromJson(rawData);
+  }
+
+  factory SocketGroupEvent.fromJson(String type, Map<String, dynamic> json) {
+    return SocketGroupEvent(
+      type: type,
+      rawData: json,
+    );
+  }
+}
+
 @JsonSerializable(checked: true)
 class ChatMessage {
   final String id;
@@ -178,6 +272,17 @@ class ChatMember {
     this.mutedUntil,
   });
 
+  bool get isOwner => role == GroupRole.owner;
+  bool get isAdmin => role == GroupRole.admin;
+  bool get isManagement => isOwner || isAdmin;
+
+  //  2. 权限比较
+  // "我"是否有权管理 "target"？
+  bool canManage(ChatMember target) {
+    if (userId == target.userId) return false; // 不能动自己
+    return role.canManageMembers(target.role); // 依赖 Enum 里的逻辑
+  }
+
   // computed property to check if currently muted
   bool get isMuted {
     if (mutedUntil == null) return false;
@@ -215,8 +320,7 @@ class ChatMember {
   }
 }
 
-// 详情模型 (ConversationDetail)
-@JsonSerializable(checked: true)
+
 class ConversationDetail {
   final String id;
   final String name;
@@ -244,7 +348,6 @@ class ConversationDetail {
     required this.members,
     required this.type,
 
-
     this.avatar,
     this.unreadCount = 0,
     this.lastMsgSeqId = 0,
@@ -264,11 +367,11 @@ class ConversationDetail {
     int? unreadCount,
     ConversationType? type,
     List<ChatMember>? members,
+    String? ownerId,
     int? lastMsgSeqId,
     int? myLastReadSeqId,
     bool? isPinned,
     bool? isMuted,
-
     String? announcement,
     bool? isMuteAll,
     bool? joinNeedApproval,
@@ -280,6 +383,7 @@ class ConversationDetail {
       unreadCount: unreadCount ?? this.unreadCount,
       type: type ?? this.type,
       members: members ?? this.members,
+      ownerId: ownerId ?? this.ownerId,
       lastMsgSeqId: lastMsgSeqId ?? this.lastMsgSeqId,
       myLastReadSeqId: myLastReadSeqId ?? this.myLastReadSeqId,
       isPinned: isPinned ?? this.isPinned,
@@ -287,25 +391,27 @@ class ConversationDetail {
       announcement: announcement ?? this.announcement,
       isMuteAll: isMuteAll ?? this.isMuteAll,
       joinNeedApproval: joinNeedApproval ?? this.joinNeedApproval,
-      ownerId: ownerId,
     );
   }
 
   factory ConversationDetail.fromJson(Map<String, dynamic> json) {
-    // 后端返回的是 "GROUP", "DIRECT" 等字符串
+    // 处理枚举
     final typeStr = json['type']?.toString().toUpperCase() ?? 'GROUP';
-
     final typeEnum = ConversationType.values.firstWhere(
           (e) => e.name.toUpperCase() == typeStr,
       orElse: () => ConversationType.group,
     );
 
     return ConversationDetail(
-      id: json['id'],
-      name: json['name'],
-      avatar: json['avatar'],
+      // 关键修复：必填 String 字段必须给默认值，防止数据库脏数据导致 Crash
+      id: json['id']?.toString() ?? '',
+      name: json['name']?.toString() ?? 'Unknown Group',
+      ownerId: json['ownerId']?.toString() ?? '', // 这里如果为 null 之前会崩
+
+      avatar: json['avatar'], // 可空字段可以直接赋值
       unreadCount: json['unreadCount'] ?? 0,
       type: typeEnum,
+
       members: (json['members'] as List<dynamic>?)
           ?.map((e) => ChatMember.fromJson(e))
           .toList() ?? [],
@@ -314,25 +420,32 @@ class ConversationDetail {
       myLastReadSeqId: json['myLastReadSeqId'] ?? 0,
       isPinned: json['isPinned'] ?? false,
       isMuted: json['isMuted'] ?? false,
+
       announcement: json['announcement'],
       isMuteAll: json['isMuteAll'] ?? false,
       joinNeedApproval: json['joinNeedApproval'] ?? false,
-      ownerId: json['ownerId']
     );
   }
 
+  //  修复：补充了漏掉的字段，否则存入本地数据库后数据会丢失
   Map<String, dynamic> toJson() {
     return {
       'id': id,
       'name': name,
+      'ownerId': ownerId,
       'avatar': avatar,
       'unreadCount': unreadCount,
       'type': type.name.toUpperCase(),
       'members': members.map((m) => m.toJson()).toList(),
+
       'lastMsgSeqId': lastMsgSeqId,
       'myLastReadSeqId': myLastReadSeqId,
       'isPinned': isPinned,
       'isMuted': isMuted,
+
+      'announcement': announcement,
+      'isMuteAll': isMuteAll,
+      'joinNeedApproval': joinNeedApproval,
     };
   }
 

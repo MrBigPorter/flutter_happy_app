@@ -13,6 +13,7 @@ import 'package:easy_localization/easy_localization.dart';
 
 import '../../theme/theme_provider.dart';
 import '../core/providers/socket_provider.dart';
+import '../ui/chat/services/chat_event_processor.dart';
 
 class MyApp extends ConsumerStatefulWidget {
   const MyApp({super.key});
@@ -54,6 +55,12 @@ class _MyAppState extends ConsumerState<MyApp> {
     //watch 它，让 SocketService 实例保持存活，并开始监听 Auth 变化。
     // 我们不需要用它的返回值，只需要它活着。
      ref.watch(socketServiceProvider);
+
+    // 2. 启动 Socket 事件处理器 (指挥官)
+    // 只要这一行在，ChatEventProcessor 就开始工作，
+    // 无论用户在哪个页面，它都会在后台监听并更新数据库。
+    ref.watch(chatEventProcessorProvider);
+
     // 初始化 FCM 服务
      ref.watch(fcmInitProvider);
 

@@ -18,7 +18,7 @@ mixin SocketContactMixin on _SocketBase, SocketDispatcherMixin {
   void _onContactAccept(dynamic data) {
     if (data != null && !_contactAcceptController.isClosed) {
       _contactAcceptController.add(Map<String, dynamic>.from(data));
-      triggerSync(); // ✅ 收到好友同意后，自动触发同步信号刷新联系人列表
+      triggerSync(); //  收到好友同意后，自动触发同步信号刷新联系人列表
     }
   }
 }

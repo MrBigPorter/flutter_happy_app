@@ -143,10 +143,13 @@ class _GroupMemberSelectPageState extends ConsumerState<GroupMemberSelectPage> {
     final TextEditingController nameController = TextEditingController();
     RadixModal.show(
       title: "New Group",
-      builder: (ctx, _) => TextField(
-        controller: nameController,
-        autofocus: true,
-        decoration: const InputDecoration(hintText: "Enter group name"),
+      builder: (ctx, _) => Material(
+        color: Colors.transparent,
+        child: TextField(
+          controller: nameController,
+          autofocus: true,
+          decoration: const InputDecoration(hintText: "Enter group name"),
+        ),
       ),
       confirmText: "Create",
       onConfirm: (close) {

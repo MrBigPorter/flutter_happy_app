@@ -24,6 +24,24 @@ abstract class SocketEvents {
   static const String contactApply = 'contact_apply';
   /// Contact request accepted
   static const String contactAccept = 'contact_accept';
+  // --- Group Related ---
+  /// Group member role changes (kicked, muted, owner transferred, role updated)
+  static const String memberKicked = 'member_kicked';
+  /// Group member mute notification
+  static const String memberMuted = 'member_muted';
+  /// Group owner transferred
+  static const String ownerTransferred = 'owner_transferred';
+  /// Group member role updated (e.g., promoted to admin)
+  static const String memberRoleUpdated = 'member_role_updated';
+  /// Group membership changes (joined/left)
+  static const String memberJoined = 'member_joined';
+  /// Group member left
+  static const String memberLeft = 'member_left';
+    /// Group disbanded
+  static const String groupDisbanded = 'group_disbanded';
+  /// Group information updated (name, announcement, global mute, etc.)
+  static const String groupInfoUpdated = 'group_info_updated';
+
   /// Typing indicator
   static const String typing = 'typing';
 

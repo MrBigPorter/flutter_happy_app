@@ -56,20 +56,38 @@ mixin SocketDispatcherMixin on _SocketBase {
 
     final String type = payload['type']?.toString() ?? 'unknown';
     final dynamic data = payload['data'];
-    debugPrint(" [SocketService] 分发中心收到信号: type=$type, data=$data");
+    if(kDebugMode){
+      debugPrint(" [SocketService] 分发中心收到信号: type=$type, data=$data");
+    }
 
     switch (type) {
+      // base events
       case SocketEvents.chatMessage: _onChatMessage(data); break;
       case SocketEvents.conversationRead: _onReadReceipt(data); break;
       case SocketEvents.messageRecall: _onMessageRecall(data); break;
       case SocketEvents.conversationUpdated: _onConversationUpdated(data); break;
+      // contact events
       case SocketEvents.contactApply: _onContactApply(data); break;
       case SocketEvents.contactAccept: _onContactAccept(data); break;
+
+      // group events are treated as notifications or business events, not chat events
+      case SocketEvents.memberKicked:
+      case SocketEvents.memberMuted:
+      case SocketEvents.ownerTransferred:
+      case SocketEvents.memberRoleUpdated:
+      case SocketEvents.memberJoined:
+      case SocketEvents.memberLeft:
+      case SocketEvents.groupDisbanded:
+      case SocketEvents.groupInfoUpdated:
+      _onGroupEvent(type, data);
+      break;
+
+      // business/system notifications
       case SocketEvents.groupSuccess:
       case SocketEvents.groupFailed: _onGroupNotification(type, data); break;
       case SocketEvents.groupUpdate:
       case SocketEvents.walletChange: _onBusinessEvent(type, data); break;
-      default: debugPrint("⚠ [Socket] Unknown type: $type");
+      default: debugPrint(" [Socket] Unknown type: $type");
     }
   }
 
@@ -82,6 +100,7 @@ mixin SocketDispatcherMixin on _SocketBase {
   void _onBusinessEvent(String type, dynamic data);
   void _onContactApply(dynamic data);
   void _onContactAccept(dynamic data);
+  void _onGroupEvent(String type, dynamic data);
 }
 
 class SocketService extends _SocketBase
