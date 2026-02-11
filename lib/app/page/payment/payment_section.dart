@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_app/components/address/address_list.dart';
 import 'package:flutter_app/components/skeleton.dart';
+import 'package:flutter_app/core/store/wallet_store.dart';
 import 'package:flutter_app/ui/img/app_image.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -11,7 +12,6 @@ import 'package:flutter_svg/svg.dart';
 
 import 'package:flutter_app/core/models/product_list_item.dart';
 import 'package:flutter_app/core/providers/purchase_state_provider.dart';
-import 'package:flutter_app/core/store/lucky_store.dart';
 import 'package:flutter_app/theme/design_tokens.g.dart';
 import 'package:flutter_app/theme/leading_tokens.dart';
 import 'package:flutter_app/ui/button/button.dart';
@@ -539,7 +539,7 @@ class VoucherSection extends ConsumerWidget {
     final purchase = ref.watch(purchaseProvider(treasureId));
     final notifier = ref.read(purchaseProvider(treasureId).notifier);
     final coinsBalance = ref.watch(
-      luckyProvider.select((state) => state.balance.coinBalance),
+      walletProvider.select((state) => state.coinBalance),
     );
 
     return Padding(
@@ -667,7 +667,7 @@ class PaymentMethodSection extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final realBalance = ref.watch(
-      luckyProvider.select((select) => select.balance.realBalance),
+      walletProvider.select((select) => select.realBalance),
     );
 
     return Padding(

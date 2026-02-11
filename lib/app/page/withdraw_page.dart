@@ -2,6 +2,8 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_app/core/store/user_store.dart';
+import 'package:flutter_app/core/store/wallet_store.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:reactive_forms/reactive_forms.dart';
@@ -14,7 +16,6 @@ import 'package:flutter_app/ui/index.dart';
 import 'package:flutter_app/utils/format_helper.dart';
 
 // --- Models, Store & Providers ---
-import 'package:flutter_app/core/store/lucky_store.dart';
 import 'package:flutter_app/core/models/balance.dart';
 import 'package:flutter_app/core/models/kyc.dart';
 import 'package:flutter_app/core/providers/wallet_provider.dart';
@@ -49,7 +50,8 @@ class _WithdrawPageState extends ConsumerState<WithdrawPage> {
     super.initState();
     // 初始化数据
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(luckyProvider.notifier).refreshAll();
+      ref.read(walletProvider.notifier).fetchBalance();
+      ref.read(userProvider.notifier).fetchProfile();
       ref.refresh(clientPaymentChannelsWithdrawProvider);
     });
   }
@@ -59,7 +61,7 @@ class _WithdrawPageState extends ConsumerState<WithdrawPage> {
     if (_selectedChannel == null) return;
 
     // 1. 获取 KYC 状态
-    final kycStatus = ref.read(luckyProvider).userInfo?.kycStatus ?? 0;
+    final kycStatus = ref.read(userProvider)?.kycStatus ?? 0;
     final isVerified = KycStatusEnum.fromStatus(kycStatus) == KycStatusEnum.approved;
 
     // 2. 获取金额控制器
@@ -89,7 +91,7 @@ class _WithdrawPageState extends ConsumerState<WithdrawPage> {
   @override
   Widget build(BuildContext context) {
     // 监听数据
-    final wallet = ref.watch(luckyProvider.select((s) => s.balance));
+    final wallet = ref.watch(walletProvider.select((s) => s));
     final withdrawable = wallet.realBalance;
     final channelsAsync = ref.watch(clientPaymentChannelsWithdrawProvider);
 
@@ -109,7 +111,7 @@ class _WithdrawPageState extends ConsumerState<WithdrawPage> {
     );
 
     // 逻辑：余额变化时，重新运行校验逻辑
-    ref.listen(luckyProvider.select((s) => s.balance.realBalance), (prev, next) {
+    ref.listen(walletProvider.select((s) => s.realBalance), (prev, next) {
       if (prev != next) _updateValidators(next);
     });
 
@@ -413,7 +415,7 @@ class _WithdrawPageState extends ConsumerState<WithdrawPage> {
           onTap: () {
             setState(() {
               _selectedChannel = channel;
-              final currentBalance = ref.read(luckyProvider).balance.realBalance;
+              final currentBalance = ref.read(walletProvider).realBalance;
               _updateValidators(currentBalance);
             });
           },
@@ -632,7 +634,7 @@ class _WithdrawPageState extends ConsumerState<WithdrawPage> {
     );
 
     if (result != null) {
-      ref.read(luckyProvider.notifier).updateWalletBalance();
+      ref.read(walletProvider.notifier).fetchBalance();
       final channelName = _selectedChannel?.name ?? 'Wallet';
       final account = _form.accountNumberControl.value ?? '';
       _form.form.reset();

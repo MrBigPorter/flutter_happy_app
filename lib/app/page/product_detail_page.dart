@@ -3,11 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_app/app/page/product_detail/detail_sections.dart';
 import 'package:flutter_app/app/page/product_detail/join_treasure_bar.dart';
 import 'package:flutter_app/app/page/product_detail/product_detail_skeleton.dart';
+import 'package:flutter_app/core/store/config_store.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_app/common.dart';
 import 'package:flutter_app/core/providers/index.dart';
-import 'package:flutter_app/core/store/lucky_store.dart';
 import 'package:go_router/go_router.dart';
 
 class ProductDetailPage extends ConsumerStatefulWidget {
@@ -77,7 +77,7 @@ class _ProductDetailPageState extends ConsumerState<ProductDetailPage>
       productRealtimeStatusProvider(widget.productId),
     );
     final webBaseUrl = ref.watch(
-      luckyProvider.select((s) => s.sysConfig.webBaseUrl),
+      configProvider.select((s) => s.webBaseUrl),
     );
 
     final expandedHeight = 250.w;

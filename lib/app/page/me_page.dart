@@ -9,7 +9,8 @@ import 'package:flutter_app/components/base_scaffold.dart';
 import 'package:flutter_app/components/lucky_custom_material_indicator.dart';
 import 'package:flutter_app/core/models/index.dart';
 import 'package:flutter_app/core/store/auth/auth_provider.dart';
-import 'package:flutter_app/core/store/lucky_store.dart';
+import 'package:flutter_app/core/store/user_store.dart';
+import 'package:flutter_app/core/store/wallet_store.dart';
 import 'package:flutter_app/ui/button/index.dart';
 import 'package:flutter_app/utils/format_helper.dart';
 import 'package:flutter_app/utils/helper.dart';
@@ -28,7 +29,7 @@ class _MePageState extends ConsumerState<MePage>{
 
 
   Future<void> _onRefresh() async {
-    ref.read(luckyProvider.notifier).updateWalletBalance();
+    ref.read(walletProvider.notifier).fetchBalance();
   }
 
   @override
@@ -38,7 +39,7 @@ class _MePageState extends ConsumerState<MePage>{
     var isAuthenticated = ref.watch(
       authProvider.select((s) => s.isAuthenticated),
     );
-    final balance = ref.watch(luckyProvider.select((s) => s.balance));
+    final balance = ref.watch(walletProvider);
 
     return BaseScaffold(
       showBack: false,
@@ -407,7 +408,7 @@ class _LoginTopArea extends StatelessWidget {
 class _Avatar extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final nickname = ref.watch(luckyProvider.select((s) => s.userInfo?.nickname));
+    final nickname = ref.watch(userProvider.select((s) => s?.nickname));
     
     return Padding(
       padding: EdgeInsets.only(right: 16.w),

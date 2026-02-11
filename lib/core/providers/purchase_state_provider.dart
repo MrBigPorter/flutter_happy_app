@@ -5,10 +5,12 @@ import 'package:flutter_app/core/providers/address_provider.dart';
 import 'package:flutter_app/core/providers/index.dart';
 import 'package:flutter_app/core/providers/order_provider.dart';
 import 'package:flutter_app/core/store/auth/auth_provider.dart';
+import 'package:flutter_app/core/store/config_store.dart';
+import 'package:flutter_app/core/store/user_store.dart';
+import 'package:flutter_app/core/store/wallet_store.dart';
 import 'package:flutter_app/utils/helper.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../utils/time/server_time_helper.dart';
-import '../store/lucky_store.dart';
 
 // ==========================================
 // 1. State 改造：增加价格缓存和模式标记
@@ -278,9 +280,9 @@ class PurchaseNotifier extends StateNotifier<PurchaseState> {
   }
 
   // Getters
-  double get _balanceCoins => ref.read(luckyProvider).balance.coinBalance;
-  double get _realBalance => ref.read(luckyProvider).balance.realBalance;
-  double get _exchangeRate => ref.read(luckyProvider).sysConfig.exChangeRate;
+  double get _balanceCoins => ref.read(walletProvider).coinBalance;
+  double get _realBalance => ref.read(walletProvider).realBalance;
+  double get _exchangeRate => ref.read(configProvider).exChangeRate;
   bool get _isAuthenticated => ref.read(authProvider).isAuthenticated;
 
   double get coinsCanUse {
@@ -321,7 +323,7 @@ class PurchaseNotifier extends StateNotifier<PurchaseState> {
     }
 
     // KYC 校验
-    final kycStatus = ref.read(luckyProvider.select((s) => s.userInfo?.kycStatus));
+    final kycStatus = ref.read(userProvider.select((s) => s?.kycStatus));
     if (KycStatusEnum.fromStatus(kycStatus ?? 0) != KycStatusEnum.approved) {
       return PurchaseSubmitResult.error(PurchaseSubmitError.needKyc);
     }
@@ -355,7 +357,7 @@ class PurchaseNotifier extends StateNotifier<PurchaseState> {
 
       if (!mounted) return PurchaseSubmitResult.error(PurchaseSubmitError.unknown);
 
-      ref.read(luckyProvider.notifier).updateWalletBalance();
+      ref.read(walletProvider.notifier).fetchBalance();
       ref.invalidate(productRealtimeStatusProvider(treasureId));
 
       return PurchaseSubmitResult.ok(orderCheckoutResult);

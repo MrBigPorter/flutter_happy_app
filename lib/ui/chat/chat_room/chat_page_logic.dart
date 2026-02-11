@@ -42,7 +42,7 @@ mixin ChatPageLogic on ConsumerState<ChatPage> {
   ) {
     if (!isGroup || detail == null) return (canSend: true, reason: "");
 
-    final myId = ref.read(luckyProvider.select((s) => s.userInfo?.id));
+    final myId = ref.read(userProvider.select((s) => s?.id));
     // 安全查找
     final me = detail.members.cast<ChatMember?>().firstWhere(
       (m) => m?.userId == myId,

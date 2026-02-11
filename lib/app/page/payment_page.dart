@@ -14,7 +14,7 @@ import 'package:flutter_app/core/providers/address_provider.dart';
 import 'package:flutter_app/core/providers/index.dart';
 import 'package:flutter_app/core/providers/purchase_state_provider.dart';
 import 'package:flutter_app/core/store/auth/auth_provider.dart';
-import 'package:flutter_app/core/store/lucky_store.dart';
+import 'package:flutter_app/core/store/wallet_store.dart';
 import 'package:flutter_app/ui/index.dart';
 import 'package:flutter_app/ui/modal/sheet/modal_sheet_config.dart';
 import 'package:flutter_app/utils/format_helper.dart';
@@ -79,7 +79,7 @@ class _PaymentPageState extends ConsumerState<PaymentPage> with SingleTickerProv
       final isAuthenticated = ref.read(authProvider.select((state) => state.isAuthenticated));
       if (!isAuthenticated) return;
 
-      ref.read(luckyProvider.notifier).updateWalletBalance();
+      ref.read(walletProvider.notifier).fetchBalance();
 
       final treasureId = widget.params.treasureId;
       if (treasureId != null) {

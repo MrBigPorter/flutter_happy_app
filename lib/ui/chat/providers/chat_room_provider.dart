@@ -1,9 +1,9 @@
 import 'dart:async';
 import 'package:flutter/widgets.dart';
+import 'package:flutter_app/core/store/user_store.dart';
 import 'package:flutter_app/ui/chat/repository/message_repository.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_app/core/providers/socket_provider.dart';
-import 'package:flutter_app/core/store/lucky_store.dart';
 import 'package:flutter_app/ui/chat/services/database/local_database_service.dart';
 import 'package:flutter_app/core/api/lucky_api.dart';
 import 'package:flutter_app/ui/chat/models/conversation.dart';
@@ -14,7 +14,7 @@ import '../handlers/chat_event_handler.dart';
 // 控制器 Provider
 final chatControllerProvider = Provider.family.autoDispose<ChatRoomController, String>((ref, conversationId) {
   final socketService = ref.read(socketServiceProvider);
-  final currentUserId = ref.watch(luckyProvider.select((s) => s.userInfo?.id)) ?? '';
+  final currentUserId = ref.watch(userProvider.select((s) => s?.id)) ?? '';
   final repo = ref.read(messageRepositoryProvider);
   
   final controller = ChatRoomController(

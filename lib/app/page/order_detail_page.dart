@@ -12,13 +12,14 @@ import 'package:flutter_app/components/skeleton.dart';
 import 'package:flutter_app/ui/modal/draggable/draggable_scrollable_scaffold.dart';
 import 'package:flutter_app/core/providers/order_provider.dart';
 import 'package:flutter_app/core/models/index.dart';
-import 'package:flutter_app/core/store/lucky_store.dart';
 import 'package:flutter_app/features/share/models/share_data.dart';
 import 'package:flutter_app/features/share/services/share_service.dart';
 import 'package:flutter_app/features/share/widgets/share_post.dart';
 import 'package:flutter_app/utils/date_helper.dart';
 import 'package:flutter_app/components/swiper_banner.dart';
 import 'package:flutter_app/ui/index.dart';
+
+import '../../core/store/config_store.dart';
 
 class OrderDetailPage extends ConsumerStatefulWidget {
   final String orderId;
@@ -237,7 +238,7 @@ class _AnimatedHeaderState extends ConsumerState<AnimatedHeader> {
   @override
   Widget build(BuildContext context) {
     final paddingTop = MediaQuery.of(context).padding.top;
-    final webBaseUrl = ref.read(luckyProvider.select((state) => state.sysConfig.webBaseUrl));
+    final webBaseUrl = ref.read(configProvider.select((state) => state.webBaseUrl));
 
     return AnimatedBuilder(
       animation: widget.scrollController,

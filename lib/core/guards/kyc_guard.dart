@@ -1,7 +1,7 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_app/core/models/kyc.dart';
-import 'package:flutter_app/core/store/lucky_store.dart';
+import 'package:flutter_app/core/store/user_store.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
@@ -25,7 +25,7 @@ class KycGuard {
   }) {
     // 1. 获取状态
     final kycStatus = ref.read(
-      luckyProvider.select((state) => state.userInfo?.kycStatus ?? 0),
+      userProvider.select((state) => state?.kycStatus ?? 0),
     );
 
     final statusEnum = KycStatusEnum.fromStatus(kycStatus);

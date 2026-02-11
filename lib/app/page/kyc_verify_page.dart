@@ -9,6 +9,7 @@ import 'package:flutter_app/components/base_scaffold.dart';
 import 'package:flutter_app/components/upload_progress_dialog.dart';
 import 'package:flutter_app/core/models/kyc.dart';
 import 'package:flutter_app/core/providers/kyc_provider.dart';
+import 'package:flutter_app/core/store/user_store.dart';
 import 'package:flutter_app/ui/index.dart';
 import 'package:flutter_app/ui/modal/base/nav_hub.dart';
 import 'package:flutter_app/ui/modal/dialog/modal_dialog_config.dart';
@@ -19,7 +20,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import '../../components/select_id_type.dart';
-import '../../core/store/lucky_store.dart';
 import '../../utils/camera/services/unified_kyc_cuard.dart';
 import '../routes/app_router.dart';
 
@@ -46,7 +46,7 @@ class _KycVerifyPageState extends ConsumerState<KycVerifyPage> {
 
   void _checkStatusAndShowDialog() {
     final kycStatus = ref.read(
-      luckyProvider.select((s) => s.userInfo?.kycStatus),
+      userProvider.select((s) => s?.kycStatus),
     );
     final statusEnum = KycStatusEnum.fromStatus(kycStatus ?? 0);
 
@@ -126,7 +126,7 @@ class _KycVerifyPageState extends ConsumerState<KycVerifyPage> {
     final kycTypeAsyncValue = ref.watch(kycIdTypeProvider);
     // 2. 监听 KYC 状态 (用于控制按钮是否可点)
     final kycStatus = ref.watch(
-      luckyProvider.select((s) => s.userInfo?.kycStatus),
+      userProvider.select((s) => s?.kycStatus),
     );
     final statusEnum = KycStatusEnum.fromStatus(kycStatus ?? 0);
     // 判断是否不可操作 (Pending 或 Approved)

@@ -12,8 +12,20 @@ part 'chat_group_provider.g.dart';
 
 @riverpod
 class ChatGroup extends _$ChatGroup {
+
+// 修正点 1：增加同步锁和挂载标记，解决崩溃
+  bool _isSyncing = false;
+  bool _mounted = true;
+
+
   @override
   Future<ConversationDetail> build(String conversationId) async {
+    _mounted = true;
+
+    ref.onDispose(() {
+      _mounted = false;
+    });
+
     // 1.  尝试从本地数据库加载 (实现秒开)
     final repo = ref.read(messageRepositoryProvider);
     final localData = await repo.getGroupDetail(conversationId);
@@ -22,7 +34,7 @@ class ChatGroup extends _$ChatGroup {
       // 命中缓存：直接返回本地数据，跳过骨架屏
       // 同时在后台静默发起网络请求更新数据 (Stale-While-Revalidate 策略)
       // 注意：这里不 await，让它异步执行
-      _fetchAndSync(conversationId);
+     // Future.microtask(() => _fetchAndSync(conversationId));
 
       return localData;
     }
@@ -37,7 +49,7 @@ class ChatGroup extends _$ChatGroup {
   void handleSocketEvent(SocketGroupEvent event) {
     // 只有当 ID 匹配且当前数据已加载时才处理
     if (event.groupId != conversationId) return;
-    if (!state.hasValue) return;
+    if (!_mounted || !state.hasValue || _isSyncing) return;
 
     final currentDetail = state.requireValue;
     ConversationDetail? newDetail;

@@ -1,11 +1,11 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_app/core/store/user_store.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:flutter_app/common.dart';
-import 'package:flutter_app/core/store/lucky_store.dart';
 import 'package:flutter_app/components/base_scaffold.dart';
 import 'package:flutter_app/components/skeleton.dart';
 import 'package:flutter_app/ui/button/button.dart';
@@ -34,7 +34,7 @@ class GroupProfilePage extends ConsumerWidget {
     final asyncDetail = ref.watch(chatGroupProvider(conversationId));
 
     // 2. 获取当前登录用户 ID
-    final myUserId = ref.watch(luckyProvider.select((s) => s.userInfo?.id)) ?? '';
+    final myUserId = ref.watch(userProvider.select((s) => s?.id)) ?? '';
 
     return BaseScaffold(
       // 动态标题: 显示人数
@@ -200,6 +200,7 @@ class GroupProfilePage extends ConsumerWidget {
       ) {
     // 架构核心：先找到"我"，再问"我"是不是管理层
     final me = detail.members.findMember(myUserId);
+    print("Current user role: ${me?.role}, canEdit: ${me?.isManagement}, myUserId: $myUserId");
     final canEdit = me != null && me.isManagement; // Model 内置逻辑
 
     final notifier = ref.read(chatGroupProvider(detail.id).notifier);

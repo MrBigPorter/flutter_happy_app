@@ -5,7 +5,7 @@ import 'package:flutter_app/app/routes/app_router.dart';
 import 'package:flutter_app/common.dart';
 import 'package:flutter_app/components/share_sheet.dart';
 import 'package:flutter_app/core/models/payment.dart';
-import 'package:flutter_app/core/store/lucky_store.dart';
+import 'package:flutter_app/core/store/config_store.dart';
 import 'package:flutter_app/features/share/models/share_data.dart';
 import 'package:flutter_app/ui/index.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -26,7 +26,7 @@ class PaymentSuccessSheet extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final baseUrl = ref.watch(
-      luckyProvider.select((s) => s.sysConfig.webBaseUrl),
+      configProvider.select((s) => s.webBaseUrl),
     );
 
     final screenHeight = MediaQuery.of(context).size.height;

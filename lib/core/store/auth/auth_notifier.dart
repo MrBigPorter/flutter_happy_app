@@ -1,11 +1,15 @@
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_app/app/routes/app_router.dart';
 import 'package:flutter_app/common.dart';
 import 'package:flutter_app/core/store/auth/auth_state.dart';
-import 'package:flutter_app/core/store/lucky_store.dart';
 import 'package:flutter_app/core/store/token/token_storage.dart';
+import 'package:flutter_app/core/store/user_store.dart';
 import 'package:flutter_app/ui/chat/services/database/local_database_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../config_store.dart';
+import '../wallet_store.dart';
 
 /// 改变登录状态的 Notifier
 /// AuthNotifier - StateNotifier for authentication state management
@@ -54,7 +58,30 @@ class AuthNotifier extends StateNotifier<AuthState> {
       refreshToken: refresh,
       isAuthenticated: true,
     );
-    ref.read(luckyProvider.notifier).refreshAll();
+
+    //  第一步：关键路径 (Critical Path)
+    // =========================================================
+    // 必须 Await！因为没有 UserID，进入 APP 会崩 (数据库无法初始化)
+    // 这个接口通常很快 (<200ms)
+    await ref.read(userProvider.notifier).fetchProfile();
+
+   // =========================================================
+    // 第二步：后台加载 (Background Fetch)
+    // =========================================================
+    // 不加 await！让它们在后台悄悄跑，用户立马能跳转进首页
+    // 钱包余额和系统配置会在 1秒左右后自动刷新出来
+    Future.wait<void>([
+      ref.read(walletProvider.notifier).fetchBalance(),
+      ref.read(configProvider.notifier).fetchLatest(),
+    ]).then((_) {
+      if(kDebugMode){
+        print('[LOGIN]==> background data loaded: wallet and config refreshed');
+      }
+    }).catchError((e) {
+      if(kDebugMode){
+        print('[LOGIN]==> background data load error: $e');
+      }
+    });
   }
 
   void updateTokens(String access, String? refresh) {

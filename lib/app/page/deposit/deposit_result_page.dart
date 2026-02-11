@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_app/common.dart';
-import 'package:flutter_app/core/store/lucky_store.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -9,6 +8,8 @@ import 'package:easy_localization/easy_localization.dart';
 
 import 'package:flutter_app/ui/button/button.dart';
 import 'package:flutter_app/ui/button/variant.dart';
+
+import '../../../core/store/wallet_store.dart';
 
 class DepositResultPage extends ConsumerStatefulWidget {
   final String orderNo;
@@ -105,7 +106,7 @@ class _DepositResultPageState extends ConsumerState<DepositResultPage> {
   void _handleSuccess() {
     if (!mounted) return;
     // 刷新余额
-    ref.read(luckyProvider.notifier).updateWalletBalance();
+    ref.read(walletProvider.notifier).fetchBalance();
     setState(() => _status = 'success');
   }
 

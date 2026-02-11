@@ -16,7 +16,7 @@ import 'package:flutter_app/ui/index.dart';
 import 'package:flutter_app/utils/form/deposit_form/deposit_form.dart';
 import 'package:flutter_app/utils/format_helper.dart';
 import '../../core/models/balance.dart'; // 确保这里面有 PaymentChannelConfigItem
-import '../../core/store/lucky_store.dart';
+import '../../core/store/wallet_store.dart';
 import '../../utils/form/validation/k_deposit_validation_messages.dart';
 import '../../utils/form/validators.dart';
 import 'deposit/payment_webview_page.dart';
@@ -95,7 +95,7 @@ class _DepositPageState extends ConsumerState<DepositPage> {
         // 这里可以加 Toast
       } finally {
         if (mounted) {
-          ref.read(luckyProvider.notifier).updateWalletBalance();
+          ref.read(walletProvider.notifier).fetchBalance();
         }
       }
     }

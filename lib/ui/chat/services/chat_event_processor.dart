@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_app/app/routes/app_router.dart';
+import 'package:flutter_app/core/store/user_store.dart';
 import 'package:flutter_app/ui/modal/base/nav_hub.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_app/common.dart';
 import '../../../core/constants/socket_events.dart';
 import '../../../core/providers/socket_provider.dart';
-import '../../../core/store/lucky_store.dart';
 import '../../chat/repository/message_repository.dart';
 import '../../chat/providers/conversation_provider.dart';
 import '../../chat/providers/chat_group_provider.dart';
@@ -35,7 +35,7 @@ class ChatEventProcessor {
   }
 
   Future<void> _handleGlobalEvent(SocketGroupEvent event) async {
-    final myId = ref.read(luckyProvider).userInfo?.id;
+    final myId = ref.read(userProvider)?.id;
     final groupId = event.groupId;
 
     if (groupId == null || myId == null) return;

@@ -54,8 +54,29 @@ Future<void> main() async {
   );
 
   final tokenStorage = authInitialTokenStorage();
-  final storedTokens = await tokenStorage.read();
+  //  注意：这里把 final 改成 var，因为如果是脏数据，我们要把它置空
+  var storedTokens = await tokenStorage.read();
+  // 1. 读取本地存储的用户信息
+  // 注意：这个 Key ('user_info_storage') 必须和你 UserNotifier 里的 storageKey 一致！
+  // 如果你之前没改 UserNotifier，默认可能是 'user_info_storage'
+  final userInfoJson = prefs.getString('user_info_storage');
 
+  final hasToken = storedTokens.$1 != null;
+  final hasUser = userInfoJson != null;
+
+  // 2. 核心判断：有 Token 但没有 UserInfo -> 视为脏数据 (卸载重装导致)
+  if (hasToken && !hasUser) {
+    debugPrint('check: found access token but no user info, treating as dirty data. Clearing tokens.');
+    // A. 清除 Keychain 里的残留 Token
+    await tokenStorage.clear();
+
+    // B. 强制将内存里的 Token 置空
+    // 这样下面的 ProviderContainer 就会注入 null，App 会进入【未登录】状态
+    storedTokens =  (null, null);
+  } else {
+    debugPrint('check: token and user info consistency check passed. hasToken=$hasToken, hasUser=$hasUser');
+  }
+  
   // 6.  创建手动容器 (核心重构)
   // 这允许我们在跑 runApp 之前就访问 Provider
   final container = riverpod.ProviderContainer(
