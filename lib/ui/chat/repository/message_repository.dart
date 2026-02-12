@@ -1,3 +1,4 @@
+import 'package:flutter_app/ui/chat/models/group_role.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/chat_ui_model.dart';
 import '../models/conversation.dart';
@@ -46,11 +47,11 @@ class MessageRepository {
 
   /// [更新会话信息] 用于 Socket 推送群名/头像变更
   Future<void> updateConversationInfo(
-      String conversationId, {
-        String? name,
-        String? avatar,
-        String? announcement, // 新增公告参数
-      }) async {
+    String conversationId, {
+    String? name,
+    String? avatar,
+    String? announcement, // 新增公告参数
+  }) async {
     // 1. 更新会话列表 (Conversation Table)
     // 列表通常只展示名字和头像，不展示公告
     final Map<String, dynamic> listUpdates = {};
@@ -74,13 +75,85 @@ class MessageRepository {
     }
   }
 
+  /// 更新成员禁言状态
+  Future<void> updateMemberMuted(
+    String groupId,
+    String userId,
+    int? mutedUntil,
+  ) async {
+    final detail = await _db.getConversationDetail(groupId);
+    if (detail == null) return;
+    final updatedMembers = detail.members.map((m) {
+      if (m.userId == userId) {
+        return m.copyWith(mutedUntil: mutedUntil);
+      }
+      return m;
+    }).toList();
+    await _db.saveConversationDetail(detail.copyWith(members: updatedMembers));
+  }
+
+  /// 更新成员角色
+  Future<void> updateMemberRole(
+    String groupId,
+    String userId,
+    String roleStr,
+  ) async {
+    final detail = await _db.getConversationDetail(groupId);
+    if (detail == null) return;
+
+    // 转换 String 到 Enum
+    final newRole = GroupRole.values.firstWhere(
+      (r) => r.name == roleStr,
+      orElse: () => GroupRole.member, // 默认角色
+    );
+
+    final updatedMembers = detail.members.map((m) {
+      if (m.userId == userId) {
+        return m.copyWith(role: newRole);
+      }
+      return m;
+    }).toList();
+
+    await _db.saveConversationDetail(detail.copyWith(members: updatedMembers));
+  }
+
+  /// 转让群主
+  Future<void> transferOwner(
+    String groupId, {
+    required String oldOwnerId,
+    required String newOwnerId,
+  }) async {
+    final detail = await _db.getConversationDetail(groupId);
+    if (detail == null) return;
+
+    final updatedMembers = detail.members.map((m) {
+      if (m.userId == newOwnerId) {
+        return m.copyWith(role: GroupRole.owner); // 新王登基
+      }
+      if (m.userId == oldOwnerId) {
+        return m.copyWith(role: GroupRole.admin); // 旧王退位 (通常变为管理员或普通成员，看业务逻辑)
+      }
+      return m;
+    }).toList();
+
+    // 同时更新 ConversationDetail 的 ownerId 字段
+    await _db.saveConversationDetail(
+      detail.copyWith(ownerId: newOwnerId, members: updatedMembers),
+    );
+  }
+
   /// [新增] 从群组移除成员 (踢人/退群)
-  Future<void> removeMemberFromGroup(String groupId, String targetUserId) async {
+  Future<void> removeMemberFromGroup(
+    String groupId,
+    String targetUserId,
+  ) async {
     final detail = await _db.getConversationDetail(groupId);
     if (detail == null) return;
 
     // 过滤掉目标用户
-    final updatedMembers = detail.members.where((m) => m.userId != targetUserId).toList();
+    final updatedMembers = detail.members
+        .where((m) => m.userId != targetUserId)
+        .toList();
 
     // 如果人数变了，保存回去
     if (updatedMembers.length != detail.members.length) {
@@ -162,7 +235,8 @@ class MessageRepository {
     if (updates.isEmpty) return;
 
     //  1. 铁壁防御：绝对禁止把 previewBytes 设为 null
-    if (updates.containsKey('previewBytes') && updates['previewBytes'] == null) {
+    if (updates.containsKey('previewBytes') &&
+        updates['previewBytes'] == null) {
       updates.remove('previewBytes');
     }
 

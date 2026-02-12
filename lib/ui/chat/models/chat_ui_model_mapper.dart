@@ -12,7 +12,6 @@ class ChatUiModelMapper {
     // [修正] 严格透传状态，不要跟 MessageType.system 挂钩
     bool isRecalled = apiMsg.isRecalled;
 
-    print('Mapping API message ID: ${apiMsg.id}, type: ${apiMsg.type}, isRecalled: $isRecalled');
 
     final Map<String, dynamic> meta = apiMsg.meta ?? {};
 

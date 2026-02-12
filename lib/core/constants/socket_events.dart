@@ -20,6 +20,7 @@ abstract class SocketEvents {
   static const String messageRecall = 'message_recalled';
   /// Avatar/Info update notification
   static const String conversationUpdated = 'conversation_updated';
+  static const String conversationAdded = 'conversation_added';
   /// Contact request applied
   static const String contactApply = 'contact_apply';
   /// Contact request accepted
@@ -35,6 +36,7 @@ abstract class SocketEvents {
   static const String memberRoleUpdated = 'member_role_updated';
   /// Group membership changes (joined/left)
   static const String memberJoined = 'member_joined';
+
   /// Group member left
   static const String memberLeft = 'member_left';
     /// Group disbanded
@@ -69,4 +71,12 @@ abstract class SocketEvents {
   static const String leaveLobby = 'leave_lobby';
   /// Send message
   static const String sendMessage = 'send_message';
+}
+
+class SocketSyncTypes {
+  static const String fullSync = 'full_sync';     // 全量同步
+  static const String memberSync = 'member_sync'; // 仅同步成员
+  static const String infoSync = 'info_sync';     // 仅同步信息
+  static const String patch = 'patch';            // 增量更新 (直接用 Payload)
+  static const String remove = 'remove';          // 移除
 }

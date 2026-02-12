@@ -4,6 +4,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:flutter_app/common.dart';
 import '../../../core/api/chat_group_api.dart';
 import '../../../core/constants/socket_events.dart';
+import '../../../core/store/user_store.dart';
 import '../models/conversation.dart';
 import '../models/group_role.dart';
 import '../services/database/local_database_service.dart';
@@ -80,7 +81,6 @@ class ChatGroup extends _$ChatGroup {
       //  修正点：使用 .targetId
         final targetId = payload.targetId;
         if (targetId == null) return;
-
         final newMembers = currentDetail.members
             .where((m) => m.userId != targetId)
             .toList();

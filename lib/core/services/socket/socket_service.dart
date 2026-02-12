@@ -57,7 +57,7 @@ mixin SocketDispatcherMixin on _SocketBase {
     final String type = payload['type']?.toString() ?? 'unknown';
     final dynamic data = payload['data'];
     if(kDebugMode){
-      debugPrint(" [SocketService] 分发中心收到信号: type=$type, data=$data");
+      debugPrint(" [SocketService] 底层分发中心收到信号: type=$type, data=$data");
     }
 
     switch (type) {
@@ -76,6 +76,7 @@ mixin SocketDispatcherMixin on _SocketBase {
       case SocketEvents.ownerTransferred:
       case SocketEvents.memberRoleUpdated:
       case SocketEvents.memberJoined:
+      case SocketEvents.conversationAdded:
       case SocketEvents.memberLeft:
       case SocketEvents.groupDisbanded:
       case SocketEvents.groupInfoUpdated:

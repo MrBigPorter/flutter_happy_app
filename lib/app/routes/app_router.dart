@@ -27,7 +27,7 @@ import 'package:flutter_app/ui/chat/contact_list_page.dart';
 import 'package:flutter_app/ui/chat/contact_profile_page.dart';
 import 'package:flutter_app/ui/chat/contact_search_page.dart';
 import 'package:flutter_app/ui/chat/group_member_select_page.dart';
-import 'package:flutter_app/ui/chat/group_profile_page.dart';
+import 'package:flutter_app/ui/chat/group_profile/group_profile_page.dart';
 import 'package:flutter_app/ui/chat/new_friend_page.dart';
 import 'package:flutter_app/ui/chat/user_profile_page.dart';
 import 'package:flutter_app/app/page/deposit_detail_page.dart';
