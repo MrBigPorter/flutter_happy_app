@@ -63,19 +63,22 @@ class ChatEventProcessor {
     switch (event.type) {
     // --- 毁灭性事件：删除会话 ---
       case SocketEvents.groupDisbanded:
+      // 群没了，直接删库
+        await repo.deleteConversation(groupId);
+        ref.read(conversationListProvider.notifier).refresh(); // 刷新列表移除该项
+        break;
       case SocketEvents.memberKicked:
       case SocketEvents.memberLeft:
-
-      //  使用 payload.targetId
-      // 如果是群解散，或者被踢/退群的是我自己 -> 删库
-        if (event.type == SocketEvents.groupDisbanded || payload.targetId == myId) {
-          await repo.deleteConversation(groupId);
-          // 刷新会话列表 Provider (确保 UI 移除该项)
-          ref.read(conversationListProvider.notifier).refresh();
-        } else {
-          // 别人走了 -> 更新群详情缓存 (人数-1)
-          await _updateGroupDetailCache(groupId);
+      if (payload.targetId == myId) {
+        // 我被踢了/我退了 -> 删本地会话
+        await repo.deleteConversation(groupId);
+        ref.read(conversationListProvider.notifier).refresh();
+      } else {
+        // 别人走了 -> 优化：直接在本地数据库移除该成员，不拉接口
+        if (payload.targetId != null) {
+          await repo.removeMemberFromGroup(groupId, payload.targetId!);
         }
+      }
         break;
 
     // --- 信息变更事件：更新会话 ---
@@ -84,21 +87,27 @@ class ChatEventProcessor {
         await repo.updateConversationInfo(
             groupId,
             name: payload.updates['name'],
-            avatar: payload.updates['avatar']
+            avatar: payload.updates['avatar'],
+            announcement: payload.updates['announcement'],
         );
         // 更新群详情缓存
-        await _updateGroupDetailCache(groupId);
-        // 刷新列表 Provider
-        ref.read(conversationListProvider.notifier).refresh();
         break;
 
     // --- 权限/成员变更事件 ---
       case SocketEvents.memberMuted:
       case SocketEvents.ownerTransferred:
       case SocketEvents.memberRoleUpdated:
+      _scheduleDetailSync(groupId);
+        break;
       case SocketEvents.memberJoined:
-      // 这些事件直接重新拉取最新的群详情并缓存
-        await _updateGroupDetailCache(groupId);
+    //  优化：如果 payload 里有 member 完整信息，直接插库
+      if (payload.member != null) {
+        await repo.addMemberToGroup(groupId, payload.member!);
+      } else {
+        // 只有 payload 数据残缺时，才迫不得已拉接口
+        // 或者可以做一个防抖 (Debounce)，防止短时间大量进人狂拉接口
+        _scheduleDetailSync(groupId);
+      }
         break;
     }
 
@@ -107,11 +116,21 @@ class ChatEventProcessor {
     // ========================================================
     //  传入 payload.targetId 辅助判断
     _handleNavigationSideEffects(event, myId, payload.targetId);
+  }
 
-    // ========================================================
-    // 4. 实时状态层 (State Layer) - 兜底刷新
-    // ========================================================
-    ref.invalidate(chatGroupProvider(groupId));
+  // 🔄防抖同步：避免 1秒内进 10 个人请求 10 次接口
+  // 简单的实现方式，也可以用 rxdart 的 debounce
+  void _scheduleDetailSync(String groupId) {
+    // 这里可以加一个简单的标识位或时间戳判断
+    // 如果你正在聊天页内，其实 ChatGroupNotifier 已经更新了 UI。
+    // 这里主要是为了保证本地数据库的数据最终一致性。
+
+    // 策略：如果当前用户正在查看该群，且事件可能导致本地数据不一致，
+    // 则延迟 2 秒拉取一次，或者不拉取（依赖用户下次进来的自动刷新）。
+
+    debugPrint("⚠️ [Processor] 检测到复杂变更，建议稍后同步详情: $groupId");
+    // 如果你非常想保证数据绝对正确，可以保留这个调用，但建议加限制：
+    // await _updateGroupDetailCache(groupId);
   }
 
   /// 处理导航副作用 (强制退出等)

@@ -45,15 +45,65 @@ class MessageRepository {
   }
 
   /// [更新会话信息] 用于 Socket 推送群名/头像变更
-  Future<void> updateConversationInfo(String conversationId, {String? name, String? avatar}) async {
-    final Map<String, dynamic> updates = {};
+  Future<void> updateConversationInfo(
+      String conversationId, {
+        String? name,
+        String? avatar,
+        String? announcement, // 新增公告参数
+      }) async {
+    // 1. 更新会话列表 (Conversation Table)
+    // 列表通常只展示名字和头像，不展示公告
+    final Map<String, dynamic> listUpdates = {};
+    if (name != null) listUpdates['name'] = name;
+    if (avatar != null) listUpdates['avatar'] = avatar;
 
-    if (name != null) updates['name'] = name;
-    if (avatar != null) updates['avatar'] = avatar;
-
-    if (updates.isNotEmpty) {
-      await _db.updateConversation(conversationId, updates);
+    if (listUpdates.isNotEmpty) {
+      await _db.updateConversation(conversationId, listUpdates);
     }
+
+    // 2. 更新详情缓存 (ConversationDetail Table)
+    // 如果本地有缓存详情，也要同步更新，否则点进群设置会看到旧数据
+    final detail = await _db.getConversationDetail(conversationId);
+    if (detail != null) {
+      final newDetail = detail.copyWith(
+        name: name,
+        avatar: avatar,
+        announcement: announcement, // 同步更新公告
+      );
+      await _db.saveConversationDetail(newDetail);
+    }
+  }
+
+  /// [新增] 从群组移除成员 (踢人/退群)
+  Future<void> removeMemberFromGroup(String groupId, String targetUserId) async {
+    final detail = await _db.getConversationDetail(groupId);
+    if (detail == null) return;
+
+    // 过滤掉目标用户
+    final updatedMembers = detail.members.where((m) => m.userId != targetUserId).toList();
+
+    // 如果人数变了，保存回去
+    if (updatedMembers.length != detail.members.length) {
+      final newDetail = detail.copyWith(members: updatedMembers);
+      await _db.saveConversationDetail(newDetail);
+    }
+  }
+
+  /// [新增] 向群组添加成员 (进群)
+  Future<void> addMemberToGroup(String groupId, ChatMember member) async {
+    final detail = await _db.getConversationDetail(groupId);
+    if (detail == null) return;
+
+    // 防止重复添加
+    final exists = detail.members.any((m) => m.userId == member.userId);
+    if (exists) return;
+
+    // 添加新成员
+    final updatedMembers = [...detail.members, member];
+
+    // 保存
+    final newDetail = detail.copyWith(members: updatedMembers);
+    await _db.saveConversationDetail(newDetail);
   }
 
   //  [新增] 分页拉取历史消息 (UI下拉刷新专用)
