@@ -1,6 +1,8 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_app/common.dart';
+import 'package:flutter_app/utils/media/url_resolver.dart';
+import 'package:path/path.dart';
 
 class GroupAvatar extends StatelessWidget {
   /// 后端合成后的完整 URL
@@ -36,12 +38,12 @@ class GroupAvatar extends StatelessWidget {
       child: ClipRRect(
         // 保持圆角风格一致 (15% 比例)
         borderRadius: BorderRadius.circular(size * 0.15),
-        child: _buildAvatarImage(placeholder),
+        child: _buildAvatarImage(context, placeholder),
       ),
     );
   }
 
-  Widget _buildAvatarImage(Widget placeholder) {
+  Widget _buildAvatarImage(BuildContext context, Widget placeholder) {
     // 如果 URL 为空，直接展示占位图
     if (avatarUrl == null || avatarUrl!.isEmpty) {
       return placeholder;
@@ -49,7 +51,7 @@ class GroupAvatar extends StatelessWidget {
 
     // 使用 CachedNetworkImage
     return CachedNetworkImage(
-      imageUrl: avatarUrl!,
+      imageUrl: UrlResolver.resolveImage(context, avatarUrl, logicalWidth: 48),
       fit: BoxFit.cover,
       // 加载中、失败、或为空时，统一使用简单的占位图
       placeholder: (context, url) => placeholder,

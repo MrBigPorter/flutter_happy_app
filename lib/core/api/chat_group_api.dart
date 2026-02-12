@@ -55,12 +55,15 @@ class ChatGroupApi {
     String? announcement,
     bool? isMuteAll,
     bool? joinNeedApproval,
+    String? avatar,
   }) async {
     final request = UpdateGroupInfoReq(
       conversationId: conversationId,
       name: name,
       announcement: announcement,
       isMuteAll: isMuteAll,
+      joinNeedApproval: joinNeedApproval,
+      avatar: avatar,
     );
 
     final res = await Http.post(

@@ -56,6 +56,9 @@ UpdateGroupInfoReq _$UpdateGroupInfoReqFromJson(Map<String, dynamic> json) =>
           name: $checkedConvert('name', (v) => v as String?),
           announcement: $checkedConvert('announcement', (v) => v as String?),
           isMuteAll: $checkedConvert('isMuteAll', (v) => v as bool?),
+          joinNeedApproval:
+              $checkedConvert('joinNeedApproval', (v) => v as bool?),
+          avatar: $checkedConvert('avatar', (v) => v as String?),
         );
         return val;
       },
@@ -67,6 +70,8 @@ Map<String, dynamic> _$UpdateGroupInfoReqToJson(UpdateGroupInfoReq instance) =>
       'name': instance.name,
       'announcement': instance.announcement,
       'isMuteAll': instance.isMuteAll,
+      'joinNeedApproval': instance.joinNeedApproval,
+      'avatar': instance.avatar,
     };
 
 SetAdminRes _$SetAdminResFromJson(Map<String, dynamic> json) => $checkedCreate(
@@ -168,6 +173,8 @@ UpdateGroupRes _$UpdateGroupResFromJson(Map<String, dynamic> json) =>
       name: json['name'] as String,
       announcement: json['announcement'] as String?,
       isMuteAll: json['isMuteAll'] as bool,
+      avatar: json['avatar'] as String?,
+      joinNeedApproval: json['joinNeedApproval'] as bool?,
     );
 
 Map<String, dynamic> _$UpdateGroupResToJson(UpdateGroupRes instance) =>
@@ -176,4 +183,6 @@ Map<String, dynamic> _$UpdateGroupResToJson(UpdateGroupRes instance) =>
       'name': instance.name,
       'announcement': instance.announcement,
       'isMuteAll': instance.isMuteAll,
+      'avatar': instance.avatar,
+      'joinNeedApproval': instance.joinNeedApproval,
     };

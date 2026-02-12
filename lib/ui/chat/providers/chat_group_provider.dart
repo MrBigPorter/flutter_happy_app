@@ -78,7 +78,7 @@ class ChatGroup extends _$ChatGroup {
     switch (event.type) {
       case SocketEvents.memberKicked:
       case SocketEvents.memberLeft:
-      //  修正点：使用 .targetId
+        //  修正点：使用 .targetId
         final targetId = payload.targetId;
         if (targetId == null) return;
         final newMembers = currentDetail.members
@@ -89,7 +89,7 @@ class ChatGroup extends _$ChatGroup {
         break;
 
       case SocketEvents.memberMuted:
-      //  修正点：使用 .targetId 和 .mutedUntil
+        //  修正点：使用 .targetId 和 .mutedUntil
         final targetId = payload.targetId;
         final mutedUntil = payload.mutedUntil;
         if (targetId == null) return;
@@ -101,7 +101,7 @@ class ChatGroup extends _$ChatGroup {
         break;
 
       case SocketEvents.groupInfoUpdated:
-      // 修正点：使用 .updates (假设它是一个 Map<String, dynamic>?)
+        // 修正点：使用 .updates (假设它是一个 Map<String, dynamic>?)
         final updates = payload.updates;
 
         newDetail = currentDetail.copyWith(
@@ -113,7 +113,7 @@ class ChatGroup extends _$ChatGroup {
         break;
 
       case SocketEvents.memberJoined:
-      // 如果 payload.member 存在
+        // 如果 payload.member 存在
         break;
     }
 
@@ -133,7 +133,9 @@ class ChatGroup extends _$ChatGroup {
       if (state.hasValue) {
         final currentDetail = state.requireValue;
         final newDetail = currentDetail.copyWith(
-          members: currentDetail.members.where((m) => m.userId != targetUserId).toList(),
+          members: currentDetail.members
+              .where((m) => m.userId != targetUserId)
+              .toList(),
         );
         state = AsyncData(newDetail);
         LocalDatabaseService().saveConversationDetail(newDetail);
@@ -145,13 +147,21 @@ class ChatGroup extends _$ChatGroup {
 
   Future<void> muteMember(String targetUserId, int duration) async {
     try {
-      final res = await ChatGroupApi.muteMember(conversationId, targetUserId, duration);
+      final res = await ChatGroupApi.muteMember(
+        conversationId,
+        targetUserId,
+        duration,
+      );
       if (state.hasValue) {
         final currentDetail = state.requireValue;
         final newDetail = currentDetail.copyWith(
-            members: currentDetail.members.map((m) =>
-            m.userId == targetUserId ? m.copyWith(mutedUntil: res.mutedUntil) : m
-            ).toList()
+          members: currentDetail.members
+              .map(
+                (m) => m.userId == targetUserId
+                    ? m.copyWith(mutedUntil: res.mutedUntil)
+                    : m,
+              )
+              .toList(),
         );
         state = AsyncData(newDetail);
         LocalDatabaseService().saveConversationDetail(newDetail);
@@ -163,7 +173,9 @@ class ChatGroup extends _$ChatGroup {
 
   Future<bool> inviteMembers(List<String> memberIds) async {
     try {
-      await Api.groupInviteApi(InviteToGroupRequest(groupId: conversationId, memberIds: memberIds));
+      await Api.groupInviteApi(
+        InviteToGroupRequest(groupId: conversationId, memberIds: memberIds),
+      );
       await _fetchAndSync(conversationId);
       return true;
     } catch (e) {
@@ -177,9 +189,15 @@ class ChatGroup extends _$ChatGroup {
       if (state.hasValue) {
         final currentDetail = state.requireValue;
         final newDetail = currentDetail.copyWith(
-            members: currentDetail.members.map((m) =>
-            m.userId == targetUserId ? m.copyWith(role: isAdmin ? GroupRole.admin : GroupRole.member) : m
-            ).toList()
+          members: currentDetail.members
+              .map(
+                (m) => m.userId == targetUserId
+                    ? m.copyWith(
+                        role: isAdmin ? GroupRole.admin : GroupRole.member,
+                      )
+                    : m,
+              )
+              .toList(),
         );
         state = AsyncData(newDetail);
         LocalDatabaseService().saveConversationDetail(newDetail);
@@ -189,20 +207,31 @@ class ChatGroup extends _$ChatGroup {
     }
   }
 
-  Future<void> updateInfo({String? name, String? announcement, bool? isMuteAll}) async {
+  Future<void> updateInfo({
+    String? name,
+    String? avatar,
+    String? announcement,
+    bool? isMuteAll,
+    bool? joinNeedApproval,
+  }) async {
     try {
       final res = await ChatGroupApi.updateGroupInfo(
         conversationId: conversationId,
         name: name,
         announcement: announcement,
         isMuteAll: isMuteAll,
+        avatar: avatar,
+        joinNeedApproval: joinNeedApproval,
       );
+      // 更新本地缓存
       if (state.hasValue) {
         final currentDetail = state.requireValue;
         final newDetail = currentDetail.copyWith(
           name: res.name,
           announcement: res.announcement,
           isMuteAll: res.isMuteAll,
+          avatar: res.avatar,
+          joinNeedApproval: res.joinNeedApproval,
         );
         state = AsyncData(newDetail);
         LocalDatabaseService().saveConversationDetail(newDetail);
@@ -233,8 +262,12 @@ class ChatGroup extends _$ChatGroup {
 
   // --- 4. 辅助方法 (核心同步逻辑) ---
 
-  Future<ConversationDetail> _fetchAndSync(String id, {bool useJitter = false}) async {
-    if (_isSyncing || !_mounted) return state.value ?? await Api.chatDetailApi(id);
+  Future<ConversationDetail> _fetchAndSync(
+    String id, {
+    bool useJitter = false,
+  }) async {
+    if (_isSyncing || !_mounted)
+      return state.value ?? await Api.chatDetailApi(id);
     _isSyncing = true;
 
     try {
@@ -267,7 +300,10 @@ class GroupCreateController extends _$GroupCreateController {
   @override
   FutureOr<String?> build() => null;
 
-  Future<String?> create({required String name, required List<String> memberIds}) async {
+  Future<String?> create({
+    required String name,
+    required List<String> memberIds,
+  }) async {
     state = const AsyncLoading();
     final newState = await AsyncValue.guard(() async {
       final res = await Api.createGroupApi(name, memberIds);

@@ -1,7 +1,7 @@
 part of 'group_profile_page.dart';
 
 // ======================================================
-// 区域 1: 成员网格
+// 区域 1: 成员网格 (已优化排序)
 // ======================================================
 class _MemberGrid extends ConsumerWidget {
   final ConversationDetail detail;
@@ -11,9 +11,20 @@ class _MemberGrid extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final members = detail.members;
-    final bool showAddBtn = true; // 或者是 detail.canInvite(myUserId)
-    final itemCount = members.length + (showAddBtn ? 1 : 0);
+    // 1. 执行排序逻辑 (UI层展示优化)
+    // 权重: 群主(3) > 管理员(2) > 普通成员(1)
+    final sortedMembers = [...detail.members];
+    sortedMembers.sort((a, b) {
+      int getScore(ChatMember m) {
+        if (m.role == GroupRole.owner) return 3;
+        if (m.role == GroupRole.admin) return 2;
+        return 1;
+      }
+      return getScore(b) - getScore(a); // 降序排列
+    });
+
+    final bool showAddBtn = true;
+    final itemCount = sortedMembers.length + (showAddBtn ? 1 : 0);
 
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 16.w),
@@ -28,19 +39,18 @@ class _MemberGrid extends ConsumerWidget {
         ),
         itemCount: itemCount,
         itemBuilder: (context, index) {
-          // A. 邀请按钮
-          if (showAddBtn && index == members.length) {
+          // A. 邀请按钮 (始终在最后)
+          if (showAddBtn && index == sortedMembers.length) {
             return _AddButton(detail: detail);
           }
 
           // B. 成员头像
-          final member = members[index];
+          final member = sortedMembers[index];
           final isMe = member.userId == myUserId;
 
           return InkWell(
             borderRadius: BorderRadius.circular(8.r),
             onTap: () {
-              // 调用逻辑文件中的静态方法
               _GroupProfileLogic.handleMemberTap(
                   context, ref, detail, member, myUserId);
             },
@@ -145,7 +155,7 @@ class _MemberGrid extends ConsumerWidget {
 }
 
 // ======================================================
-// 区域 2: 菜单部分
+// 区域 2: 菜单部分 (增加头像和审批开关)
 // ======================================================
 class _MenuSection extends ConsumerWidget {
   final ConversationDetail detail;
@@ -161,6 +171,29 @@ class _MenuSection extends ConsumerWidget {
 
     return Column(
       children: [
+        // 1. 群头像 (新增)
+        _MenuItem(
+          label: "Group Avatar",
+          showArrow: canEdit,
+          // 如果有头像，显示图片；否则显示文字提示
+          trailing: detail.avatar != null
+              ? ClipRRect(
+            borderRadius: BorderRadius.circular(4.r),
+            child: CachedNetworkImage(
+              imageUrl: UrlResolver.resolveImage(context, detail.avatar!, logicalWidth: 40),
+              width: 32.r,
+              height: 32.r,
+              fit: BoxFit.cover,
+              placeholder: (_, __) => Container(color: Colors.grey[200]),
+            ),
+          )
+              : Text("Tap to set", style: TextStyle(color: context.textBrandPrimary900)), // 引导设置
+          onTap: canEdit
+              ? () => _GroupProfileLogic.handleAvatarTap(context, ref, detail)
+              : null,
+        ),
+
+        // 2. 群名称
         _MenuItem(
           label: "Group Name",
           value: detail.name,
@@ -172,6 +205,8 @@ class _MenuSection extends ConsumerWidget {
           })
               : null,
         ),
+
+        // 3. 群公告
         _MenuItem(
           label: "Announcement",
           value: detail.announcement?.isNotEmpty == true
@@ -185,23 +220,51 @@ class _MenuSection extends ConsumerWidget {
           })
               : null,
         ),
+
+        // 4. 群 ID (只读)
         _MenuItem(
           label: "Group ID",
           value: detail.id.substring(0, 8).toUpperCase(),
           showArrow: false,
+          onTap: () {
+            // 可选：点击复制 ID
+            // Clipboard.setData(ClipboardData(text: detail.id));
+            // RadixToast.info("Group ID copied");
+          },
         ),
+
         SizedBox(height: 12.h),
+
+        // 5. 管理开关区域
         if (canEdit)
           Container(
             color: context.bgPrimary,
-            child: SwitchListTile(
-              title:
-              Text("Mute All Members", style: TextStyle(fontSize: 16.sp)),
-              value: detail.isMuteAll,
-              activeColor: Colors.green,
-              onChanged: (val) {
-                notifier.updateInfo(isMuteAll: val);
-              },
+            child: Column(
+              children: [
+                // 入群审批开关 (新增)
+                SwitchListTile(
+                  title: Text("Join Need Approval", style: TextStyle(fontSize: 16.sp)),
+                  value: detail.joinNeedApproval,
+                  activeColor: Colors.green,
+                  onChanged: (val) {
+                    notifier.updateInfo(joinNeedApproval: val);
+                  },
+                ),
+                // 分割线
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16.w),
+                  child: Divider(height: 1, color: context.borderPrimary),
+                ),
+                // 全员禁言开关
+                SwitchListTile(
+                  title: Text("Mute All Members", style: TextStyle(fontSize: 16.sp)),
+                  value: detail.isMuteAll,
+                  activeColor: Colors.green,
+                  onChanged: (val) {
+                    notifier.updateInfo(isMuteAll: val);
+                  },
+                ),
+              ],
             ),
           ),
       ],
@@ -210,7 +273,7 @@ class _MenuSection extends ConsumerWidget {
 }
 
 // ======================================================
-// 区域 3: 底部按钮
+// 区域 3: 底部按钮 (保持不变)
 // ======================================================
 class _FooterButtons extends ConsumerWidget {
   final ConversationDetail detail;
@@ -239,7 +302,7 @@ class _FooterButtons extends ConsumerWidget {
 }
 
 // ======================================================
-// 辅助小组件
+// 辅助小组件 (保持不变)
 // ======================================================
 
 class _AddButton extends StatelessWidget {
@@ -300,13 +363,15 @@ class _RoleBadge extends StatelessWidget {
 
 class _MenuItem extends StatelessWidget {
   final String label;
-  final String value;
+  final String? value; // 变为可选
+  final Widget? trailing; // 新增：右侧自定义组件
   final VoidCallback? onTap;
   final bool showArrow;
 
   const _MenuItem({
     required this.label,
-    required this.value,
+    this.value,
+    this.trailing, // 新增
     this.onTap,
     this.showArrow = true,
   });
@@ -320,24 +385,24 @@ class _MenuItem extends StatelessWidget {
         padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 16.h),
         child: Row(
           children: [
-            Text(label,
-                style:
-                TextStyle(fontSize: 16.sp, color: context.textPrimary900)),
+            Text(label, style: TextStyle(fontSize: 16.sp, color: context.textPrimary900)),
             SizedBox(width: 16.w),
             Expanded(
-              child: Text(
-                value,
-                textAlign: TextAlign.right,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                    fontSize: 15.sp, color: context.textSecondary700),
+              child: Align(
+                alignment: Alignment.centerRight,
+                child: trailing ?? // 优先显示自定义组件
+                    Text(
+                      value ?? "",
+                      textAlign: TextAlign.right,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(fontSize: 15.sp, color: context.textSecondary700),
+                    ),
               ),
             ),
             if (showArrow) ...[
               SizedBox(width: 8.w),
-              Icon(Icons.arrow_forward_ios,
-                  size: 14.sp, color: Colors.grey[400]),
+              Icon(Icons.arrow_forward_ios, size: 14.sp, color: Colors.grey[400]),
             ],
           ],
         ),
@@ -361,7 +426,7 @@ class _GroupSkeleton extends StatelessWidget {
             physics: const NeverScrollableScrollPhysics(),
             gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 5,
-              mainAxisSpacing: 12.h,
+              mainAxisSpacing: 12.h, // 保持与 _MemberGrid 一致
               crossAxisSpacing: 12.w,
             ),
             itemCount: 10,

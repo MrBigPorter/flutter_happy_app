@@ -136,7 +136,7 @@ class _GuestView extends StatelessWidget {
 }
 
 // ------------------------------------------------------
-// 组件 3: 已登录列表视图 (🔥🔥🔥 核心修改处)
+// 组件 3: 已登录列表视图 ( 核心修改处)
 // ------------------------------------------------------
 class _ConversationListView extends ConsumerStatefulWidget {
   const _ConversationListView();
@@ -149,7 +149,7 @@ class _ConversationListViewState extends ConsumerState<_ConversationListView> {
   @override
   void initState() {
     super.initState();
-    // 🔥🔥🔥 核心修复：初始化时主动刷新一次数据 🔥🔥🔥
+    //  核心修复：初始化时主动刷新一次数据 
     // 解决新安装 App 数据库为空时，界面一片白且不发网络请求的问题
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(conversationListProvider.notifier).refresh();

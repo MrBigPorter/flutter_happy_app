@@ -38,12 +38,16 @@ class UpdateGroupInfoReq {
   final String? name;
   final String? announcement;
   final bool? isMuteAll;
+  final bool? joinNeedApproval;
+  final String? avatar;
 
   UpdateGroupInfoReq({
     required this.conversationId,
     this.name,
     this.announcement,
     this.isMuteAll,
+    this.joinNeedApproval,
+    this.avatar,
   });
 
   Map<String, dynamic> toJson() => _$UpdateGroupInfoReqToJson(this);
@@ -153,8 +157,10 @@ class UpdateGroupRes {
   final String name;
   final String? announcement;
   final bool isMuteAll;
+  final String? avatar;
+  final bool? joinNeedApproval;
 
-  UpdateGroupRes({required this.id, required this.name, this.announcement, required this.isMuteAll});
+  UpdateGroupRes({required this.id, required this.name, this.announcement, required this.isMuteAll, this.avatar, this.joinNeedApproval});
 
   factory UpdateGroupRes.fromJson(Map<String, dynamic> json) => _$UpdateGroupResFromJson(json);
 }
