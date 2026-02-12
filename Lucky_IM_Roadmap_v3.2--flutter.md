@@ -1,190 +1,80 @@
-这是一个非常系统化的工程。为了不把代码写成“面条式”（Spaghetti Code），我们需要严格遵循 **MVVM (Model-View-ViewModel)** 架构。在 Flutter 中，通常是用 `Provider` 或 `Riverpod` 来充当 ViewModel 的角色。
-
-针对 **v6.0 高级群管理**，这是我为您梳理的 **Flutter 端架构规划蓝图**。
-
----
-
-### 🗺️ 1. 宏观架构设计 (The Big Picture)
-
-我们将系统分为三层，数据单向流动：
-
-1. **UI Layer (View)**: 只负责“画图”。它不包含任何业务逻辑，只根据 `Provider` 里的状态（比如 `canKick`）来决定显示还是隐藏按钮。
-2. **State Layer (ViewModel/Provider)**: 大脑。负责计算权限（我是不是管理员？）、处理业务（调用 API）、监听 Socket 事件并更新本地数据。
-3. **Data Layer (Repository/API)**: 跑腿的。负责发 HTTP 请求，解析 JSON。
-
----
-
-### 🛠️ 2. 详细分层规划
-
-#### 第一步：基础数据建设 (Data Layer)
-
-在写页面之前，必须先把“积木块”造好。
-
-1. **Enums (`group_role.dart`)**:
-* 需要定义 `GroupRole { OWNER, ADMIN, MEMBER }`。
-* **关键点**: 写扩展方法 `isAdmin`, `isOwner`，方便后续判断。
 
 
-2. **Models (`chat_member.dart`)**:
-* 更新模型，增加 `role` 和 `mutedUntil` 字段。
-* **关键点**: 增加 Getter `isMuted` (判断 `mutedUntil > now`)。
+### 🗺️ v6.0 系列剩余作战蓝图 (Remaining Roadmap)
+
+#### 🟢 第一阶段：v6.0.0 扫尾与精细化管控 (Governance Cleanup)
+
+**预估耗时：1 周**
+针对目前的群管理基建进行业务闭环：
+
+1. **入群审批系统 (Join Request System)**:
+* **后端**: 增加 `chat/group/apply` (用户申请) 和 `chat/group/approve` (管理审批) 接口。
+* **前端**: 开发“申请列表”页面，管理员收到 Socket 通知后可进行一键通过/拒绝。
 
 
-3. **API (`chat_group_api.dart`)**:
-* 就是我们刚才写的那些静态方法 (`kickMember`, `muteMember` 等)。
+2. **消息转发 (Message Forwarding)**:
+* **功能**: 支持消息长按“转发”，弹出合并后的“联系人+群组”选择器。
+* **核心**: 转发时需保留原消息的 `meta` 属性（如媒体比例、原作者 ID）。
 
 
-
-#### 第二步：状态管理核心 (State Layer - Provider)
-
-这是最复杂也是最重要的一环。我们需要一个 `GroupDetailProvider`。
-
-* **状态 (State)**:
-* `Conversation info`: 群的基本信息（名字、公告、全员禁言状态）。
-* `List<ChatMember> members`: 成员列表。
-* `String myUserId`: 当前登录用户的 ID。
-
-
-* **权限计算 (Computed Getters)**:
-* *这是 UI 逻辑简化的关键。不要在 UI 里写 `if (me.role == 'OWNER' || me.role == 'ADMIN')`，太乱了。*
-* `ChatMember? get me`: 获取我在群里的成员对象。
-* `bool get isOwner`: 我是群主吗？
-* `bool get isAdmin`: 我是管理员吗？
-* `bool get canManageMembers`: 我能踢人/禁言吗？(`isOwner || isAdmin`)
-* `bool get canEditInfo`: 我能改群名吗？
-* `bool get canSendMessage`: 我现在能说话吗？(检查 `isMuted` 和 `isMuteAll`)
-
-
-* **动作 (Actions)**:
-* `fetchDetails()`: 拉取群详情。
-* `kick(String targetId)`: 调用 API 踢人 -> 本地 `members.removeWhere`。
-* `mute(String targetId, int duration)`: 调用 API 禁言 -> 本地更新该成员状态。
-* `updateRole(String targetId, bool isAdmin)`: 升降职。
-
-
-* **Socket 监听 (Event Handlers)**:
-* 监听 `group.member_kicked`: 如果是我，跳回首页；如果是别人，从列表移除。
-* 监听 `group.role_updated`: 只要收到，立马更新列表里的 `role` 字段，UI 上的按钮会自动刷新。
-
-
-
-#### 第三步：UI 页面拆解 (UI Layer)
-
-我们将群详情页 (`GroupProfilePage`) 拆解为以下组件：
-
-1. **GroupHeader**:
-* 显示群头像、群名、ID。
-* **操作**: 如果 `canEditInfo` 为 true，点击可弹窗修改。
-
-
-2. **GroupNoticeBar**:
-* 显示公告。
-* **操作**: 如果 `canEditInfo` 为 true，点击进入公告编辑页。
-
-
-3. **MemberGrid / MemberList**:
-* 显示成员头像网格。
-* **关键逻辑**: 点击成员头像 -> 弹出 **ActionSheet**。
-* **ActionSheet 逻辑**: 根据 `Provider.canManageMembers` 和 `TargetMember.role` 动态生成按钮（踢出、禁言、升职）。
-
-
-4. **SettingsList**:
-* SwitchListTile: "全员禁言" (仅 Admin/Owner 可见)。
-* SwitchListTile: "入群审批" (仅 Admin/Owner 可见)。
-* ListTile: "查找聊天记录"。
-* Button: "退出群聊" (普通人) / "解散群聊" (群主)。
+3. **群组社交化增强**:
+* **群二维码**: 在群设置页生成包含 `groupId` 的二维码。
+* **成员搜索**: 在成员网格顶部增加本地 Filter，解决 100 人以上大群的查找痛点。
 
 
 
 ---
 
-### 📝 3. 核心代码预演 (Mental Draft)
+#### 🟡 第二阶段：v6.1.0 价值交换系统 (Wallet & Red Envelope)
 
-在正式写代码前，我们先看下 **MemberActionSheet** (点击头像弹出的菜单) 的逻辑应该长什么样。这是最考验架构的地方。
+**预估耗时：3 - 4 周**
+Lucky IM 的核心价值提升，引入资金流。
 
-**理想的 ViewModel 写法：**
+1. **账本核心 (Ledger Engine)**:
+* **架构**: 基于 Redis Lua 脚本实现高性能抢红包逻辑，防止超发。
+* **安全**: 实现支付密码二级验证与本地生物识别（FaceID/指纹）。
 
-```dart
-// 在 Provider 中定义一个方法，专门生成针对某人的可用操作
-List<GroupAction> getAvailableActions(ChatMember target) {
-  final actions = <GroupAction>[];
-  
-  // 1. 基础检查：不能操作自己，且我的等级必须高于对方
-  if (target.userId == me.userId) return [];
-  if (me.roleLevel <= target.roleLevel) return []; 
 
-  // 2. 只有管理员/群主能做的
-  if (canManageMembers) {
-    actions.add(GroupAction.kick);
-    
-    if (target.isMuted) {
-      actions.add(GroupAction.unmute);
-    } else {
-      actions.add(GroupAction.mute);
-    }
-  }
+2. **红包交互 (Interaction)**:
+* **气泡**: 开发专属红包消息气泡，支持“领取后”状态实时同步。
+* **动画**: 微信级红包开启与金币掉落动画。
 
-  // 3. 只有群主能做的
-  if (isOwner) {
-    actions.add(GroupAction.transferOwner);
-    if (target.role == GroupRole.admin) {
-      actions.add(GroupAction.demoteAdmin);
-    } else {
-      actions.add(GroupAction.promoteAdmin);
-    }
-  }
 
-  return actions;
-}
+3. **钱包 UI (Wallet Hub)**:
+* **功能**: 余额展示、充值/提现模拟入口、转账历史记录流水。
 
-```
 
-**理想的 UI 写法：**
-
-```dart
-onTapUser(ChatMember target) {
-  // UI 只需要傻瓜式地请求 Provider
-  final actions = provider.getAvailableActions(target);
-  
-  if (actions.isEmpty) return; // 没权限，点不动
-  
-  showActionSheet(
-    actions.map((action) => ActionButton(action)).toList()
-  );
-}
-
-```
 
 ---
 
-### 🚀 4. 执行步骤 (Next Steps)
+#### 🔴 第三阶段：v6.2.0 多维实时通讯 (WebRTC RTC)
 
-按照这个顺序开发，最稳：
+**预估耗时：4 - 6 周**
+IM 领域的技术天花板，解决“看得见”的问题。
 
-1. **Phase 1: 数据层**
-* 创建 `group_role.dart`。
-* 修改 `chat_member.dart`。
-* 确认 `chat_group_api.dart` 无误。
-
-
-2. **Phase 2: 逻辑层 (Provider)**
-* 创建 `ChatGroupProvider`。
-* 写好所有的 Getter (权限判断)。
-* 写好 API 调用 + 本地 List 更新逻辑。
+1. **实时音视频基建 (WebRTC Infra)**:
+* **中转**: 搭建 Coturn (STUN/TURN) 服务器，解决 NAT 穿透。
+* **信令**: 基于现有的 Socket.io 扩展 `call_offer`、`call_answer` 和 `ice_candidate` 事件。
 
 
-3. **Phase 3: UI 骨架**
-* 画出 `GroupProfilePage` 的静态页面。
+2. **1v1 通话体验 (The Calling)**:
+* **全屏 UI**: 适配不同设备比例的呼叫/应答界面，支持前后台状态切换。
+* **保活 (关键)**: 接入 iOS CallKit 与 Android ConnectionService，实现系统级的呼叫唤醒。
 
 
-4. **Phase 4: 权限对接**
-* 把 UI 里的死数据替换为 Provider 的 Getter。
-* 实现 ActionSheet。
-
-
-5. **Phase 5: Socket 联调**
-* 在 Provider 里监听事件，测试“手机 A 操作，手机 B 按钮立马变色”。
+3. **多端同步控制**:
+* **逻辑**: A 端接听，B 端自动停止振铃；A 端静音，状态需实时反馈给对端。
 
 
 
-如果您准备好了，我们可以先从 **Phase 1 (Enums & Models)** 开始写代码？
+---
+
+### 🛡️ 架构续篇：后续开发铁律 (New Iron Rules)
+
+为了保持 v6.0.0 积累的优秀基建，后续开发必须遵守以下新增规则：
+
+1. **原子性交易原则**: 红包、转账等涉及金额的操作，后端必须使用数据库事务与分布式锁，前端必须增加本地状态预锁定。
+2. **信令/数据隔离原则**: RTC 呼叫信令严禁走普通消息通道，必须通过独立的 `call_event` 分发，避免阻塞正常聊天流。
+3. **权限向下兼容原则**: 所有新功能（如发红包、发起视频）必须在 `canManage` 或自定义权限检查器中预留开关，确保护主具备“群内禁用特定功能”的能力。
+4. **资源自动回收原则**: RTC 通话结束或超时后，必须在 `dispose` 中显式释放摄像头/麦克风权限及相关线程资源，防止内存溢出。
+
