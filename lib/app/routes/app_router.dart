@@ -15,6 +15,7 @@ import 'package:flutter_app/app/routes/transitions.dart';
 import 'package:flutter_app/core/models/payment.dart';
 import 'package:flutter_app/core/store/auth/auth_provider.dart';
 import 'package:flutter_app/ui/chat/conversation_list_page.dart';
+import 'package:flutter_app/ui/chat/models/conversation.dart';
 import 'package:flutter_app/ui/modal/base/modal_auto_close_observer.dart';
 import 'package:flutter_app/ui/modal/base/nav_hub.dart';
 import 'package:flutter_app/ui/modal/progress/overlay_progress_provider.dart';
@@ -29,7 +30,6 @@ import 'package:flutter_app/ui/chat/contact_search_page.dart';
 import 'package:flutter_app/ui/chat/group_member_select_page.dart';
 import 'package:flutter_app/ui/chat/group_profile/group_profile_page.dart';
 import 'package:flutter_app/ui/chat/new_friend_page.dart';
-import 'package:flutter_app/ui/chat/user_profile_page.dart';
 import 'package:flutter_app/app/page/deposit_detail_page.dart';
 import 'package:flutter_app/app/page/group_lobby_page.dart';
 import 'package:flutter_app/app/page/guide_page.dart';
@@ -42,6 +42,7 @@ import 'package:flutter_app/app/page/login_page.dart';
 import 'package:flutter_app/app/page/product_detail_page.dart';
 import 'package:flutter_app/app/page/withdraw_page.dart';
 
+import '../../ui/chat/direct_chat_settings_page.dart';
 import '../../ui/chat/local_contact_search_page.dart';
 
 final _shellKey = GlobalKey<NavigatorState>(debugLabel: 'shell');
@@ -119,12 +120,17 @@ class AppRouter {
           path: '/chat/direct/profile/:id',
           builder: (context, state) {
             final cid = state.pathParameters['id']!;
-            return UserProfilePage(conversationId: cid);
+            return DirectChatSettingsPage(conversationId: cid);
           },
         ),
         GoRoute(
           path: '/contact/profile/:userId',
-          builder: (context, state) => ContactProfilePage(userId: state.pathParameters['userId']!),
+          builder: (context, state){
+            final userId = state.pathParameters['userId']!;
+            final cachedUser = state.extra as ChatUser;
+
+            return ContactProfilePage(userId: userId, cachedUser: cachedUser);
+          },
         ),
         GoRoute(
           path: '/chat/room/:conversationId',

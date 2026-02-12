@@ -228,8 +228,8 @@ class _MenuSection extends ConsumerWidget {
           showArrow: false,
           onTap: () {
             // 可选：点击复制 ID
-            // Clipboard.setData(ClipboardData(text: detail.id));
-            // RadixToast.info("Group ID copied");
+             Clipboard.setData(ClipboardData(text: detail.id));
+             RadixToast.info("Group ID copied");
           },
         ),
 

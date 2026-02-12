@@ -40,6 +40,9 @@ class ChatRoomController with WidgetsBindingObserver {
   final ChatEventHandler _eventHandler;
   final MessageRepository _repo;
 
+  // 1. 新增：销毁标记位
+  bool _isDisposed = false;
+
 
   ChatRoomController(
       SocketService socketService,
@@ -55,7 +58,7 @@ class ChatRoomController with WidgetsBindingObserver {
 
   // [新增] 统一启动入口
   void activate() {
-    debugPrint("🎬 [Controller] 会话激活: $conversationId");
+    if(_isDisposed) return;
     // 启动 Handler (它内部会自动处理 Socket 进房、重连监听、初始已读)
     _eventHandler.init();
     // 激活时检查并上报已读 (Cold Read)
@@ -63,7 +66,7 @@ class ChatRoomController with WidgetsBindingObserver {
   }
 
   void dispose() {
-    debugPrint(" [Controller] 会话销毁: $conversationId");
+    _isDisposed = true;
     _eventHandler.dispose();
     WidgetsBinding.instance.removeObserver(this);
   }
@@ -71,23 +74,29 @@ class ChatRoomController with WidgetsBindingObserver {
   // 监听前后台切换 (Warm Read)
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    debugPrint(" [Lifecycle] 状态变更为: $state");
+    if(_isDisposed) return;
     if (state == AppLifecycleState.resumed) {
-      debugPrint("📱 [Controller] 切回前台 -> 触发已读");
+      debugPrint("DirectChatSettingsPage [Controller] 切回前台 -> 触发已读");
       checkAndMarkRead();
     }
   }
 
 
   // 暴露给外部调用的方法
-  void markAsRead() => _eventHandler.markAsRead();
+  void markAsRead() {
+    if(_isDisposed) return;
+    _eventHandler.markAsRead();
+  }
 
   //  使用注入的 Repo 进行检查
   Future<void> checkAndMarkRead() async {
+    if(_isDisposed) return;
     try {
       // 1. 查本地状态 (调用 Repo)
       final conv = await _repo.getConversation(conversationId);
       final unread = conv?.unreadCount ?? 0;
+      // 再次检查 (因为 await 期间可能发生了 dispose)
+      if (_isDisposed) return;
 
        debugPrint("[Controller] 检查本地未读数: $unread");
 
@@ -100,6 +109,10 @@ class ChatRoomController with WidgetsBindingObserver {
         debugPrint(" [Controller] 本地未读为 0，拦截了一次多余的 API 请求");
       }
     } catch (e) {
+      if (_isDisposed) {
+        debugPrint("️[Controller] 忽略销毁期间的 MarkRead 错误: $e");
+        return;
+      }
       debugPrint("Check read failed: $e");
     }
   }

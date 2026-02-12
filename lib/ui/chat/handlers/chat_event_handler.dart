@@ -11,6 +11,7 @@ import 'package:flutter_app/core/constants/socket_events.dart';
 
 import '../models/conversation.dart';
 import '../providers/chat_view_model.dart';
+import '../repository/message_repository.dart';
 
 class ChatEventHandler {
   final String conversationId;
@@ -19,13 +20,15 @@ class ChatEventHandler {
   final String _currentUserId;
 
   StreamSubscription? _msgSub, _readStatusSub, _recallSub;
-  StreamSubscription? _debounceSub; // New variable to manage debounce subscription
+  StreamSubscription? _debounceSub;
 
-  // Optimization 1: Use BehaviorSubject or PublishSubject for debouncing
   final _readReceiptSubject = PublishSubject<void>();
   final Set<String> _processedMsgIds = {};
 
   int _maxReadSeqId = 0;
+
+  // DirectChatSettingsPage [关键修复 1] 销毁标记位，防止异步回调导致崩溃
+  bool _isDisposed = false;
 
   ChatEventHandler(
       this.conversationId,
@@ -43,11 +46,12 @@ class ChatEventHandler {
   }
 
   void dispose() {
-    debugPrint(" [ChatEventHandler] Disposed: $conversationId");
+    debugPrint("[ChatEventHandler] Disposing: $conversationId");
+    // DirectChatSettingsPage [关键修复 2] 立即设为 true，阻断后续异步执行
+    _isDisposed = true;
 
     try {
       _socketService.socket?.off('connect');
-      // Leave room
       _socketService.socket?.emit(SocketEvents.leaveChat, {
         'conversationId': conversationId,
       });
@@ -61,13 +65,15 @@ class ChatEventHandler {
   }
 
   // ===========================================================================
-  // Join Room Logic
+  // Join Room & Socket Logic
   // ===========================================================================
 
   void _setupJoinRoomLogic() {
+    if (_isDisposed) return;
     final socket = _socketService.socket;
 
     socket?.on('connect', (_) {
+      if (_isDisposed) return;
       debugPrint(" [WS] Socket reconnected, re-joining room: $conversationId");
       _joinRoom(triggerSync: true);
     });
@@ -78,18 +84,17 @@ class ChatEventHandler {
   }
 
   void _joinRoom({bool triggerSync = false}) {
+    if (_isDisposed) return;
     try {
       _socketService.socket?.emit(SocketEvents.joinChat, {
         'conversationId': conversationId,
       });
 
-      // Only call ViewModel when synchronization is explicitly requested (e.g., reconnection)
       if (triggerSync) {
         Future.microtask(() {
+          if (_isDisposed) return;
           try {
-            final notifier = _ref.read(
-              chatViewModelProvider(conversationId).notifier,
-            );
+            final notifier = _ref.read(chatViewModelProvider(conversationId).notifier);
             notifier.performIncrementalSync();
           } catch (e) {
             debugPrint(" [WS-Path] Trigger sync failed: $e");
@@ -100,10 +105,6 @@ class ChatEventHandler {
       debugPrint(" [WS] Join room failed: $e");
     }
   }
-
-  // ===========================================================================
-  // Socket Listeners
-  // ===========================================================================
 
   void _setupSubscriptions() {
     _msgSub = _socketService.chatMessageStream.listen(_onSocketMessage);
@@ -116,37 +117,32 @@ class ChatEventHandler {
   // ===========================================================================
 
   void _onSocketMessage(Map<String, dynamic> data) async {
+    if (_isDisposed) return;
     final msg = SocketMessage.fromJson(data);
 
-    // 1. Basic filtering (ignore messages not from this room)
     if (msg.conversationId != conversationId) return;
 
-    // Only process read status and red dots when the message is sent by others
+    // DirectChatSettingsPage [关键修复 3] 拦截系统消息 (Type 99)，避免在被踢出时触发已读上报
+    if (msg.type == 99) return;
+
     if (msg.senderId != _currentUserId) {
-
-      // 1. Tell server: I am reading, this message is read
-      // (Side effect, DB stream cannot do this)
-      _readReceiptSubject.add(null);
-
-      // This step is to fix the "mindless increment" of GlobalHandler
+      if (!_readReceiptSubject.isClosed) {
+        _readReceiptSubject.add(null);
+      }
       await LocalDatabaseService().clearUnreadCount(conversationId);
     }
   }
 
   void _onReadStatusUpdate(SocketReadEvent event) async {
-    // [Fix 3] Allow processing own read events (multi-device sync)
-    // if (event.conversationId != conversationId || event.readerId == _currentUserId) return;
-
+    if (_isDisposed) return;
     if (event.lastReadSeqId > _maxReadSeqId) {
       _maxReadSeqId = event.lastReadSeqId;
-      await LocalDatabaseService().markMessagesAsRead(
-        conversationId,
-        _maxReadSeqId,
-      );
+      await LocalDatabaseService().markMessagesAsRead(conversationId, _maxReadSeqId);
     }
   }
 
   void _onMessageRecalled(SocketRecallEvent event) async {
+    if (_isDisposed) return;
     if (event.conversationId != conversationId) return;
     final tip = event.isSelf ? "You unsent a message" : "This message was unsent";
     await LocalDatabaseService().doLocalRecall(event.messageId, tip);
@@ -154,69 +150,54 @@ class ChatEventHandler {
   }
 
   // ===========================================================================
-  // Read Receipt Logic (Core Loop)
+  // Read Receipt Logic
   // ===========================================================================
 
   void _setupReadReceiptDebounce() {
-    // Debounce time: 500ms
-    // This means if the other party sends 10 messages every 0.1s,
-    // we only call API once after the last one.
     _debounceSub = _readReceiptSubject
         .debounceTime(const Duration(milliseconds: 500))
         .listen((_) {
-      debugPrint(" [Debounce] Debounce ended, executing markAsRead");
+      if (_isDisposed) return;
       markAsRead();
     });
   }
 
-  /// Mark as read (Universal Entry)
-  /// Supports Cold Read (Join), Warm Read (Switch back), Hot Read (Online)
   Future<void> markAsRead() async {
-    // 1. Traffic saving defense: If App is in background, do not send read receipt
-    // (Logic: user is not looking at screen, counts as unread)
-    //final currentState = WidgetsBinding.instance.lifecycleState;
-    // 5. Core Fix: Relax checks.
-    // If null (usually fresh start) or resumed (foreground), execution is allowed.
-    // As long as it's not paused (background) or detached, we assume the user is watching.
-    /*if (currentState != null &&
-        currentState != AppLifecycleState.resumed &&
-        currentState != AppLifecycleState.inactive) {
-      debugPrint(" [MarkRead] App is in background ($currentState), skipping read report");
-      return;
-    }*/
+    if (_isDisposed) return;
 
     try {
-      // 2. Optimistic Update
-      // Clear local red dot first to make user feel "instant response"
-      // This step updates the Conversation table in DB, triggering GlobalUnreadProvider
+      // 1. UI 乐观更新
       _ref.read(conversationListProvider.notifier).clearUnread(conversationId);
 
-      // 3. Audit (Get local max SeqId)
-      // We tell backend: "I have read all messages before this ID"
+      // 2. 获取最大 SeqId
       final maxSeqId = await LocalDatabaseService().getMaxSeqId(conversationId);
 
-      // Must explicitly tell DB: Unread count for this conversation is zero!
-      // With this line, GlobalUnreadProvider gets notified, and Tab red dot disappears.
+      // DirectChatSettingsPage [关键修复 4] 中途拦截：查数据库可能耗时，在此期间可能已销毁
+      if (_isDisposed) return;
+
       await LocalDatabaseService().markMessagesAsRead(conversationId, maxSeqId ?? 0);
 
-      debugPrint(" [MarkRead] Audit result: maxSeqId=$maxSeqId"); // Added log
-
       if (maxSeqId != null) {
-        // 4. Send API request
+        // DirectChatSettingsPage [关键修复 5] 发起 Api 前检查会话是否还存在（解决被踢后上报 403 问题）
+        final conversation = await _ref.read(messageRepositoryProvider).getConversation(conversationId);
+        if (conversation == null || _isDisposed) return;
+
         await Api.messageMarkAsReadApi(
           MessageMarkReadRequest(
             conversationId: conversationId,
             maxSeqId: maxSeqId,
           ),
         );
-        debugPrint(" [MarkRead] Read report successful: maxSeqId=$maxSeqId");
       }
     } catch (e) {
+      // DirectChatSettingsPage [关键修复 6] 销毁期间的错误静默处理，避免日志飘红
+      if (_isDisposed) return;
       debugPrint(" [MarkRead] Read report failed: $e");
     }
   }
 
   void _updateListSnapshot(String text, int time) {
+    if (_isDisposed) return;
     try {
       _ref.read(conversationListProvider.notifier).updateLocalItem(
         conversationId: conversationId,

@@ -3,7 +3,7 @@ part of 'group_profile_page.dart';
 class _GroupProfileLogic {
 
   // ======================================================
-  // 1. 头像修改逻辑 (新增)
+  // 1. 头像修改逻辑
   // ======================================================
   static Future<void> handleAvatarTap(
       BuildContext context, WidgetRef ref, ConversationDetail detail) async {
@@ -14,27 +14,26 @@ class _GroupProfileLogic {
 
     if (image == null) return;
 
-    // 2. 显示上传 Loading 进度
+    // 2. 显示上传 Loading
     RadixToast.showLoading(
         message: "Uploading avatar..."
     );
 
     try {
-      // 3. 上传图片
+      // 3. 上传图片 (使用全局上传服务)
       String url = await GlobalUploadService().uploadFile(
           file: XFile(image.path),
           module: UploadModule.chat,
           onProgress: (percent) {
+            // 可选：更新进度条
           }
       );
 
-
-     //4. 调用 Notifier 更新群信息
+      // 4. 调用 Notifier 更新群信息
       final notifier = ref.read(chatGroupProvider(detail.id).notifier);
-       await notifier.updateInfo(avatar: url);
+      await notifier.updateInfo(avatar: url);
 
-      // 临时提示 (等你接好上传接口后删掉这行)
-      RadixToast.success("Avatar selected! (Upload logic needed)");
+      RadixToast.success("Group avatar updated");
 
     } catch (e) {
       RadixToast.error("Failed to update avatar");
@@ -54,22 +53,46 @@ class _GroupProfileLogic {
       ChatMember target,
       String myUserId,
       ) {
-    // 点击自己 -> 跳转个人资料 (或者不做操作)
+
+    // 内部通用跳转方法：携带预览数据，实现秒开效果
+    void jumpToProfile() {
+      final previewUser = ChatUser(
+        id: target.userId,
+        nickname: target.nickname,
+        avatar: target.avatar,
+        phone: null, // 预览数据暂无电话
+        status: RelationshipStatus.stranger, // 默认陌生人，进入详情页后会自动刷新状态
+      );
+      
+
+      appRouter.push(
+          '/contact/profile/${target.userId}',
+          extra: previewUser // 关键：传递 extra 实现 Hero 动画
+      );
+    }
+
+    // A. 点击自己 -> 跳转个人资料
     if (target.userId == myUserId) {
-      appRouter.push('/contact/profile/${target.userId}');
+      // 这里的路径取决于你是否区分“我的资料页”和“联系人资料页”
+      // 如果是用同一个页面，直接调用 jumpToProfile 即可
+      jumpToProfile();
       return;
     }
 
     final me = detail.members.findMember(myUserId);
-    if (me == null) return;
-
-    // 权限检查：只有管理层或者等级比对方高才能操作
-    // 如果没有管理权限，点击别人可能是为了看资料
-    if (!me.canManage(target)) {
-      appRouter.push('/contact/profile/${target.userId}');
+    // B. 数据异常兜底
+    if (me == null) {
+      jumpToProfile();
       return;
     }
 
+    // C. 权限检查：如果我不能管理他（我是成员，或者是同级管理员），则直接查看资料
+    if (!me.canManage(target)) {
+      jumpToProfile();
+      return;
+    }
+
+    // D. 我有权限管理他 -> 弹出管理菜单
     final notifier = ref.read(chatGroupProvider(detail.id).notifier);
     final isMeOwner = me.isOwner;
 
@@ -96,7 +119,7 @@ class _GroupProfileLogic {
               ),
             ),
 
-            // 标题栏
+            // 标题栏 (显示被操作人信息)
             Padding(
               padding: EdgeInsets.symmetric(vertical: 12.h),
               child: Column(
@@ -115,14 +138,13 @@ class _GroupProfileLogic {
             ),
             Divider(height: 1, color: context.borderPrimary),
 
-            // 选项 1: 查看资料
+            // 选项 1: 查看资料 (新增跳转入口)
             ListTile(
               leading: Icon(Icons.person_outline, color: context.textPrimary900),
               title: Text("View Profile", style: TextStyle(color: context.textPrimary900)),
               onTap: () {
-                Navigator.pop(ctx);
-                // context.push('/user/profile/${target.userId}');
-                RadixToast.info("View profile: ${target.nickname}");
+                Navigator.pop(ctx); // 先关弹窗
+                jumpToProfile();    // 再跳转
               },
             ),
 
@@ -219,7 +241,7 @@ class _GroupProfileLogic {
               TextField(
                 controller: controller,
                 autofocus: true,
-                maxLength: title == "Group Name" ? 30 : 200, // 增加字数限制体验更好
+                maxLength: title == "Group Name" ? 30 : 200,
                 maxLines: title == "Announcement" ? 3 : 1,
                 decoration: InputDecoration(
                   hintText: "Enter new $title",
@@ -283,8 +305,8 @@ class _GroupProfileLogic {
       onConfirm: (close) async {
         close();
 
-        // 显示 Loading 防止重复点击
-        RadixToast.showLoading(message:isDisband ? "Disbanding..." : "Leaving...");
+        // 显示 Loading
+        RadixToast.showLoading(message: isDisband ? "Disbanding..." : "Leaving...");
 
         try {
           final notifier = ref.read(chatGroupProvider(detail.id).notifier);

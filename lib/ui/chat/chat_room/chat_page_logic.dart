@@ -124,26 +124,12 @@ mixin ChatPageLogic on ConsumerState<ChatPage> {
 
   // --- 弹窗 ---
   void showAnnouncementDialog(BuildContext context, String text) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Row(
-          children: [
-            Icon(Icons.campaign, color: context.textBrandPrimary900),
-            SizedBox(width: 8.w),
-            const Text("Announcement"),
-          ],
-        ),
-        content: SingleChildScrollView(
-          child: Text(text, style: TextStyle(fontSize: 15.sp, height: 1.5)),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text("Got it"),
-          ),
-        ],
-      ),
+    RadixModal.show(
+      title: 'Announcement',
+      confirmText: 'Got it',
+      builder: (ctx,close) => SingleChildScrollView(
+        child: Text(text, style: TextStyle(fontSize: 15.sp, height: 1.5)),
+      )
     );
   }
 }

@@ -15,10 +15,10 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../toast/radix_toast.dart';
 import 'models/conversation.dart';
 
-class UserProfilePage extends ConsumerWidget {
+class DirectChatSettingsPage extends ConsumerWidget {
   final String conversationId;
 
-  const UserProfilePage({super.key, required this.conversationId});
+  const DirectChatSettingsPage({super.key, required this.conversationId});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {

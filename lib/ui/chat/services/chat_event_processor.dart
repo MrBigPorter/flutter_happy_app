@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_app/app/routes/app_router.dart';
 import 'package:flutter_app/core/store/user_store.dart';
+import 'package:flutter_app/ui/index.dart';
 import 'package:flutter_app/ui/modal/base/nav_hub.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_app/common.dart';
 import '../../../core/constants/socket_events.dart';
 import '../../../core/providers/socket_provider.dart';
@@ -30,7 +31,7 @@ class ChatEventProcessor {
     // 监听群组事件流
     socketService.groupEventStream.listen((event) async {
       debugPrint(
-        "🚀 [Processor] 收到原始事件: ${event.type} | GroupID: ${event.groupId}",
+        " [Processor] 收到原始事件: ${event.type} | GroupID: ${event.groupId}",
       );
       await _handleGlobalEvent(event);
     });
@@ -49,14 +50,9 @@ class ChatEventProcessor {
 
     if (myId == null) return;
 
-    print(
-      "📦 [Processor] 处理事件: ${event.type} | GroupID: $groupId | TargetID: ${payload.targetId} | Updates: ${payload.updates}",
-    );
-
     // 场景：我被别人邀请进了一个新群，本地还没有这个群的数据
     if (event.type == SocketEvents.conversationAdded) {
       try {
-        debugPrint(" [Processor] 处理 conversationAdded 事件，尝试预加载新群数据: $groupId");
         // 1. 调 API 拉取完整详情 (包含 Info + Members)
         final detail = await Api.chatDetailApi(groupId);
 
@@ -123,7 +119,6 @@ class ChatEventProcessor {
           );
         }
         break;
-      case SocketEvents.ownerTransferred:
       case SocketEvents.ownerTransferred:
         //  优化：群主转让 (稍微复杂点，旧群主变Admin/Member，新群主变Owner)
         if (payload.operatorId != null && payload.targetId != null) {
@@ -197,36 +192,12 @@ class ChatEventProcessor {
 
     switch (event.type) {
       case SocketEvents.memberKicked:
-        //  使用传入的 targetId
-        if (targetId == myId) {
-          _showExitAlert(context, "You have been removed from this group.");
-        }
-        break;
-
       case SocketEvents.groupDisbanded:
-        _showExitAlert(context, "This group has been disbanded.");
+        appRouter.go('/conversations');
         break;
     }
   }
 
-  void _showExitAlert(BuildContext context, String msg) {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => AlertDialog(
-        title: const Text("Notice"),
-        content: Text(msg),
-        actions: [
-          TextButton(
-            onPressed: () {
-              context.go('/conversations');
-            },
-            child: const Text("OK"),
-          ),
-        ],
-      ),
-    );
-  }
 
   Future<void> _updateGroupDetailCache(String groupId) async {
     try {
