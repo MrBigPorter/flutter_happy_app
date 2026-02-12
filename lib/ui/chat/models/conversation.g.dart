@@ -109,6 +109,7 @@ ChatSocketPayload _$ChatSocketPayloadFromJson(Map<String, dynamic> json) =>
       member: json['member'] == null
           ? null
           : ChatMember.fromJson(json['member'] as Map<String, dynamic>),
+      syncType: json['syncType'] as String?,
     );
 
 ChatMessage _$ChatMessageFromJson(Map<String, dynamic> json) => $checkedCreate(
@@ -258,6 +259,7 @@ SocketMessage _$SocketMessageFromJson(Map<String, dynamic> json) =>
           isSelf: $checkedConvert('isSelf', (v) => v as bool?),
           seqId: $checkedConvert('seqId', (v) => (v as num?)?.toInt()),
           meta: $checkedConvert('meta', (v) => v as Map<String, dynamic>?),
+          isRecalled: $checkedConvert('isRecalled', (v) => v as bool? ?? false),
         );
         return val;
       },
@@ -274,6 +276,7 @@ Map<String, dynamic> _$SocketMessageToJson(SocketMessage instance) =>
       'sender': instance.sender,
       'tempId': instance.tempId,
       'isSelf': instance.isSelf,
+      'isRecalled': instance.isRecalled,
       'seqId': instance.seqId,
       'meta': instance.meta,
     };

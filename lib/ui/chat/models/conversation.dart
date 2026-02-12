@@ -137,6 +137,8 @@ class ChatSocketPayload {
   final int? mutedUntil;              // 禁言截止时间
   final String? newRole;              // 新角色
   final int? timestamp;               // 时间戳
+  final String? syncType;            // 同步类型 (e.g. "full", "partial")，可选字段用于优化数据同步策略
+
 
   // 3. 复杂对象 (Complex Objects)
   final ChatMember? member; // 入群等事件携带的完整成员信息
@@ -155,6 +157,7 @@ class ChatSocketPayload {
     this.timestamp,
     this.member,
     this.kickedUserId,
+    this.syncType
   });
 
   /// 万能解析工厂 (手动实现以处理复杂的兼容逻辑)
@@ -193,6 +196,8 @@ class ChatSocketPayload {
   String toString() {
     return 'ChatSocketPayload(targetId: $targetId, operatorId: $operatorId, updates: $updates, mutedUntil: $mutedUntil)';
   }
+
+  String? operator [](String other) {}
 }
 
 class SocketGroupEvent {
@@ -227,6 +232,7 @@ class ChatMessage {
   final int createdAt;
   final ChatSender? sender;
   final int? seqId;
+  @JsonKey(defaultValue: false)
   final bool isRecalled;
 
   final Map<String, dynamic>? meta;
@@ -521,6 +527,8 @@ class SocketMessage {
   final SocketSender? sender;
   final String? tempId;
   final bool? isSelf;
+  @JsonKey(defaultValue: false) // 显式告诉解析器：没传就是 false
+  final bool? isRecalled;
 
   final int? seqId;
   final Map<String, dynamic>? meta;
@@ -537,6 +545,7 @@ class SocketMessage {
     this.isSelf,
     this.seqId,
     this.meta,
+    this.isRecalled
   });
 
   factory SocketMessage.fromJson(Map<String, dynamic> json) => _$SocketMessageFromJson(json);

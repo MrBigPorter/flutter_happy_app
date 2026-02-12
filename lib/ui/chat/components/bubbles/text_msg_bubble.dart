@@ -10,8 +10,12 @@ class TextMsgBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+
+    // 3. Normal Text Message
     final isMe = message.isMe;
-    final timeStr = DateFormat('HH:mm').format(DateTime.fromMillisecondsSinceEpoch(message.createdAt));
+    final timeStr = DateFormat('HH:mm').format(
+      DateTime.fromMillisecondsSinceEpoch(message.createdAt),
+    );
 
     return Container(
       padding: EdgeInsets.fromLTRB(12.w, 10.h, 12.w, 8.h),
@@ -38,7 +42,11 @@ class TextMsgBubble extends StatelessWidget {
         children: [
           Text(
             message.content,
-            style: TextStyle(color: Colors.black87, fontSize: 16.sp, height: 1.4),
+            style: TextStyle(
+              color: Colors.black87,
+              fontSize: 16.sp,
+              height: 1.4,
+            ),
           ),
           SizedBox(height: 2.h),
           Text(
@@ -52,4 +60,6 @@ class TextMsgBubble extends StatelessWidget {
       ),
     );
   }
+
+
 }

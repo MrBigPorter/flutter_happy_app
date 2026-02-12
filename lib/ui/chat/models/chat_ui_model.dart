@@ -7,23 +7,42 @@ export 'chat_ui_model_mapper.dart';
 enum MessageStatus { sending, success, failed, read, pending }
 
 enum MessageType {
-  text(0),
-  image(1),
-  audio(2),
-  video(3),
-  recalled(4),
-  file(5),
-  location(6),
-  system(99);
+  text(0, label:'[Text]'),
+  image(1, label:'[Image]'),
+  audio(2, label:'[Audio]'),
+  video(3, label:'[Video]'),
+  recalled(4, label:'[Recalled]'),
+  file(5, label:'[File]'),
+  location(6, label:'[Location]'),
+  system(99, label:'[System]');
 
   final int value;
+  final  String label;
 
-  const MessageType(this.value);
+  const MessageType(this.value, {required this.label});
 
   static MessageType fromValue(int value) => MessageType.values.firstWhere(
     (e) => e.value == value,
     orElse: () => MessageType.text,
   );
+
+  /// 2. 核心逻辑：获取列表页预览文案
+  /// [content] : 消息原始内容
+  /// [isRecalled] : 消息状态是否已撤回 (这是一个独立的状态，优先级最高)
+  String getPreviewText(String content, {bool isRecalled = false}) {
+    // 优先级 Top 1: 只要标记了 isRecalled，或者是撤回类型，直接返回撤回提示
+    if (isRecalled || this == MessageType.recalled) {
+      return '[Message Recalled]';
+    }
+
+    // 优先级 Top 2: 文本和系统消息，直接显示原始内容
+    if (this == MessageType.text || this == MessageType.system) {
+      return content;
+    }
+
+    // 优先级 Top 3: 其他多媒体类型，显示固定 Label
+    return label;
+  }
 }
 
 class ChatUiModel extends Equatable {
@@ -132,7 +151,7 @@ class ChatUiModel extends Equatable {
       // 1. 状态：信服务器的 (比如从 sending 变成了 success)
       status: serverMsg.status == MessageStatus.success ? MessageStatus.success : status,
 
-      // 2. 🔥 重点：服务器没有 localPath，但我有，绝对不能丢！
+      // 2. 重点：服务器没有 localPath，但我有，绝对不能丢！
       localPath: (serverMsg.localPath != null && serverMsg.localPath!.isNotEmpty)
           ? serverMsg.localPath
           : localPath,
@@ -141,6 +160,8 @@ class ChatUiModel extends Equatable {
       previewBytes: (serverMsg.previewBytes != null && serverMsg.previewBytes!.isNotEmpty)
           ? serverMsg.previewBytes
           : previewBytes,
+
+      isRecalled: serverMsg.isRecalled,
 
       // 4. 其他字段，服务器准没错，直接覆盖
       seqId: serverMsg.seqId ?? seqId,
