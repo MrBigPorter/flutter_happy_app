@@ -2,7 +2,6 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_app/common.dart';
 import 'package:flutter_app/components/base_scaffold.dart';
-import 'package:flutter_app/ui/button/button.dart';
 import 'package:flutter_app/ui/chat/providers/contact_provider.dart';
 import 'package:flutter_app/ui/chat/providers/conversation_provider.dart';
 import 'package:flutter_app/utils/media/url_resolver.dart';
@@ -13,7 +12,6 @@ import 'package:go_router/go_router.dart';
 import '../models/conversation.dart';
 import '../models/selection_types.dart';
 import '../providers/selection_provider.dart';
-
 
 class ContactSelectionPage extends ConsumerStatefulWidget {
   final ContactSelectionArgs args;
@@ -28,95 +26,159 @@ class _ContactSelectionPageState extends ConsumerState<ContactSelectionPage>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
+  // 内部控制是否开启多选
+  late bool _isMultiSelectMode;
+
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+
+    // 初始状态：如果外部传进来就是多选(如拉群)，那就默认多选
+    // 如果外部传的是单选(如转发)，默认关闭多选，但允许用户手动开启
+    _isMultiSelectMode = widget.args.mode == SelectionMode.multiple;
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final selectedCount = ref.watch(selectionStateProvider).length;
-    final isMulti = widget.args.mode == SelectionMode.multiple;
+  // 切换模式逻辑
+  void _toggleMode() {
+    setState(() {
+      _isMultiSelectMode = !_isMultiSelectMode;
+    });
 
-    return BaseScaffold(
-      title: widget.args.title,
-      // 只有多选模式才显示右上角确认按钮
-      actions: isMulti
-          ? [
-        Padding(
-          padding: EdgeInsets.only(right: 16.w, top: 10.h, bottom: 10.h),
-          child: Button(
-            width: 80.w,
-            height: 32.h,
-            disabled: selectedCount == 0,
-            onPressed: () => _onConfirm(),
-            child: Text("${widget.args.confirmText ?? 'Done'} ($selectedCount)"),
-          ),
-        )
-      ]
-          : null,
-      body: Column(
-        children: [
-          // Tab Bar
-          Container(
-            color: context.bgPrimary,
-            child: TabBar(
-              controller: _tabController,
-              labelColor: context.textBrandPrimary900,
-              unselectedLabelColor: context.textSecondary700,
-              indicatorColor: context.textBrandPrimary900,
-              tabs: const [
-                Tab(text: "Recent Chats"),
-                Tab(text: "Contacts"),
-              ],
-            ),
-          ),
-          // List Content
-          Expanded(
-            child: TabBarView(
-              controller: _tabController,
-              children: [
-                _RecentList(args: widget.args),
-                _ContactList(args: widget.args),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
+    // 如果切回单选，清空已选中的人
+    if (!_isMultiSelectMode) {
+      ref.invalidate(selectionStateProvider);
+    }
   }
 
   void _onConfirm() {
     final selected = ref.read(selectionStateProvider);
     context.pop(selected.toList());
   }
+
+  @override
+  Widget build(BuildContext context) {
+    final selectedCount = ref.watch(selectionStateProvider).length;
+    // 判断是否允许切换：只有当原始意图是 Single 时，才显示 Select 按钮
+    final bool canSwitch = widget.args.mode == SelectionMode.single;
+
+    return BaseScaffold(
+      title: widget.args.title,
+      // 1. 顶部按钮 (Select / Cancel)
+      actions: [
+        if (canSwitch)
+          TextButton(
+            onPressed: _toggleMode,
+            child: Text(
+              _isMultiSelectMode ? "Cancel" : "Select",
+              style: TextStyle(
+                fontSize: 16.sp,
+                color: context.textBrandPrimary900,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+      ],
+      // 2. 使用 Stack 来模拟 FloatingActionButton
+      body: Stack(
+        children: [
+          // 底层：Tab 和 列表
+          Column(
+            children: [
+              Container(
+                color: context.bgPrimary,
+                child: TabBar(
+                  controller: _tabController,
+                  labelColor: context.textBrandPrimary900,
+                  unselectedLabelColor: context.textSecondary700,
+                  indicatorColor: context.textBrandPrimary900,
+                  tabs: const [
+                    Tab(text: "Recent Chats"),
+                    Tab(text: "Contacts"),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: TabBarView(
+                  controller: _tabController,
+                  children: [
+                    // 把 _isMultiSelectMode 传下去
+                    _RecentList(args: widget.args, isMultiSelectMode: _isMultiSelectMode),
+                    _ContactList(args: widget.args, isMultiSelectMode: _isMultiSelectMode),
+                  ],
+                ),
+              ),
+            ],
+          ),
+
+          // 上层：悬浮确认按钮 (仅多选模式且有人被选中时显示)
+          if (_isMultiSelectMode && selectedCount > 0)
+            Positioned(
+              right: 20.w,
+              bottom: 40.h + MediaQuery.of(context).padding.bottom, // 避开底部安全区
+              child: FloatingActionButton.extended(
+                onPressed: _onConfirm,
+                backgroundColor: context.textBrandPrimary900,
+                icon: const Icon(Icons.send, color: Colors.white),
+                label: Text(
+                  "${widget.args.confirmText ?? 'Send'} ($selectedCount)",
+                  style: const TextStyle(color: Colors.white),
+                ),
+                elevation: 4,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
 }
 
 // ----------------------------------------------------
-// Tab 1: 最近会话 (复用 ConversationListProvider)
+// Tab 1: 最近会话
 // ----------------------------------------------------
-class _RecentList extends ConsumerWidget {
+// 将 ConsumerWidget 改为 ConsumerStatefulWidget
+class _RecentList extends ConsumerStatefulWidget {
   final ContactSelectionArgs args;
-  const _RecentList({required this.args});
+  final bool isMultiSelectMode;
+
+  const _RecentList({
+    super.key,
+    required this.args,
+    required this.isMultiSelectMode
+  });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    // 获取最近会话列表
+  ConsumerState<_RecentList> createState() => _RecentListState();
+}
+
+// 混入 AutomaticKeepAliveClientMixin
+class _RecentListState extends ConsumerState<_RecentList> with AutomaticKeepAliveClientMixin {
+
+  //  核心：告诉 Flutter 保持活跃，不要销毁
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context); //  必须调用 super.build
+
     final listAsync = ref.watch(conversationListProvider);
 
     return listAsync.when(
       data: (list) {
-        // 转换数据模型
         final entities = list.map((c) => SelectionEntity(
           id: c.id,
           name: c.name,
           avatar: c.avatar,
           type: c.type == ConversationType.group ? EntityType.group : EntityType.user,
           desc: c.type == ConversationType.group ? "Group" : "Recent",
-        )).where((e) => !args.excludeIds.contains(e.id)).toList();
+        )).where((e) => !widget.args.excludeIds.contains(e.id)).toList();
 
-        return _SelectionListView(entities: entities, args: args);
+        return _SelectionListView(
+            entities: entities,
+            args: widget.args,
+            isMultiSelectMode: widget.isMultiSelectMode
+        );
       },
       error: (_, __) => const Center(child: Text("Error loading chats")),
       loading: () => const Center(child: CircularProgressIndicator()),
@@ -125,16 +187,31 @@ class _RecentList extends ConsumerWidget {
 }
 
 // ----------------------------------------------------
-// Tab 2: 通讯录 (复用 ContactListProvider)
+// Tab 2: 通讯录
 // ----------------------------------------------------
-class _ContactList extends ConsumerWidget {
+class _ContactList extends ConsumerStatefulWidget {
   final ContactSelectionArgs args;
-  const _ContactList({required this.args});
+  final bool isMultiSelectMode;
+
+  const _ContactList({
+    super.key,
+    required this.args,
+    required this.isMultiSelectMode
+  });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    // 假设你有一个 contactListProvider 返回 List<ChatUser>
-    // 这里需要根据你的实际 ContactProvider 修改
+  ConsumerState<_ContactList> createState() => _ContactListState();
+}
+
+class _ContactListState extends ConsumerState<_ContactList> with AutomaticKeepAliveClientMixin {
+
+  @override
+  bool get wantKeepAlive => true; // 保持活跃
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context); // 必须调用
+
     final contactsAsync = ref.watch(contactListProvider);
 
     return contactsAsync.when(
@@ -145,9 +222,13 @@ class _ContactList extends ConsumerWidget {
           avatar: u.avatar,
           type: EntityType.user,
           desc: "Contact",
-        )).where((e) => !args.excludeIds.contains(e.id)).toList();
+        )).where((e) => !widget.args.excludeIds.contains(e.id)).toList();
 
-        return _SelectionListView(entities: entities, args: args);
+        return _SelectionListView(
+            entities: entities,
+            args: widget.args,
+            isMultiSelectMode: widget.isMultiSelectMode
+        );
       },
       error: (_, __) => const Center(child: Text("Error loading contacts")),
       loading: () => const Center(child: CircularProgressIndicator()),
@@ -161,8 +242,13 @@ class _ContactList extends ConsumerWidget {
 class _SelectionListView extends ConsumerWidget {
   final List<SelectionEntity> entities;
   final ContactSelectionArgs args;
+  final bool isMultiSelectMode;
 
-  const _SelectionListView({required this.entities, required this.args});
+  const _SelectionListView({
+    required this.entities,
+    required this.args,
+    required this.isMultiSelectMode
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -170,6 +256,7 @@ class _SelectionListView extends ConsumerWidget {
 
     return ListView.separated(
       itemCount: entities.length,
+      padding: EdgeInsets.only(bottom: 100.h), // 底部留白给悬浮按钮
       separatorBuilder: (_, __) => Divider(height: 1, indent: 72.w, color: context.bgSecondary),
       itemBuilder: (context, index) {
         final item = entities[index];
@@ -179,7 +266,6 @@ class _SelectionListView extends ConsumerWidget {
           contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 4.h),
           leading: Stack(
             children: [
-              // 头像
               Container(
                 width: 48.r,
                 height: 48.r,
@@ -192,17 +278,14 @@ class _SelectionListView extends ConsumerWidget {
                       UrlResolver.resolveImage(context, item.avatar!, logicalWidth: 48),
                     ),
                     fit: BoxFit.cover,
-                  )
-                      : null,
+                  ) : null,
                 ),
                 child: item.avatar == null
                     ? Icon(
                   item.type == EntityType.group ? Icons.groups : Icons.person,
                   color: context.textSecondary700,
-                )
-                    : null,
+                ) : null,
               ),
-              // 多选模式下的勾选框 (放在头像上或右边都可以，仿微信通常在右边，这里为了简单用 leading/trailing)
             ],
           ),
           title: Text(
@@ -213,16 +296,20 @@ class _SelectionListView extends ConsumerWidget {
             item.desc ?? "",
             style: TextStyle(fontSize: 12.sp, color: context.textSecondary700),
           ),
-          trailing: args.mode == SelectionMode.multiple
-              ? _buildCheckbox(context, isSelected) // 多选显示勾选框
-              : null, // 单选不显示
+
+          //  根据 isMultiSelectMode 显示勾选框
+          trailing: isMultiSelectMode
+              ? _buildCheckbox(context, isSelected)
+              : null,
+
           onTap: () {
-            if (args.mode == SelectionMode.single) {
-              // 单选模式：点击直接返回结果
-              context.pop([item]);
+            //  根据 isMultiSelectMode 决定行为
+            if (isMultiSelectMode) {
+              // 多选模式：切换状态，不返回
+              ref.read(selectionStateProvider.notifier).toggle(item, SelectionMode.multiple);
             } else {
-              // 多选模式：切换状态
-              ref.read(selectionStateProvider.notifier).toggle(item, args.mode);
+              // 单选模式：直接带数据返回
+              context.pop([item]);
             }
           },
         );

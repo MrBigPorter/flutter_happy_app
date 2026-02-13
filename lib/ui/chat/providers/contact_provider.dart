@@ -1,3 +1,5 @@
+import 'package:flutter/cupertino.dart';
+import 'package:flutter_app/ui/chat/core/repositories/contact_repository.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:flutter_app/common.dart';
 
@@ -14,12 +16,31 @@ part 'contact_provider.g.dart';
 class ContactList extends _$ContactList {
   @override
   Future<List<ChatUser>> build() async {
-    return await Api.getContactsApi();
+    // 获取仓库实例
+    final repo = ref.watch(contactRepositoryProvider);
+    // A. 尝试同步 (API -> 本地数据库 -> 建立拼音索引)
+    try {
+      //  关键点：这里会调用 syncContacts，它会将数据存入 DB 并建立索引
+      // 这样"本地搜索"功能才有数据可查
+      await repo.syncContacts();
+    }catch(e){
+      // 如果网络失败，打印日志，但不抛出异常，继续执行（因为我们要读取本地缓存）
+      debugPrint("️ Contact sync failed: $e. Using local cache.");
+    }
+    // B. 从本地数据库读取 (这时候已经是带有索引的最新数据了)
+    return repo.getAllContacts();
   }
 
   /// Silently refreshes the contact list state
   Future<void> refresh() async {
-    state = await AsyncValue.guard(() => Api.getContactsApi());
+    state = const AsyncLoading();
+    state = await AsyncValue.guard(() async {
+      final repo = ref.watch(contactRepositoryProvider);
+      // 强制触发同步
+      await repo.syncContacts();
+      // 同步完成后再读取本地数据，确保数据和索引都是最新的
+      return repo.getAllContacts();
+    });
   }
 }
 
@@ -58,7 +79,10 @@ class FriendRequestList extends _$FriendRequestList {
 @riverpod
 Future<List<ChatUser>> userSearch(UserSearchRef ref, String keyword) async {
   if (keyword.trim().isEmpty) return [];
-  return await Api.searchUserApi(keyword);
+  //  核心修复：调用 Repository 的 searchContacts
+  // 它会利用 syncContacts 建立好的拼音索引进行毫秒级本地搜索
+  final repo = ref.watch(contactRepositoryProvider);
+  return repo.search(keyword);
 }
 
 /// Search within existing chat contacts

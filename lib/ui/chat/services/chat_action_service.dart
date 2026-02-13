@@ -323,18 +323,18 @@ class ChatActionService {
   }
 
   //  [新增] 转发消息
-  Future<void> forwardMessage(String originalMessageId, String targetConversationId) async {
+  Future<void> forwardMessage(String originalMessageId, List<String> targetIds) async {
     try {
       // 1. 调用 API
       await Api.messageForwardApi(
         originalMessageId: originalMessageId,
-        targetConversationIds: [targetConversationId], // 支持群发，这里先传单人
+        targetConversationIds: targetIds,
       );
 
       // 2. 成功后的处理
       // 转发通常是发给"别人"的，所以不需要更新"当前"会话的消息列表
       // 除非你是转发给自己 (targetConversationId == conversationId)
-      if (targetConversationId == conversationId) {
+      if (targetIds.contains(conversationId)) {
         // 刷新一下当前会话
         _ref.invalidate(chatViewModelProvider(conversationId));
       }

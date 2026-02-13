@@ -23,10 +23,10 @@ class SelectionEntity {
   // 方便判等
   @override
   bool operator ==(Object other) =>
-      identical(this, other) ||
-          other is SelectionEntity &&
+      identical(this, other) || //1.如果是同一个内存对象，直接由真 (性能优化)
+          other is SelectionEntity && // 2. 对方必须也是 SelectionEntity 类型
               runtimeType == other.runtimeType &&
-              id == other.id;
+              id == other.id; //核心：只要 ID 一样，我就认为你们是同一个东西！
 
   @override
   int get hashCode => id.hashCode;

@@ -131,6 +131,10 @@ mixin ChatPageLogic on ConsumerState<ChatPage> {
     );
 
     if (targets == null || targets.isEmpty) return;
+    // 改动 1: 拼接所有人的名字用于展示
+    final names = targets.map((t) => t.name).join(", ");
+    final displayName = names.length > 30 ? "${names.substring(0, 30)}..." : names;
+    final countText = targets.length > 1 ? "(${targets.length})" : "";
 
     final target = targets.first;
 
@@ -143,9 +147,16 @@ mixin ChatPageLogic on ConsumerState<ChatPage> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text("Forward to:", style: TextStyle(color: Colors.grey[600])),
+            Text("Forward message to:", style: TextStyle(color: Colors.grey[600])),
             SizedBox(height: 8.h),
-            Text(target.name, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16.sp)),
+            // 显示多人名字
+            Text(
+              "$displayName $countText",
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16.sp),
+              textAlign: TextAlign.center,
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+            ),
           ],
         ),
       ),
@@ -157,10 +168,8 @@ mixin ChatPageLogic on ConsumerState<ChatPage> {
         try {
           RadixToast.showLoading(message: "Sending...");
 
-          // 这里的 forwardMessage 需要你在 ChatActionService 里实现
-          // 如果暂时没有，可以用 sendText 模拟
-          await ref.read(chatActionServiceProvider(widget.conversationId))
-              .forwardMessage(message.id, target.id);
+          final targetIds = targets.map((t) => t.id).toList();
+          await ref.read(chatActionServiceProvider(widget.conversationId)).forwardMessage(message.id, targetIds);
 
           RadixToast.success("Sent");
         } catch (e) {
