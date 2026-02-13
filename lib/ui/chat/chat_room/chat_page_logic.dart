@@ -37,15 +37,14 @@ mixin ChatPageLogic on ConsumerState<ChatPage> {
 
   // --- 权限检查 ---
   ({bool canSend, String reason}) checkPermission(
-    ConversationDetail? detail,
-    bool isGroup,
-  ) {
+      ConversationDetail? detail,
+      bool isGroup,
+      ) {
     if (!isGroup || detail == null) return (canSend: true, reason: "");
 
     final myId = ref.read(userProvider.select((s) => s?.id));
-    // 安全查找
     final me = detail.members.cast<ChatMember?>().firstWhere(
-      (m) => m?.userId == myId,
+          (m) => m?.userId == myId,
       orElse: () => null,
     );
 
@@ -58,7 +57,122 @@ mixin ChatPageLogic on ConsumerState<ChatPage> {
     return (canSend: true, reason: "");
   }
 
-  // --- 功能逻辑 ---
+  // ======================================================
+  //  [核心新增] 消息长按菜单与转发逻辑
+  // ======================================================
+
+  void onMessageLongPress(BuildContext context, ChatUiModel message) {
+    HapticFeedback.mediumImpact(); // 震动反馈
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => ChatActionSheet(
+        actions: [
+          // 1. 转发
+          ActionItem(
+            label: "Forward",
+            icon: Icons.forward,
+            onTap: () {
+              Navigator.pop(ctx);
+              _handleForward(message);
+            },
+          ),
+
+          // 2. 复制 (仅文本)
+          if (message.type == MessageType.text)
+            ActionItem(
+              label: "Copy",
+              icon: Icons.copy,
+              onTap: () {
+                Clipboard.setData(ClipboardData(text: message.content));
+                Navigator.pop(ctx);
+                RadixToast.success("Copied");
+              },
+            ),
+
+          // 3. 撤回 (2分钟内 & 是自己)
+          if (message.isMe && message.canRecall)
+            ActionItem(
+              label: "Recall",
+              icon: Icons.undo,
+              isDestructive: true,
+              onTap: () {
+                Navigator.pop(ctx);
+                ref.read(chatControllerProvider(widget.conversationId)).recallMessage(message.id);
+              },
+            ),
+
+          // 4. 删除 (本地)
+          ActionItem(
+            label: "Delete",
+            icon: Icons.delete_outline,
+            isDestructive: true,
+            onTap: () {
+              Navigator.pop(ctx);
+              ref.read(chatControllerProvider(widget.conversationId)).deleteMessage(message.id);
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  // 转发处理流程
+  void _handleForward(ChatUiModel message) async {
+    // 1. 跳转通用选人页面
+    final targets = await context.push<List<SelectionEntity>>(
+      '/contact/selector',
+      extra: ContactSelectionArgs(
+        title: "Forward To",
+        mode: SelectionMode.single,
+        confirmText: "Send",
+      ),
+    );
+
+    if (targets == null || targets.isEmpty) return;
+
+    final target = targets.first;
+
+    // 2. 二次确认弹窗
+    if (!mounted) return;
+    RadixModal.show(
+      title: "Confirm Forward",
+      builder: (_, __) => Padding(
+        padding: EdgeInsets.all(16.r),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text("Forward to:", style: TextStyle(color: Colors.grey[600])),
+            SizedBox(height: 8.h),
+            Text(target.name, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16.sp)),
+          ],
+        ),
+      ),
+      confirmText: "Send",
+      onConfirm: (close) async {
+        close();
+
+        // 3. 调用 Service 发送
+        try {
+          RadixToast.showLoading(message: "Sending...");
+
+          // 这里的 forwardMessage 需要你在 ChatActionService 里实现
+          // 如果暂时没有，可以用 sendText 模拟
+          await ref.read(chatActionServiceProvider(widget.conversationId))
+              .forwardMessage(message.id, target.id);
+
+          RadixToast.success("Sent");
+        } catch (e) {
+          RadixToast.error("Failed to forward");
+        } finally {
+          RadixToast.hide();
+        }
+      },
+    );
+  }
+
+  // --- 发送逻辑 (保持不变) ---
   void handleSendText(String text) {
     ref.read(chatActionServiceProvider(widget.conversationId)).sendText(text);
   }
@@ -67,9 +181,7 @@ mixin ChatPageLogic on ConsumerState<ChatPage> {
     final picker = ImagePicker();
     final image = await picker.pickImage(source: ImageSource.gallery);
     if (image != null) {
-      ref
-          .read(chatActionServiceProvider(widget.conversationId))
-          .sendImage(image);
+      ref.read(chatActionServiceProvider(widget.conversationId)).sendImage(image);
     }
   }
 
@@ -77,9 +189,7 @@ mixin ChatPageLogic on ConsumerState<ChatPage> {
     final picker = ImagePicker();
     final image = await picker.pickImage(source: ImageSource.camera);
     if (image != null) {
-      ref
-          .read(chatActionServiceProvider(widget.conversationId))
-          .sendImage(image);
+      ref.read(chatActionServiceProvider(widget.conversationId)).sendImage(image);
     }
   }
 
@@ -87,9 +197,7 @@ mixin ChatPageLogic on ConsumerState<ChatPage> {
     final picker = ImagePicker();
     final video = await picker.pickVideo(source: ImageSource.gallery);
     if (video != null) {
-      ref
-          .read(chatActionServiceProvider(widget.conversationId))
-          .sendVideo(video);
+      ref.read(chatActionServiceProvider(widget.conversationId)).sendVideo(video);
     }
   }
 
@@ -108,28 +216,25 @@ mixin ChatPageLogic on ConsumerState<ChatPage> {
         );
         String title = "Current Location";
 
-        ref
-            .read(chatActionServiceProvider(widget.conversationId))
-            .sendLocation(
-              latitude: pos.latitude,
-              longitude: pos.longitude,
-              address: address,
-              title: title,
-            );
+        ref.read(chatActionServiceProvider(widget.conversationId)).sendLocation(
+          latitude: pos.latitude,
+          longitude: pos.longitude,
+          address: address,
+          title: title,
+        );
       }
     } catch (e) {
       debugPrint("Location error: $e");
     }
   }
 
-  // --- 弹窗 ---
   void showAnnouncementDialog(BuildContext context, String text) {
     RadixModal.show(
-      title: 'Announcement',
-      confirmText: 'Got it',
-      builder: (ctx,close) => SingleChildScrollView(
-        child: Text(text, style: TextStyle(fontSize: 15.sp, height: 1.5)),
-      )
+        title: 'Announcement',
+        confirmText: 'Got it',
+        builder: (ctx,close) => SingleChildScrollView(
+          child: Text(text, style: TextStyle(fontSize: 15.sp, height: 1.5)),
+        )
     );
   }
 }

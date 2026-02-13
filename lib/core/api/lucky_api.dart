@@ -635,6 +635,20 @@ class Api {
     return MessageDeleteResponse.fromJson(res);
   }
 
+  // 消息转发
+  static Future<void> messageForwardApi({
+    required String originalMessageId,
+    required List<String> targetConversationIds,
+  }) async {
+    await Http.post(
+      '/api/v1/chat/message/forward',
+      data: {
+        'originalMsgId': originalMessageId,
+        'targetConversationIds': targetConversationIds,
+      },
+    );
+  }
+
   // 6. 用户搜索
   static Future<List<ChatUser>> chatContactsSearch(String keyword) async {
     final res = await Http.get(

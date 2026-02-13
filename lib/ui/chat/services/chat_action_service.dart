@@ -15,7 +15,9 @@ import 'package:flutter_app/ui/chat/services/network/offline_queue_manager.dart'
 import 'package:flutter_app/utils/upload/global_upload_service.dart';
 import 'package:flutter_app/utils/upload/upload_types.dart';
 
+import '../../../core/api/lucky_api.dart';
 import '../../../utils/asset/web/web_blob_url.dart';
+import '../providers/chat_view_model.dart';
 import '../repository/message_repository.dart';
 import '../../../utils/media/url_resolver.dart';
 import '../pipeline/pipeline_types.dart';
@@ -318,6 +320,29 @@ class ChatActionService {
         lastMsgTime: time,
       );
     } catch (_) {}
+  }
+
+  //  [新增] 转发消息
+  Future<void> forwardMessage(String originalMessageId, String targetConversationId) async {
+    try {
+      // 1. 调用 API
+      await Api.messageForwardApi(
+        originalMessageId: originalMessageId,
+        targetConversationIds: [targetConversationId], // 支持群发，这里先传单人
+      );
+
+      // 2. 成功后的处理
+      // 转发通常是发给"别人"的，所以不需要更新"当前"会话的消息列表
+      // 除非你是转发给自己 (targetConversationId == conversationId)
+      if (targetConversationId == conversationId) {
+        // 刷新一下当前会话
+        _ref.invalidate(chatViewModelProvider(conversationId));
+      }
+
+    } catch (e) {
+      // 抛出异常供 Logic 层捕获并弹 Toast
+      rethrow;
+    }
   }
 }
 

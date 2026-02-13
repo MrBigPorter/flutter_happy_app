@@ -1,5 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart'; // 剪贴板需要
 import 'package:flutter_app/core/store/user_store.dart';
 import 'package:flutter_app/ui/modal/dialog/radix_modal.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -18,10 +19,13 @@ import 'package:flutter_app/ui/chat/providers/conversation_provider.dart';
 import 'package:flutter_app/ui/chat/services/chat_action_service.dart';
 import 'package:flutter_app/ui/chat/services/media/location_service.dart';
 import 'package:flutter_app/utils/media/url_resolver.dart';
+import '../../toast/radix_toast.dart';
 import '../components/chat_bubble.dart';
 import '../components/chat_input/modern_chat_input_bar.dart';
 import '../models/chat_ui_model.dart';
 import '../models/conversation.dart';
+import '../models/selection_types.dart';
+
 
 part 'chat_page_logic.dart';
 part 'chat_page_widgets.dart';
@@ -40,12 +44,11 @@ class ChatPage extends ConsumerStatefulWidget {
   ConsumerState<ChatPage> createState() => _ChatPageState();
 }
 
-//  核心：混入 Logic Mixin
 class _ChatPageState extends ConsumerState<ChatPage> with ChatPageLogic {
 
   @override
   void dispose() {
-    disposeLogic(); // 调用 Logic 里的清理
+    disposeLogic();
     try {
       ref.read(activeConversationIdProvider.notifier).state = null;
     } catch (_) {}
@@ -74,7 +77,7 @@ class _ChatPageState extends ConsumerState<ChatPage> with ChatPageLogic {
     final detail = groupAsync.valueOrNull ?? basicAsync.valueOrNull;
     final bool isGroup = detail?.type == ConversationType.group;
 
-    // 权限检查 (调用 Logic)
+    // 权限检查
     final permission = checkPermission(detail, isGroup);
     final bool canSend = permission.canSend;
     final String disableReason = permission.reason;
@@ -84,11 +87,10 @@ class _ChatPageState extends ConsumerState<ChatPage> with ChatPageLogic {
     final hasAnnouncement = announcement != null && announcement.trim().isNotEmpty;
 
     return WillPopScope(
-      onWillPop: onWillPop, // Logic 方法
+      onWillPop: onWillPop,
       child: Scaffold(
         backgroundColor: context.bgPrimary,
         resizeToAvoidBottomInset: true,
-        // 调用 Widget 分部的方法
         appBar: _buildAppBar(context, detail, isGroup),
         body: Column(
           children: [
@@ -96,7 +98,7 @@ class _ChatPageState extends ConsumerState<ChatPage> with ChatPageLogic {
             if (hasAnnouncement && isGroup)
               ChatAnnouncementBar(
                 text: announcement,
-                onTap: () => showAnnouncementDialog(context, announcement), // Logic 方法
+                onTap: () => showAnnouncementDialog(context, announcement),
               ),
 
             // 消息列表区
@@ -112,7 +114,7 @@ class _ChatPageState extends ConsumerState<ChatPage> with ChatPageLogic {
                   return GestureDetector(
                     onTap: () {
                       FocusScope.of(context).unfocus();
-                      closePanel(); // Logic 方法
+                      closePanel();
                     },
                     child: NotificationListener<ScrollNotification>(
                       onNotification: (ScrollNotification scrollInfo) {
@@ -129,13 +131,12 @@ class _ChatPageState extends ConsumerState<ChatPage> with ChatPageLogic {
                         preloadWindow: 30,
                         predictWidth: 240.0,
                         child: ListView.builder(
-                          controller: scrollController, // Logic 变量
+                          controller: scrollController,
                           reverse: true,
                           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                           itemCount: messages.length + 1,
                           itemBuilder: (context, index) {
                             if (index == messages.length) {
-                              // 使用 Widget 分部的小组件
                               return _buildLoadingIndicator(context, chatState.hasMore);
                             }
                             final msg = messages[index];
@@ -145,6 +146,8 @@ class _ChatPageState extends ConsumerState<ChatPage> with ChatPageLogic {
                               message: msg,
                               showReadStatus: msg.isMe && msg.status == MessageStatus.read && index == 0,
                               onRetry: () => actionService.resend(msg.id),
+                              // 🔥 [核心改动] 将 Logic 中的长按方法传递进去
+                              onLongPress: (m) => onMessageLongPress(context, m),
                             );
                           },
                         ),
@@ -159,12 +162,12 @@ class _ChatPageState extends ConsumerState<ChatPage> with ChatPageLogic {
             if (canSend)
               ModernChatInputBar(
                 conversationId: widget.conversationId,
-                onSend: (text) => handleSendText(text), // Logic 方法
+                onSend: (text) => handleSendText(text),
                 onSendVoice: actionService.sendVoiceMessage,
                 onSendImage: (file) => actionService.sendImage(file),
                 onSendVideo: (file) => actionService.sendVideo(file),
-                onAddPressed: togglePanel, // Logic 方法
-                onTextFieldTap: closePanel, // Logic 方法
+                onAddPressed: togglePanel,
+                onTextFieldTap: closePanel,
               )
             else
               Container(
@@ -179,7 +182,7 @@ class _ChatPageState extends ConsumerState<ChatPage> with ChatPageLogic {
             AnimatedContainer(
               duration: const Duration(milliseconds: 250),
               curve: Curves.easeOutQuad,
-              height: isPanelOpen ? 280.h + MediaQuery.of(context).padding.bottom : 0, // Logic 变量
+              height: isPanelOpen ? 280.h + MediaQuery.of(context).padding.bottom : 0,
               color: context.bgPrimary,
               child: SingleChildScrollView(
                 physics: const NeverScrollableScrollPhysics(),

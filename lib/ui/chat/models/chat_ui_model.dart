@@ -215,5 +215,15 @@ class ChatUiModel extends Equatable {
     );
   }
 
+  bool get canRecall {
+    // 1. 只有发送成功的消息才能撤回 (发送中/失败的通常是直接删除)
+     if (status != MessageStatus.read && status != MessageStatus.success) return false;
 
+    // 2. 核心规则：发送时间在 2 分钟以内
+    final sendTime = DateTime.fromMillisecondsSinceEpoch(createdAt);
+    final now = DateTime.now();
+    final diff = now.difference(sendTime);
+
+    return diff.inMinutes < 2; // 2分钟限制
+  }
 }

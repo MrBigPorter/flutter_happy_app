@@ -1,12 +1,9 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import '../../img/app_image.dart';
 import '../models/chat_ui_model.dart';
-import '../providers/chat_room_provider.dart';
 
 import 'bubbles/file_msg_bubble.dart';
 import 'bubbles/image_msg_bubble.dart';
@@ -21,22 +18,27 @@ class ChatBubble extends ConsumerWidget {
   final bool showReadStatus;
   final bool isGroup;
 
+  //  [核心改动] 新增回调：将长按事件抛给父组件处理
+  final Function(ChatUiModel)? onLongPress;
+
   const ChatBubble({
     super.key,
     required this.message,
     this.onRetry,
     this.showReadStatus = false,
     this.isGroup = false,
+    this.onLongPress, // 构造函数接收
   });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // 1.  统一拦截：系统消息或已撤回消息，显示为居中灰色提示
+    // 1. 系统消息或撤回消息：显示居中灰条
     if (message.isRecalled || message.type == MessageType.system) {
       return _buildCenteredSystemTip();
     }
 
     final isMe = message.isMe;
+
     return Container(
       margin: EdgeInsets.symmetric(vertical: 8.h, horizontal: 12.w),
       child: Row(
@@ -68,18 +70,20 @@ class ChatBubble extends ConsumerWidget {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
+                    // 发送状态图标 (Loading/Fail)
                     if (isMe) _buildStatusPrefix(),
+
                     Flexible(
                       child: GestureDetector(
-                        //  只有正常消息才允许长按弹出菜单
-                        onLongPress: () => _showContextMenu(context, ref, isMe),
+                        //  [核心改动] 不再自己处理，而是调用回调
+                        onLongPress: () => onLongPress?.call(message),
                         child: _buildContentFactory(context),
                       ),
                     ),
                   ],
                 ),
 
-                // 已读标识
+                // 已读标识 (仅自己)
                 if (isMe && showReadStatus)
                   Padding(
                     padding: EdgeInsets.only(top: 2.h, right: 2.w),
@@ -106,21 +110,14 @@ class ChatBubble extends ConsumerWidget {
     );
   }
 
+  /// 构建居中系统提示
   Widget _buildCenteredSystemTip() {
     String tipText;
-
-    // 优先判断：这到底是不是“撤回”操作
     if (message.isRecalled) {
       final String displayName = message.isMe ? "You" : (message.senderName ?? 'Someone');
       tipText = "$displayName recalled a message";
-    }
-    // 如果不是撤回，而是系统消息 (Type 99)
-    else if (message.type == MessageType.system) {
-      // 直接显示 content，它是后端生成的文案（如 "Group name updated..."）
+    } else {
       tipText = message.content;
-    }
-    else {
-      tipText = "";
     }
 
     return Center(
@@ -132,7 +129,6 @@ class ChatBubble extends ConsumerWidget {
           style: TextStyle(
             fontSize: 12.sp,
             color: const Color(0xFFB0B0B0),
-            // 只有撤回才用斜体，普通系统消息用正体
             fontStyle: message.isRecalled ? FontStyle.italic : FontStyle.normal,
           ),
         ),
@@ -140,7 +136,7 @@ class ChatBubble extends ConsumerWidget {
     );
   }
 
-  /// 根据消息类型分发具体的渲染组件
+  /// 工厂方法：根据类型渲染具体气泡
   Widget _buildContentFactory(BuildContext context) {
     switch (message.type) {
       case MessageType.image: return ImageMsgBubble(message: message);
@@ -152,51 +148,6 @@ class ChatBubble extends ConsumerWidget {
       default:
         return TextMsgBubble(message: message);
     }
-  }
-
-  /// 长按菜单逻辑
-  void _showContextMenu(BuildContext context, WidgetRef ref, bool isMe) {
-    final bool isText = message.type == MessageType.text;
-    final bool canRecall = isMe &&
-        DateTime.now().difference(DateTime.fromMillisecondsSinceEpoch(message.createdAt)).inMinutes < 2;
-
-    showCupertinoModalPopup(
-      context: context,
-      builder: (context) => CupertinoActionSheet(
-        title: const Text("Message Actions"),
-        actions: [
-          if (isText)
-            CupertinoActionSheetAction(
-              onPressed: () {
-                Navigator.pop(context);
-                Clipboard.setData(ClipboardData(text: message.content));
-              },
-              child: const Text("Copy"),
-            ),
-          if (canRecall)
-            CupertinoActionSheetAction(
-              isDestructiveAction: true,
-              onPressed: () {
-                Navigator.pop(context);
-                ref.read(chatControllerProvider(message.conversationId)).recallMessage(message.id);
-              },
-              child: const Text("Recall"), //  统一用 Recall
-            ),
-          CupertinoActionSheetAction(
-            isDestructiveAction: true,
-            onPressed: () {
-              Navigator.pop(context);
-              ref.read(chatControllerProvider(message.conversationId)).deleteMessage(message.id);
-            },
-            child: const Text("Delete"),
-          ),
-        ],
-        cancelButton: CupertinoActionSheetAction(
-          onPressed: () => Navigator.pop(context),
-          child: const Text("Cancel"),
-        ),
-      ),
-    );
   }
 
   /// 头像渲染
@@ -224,7 +175,7 @@ class ChatBubble extends ConsumerWidget {
     );
   }
 
-  /// 状态图标渲染 (发送中/失败/等待)
+  /// 状态图标前缀
   Widget _buildStatusPrefix() {
     if (message.status == MessageStatus.pending) {
       return Padding(
@@ -233,6 +184,7 @@ class ChatBubble extends ConsumerWidget {
       );
     }
     if (message.status == MessageStatus.sending) {
+      // 图片视频自带 Loading 遮罩，不需要外面的转圈
       if (message.type == MessageType.image || message.type == MessageType.video) return const SizedBox.shrink();
       return Padding(
         padding: EdgeInsets.only(right: 8.w, bottom: 4.h),
