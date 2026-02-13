@@ -44,6 +44,8 @@ import 'package:flutter_app/app/page/withdraw_page.dart';
 
 import '../../ui/chat/direct_chat_settings_page.dart';
 import '../../ui/chat/local_contact_search_page.dart';
+import '../../ui/chat/models/selection_types.dart';
+import '../../ui/chat/selector/contact_selection_page.dart';
 
 final _shellKey = GlobalKey<NavigatorState>(debugLabel: 'shell');
 // 全局路由器实例  Global router instance
@@ -130,6 +132,18 @@ class AppRouter {
             final cachedUser = state.extra as ChatUser;
 
             return ContactProfilePage(userId: userId, cachedUser: cachedUser);
+          },
+        ),
+        GoRoute(
+          path: '/contact/selector',
+          pageBuilder: (context, state) {
+            // 必须传递 extra 参数
+            final args = state.extra as ContactSelectionArgs;
+            return fxPage(
+              key: state.pageKey,
+              child: ContactSelectionPage(args: args),
+              fx: RouteFx.slideUp,
+            );
           },
         ),
         GoRoute(
