@@ -32,6 +32,7 @@ class SelectionEntity {
   int get hashCode => id.hashCode;
 }
 
+
 class ContactSelectionArgs {
   final String title;           // 页面标题 (如 "Forward To", "Add Members")
   final SelectionMode mode;     // 选择模式 (单选 single / 多选 multi)
@@ -44,4 +45,22 @@ class ContactSelectionArgs {
     this.excludeIds = const [],
     this.confirmText,
   });
+
+  //转为Map
+  Map<String, dynamic> toJson() => {
+        'title': title,
+        'mode': mode.name,
+        'excludeIds': excludeIds,
+        'confirmText': confirmText,
+  };
+
+  // 从Map创建实例
+  factory ContactSelectionArgs.fromJson(Map<String, dynamic> json) => ContactSelectionArgs(
+        title: json['title'] ?? "Select Contact",
+       mode: json['mode'] == SelectionMode.multiple.name
+        ? SelectionMode.multiple
+        : SelectionMode.single,
+        excludeIds: List<String>.from(json['excludeIds'] ?? []),
+        confirmText: json['confirmText'],
+      );
 }

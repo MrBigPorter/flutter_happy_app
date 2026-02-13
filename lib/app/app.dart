@@ -38,16 +38,7 @@ class _MyAppState extends ConsumerState<MyApp> {
 
   @override
   Widget build(BuildContext context) {
-    // Token 失效处理保持不变
-    Http.onTokenInvalid ??= () async {
-      final authNotifier = ref.read(authProvider.notifier);
-      await authNotifier.logout();
-    };
 
-    Http.onTokenRefresh ??= (String newAccess, String? newRefresh) async {
-      final authNotifier = ref.read(authProvider.notifier);
-      authNotifier.updateTokens(newAccess, newRefresh);
-    };
 
     final router = ref.watch(appRouterProvider);
     final themeMode = ref.watch(themeModeProvider);

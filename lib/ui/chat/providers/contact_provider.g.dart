@@ -6,7 +6,22 @@ part of 'contact_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$userSearchHash() => r'd1c3145a4b6222585728e5bada5ed471659b5b0d';
+String _$contactEntitiesHash() => r'd7d160650b71b587b70e29f626783ca00cc17993';
+
+/// See also [contactEntities].
+@ProviderFor(contactEntities)
+final contactEntitiesProvider = FutureProvider<List<ContactEntity>>.internal(
+  contactEntities,
+  name: r'contactEntitiesProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$contactEntitiesHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+typedef ContactEntitiesRef = FutureProviderRef<List<ContactEntity>>;
+String _$userSearchHash() => r'7943720c19ad2019ec96efbd59c257a6228683b3';
 
 /// Copied from Dart SDK
 class _SystemHash {
@@ -311,12 +326,12 @@ class _ChatContactsSearchProviderElement
   String get keyword => (origin as ChatContactsSearchProvider).keyword;
 }
 
-String _$contactListHash() => r'626086d5842ba5b2a8b14399b5ed561cec5aaaf9';
+String _$contactListHash() => r'e59c60c42bf843bf3c0a352e221eb3f8620f7491';
 
 /// See also [ContactList].
 @ProviderFor(ContactList)
 final contactListProvider =
-    AutoDisposeAsyncNotifierProvider<ContactList, List<ChatUser>>.internal(
+    AsyncNotifierProvider<ContactList, List<ChatUser>>.internal(
   ContactList.new,
   name: r'contactListProvider',
   debugGetCreateSourceHash:
@@ -325,7 +340,7 @@ final contactListProvider =
   allTransitiveDependencies: null,
 );
 
-typedef _$ContactList = AutoDisposeAsyncNotifier<List<ChatUser>>;
+typedef _$ContactList = AsyncNotifier<List<ChatUser>>;
 String _$friendRequestListHash() => r'f0f1b2cc5038301d597d6540df99ef25550d9b88';
 
 /// See also [FriendRequestList].
@@ -343,7 +358,7 @@ final friendRequestListProvider = AutoDisposeAsyncNotifierProvider<
 
 typedef _$FriendRequestList = AutoDisposeAsyncNotifier<List<FriendRequest>>;
 String _$addFriendControllerHash() =>
-    r'5d0c167b9c61aa4af809ebff214aa300989eb3f3';
+    r'c4dd8d9f61014b141cbdb5acce597b69c251dac8';
 
 abstract class _$AddFriendController
     extends BuildlessAutoDisposeAsyncNotifier<void> {

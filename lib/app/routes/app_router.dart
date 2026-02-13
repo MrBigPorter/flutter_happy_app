@@ -24,7 +24,7 @@ import 'package:go_router/go_router.dart';
 
 import 'package:flutter_app/components/lucky_tab_bar.dart';
 import 'package:flutter_app/ui/chat/chat_room/chat_page.dart';
-import 'package:flutter_app/ui/chat/contact_list_page.dart';
+import 'package:flutter_app/ui/chat/contact_list/contact_list_page.dart';
 import 'package:flutter_app/ui/chat/contact_profile_page.dart';
 import 'package:flutter_app/ui/chat/contact_search_page.dart';
 import 'package:flutter_app/ui/chat/group_member_select_page.dart';
@@ -138,7 +138,7 @@ class AppRouter {
           path: '/contact/selector',
           pageBuilder: (context, state) {
             // 必须传递 extra 参数
-            final args = state.extra as ContactSelectionArgs;
+            final args = state.extra is ContactSelectionArgs ? state.extra as ContactSelectionArgs :  ContactSelectionArgs();
             return fxPage(
               key: state.pageKey,
               child: ContactSelectionPage(args: args),

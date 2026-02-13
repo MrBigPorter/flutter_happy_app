@@ -6,6 +6,9 @@ import 'package:flutter_app/core/store/auth/auth_provider.dart';
 import 'package:flutter_app/ui/chat/services/database/local_database_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../ui/chat/providers/contact_provider.dart';
+import '../ui/chat/providers/conversation_provider.dart';
+
 part 'app_startup.g.dart';
 
 @Riverpod(keepAlive: true)
@@ -49,6 +52,21 @@ Future<void> appStartup(AppStartupRef ref) async {
       // This ensures the database is Ready when the Socket receives messages!
       await LocalDatabaseService.init(userId);
       debugPrint("[AppStartup] Database initialized instantly (No network needed)");
+
+      // 数据库初始化好了，现在立刻触发后台同步
+      // 这样当用户进入主页时，数据已经在内存里了
+
+      // 1. 预热通讯录 (API -> DB -> 内存)
+      ref.read(contactListProvider);
+
+      // 2. 预热会话列表
+      ref.read(conversationListProvider);
+
+      await LocalDatabaseService.init(userId);
+      // 🔥 预读数据，存入内存
+      ref.read(contactEntitiesProvider);
+
+      debugPrint(" [AppStartup] Data pre-fetching started in background...");
     } else {
       // Only happens on fresh install or corrupted data.
       // Skip for now, let lazy load handle it after entering the main page.

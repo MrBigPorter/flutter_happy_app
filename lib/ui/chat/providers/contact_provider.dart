@@ -1,9 +1,11 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_app/ui/chat/core/repositories/contact_repository.dart';
+import 'package:lpinyin/lpinyin.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:flutter_app/common.dart';
 
 import '../../../core/providers/socket_provider.dart';
+import '../contact_list/contact_list_page.dart';
 import '../models/conversation.dart';
 import '../models/friend_request.dart';
 
@@ -12,24 +14,29 @@ part 'contact_provider.g.dart';
 // ===========================================================================
 // 1. Contact List Provider
 // ===========================================================================
-@riverpod
+@Riverpod(keepAlive: true)
 class ContactList extends _$ContactList {
   @override
   Future<List<ChatUser>> build() async {
     // 获取仓库实例
     final repo = ref.watch(contactRepositoryProvider);
-    // A. 尝试同步 (API -> 本地数据库 -> 建立拼音索引)
-    try {
-      //  关键点：这里会调用 syncContacts，它会将数据存入 DB 并建立索引
-      // 这样"本地搜索"功能才有数据可查
-      await repo.syncContacts();
-    }catch(e){
-      // 如果网络失败，打印日志，但不抛出异常，继续执行（因为我们要读取本地缓存）
-      debugPrint("️ Contact sync failed: $e. Using local cache.");
-    }
-    // B. 从本地数据库读取 (这时候已经是带有索引的最新数据了)
+    //  1. 立即触发一次异步同步（不 await）
+    // 这允许 build 方法立刻继续执行，直接去读本地 DB
+    _silentSync(repo);
+    //  2. 直接返回本地数据，实现秒开
     return repo.getAllContacts();
   }
+
+  Future<void> _silentSync(ContactRepository repo) async {
+    try {
+      await repo.syncContacts();
+      // 同步成功后，手动更新 state，UI 会无感刷新
+      state = AsyncValue.data(await repo.getAllContacts());
+    } catch (e) {
+      debugPrint("Silent sync failed: $e");
+    }
+  }
+
 
   /// Silently refreshes the contact list state
   Future<void> refresh() async {
@@ -42,6 +49,21 @@ class ContactList extends _$ContactList {
       return repo.getAllContacts();
     });
   }
+}
+
+@Riverpod(keepAlive: true)
+Future<List<ContactEntity>> contactEntities(ContactEntitiesRef ref) async {
+  // 1. 获取原始 ChatUser 列表
+  final users = await ref.watch(contactListProvider.future);
+
+  // 2. 在这里处理拼音转换和排序（只在数据变动时跑一次）
+  return users.map((u) {
+    String pinyin = PinyinHelper.getPinyinE(u.nickname);
+    String tag = pinyin.substring(0, 1).toUpperCase();
+    if (!RegExp("[A-Z]").hasMatch(tag)) tag = "#";
+    return ContactEntity(user: u, tagIndex: tag);
+  }).toList()
+    ..sort((a, b) => a.tagIndex.compareTo(b.tagIndex));
 }
 
 // ===========================================================================
@@ -99,32 +121,13 @@ Future<List<ChatUser>> chatContactsSearch(ChatContactsSearchRef ref, String keyw
 @riverpod
 class AddFriendController extends _$AddFriendController {
   @override
-  FutureOr<void> build(String userId) {
-    return null;
-  }
+  FutureOr<void> build(String userId) => null;
 
-  /// Executes the friend request
   Future<bool> execute({String? reason}) async {
-    // Keep the provider alive during the asynchronous operation
-    final link = ref.keepAlive();
-
     state = const AsyncLoading();
-
-    final newState = await AsyncValue.guard(() async {
-      // userId comes from the family parameter (this.userId)
-      await Api.addFriendApi(userId, reason: reason);
-    });
-
-    // Only update state if the Provider has not been disposed (Double-guarding)
-    if(state.hasValue || state.isLoading || state.hasError) {
-      state = newState;
-    }
-
-    // Release the keep-alive lock once the request is complete.
-    // If the UI was destroyed during the request, this Provider will now dispose.
-    link.close();
-
-    return !newState.hasError;
+    // 使用 guard 自动捕获错误并转换状态
+    state = await AsyncValue.guard(() => Api.addFriendApi(userId, reason: reason));
+    return !state.hasError;
   }
 }
 
