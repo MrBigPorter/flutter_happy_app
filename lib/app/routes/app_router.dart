@@ -41,7 +41,7 @@ import 'package:flutter_app/app/page/me_page.dart';
 import 'package:flutter_app/app/page/login_page.dart';
 import 'package:flutter_app/app/page/product_detail_page.dart';
 import 'package:flutter_app/app/page/withdraw_page.dart';
-
+import 'extra_codec.dart';
 import '../../ui/chat/direct_chat_settings_page.dart';
 import '../../ui/chat/local_contact_search_page.dart';
 import '../../ui/chat/models/selection_types.dart';
@@ -60,13 +60,28 @@ late GoRouter appRouter;
 /// - Implements custom page transitions for specific routes.
 ///
 class AppRouter {
+  /// 集中注册所有需要支持序列化的参数类
+  static void _registerRoutes() {
+    // 以后每增加一个 Args 类，就在这里加一行
+    RouteArgsRegistry.register('ContactSelectionArgs', ContactSelectionArgs.fromJson);
+
+    // 示例：如果有其他页面参数
+    // RouteArgsRegistry.register('PaymentParams', PaymentParams.fromJson);
+  }
 
   static GoRouter create(Ref ref) {
+   //  就在这里调用！确保在 GoRouter 初始化之前完成注册
+    _registerRoutes();
+
     final router =  GoRouter(
       debugLogDiagnostics: true,
       //让全局弹层系统使用同一个 Navigator：
       // allow the global modal system to use the same Navigator:
       navigatorKey: NavHub.key,
+
+      //  3. 核心：在这里挂载公用的编解码器
+      extraCodec: const CommonExtraCodec(),
+
       // 监听路由变化以关闭弹层：
       // observe route changes to close modals:
       observers: [

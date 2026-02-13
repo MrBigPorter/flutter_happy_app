@@ -1,4 +1,6 @@
 // 1. 选择模式
+import 'package:flutter_app/app/routes/extra_codec.dart';
+
 enum SelectionMode { single, multiple }
 
 // 2. 实体类型 (为了统一 User 和 Group)
@@ -33,7 +35,7 @@ class SelectionEntity {
 }
 
 
-class ContactSelectionArgs {
+class ContactSelectionArgs extends BaseRouteArgs{
   final String title;           // 页面标题 (如 "Forward To", "Add Members")
   final SelectionMode mode;     // 选择模式 (单选 single / 多选 multi)
   final List<String> excludeIds;// 需要排除的人 (比如拉人进群时，不能选已经在群里的人)
