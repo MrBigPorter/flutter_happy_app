@@ -278,6 +278,9 @@ class ConversationDetail {
   final String? announcement;      // 群公告
   final bool isMuteAll;            // 全员禁言开关
   final bool joinNeedApproval;    // 加群是否需要审批
+  //  [新增] 申请状态: 'NONE' | 'PENDING'
+  // 注意：后端如果返回 null，默认视为 'NONE'
+  final String? applicationStatus;
 
   // [NEW] 详情页补充字段
   final int lastMsgSeqId;
@@ -302,6 +305,7 @@ class ConversationDetail {
     this.announcement,
     this.isMuteAll = false,
     this.joinNeedApproval = false,
+    this.applicationStatus,
   });
 
   ConversationDetail copyWith({
@@ -319,6 +323,7 @@ class ConversationDetail {
     String? announcement,
     bool? isMuteAll,
     bool? joinNeedApproval,
+    String? applicationStatus,
   }) {
     return ConversationDetail(
       id: id ?? this.id,
@@ -335,7 +340,9 @@ class ConversationDetail {
       announcement: announcement ?? this.announcement,
       isMuteAll: isMuteAll ?? this.isMuteAll,
       joinNeedApproval: joinNeedApproval ?? this.joinNeedApproval,
+      applicationStatus:  applicationStatus?? this.applicationStatus,
     );
+
   }
 
   factory ConversationDetail.fromJson(Map<String, dynamic> json) {
@@ -345,6 +352,7 @@ class ConversationDetail {
           (e) => e.name.toUpperCase() == typeStr,
       orElse: () => ConversationType.group,
     );
+    
 
     return ConversationDetail(
       // 关键修复：必填 String 字段必须给默认值，防止数据库脏数据导致 Crash
@@ -368,6 +376,7 @@ class ConversationDetail {
       announcement: json['announcement'],
       isMuteAll: json['isMuteAll'] ?? false,
       joinNeedApproval: json['joinNeedApproval'] ?? false,
+      applicationStatus: json['applicationStatus']?.toString()
     );
   }
 
@@ -389,8 +398,12 @@ class ConversationDetail {
       'announcement': announcement,
       'isMuteAll': isMuteAll,
       'joinNeedApproval': joinNeedApproval,
+      'applicationStatus': applicationStatus,
     };
   }
+
+  @override
+  String toString() => toJson().toString();
 
   int get memberCount => members.length;
 }

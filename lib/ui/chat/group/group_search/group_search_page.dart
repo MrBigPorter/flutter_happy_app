@@ -2,16 +2,18 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:go_router/go_router.dart';
 
 import 'package:flutter_app/common.dart';
 import 'package:flutter_app/ui/button/button.dart';
 import 'package:flutter_app/ui/toast/radix_toast.dart';
 import 'package:flutter_app/ui/chat/models/conversation.dart';
 import 'package:flutter_app/utils/media/url_resolver.dart';
-
-// 引入你刚才定义的 Provider
 import 'package:flutter_app/ui/chat/providers/group_search_provider.dart';
+
+import 'package:flutter_app/app/routes/app_router.dart';
+
+// 引入逻辑分片
+part 'group_search_logic.dart';
 
 class GroupSearchPage extends ConsumerStatefulWidget {
   const GroupSearchPage({super.key});
@@ -22,7 +24,9 @@ class GroupSearchPage extends ConsumerStatefulWidget {
 
 class _GroupSearchPageState extends ConsumerState<GroupSearchPage> {
   final _controller = TextEditingController();
-  bool _hasSearched = false; // 用于判断是否显示初始提示
+
+  // UI 状态：是否触发过搜索（用于控制初始提示文案的显示）
+  bool _hasSearched = false;
 
   @override
   void dispose() {
@@ -30,26 +34,9 @@ class _GroupSearchPageState extends ConsumerState<GroupSearchPage> {
     super.dispose();
   }
 
-  void _handleSearch() {
-    final keyword = _controller.text.trim();
-    if (keyword.isEmpty) {
-      RadixToast.warning("Please enter a keyword");
-      return;
-    }
-
-    // 收起键盘
-    FocusScope.of(context).unfocus();
-    setState(() => _hasSearched = true);
-
-    ref.read(groupSearchControllerProvider.notifier).search(keyword);
-  }
-
-  void _onResultTap(GroupSearchResult group) {
-    context.push('/chat/group/profile/${group.id}');
-  }
-
   @override
   Widget build(BuildContext context) {
+    // 监听 Provider 数据状态
     final searchState = ref.watch(groupSearchControllerProvider);
 
     return Scaffold(
@@ -69,7 +56,9 @@ class _GroupSearchPageState extends ConsumerState<GroupSearchPage> {
       ),
       body: Column(
         children: [
-          // 1. 顶部搜索区
+          // =================================================
+          // 1. 顶部搜索框区域
+          // =================================================
           Container(
             padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
             color: context.bgPrimary,
@@ -79,7 +68,13 @@ class _GroupSearchPageState extends ConsumerState<GroupSearchPage> {
                   controller: _controller,
                   autofocus: true,
                   textInputAction: TextInputAction.search,
-                  onSubmitted: (_) => _handleSearch(),
+                  // 转发给 Logic 处理
+                  onSubmitted: (_) => _GroupSearchLogic.handleSearch(
+                    context: context,
+                    ref: ref,
+                    controller: _controller,
+                    onSearchStateChanged: () => setState(() => _hasSearched = true),
+                  ),
                   style: TextStyle(fontSize: 16.sp, color: context.textPrimary900),
                   decoration: InputDecoration(
                     hintText: "Search Group ID or Name",
@@ -99,11 +94,8 @@ class _GroupSearchPageState extends ConsumerState<GroupSearchPage> {
                         return _controller.text.isNotEmpty
                             ? IconButton(
                           icon: Icon(Icons.clear, color: Colors.grey, size: 18.r),
-                          onPressed: () {
-                            _controller.clear();
-                            // 可选：清除搜索结果
-                            // ref.invalidate(groupSearchControllerProvider);
-                          },
+                          // 转发给 Logic 处理
+                          onPressed: () => _GroupSearchLogic.handleClear(_controller),
                         )
                             : const SizedBox();
                       },
@@ -113,23 +105,31 @@ class _GroupSearchPageState extends ConsumerState<GroupSearchPage> {
                 SizedBox(height: 16.h),
                 Button(
                   width: double.infinity,
-                  // loading 状态直接从 Provider 获取
                   loading: searchState.isLoading,
-                  onPressed: _handleSearch,
+                  // 转发给 Logic 处理
+                  onPressed: () => _GroupSearchLogic.handleSearch(
+                    context: context,
+                    ref: ref,
+                    controller: _controller,
+                    onSearchStateChanged: () => setState(() => _hasSearched = true),
+                  ),
                   child: const Text("Search"),
                 ),
               ],
             ),
           ),
+
           Divider(height: 1, color: context.bgSecondary),
 
-          // 2. 内容展示区 (使用 AsyncValue.when)
+          // =================================================
+          // 2. 结果展示区域
+          // =================================================
           Expanded(
             child: searchState.when(
-              // Loading: 已经由 Button 显示了，这里可以留白或显示骨架屏
+              // Loading 由 Button 显示，这里留白
               loading: () => const SizedBox(),
 
-              // Error: 显示错误页
+              // 错误状态
               error: (err, stack) => Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -141,9 +141,9 @@ class _GroupSearchPageState extends ConsumerState<GroupSearchPage> {
                 ),
               ),
 
-              // Data: 显示列表
+              // 数据展示
               data: (results) {
-                // 还没搜过
+                // A. 初始状态 (未搜索)
                 if (!_hasSearched && results.isEmpty) {
                   return Center(
                     child: Column(
@@ -158,7 +158,7 @@ class _GroupSearchPageState extends ConsumerState<GroupSearchPage> {
                   );
                 }
 
-                // 搜了没结果
+                // B. 无结果
                 if (results.isEmpty) {
                   return Center(
                     child: Column(
@@ -173,7 +173,7 @@ class _GroupSearchPageState extends ConsumerState<GroupSearchPage> {
                   );
                 }
 
-                // 有结果
+                // C. 结果列表
                 return ListView.separated(
                   padding: EdgeInsets.symmetric(vertical: 12.h),
                   itemCount: results.length,
@@ -182,7 +182,9 @@ class _GroupSearchPageState extends ConsumerState<GroupSearchPage> {
                   itemBuilder: (context, index) {
                     final group = results[index];
                     return _GroupResultItem(
-                        group: group, onTap: () => _onResultTap(group));
+                      group: group,
+                      onTap: () => _GroupSearchLogic.handleResultTap(context, group),
+                    );
                   },
                 );
               },
@@ -194,7 +196,10 @@ class _GroupSearchPageState extends ConsumerState<GroupSearchPage> {
   }
 }
 
-// 子组件保持不变
+// =================================================================
+// Sub-Widgets (保留在 UI 文件中，因为它们属于 View 层)
+// =================================================================
+
 class _GroupResultItem extends StatelessWidget {
   final GroupSearchResult group;
   final VoidCallback onTap;
@@ -209,6 +214,7 @@ class _GroupResultItem extends StatelessWidget {
         padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 12.h),
         child: Row(
           children: [
+            // 头像
             ClipRRect(
               borderRadius: BorderRadius.circular(8.r),
               child: CachedNetworkImage(
@@ -231,6 +237,7 @@ class _GroupResultItem extends StatelessWidget {
               ),
             ),
             SizedBox(width: 12.w),
+            // 信息
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -254,6 +261,7 @@ class _GroupResultItem extends StatelessWidget {
                 ],
               ),
             ),
+            // 状态
             if (group.isMember)
               Container(
                 padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),

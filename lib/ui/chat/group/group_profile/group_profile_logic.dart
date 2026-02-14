@@ -346,30 +346,33 @@ class _GroupProfileLogic {
     final controller = TextEditingController();
     RadixModal.show(
       title: "Apply to Join",
-      builder: (ctx, close) => Padding(
-        padding: EdgeInsets.symmetric(horizontal: 16.w),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              "Verification is required for this group.",
-              style: TextStyle(color: context.textSecondary700, fontSize: 14.sp),
-            ),
-            SizedBox(height: 12.h),
-            TextField(
-              controller: controller,
-              autofocus: true,
-              maxLength: 50,
-              decoration: InputDecoration(
-                hintText: "Enter your reason (e.g. I'm Jack)",
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8.r)),
-                contentPadding: EdgeInsets.all(12.r),
-                filled: true,
-                fillColor: context.bgSecondary,
+      builder: (ctx, close) => Material(
+        type: MaterialType.transparency,
+        child: Padding(
+          padding: EdgeInsets.symmetric(horizontal: 16.w),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                "Verification is required for this group.",
+                style: TextStyle(color: context.textSecondary700, fontSize: 14.sp),
               ),
-            ),
-          ],
+              SizedBox(height: 12.h),
+              TextField(
+                controller: controller,
+                autofocus: true,
+                maxLength: 50,
+                decoration: InputDecoration(
+                  hintText: "Enter your reason (e.g. I'm Jack)",
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8.r)),
+                  contentPadding: EdgeInsets.all(12.r),
+                  filled: true,
+                  fillColor: context.bgSecondary,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
       confirmText: "Send",
@@ -384,24 +387,15 @@ class _GroupProfileLogic {
   // 私有方法：直接加入
   static Future<void> _doJoinDirectly(
       BuildContext context, WidgetRef ref, String groupId) async {
-    RadixToast.showLoading(message: "Joining...");
-    try {
       // 复用 GroupJoinController 的 apply 方法，reason 传空即可
       // 后端逻辑：如果 joinNeedApproval=false，apply 接口会自动把人加进去并返回 ACCEPTED
       final res = await ref.read(groupJoinControllerProvider.notifier)
           .apply(groupId, "");
-
-      RadixToast.hide();
-
-      if (res?.status == 1) { // 1 = ACCEPTED
+      if (res?.status == 'ACCEPTED') { // 1 = ACCEPTED
         RadixToast.success("Joined successfully");
         // 刷新页面状态，或者直接跳转聊天
         ref.invalidate(chatGroupProvider(groupId));
       }
-    } catch (e) {
-      RadixToast.hide();
-      RadixToast.error("Failed to join");
-    }
   }
 
   // 私有方法：提交申请
@@ -420,7 +414,6 @@ class _GroupProfileLogic {
       }
     } catch (e) {
       RadixToast.hide();
-      RadixToast.error("Failed to send application");
     }
   }
 }

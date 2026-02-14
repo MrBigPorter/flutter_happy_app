@@ -7,7 +7,7 @@ part of 'group_search_provider.dart';
 // **************************************************************************
 
 String _$groupSearchControllerHash() =>
-    r'c722e7368ad424c4095ed28215fb42494c47fd1f';
+    r'4bf4467501044f315033b530e3fed58e8e420b22';
 
 /// See also [GroupSearchController].
 @ProviderFor(GroupSearchController)

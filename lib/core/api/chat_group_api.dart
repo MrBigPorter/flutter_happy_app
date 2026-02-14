@@ -100,7 +100,7 @@ class ChatGroupApi {
 
   static Future<List<GroupSearchResult>> searchGroups(String keyword) async {
     final res = await Http.get(
-      '/chat/group/search', // 对应后端的 Controller 路径
+      '/api/v1/chat/group/search', // 对应后端的 Controller 路径
       queryParameters: {'keyword': keyword},
     );
 
