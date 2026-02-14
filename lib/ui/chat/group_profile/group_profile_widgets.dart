@@ -171,6 +171,52 @@ class _MenuSection extends ConsumerWidget {
 
     return Column(
       children: [
+        // 1. 核心管理入口 (仅管理员可见)
+        // =================================================
+        if (canEdit) ...[
+          Container(
+            margin: EdgeInsets.only(bottom: 12.h),
+            color: context.bgPrimary,
+            child: Column(
+              children: [
+                // [NEW] 入群申请入口
+                Consumer(
+                  builder: (context, ref, _) {
+                    final count = ref.watch(groupRequestCountProvider(detail.id));
+
+                    return _MenuItem(
+                      label: "Join Requests",
+                      showArrow: true,
+                      trailing: count > 0
+                          ? Container(
+                        padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 2.h),
+                        decoration: BoxDecoration(
+                          color: context.utilityError200, // 红色
+                          borderRadius: BorderRadius.circular(10.r),
+                        ),
+                        child: Text(
+                          count > 99 ? '99+' : '$count',
+                          style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 12.sp,
+                              fontWeight: FontWeight.bold
+                          ),
+                        ),
+                      )
+                          : null,
+                      onTap: () {
+                        // 清除红点 (可选)
+                        ref.read(groupRequestCountProvider(detail.id).notifier).clear();
+                        // 跳转到申请列表页 (路由稍后注册)
+                        context.push('/chat/group/requests/${detail.id}');
+                      },
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+        ],
         // 1. 群头像 (新增)
         _MenuItem(
           label: "Group Avatar",
@@ -275,6 +321,7 @@ class _MenuSection extends ConsumerWidget {
 // ======================================================
 // 区域 3: 底部按钮 (保持不变)
 // ======================================================
+
 class _FooterButtons extends ConsumerWidget {
   final ConversationDetail detail;
   final String myUserId;
@@ -283,19 +330,61 @@ class _FooterButtons extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // 1. 判断当前用户是否已经在群里
     final me = detail.members.findMember(myUserId);
+    final isMember = me != null;
     final isOwner = me?.isOwner ?? false;
 
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 16.w),
-      child: Button(
-        variant: ButtonVariant.error,
-        width: double.infinity,
-        child: Text(isOwner ? "Disband Group" : "Delete and Leave"),
-        onPressed: () {
-          _GroupProfileLogic.handleLeaveOrDisband(
-              context, ref, detail, isOwner);
-        },
+      child: Column(
+        children: [
+          // =================================================
+          // A. 陌生人视角：显示 "加入" 或 "申请"
+          // =================================================
+          if (!isMember)
+            Button(
+              // 如果需要审批，按钮文案为 "Apply"，否则为 "Join"
+              width: double.infinity,
+              variant: ButtonVariant.primary, // 主色调按钮
+              onPressed: () {
+                _GroupProfileLogic.handleJoinTap(context, ref, detail);
+              },
+              // 如果需要审批，按钮文案为 "Apply"，否则为 "Join"
+              child: Text(detail.joinNeedApproval ? "Apply to Join" : "Join Group"),
+            ),
+
+          // =================================================
+          // B. 成员视角：显示 "发消息" 和 "退群"
+          // =================================================
+          if (isMember) ...[
+            // 1. 发消息按钮
+            Button(
+              width: double.infinity,
+              variant: ButtonVariant.primary,
+              onPressed: () {
+                // 跳转到聊天页
+                appRouter.push('/chat/room/${detail.id}');
+              },
+              child: Text("Send Message", style: TextStyle(color: Colors.white)),
+            ),
+            SizedBox(height: 12.h),
+
+            // 2. 危险操作 (退群/解散)
+            Button(
+              width: double.infinity,
+              variant: ButtonVariant.error, // 红色按钮
+              // 只有非群主，或者群主决定解散时才显示
+              onPressed: () {
+                _GroupProfileLogic.handleLeaveOrDisband(
+                    context, ref, detail, isOwner);
+              },
+              child: Text(isOwner ? "Disband Group" : "Leave Group",
+                  style: TextStyle(color: Colors.white)
+            )
+            )
+          ],
+        ],
       ),
     );
   }

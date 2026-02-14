@@ -41,6 +41,7 @@ import 'package:flutter_app/app/page/me_page.dart';
 import 'package:flutter_app/app/page/login_page.dart';
 import 'package:flutter_app/app/page/product_detail_page.dart';
 import 'package:flutter_app/app/page/withdraw_page.dart';
+import '../../ui/chat/group_request_list/group_request_list_page.dart';
 import 'extra_codec.dart';
 import '../../ui/chat/direct_chat_settings_page.dart';
 import '../../ui/chat/local_contact_search_page.dart';
@@ -101,6 +102,14 @@ class AppRouter {
               final preSelectedId = state.uri.queryParameters['preSelectedId'];
               return GroupMemberSelectPage(existingGroupId: groupId, preSelectedId: preSelectedId,);
             }
+        ),
+        GoRoute(
+          path: '/chat/group/requests/:groupId',
+          name: 'group_requests',
+          builder: (context, state) {
+            final groupId = state.pathParameters['groupId']!;
+            return GroupRequestListPage(groupId: groupId);
+          },
         ),
         GoRoute(
           path: '/contact/search',

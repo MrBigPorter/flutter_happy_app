@@ -336,9 +336,9 @@ class GroupRequestCount extends _$GroupRequestCount {
 
 // 3. 控制器 Provider：负责“申请”和“审批”动作
 @riverpod
-class GroupRequestController extends _$GroupRequestController {
+class GroupJoinController extends _$GroupJoinController { // 修改为 GroupJoinController
   @override
-  Future<void> build()async {}
+  FutureOr<void> build() {}
 
   /// [管理员操作] 处理入群申请
   Future<bool> handleRequest({

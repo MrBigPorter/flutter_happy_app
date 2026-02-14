@@ -327,5 +327,100 @@ class _GroupProfileLogic {
         }
       },
     );
+
+  }
+
+  // ======================================================
+  // [新增] 5. 处理入群申请点击
+  // ======================================================
+  static void handleJoinTap(
+      BuildContext context, WidgetRef ref, ConversationDetail detail) {
+
+    // 情况 A: 不需要审批 -> 直接调用加入接口
+    if (!detail.joinNeedApproval) {
+      _doJoinDirectly(context, ref, detail.id);
+      return;
+    }
+
+    // 情况 B: 需要审批 -> 弹出对话框输入理由
+    final controller = TextEditingController();
+    RadixModal.show(
+      title: "Apply to Join",
+      builder: (ctx, close) => Padding(
+        padding: EdgeInsets.symmetric(horizontal: 16.w),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              "Verification is required for this group.",
+              style: TextStyle(color: context.textSecondary700, fontSize: 14.sp),
+            ),
+            SizedBox(height: 12.h),
+            TextField(
+              controller: controller,
+              autofocus: true,
+              maxLength: 50,
+              decoration: InputDecoration(
+                hintText: "Enter your reason (e.g. I'm Jack)",
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8.r)),
+                contentPadding: EdgeInsets.all(12.r),
+                filled: true,
+                fillColor: context.bgSecondary,
+              ),
+            ),
+          ],
+        ),
+      ),
+      confirmText: "Send",
+      onConfirm: (close) async {
+        final reason = controller.text.trim();
+        close(); // 先关闭弹窗
+        await _doApplyWithReason(context, ref, detail.id, reason);
+      },
+    );
+  }
+
+  // 私有方法：直接加入
+  static Future<void> _doJoinDirectly(
+      BuildContext context, WidgetRef ref, String groupId) async {
+    RadixToast.showLoading(message: "Joining...");
+    try {
+      // 复用 GroupJoinController 的 apply 方法，reason 传空即可
+      // 后端逻辑：如果 joinNeedApproval=false，apply 接口会自动把人加进去并返回 ACCEPTED
+      final res = await ref.read(groupJoinControllerProvider.notifier)
+          .apply(groupId, "");
+
+      RadixToast.hide();
+
+      if (res?.status == 1) { // 1 = ACCEPTED
+        RadixToast.success("Joined successfully");
+        // 刷新页面状态，或者直接跳转聊天
+        ref.invalidate(chatGroupProvider(groupId));
+      }
+    } catch (e) {
+      RadixToast.hide();
+      RadixToast.error("Failed to join");
+    }
+  }
+
+  // 私有方法：提交申请
+  static Future<void> _doApplyWithReason(
+      BuildContext context, WidgetRef ref, String groupId, String reason) async {
+    RadixToast.showLoading(message: "Sending application...");
+    try {
+      final res = await ref.read(groupJoinControllerProvider.notifier)
+          .apply(groupId, reason);
+
+      RadixToast.hide();
+
+      if (res != null) {
+        RadixToast.success("Application sent");
+        // 这里可以禁用按钮，或者显示 "Pending" 状态
+      }
+    } catch (e) {
+      RadixToast.hide();
+      RadixToast.error("Failed to send application");
+    }
   }
 }

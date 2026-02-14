@@ -461,22 +461,22 @@ class _GroupRequestCountProviderElement
   String get groupId => (origin as GroupRequestCountProvider).groupId;
 }
 
-String _$groupRequestControllerHash() =>
-    r'8b005c74fcf4112967278d3301692379adb45692';
+String _$groupJoinControllerHash() =>
+    r'75e067ffb8f1c60584df4091680341be0914e70a';
 
-/// See also [GroupRequestController].
-@ProviderFor(GroupRequestController)
-final groupRequestControllerProvider =
-    AutoDisposeAsyncNotifierProvider<GroupRequestController, void>.internal(
-  GroupRequestController.new,
-  name: r'groupRequestControllerProvider',
+/// See also [GroupJoinController].
+@ProviderFor(GroupJoinController)
+final groupJoinControllerProvider =
+    AutoDisposeAsyncNotifierProvider<GroupJoinController, void>.internal(
+  GroupJoinController.new,
+  name: r'groupJoinControllerProvider',
   debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
       ? null
-      : _$groupRequestControllerHash,
+      : _$groupJoinControllerHash,
   dependencies: null,
   allTransitiveDependencies: null,
 );
 
-typedef _$GroupRequestController = AutoDisposeAsyncNotifier<void>;
+typedef _$GroupJoinController = AutoDisposeAsyncNotifier<void>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member
