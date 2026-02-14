@@ -138,4 +138,62 @@ class ChatGroupApi {
     );
     return DisbandGroupRes.fromJson(res);
   }
+
+  // =================================================================
+  // 8. 申请加入群组 (Apply to Group)
+  // URL: POST /api/v1/chat/group/apply
+  // =================================================================
+  static Future<ApplyToGroupRes> applyToGroup({
+    required String conversationId,
+    String? reason,
+  }) async {
+    final request = ApplyToGroupReq(
+      conversationId: conversationId,
+      reason: reason,
+    );
+
+    final res = await Http.post(
+      '/api/v1/chat/group/apply',
+      data: request.toJson(),
+    );
+    return ApplyToGroupRes.fromJson(res);
+  }
+
+  // =================================================================
+  // 9. 获取入群申请列表 (Get Join Requests)
+  // URL: GET /api/v1/chat/group/requests/:conversationId
+  // =================================================================
+  static Future<List<GroupJoinRequest>> getJoinRequests(String conversationId) async {
+    final res = await Http.get(
+      '/api/v1/chat/group/requests/$conversationId',
+    );
+
+    // 使用通用解析逻辑处理列表数据
+    if (res is List) {
+      return res.map((e) => GroupJoinRequest.fromJson(e)).toList();
+    }
+    return [];
+  }
+
+  // =================================================================
+  // 10. 处理入群申请 (Handle Join Request)
+  // URL: POST /api/v1/chat/group/request/handle
+  // =================================================================
+  static Future<bool> handleJoinRequest({
+    required String requestId,
+    required bool isAccept,
+  }) async {
+    final request = HandleGroupJoinReq(
+      requestId: requestId,
+      action: isAccept ? 'accept' : 'reject',
+    );
+
+    await Http.post(
+      '/api/v1/chat/group/request/handle',
+      data: request.toJson(),
+    );
+
+    // 后端 handle 接口通常只返回成功标识
+    return true;
+  }
 }

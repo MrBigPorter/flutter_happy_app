@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_app/app/routes/app_router.dart';
 import 'package:flutter_app/core/store/user_store.dart';
-import 'package:flutter_app/ui/index.dart';
 import 'package:flutter_app/ui/modal/base/nav_hub.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_app/common.dart';
 import '../../../core/constants/socket_events.dart';
 import '../../../core/providers/socket_provider.dart';
@@ -131,6 +129,7 @@ class ChatEventProcessor {
           // 如果 payload 数据不够，才兜底拉接口
           _scheduleDetailSync(groupId);
         }
+        break;
       case SocketEvents.memberRoleUpdated:
         if (payload.targetId != null && payload.newRole != null) {
           await repo.updateMemberRole(
@@ -150,6 +149,24 @@ class ChatEventProcessor {
           // 或者可以做一个防抖 (Debounce)，防止短时间大量进人狂拉接口
           _scheduleDetailSync(groupId);
         }
+        break;
+      // 1. [管理员] 收到新申请：刷新红点和数据源
+      case SocketEvents.groupApplyNew:
+      // 让列表 Provider 失效，这样如果管理员正开着审批页，UI 会自动加载
+        ref.invalidate(groupJoinRequestsProvider(event.groupId));
+        // 如果你有全局红点 Provider，在这里更新它
+        break;
+    // 2. [申请人] 收到审批结果：刷新会话列表
+      case SocketEvents.groupApplyResult:
+        final bool approved = payload.updates['approved'] ?? false;
+        if (approved) {
+          // 核心：强制刷新整个会话列表，让新群出现在第一行
+          ref.invalidate(conversationListProvider);
+        }
+        break;
+    // 3. [管理员] 收到同步信令（其他管理员处理了）：刷新本地列表状态
+      case SocketEvents.groupRequestHandled:
+        ref.invalidate(groupJoinRequestsProvider(event.groupId));
         break;
     }
 

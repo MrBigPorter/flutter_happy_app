@@ -21,6 +21,7 @@ extension GlobalHandlerSocketExtension on _GlobalHandlerState {
       ref.invalidate(contactListProvider);
     });
 
+
     // 3. 通用业务通知
     _notificationSub = service.notificationStream.listen((notification) {
       if (!mounted) return;

@@ -186,3 +186,55 @@ Map<String, dynamic> _$UpdateGroupResToJson(UpdateGroupRes instance) =>
       'avatar': instance.avatar,
       'joinNeedApproval': instance.joinNeedApproval,
     };
+
+Map<String, dynamic> _$ApplyToGroupReqToJson(ApplyToGroupReq instance) =>
+    <String, dynamic>{
+      'conversationId': instance.conversationId,
+      'reason': instance.reason,
+    };
+
+ApplyToGroupRes _$ApplyToGroupResFromJson(Map<String, dynamic> json) =>
+    ApplyToGroupRes(
+      status: json['status'] as String,
+      requestId: json['requestId'] as String?,
+      message: json['message'] as String?,
+    );
+
+Map<String, dynamic> _$ApplyToGroupResToJson(ApplyToGroupRes instance) =>
+    <String, dynamic>{
+      'status': instance.status,
+      'requestId': instance.requestId,
+      'message': instance.message,
+    };
+
+Map<String, dynamic> _$HandleGroupJoinReqToJson(HandleGroupJoinReq instance) =>
+    <String, dynamic>{
+      'requestId': instance.requestId,
+      'action': instance.action,
+    };
+
+GroupJoinRequest _$GroupJoinRequestFromJson(Map<String, dynamic> json) =>
+    GroupJoinRequest(
+      id: json['id'] as String,
+      groupId: json['groupId'] as String,
+      applicant: ChatUser.fromJson(json['applicant'] as Map<String, dynamic>),
+      reason: json['reason'] as String,
+      status: $enumDecode(_$GroupRequestStatusEnumMap, json['status']),
+      createdAt: (json['createdAt'] as num).toInt(),
+    );
+
+Map<String, dynamic> _$GroupJoinRequestToJson(GroupJoinRequest instance) =>
+    <String, dynamic>{
+      'id': instance.id,
+      'groupId': instance.groupId,
+      'applicant': instance.applicant,
+      'reason': instance.reason,
+      'status': _$GroupRequestStatusEnumMap[instance.status]!,
+      'createdAt': instance.createdAt,
+    };
+
+const _$GroupRequestStatusEnumMap = {
+  GroupRequestStatus.pending: 0,
+  GroupRequestStatus.accepted: 1,
+  GroupRequestStatus.rejected: 2,
+};

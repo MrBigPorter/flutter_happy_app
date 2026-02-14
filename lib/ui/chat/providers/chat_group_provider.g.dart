@@ -6,7 +6,7 @@ part of 'chat_group_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$chatGroupHash() => r'9c8cc963dcf00381ef1d67c2645ab68fbf557315';
+String _$groupJoinRequestsHash() => r'b792a4bec98c09486a633a5537655b50a7e236c3';
 
 /// Copied from Dart SDK
 class _SystemHash {
@@ -28,6 +28,139 @@ class _SystemHash {
     return 0x1fffffff & (hash + ((0x00003fff & hash) << 15));
   }
 }
+
+/// See also [groupJoinRequests].
+@ProviderFor(groupJoinRequests)
+const groupJoinRequestsProvider = GroupJoinRequestsFamily();
+
+/// See also [groupJoinRequests].
+class GroupJoinRequestsFamily
+    extends Family<AsyncValue<List<GroupJoinRequest>>> {
+  /// See also [groupJoinRequests].
+  const GroupJoinRequestsFamily();
+
+  /// See also [groupJoinRequests].
+  GroupJoinRequestsProvider call(
+    String groupId,
+  ) {
+    return GroupJoinRequestsProvider(
+      groupId,
+    );
+  }
+
+  @override
+  GroupJoinRequestsProvider getProviderOverride(
+    covariant GroupJoinRequestsProvider provider,
+  ) {
+    return call(
+      provider.groupId,
+    );
+  }
+
+  static const Iterable<ProviderOrFamily>? _dependencies = null;
+
+  @override
+  Iterable<ProviderOrFamily>? get dependencies => _dependencies;
+
+  static const Iterable<ProviderOrFamily>? _allTransitiveDependencies = null;
+
+  @override
+  Iterable<ProviderOrFamily>? get allTransitiveDependencies =>
+      _allTransitiveDependencies;
+
+  @override
+  String? get name => r'groupJoinRequestsProvider';
+}
+
+/// See also [groupJoinRequests].
+class GroupJoinRequestsProvider
+    extends AutoDisposeFutureProvider<List<GroupJoinRequest>> {
+  /// See also [groupJoinRequests].
+  GroupJoinRequestsProvider(
+    String groupId,
+  ) : this._internal(
+          (ref) => groupJoinRequests(
+            ref as GroupJoinRequestsRef,
+            groupId,
+          ),
+          from: groupJoinRequestsProvider,
+          name: r'groupJoinRequestsProvider',
+          debugGetCreateSourceHash:
+              const bool.fromEnvironment('dart.vm.product')
+                  ? null
+                  : _$groupJoinRequestsHash,
+          dependencies: GroupJoinRequestsFamily._dependencies,
+          allTransitiveDependencies:
+              GroupJoinRequestsFamily._allTransitiveDependencies,
+          groupId: groupId,
+        );
+
+  GroupJoinRequestsProvider._internal(
+    super._createNotifier, {
+    required super.name,
+    required super.dependencies,
+    required super.allTransitiveDependencies,
+    required super.debugGetCreateSourceHash,
+    required super.from,
+    required this.groupId,
+  }) : super.internal();
+
+  final String groupId;
+
+  @override
+  Override overrideWith(
+    FutureOr<List<GroupJoinRequest>> Function(GroupJoinRequestsRef provider)
+        create,
+  ) {
+    return ProviderOverride(
+      origin: this,
+      override: GroupJoinRequestsProvider._internal(
+        (ref) => create(ref as GroupJoinRequestsRef),
+        from: from,
+        name: null,
+        dependencies: null,
+        allTransitiveDependencies: null,
+        debugGetCreateSourceHash: null,
+        groupId: groupId,
+      ),
+    );
+  }
+
+  @override
+  AutoDisposeFutureProviderElement<List<GroupJoinRequest>> createElement() {
+    return _GroupJoinRequestsProviderElement(this);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is GroupJoinRequestsProvider && other.groupId == groupId;
+  }
+
+  @override
+  int get hashCode {
+    var hash = _SystemHash.combine(0, runtimeType.hashCode);
+    hash = _SystemHash.combine(hash, groupId.hashCode);
+
+    return _SystemHash.finish(hash);
+  }
+}
+
+mixin GroupJoinRequestsRef
+    on AutoDisposeFutureProviderRef<List<GroupJoinRequest>> {
+  /// The parameter `groupId` of this provider.
+  String get groupId;
+}
+
+class _GroupJoinRequestsProviderElement
+    extends AutoDisposeFutureProviderElement<List<GroupJoinRequest>>
+    with GroupJoinRequestsRef {
+  _GroupJoinRequestsProviderElement(super.provider);
+
+  @override
+  String get groupId => (origin as GroupJoinRequestsProvider).groupId;
+}
+
+String _$chatGroupHash() => r'9c8cc963dcf00381ef1d67c2645ab68fbf557315';
 
 abstract class _$ChatGroup
     extends BuildlessAutoDisposeAsyncNotifier<ConversationDetail> {
@@ -186,5 +319,164 @@ final groupCreateControllerProvider =
 );
 
 typedef _$GroupCreateController = AutoDisposeAsyncNotifier<String?>;
+String _$groupRequestCountHash() => r'794226e84167dcca921fbcf5f747e15a4aa523ec';
+
+abstract class _$GroupRequestCount extends BuildlessAutoDisposeNotifier<int> {
+  late final String groupId;
+
+  int build(
+    String groupId,
+  );
+}
+
+/// See also [GroupRequestCount].
+@ProviderFor(GroupRequestCount)
+const groupRequestCountProvider = GroupRequestCountFamily();
+
+/// See also [GroupRequestCount].
+class GroupRequestCountFamily extends Family<int> {
+  /// See also [GroupRequestCount].
+  const GroupRequestCountFamily();
+
+  /// See also [GroupRequestCount].
+  GroupRequestCountProvider call(
+    String groupId,
+  ) {
+    return GroupRequestCountProvider(
+      groupId,
+    );
+  }
+
+  @override
+  GroupRequestCountProvider getProviderOverride(
+    covariant GroupRequestCountProvider provider,
+  ) {
+    return call(
+      provider.groupId,
+    );
+  }
+
+  static const Iterable<ProviderOrFamily>? _dependencies = null;
+
+  @override
+  Iterable<ProviderOrFamily>? get dependencies => _dependencies;
+
+  static const Iterable<ProviderOrFamily>? _allTransitiveDependencies = null;
+
+  @override
+  Iterable<ProviderOrFamily>? get allTransitiveDependencies =>
+      _allTransitiveDependencies;
+
+  @override
+  String? get name => r'groupRequestCountProvider';
+}
+
+/// See also [GroupRequestCount].
+class GroupRequestCountProvider
+    extends AutoDisposeNotifierProviderImpl<GroupRequestCount, int> {
+  /// See also [GroupRequestCount].
+  GroupRequestCountProvider(
+    String groupId,
+  ) : this._internal(
+          () => GroupRequestCount()..groupId = groupId,
+          from: groupRequestCountProvider,
+          name: r'groupRequestCountProvider',
+          debugGetCreateSourceHash:
+              const bool.fromEnvironment('dart.vm.product')
+                  ? null
+                  : _$groupRequestCountHash,
+          dependencies: GroupRequestCountFamily._dependencies,
+          allTransitiveDependencies:
+              GroupRequestCountFamily._allTransitiveDependencies,
+          groupId: groupId,
+        );
+
+  GroupRequestCountProvider._internal(
+    super._createNotifier, {
+    required super.name,
+    required super.dependencies,
+    required super.allTransitiveDependencies,
+    required super.debugGetCreateSourceHash,
+    required super.from,
+    required this.groupId,
+  }) : super.internal();
+
+  final String groupId;
+
+  @override
+  int runNotifierBuild(
+    covariant GroupRequestCount notifier,
+  ) {
+    return notifier.build(
+      groupId,
+    );
+  }
+
+  @override
+  Override overrideWith(GroupRequestCount Function() create) {
+    return ProviderOverride(
+      origin: this,
+      override: GroupRequestCountProvider._internal(
+        () => create()..groupId = groupId,
+        from: from,
+        name: null,
+        dependencies: null,
+        allTransitiveDependencies: null,
+        debugGetCreateSourceHash: null,
+        groupId: groupId,
+      ),
+    );
+  }
+
+  @override
+  AutoDisposeNotifierProviderElement<GroupRequestCount, int> createElement() {
+    return _GroupRequestCountProviderElement(this);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is GroupRequestCountProvider && other.groupId == groupId;
+  }
+
+  @override
+  int get hashCode {
+    var hash = _SystemHash.combine(0, runtimeType.hashCode);
+    hash = _SystemHash.combine(hash, groupId.hashCode);
+
+    return _SystemHash.finish(hash);
+  }
+}
+
+mixin GroupRequestCountRef on AutoDisposeNotifierProviderRef<int> {
+  /// The parameter `groupId` of this provider.
+  String get groupId;
+}
+
+class _GroupRequestCountProviderElement
+    extends AutoDisposeNotifierProviderElement<GroupRequestCount, int>
+    with GroupRequestCountRef {
+  _GroupRequestCountProviderElement(super.provider);
+
+  @override
+  String get groupId => (origin as GroupRequestCountProvider).groupId;
+}
+
+String _$groupRequestControllerHash() =>
+    r'8b005c74fcf4112967278d3301692379adb45692';
+
+/// See also [GroupRequestController].
+@ProviderFor(GroupRequestController)
+final groupRequestControllerProvider =
+    AutoDisposeAsyncNotifierProvider<GroupRequestController, void>.internal(
+  GroupRequestController.new,
+  name: r'groupRequestControllerProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$groupRequestControllerHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+typedef _$GroupRequestController = AutoDisposeAsyncNotifier<void>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member

@@ -1,10 +1,10 @@
 import 'dart:math';
+import 'package:flutter_app/ui/chat/models/group_manage_req.dart';
 import 'package:flutter_app/ui/chat/repository/message_repository.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:flutter_app/common.dart';
 import '../../../core/api/chat_group_api.dart';
 import '../../../core/constants/socket_events.dart';
-import '../../../core/store/user_store.dart';
 import '../models/conversation.dart';
 import '../models/group_role.dart';
 import '../services/database/local_database_service.dart';
@@ -314,5 +314,64 @@ class GroupCreateController extends _$GroupCreateController {
       ref.invalidate(conversationListProvider);
     }
     return newState.value;
+  }
+}
+
+// 1. 数据 Provider：获取某个群的待审批列表
+@riverpod
+Future<List<GroupJoinRequest>> groupJoinRequests(GroupJoinRequestsRef ref,String groupId) async{
+  // 进入页面时watch,离开时onDispose
+  return await ChatGroupApi.getJoinRequests(groupId);
+}
+
+// 2. 状态 Provider：管理全局申请红点
+@riverpod
+class GroupRequestCount extends _$GroupRequestCount {
+  @override
+  int build(String groupId) => 0;
+
+  void increment() => state++;
+  void clear() => state = 0;
+}
+
+// 3. 控制器 Provider：负责“申请”和“审批”动作
+@riverpod
+class GroupRequestController extends _$GroupRequestController {
+  @override
+  Future<void> build()async {}
+
+  /// [管理员操作] 处理入群申请
+  Future<bool> handleRequest({
+    required String groupId,
+    required String requestId,
+    required bool isAccept,
+  }) async {
+    state = const AsyncLoading();
+    state = await AsyncValue.guard(() async {
+      await ChatGroupApi.handleJoinRequest(
+        requestId: requestId,
+        isAccept: isAccept,
+      );
+
+      // 【核心逻辑】审批成功后，立即使列表 Provider 失效，触发 UI 重新加载
+      ref.invalidate(groupJoinRequestsProvider(groupId));
+    });
+
+    return !state.hasError;
+  }
+
+  /// [普通用户操作] 提交申请入群
+  Future<ApplyToGroupRes?> apply(String groupId, String reason) async {
+    state = const AsyncLoading();
+    ApplyToGroupRes? result;
+
+    state = await AsyncValue.guard(() async {
+      result = await ChatGroupApi.applyToGroup(
+        conversationId: groupId,
+        reason: reason,
+      );
+    });
+
+    return result;
   }
 }

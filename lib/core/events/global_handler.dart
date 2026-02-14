@@ -21,6 +21,7 @@ import '../../ui/chat/handlers/global_chat_handler.dart';
 import '../../ui/chat/providers/contact_provider.dart';
 import '../../ui/chat/providers/global_unread_provider.dart';
 import '../../ui/toast/radix_toast.dart';
+import '../constants/socket_events.dart';
 import '../providers/socket_provider.dart';
 import '../services/socket/session_manager.dart';
 import '../services/socket/socket_service.dart';

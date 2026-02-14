@@ -1,6 +1,8 @@
 
 import 'package:json_annotation/json_annotation.dart';
 
+import 'conversation.dart';
+
 part 'group_manage_req.g.dart';
 
 @JsonSerializable(checked: true)
@@ -163,4 +165,67 @@ class UpdateGroupRes {
   UpdateGroupRes({required this.id, required this.name, this.announcement, required this.isMuteAll, this.avatar, this.joinNeedApproval});
 
   factory UpdateGroupRes.fromJson(Map<String, dynamic> json) => _$UpdateGroupResFromJson(json);
+}
+
+// 1. 提交申请 Payload
+@JsonSerializable(createFactory: false)
+class ApplyToGroupReq {
+  final String conversationId; // 对应后端的 groupId
+  final String? reason;
+
+  ApplyToGroupReq({required this.conversationId, this.reason});
+
+  Map<String, dynamic> toJson() => _$ApplyToGroupReqToJson(this);
+}
+
+// 2. 提交申请后的 Response (对应后端的 ApplyToGroupResDto)
+@JsonSerializable(createFactory: true)
+class ApplyToGroupRes {
+  final String status; // 'PENDING' | 'ACCEPTED'
+  final String? requestId;
+  final String? message;
+
+  ApplyToGroupRes({required this.status, this.requestId, this.message});
+
+  factory ApplyToGroupRes.fromJson(Map<String, dynamic> json) =>
+      _$ApplyToGroupResFromJson(json);
+}
+
+// 3. 审批操作 Payload
+@JsonSerializable(createFactory: false)
+class HandleGroupJoinReq {
+  final String requestId;
+  final String action; // 'accept' | 'reject'
+
+  HandleGroupJoinReq({required this.requestId, required this.action});
+
+  Map<String, dynamic> toJson() => _$HandleGroupJoinReqToJson(this);
+}
+
+enum GroupRequestStatus {
+  @JsonValue(0) pending,
+  @JsonValue(1) accepted,
+  @JsonValue(2) rejected;
+}
+
+@JsonSerializable()
+class GroupJoinRequest {
+  final String id;
+  final String groupId;
+  final ChatUser applicant; // 包含申请人的头像、昵称和 ID
+  final String reason;
+  final GroupRequestStatus status;
+  final int createdAt;
+
+  GroupJoinRequest({
+    required this.id,
+    required this.groupId,
+    required this.applicant,
+    required this.reason,
+    required this.status,
+    required this.createdAt,
+  });
+
+  factory GroupJoinRequest.fromJson(Map<String, dynamic> json) =>
+      _$GroupJoinRequestFromJson(json);
 }
