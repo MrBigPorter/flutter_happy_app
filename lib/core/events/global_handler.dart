@@ -25,6 +25,7 @@ import '../constants/socket_events.dart';
 import '../providers/socket_provider.dart';
 import '../services/socket/session_manager.dart';
 import '../services/socket/socket_service.dart';
+import '../store/user_store.dart';
 
 //  修改标注 1: 引入逻辑分层文件
 part 'global_handler_socket.dart';
@@ -47,6 +48,7 @@ class _GlobalHandlerState extends ConsumerState<GlobalHandler> {
   StreamSubscription? _updateSub;
   StreamSubscription? _contactApplySub;
   StreamSubscription? _contactAcceptSub;
+  StreamSubscription? _groupEventSub;
 
   DateTime? _lastToastTime;
   String? _lastToastKey;

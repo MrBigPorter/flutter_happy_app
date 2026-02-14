@@ -150,23 +150,25 @@ class ChatEventProcessor {
           _scheduleDetailSync(groupId);
         }
         break;
-      // 1. [管理员] 收到新申请：刷新红点和数据源
+      // --- [v6.0 新增] 入群审批系统 ---
       case SocketEvents.groupApplyNew:
-      // 让列表 Provider 失效，这样如果管理员正开着审批页，UI 会自动加载
-        ref.invalidate(groupJoinRequestsProvider(event.groupId));
-        // 如果你有全局红点 Provider，在这里更新它
+        // 管理员收到申请 -> 刷新“申请列表” Provider
+        // invalidate 会导致下次读取该 provider 时重新执行 build (拉取 API)
+        ref.invalidate(groupJoinRequestsProvider(groupId));
         break;
-    // 2. [申请人] 收到审批结果：刷新会话列表
+
       case SocketEvents.groupApplyResult:
-        final bool approved = payload.updates['approved'] ?? false;
-        if (approved) {
-          // 核心：强制刷新整个会话列表，让新群出现在第一行
-          ref.invalidate(conversationListProvider);
+        // 申请人收到结果 -> 决定是否刷新首页列表
+        //  [Fix] 直接从 payload 读取 approved，不再查 updates
+        if (payload.approved == true) {
+          // 实际上后端会同时发 conversationAdded，这里做双重保险
+          ref.read(conversationListProvider.notifier).refresh();
         }
         break;
-    // 3. [管理员] 收到同步信令（其他管理员处理了）：刷新本地列表状态
+
       case SocketEvents.groupRequestHandled:
-        ref.invalidate(groupJoinRequestsProvider(event.groupId));
+        // 其他管理员处理了 -> 刷新“申请列表” Provider 同步按钮状态
+        ref.invalidate(groupJoinRequestsProvider(groupId));
         break;
     }
 
@@ -214,7 +216,6 @@ class ChatEventProcessor {
         break;
     }
   }
-
 
   Future<void> _updateGroupDetailCache(String groupId) async {
     try {

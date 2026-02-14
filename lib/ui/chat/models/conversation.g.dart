@@ -75,6 +75,33 @@ const _$MessageStatusEnumMap = {
   MessageStatus.pending: 'pending',
 };
 
+ChatSocketPayload _$ChatSocketPayloadFromJson(Map<String, dynamic> json) =>
+    ChatSocketPayload(
+      conversationId: json['conversationId'] as String,
+      operatorId: json['operatorId'] as String?,
+      targetId: json['targetId'] as String?,
+      approved: json['approved'] as bool?,
+      applicantId: json['applicantId'] as String?,
+      groupName: json['groupName'] as String?,
+      reason: json['reason'] as String?,
+      nickname: json['nickname'] as String?,
+      avatar: json['avatar'] as String?,
+      requestId: json['requestId'] as String?,
+      status: (json['status'] as num?)?.toInt(),
+      handlerName: json['handlerName'] as String?,
+      updates: json['updates'] as Map<String, dynamic>? ?? const {},
+      mutedUntil: (json['mutedUntil'] as num?)?.toInt(),
+      newRole: json['newRole'] as String?,
+      timestamp: (json['timestamp'] as num?)?.toInt(),
+      member: json['member'] == null
+          ? null
+          : ChatMember.fromJson(json['member'] as Map<String, dynamic>),
+      members: (json['members'] as List<dynamic>?)
+          ?.map((e) => ChatMember.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      syncType: json['syncType'] as String?,
+    );
+
 ChatSender _$ChatSenderFromJson(Map<String, dynamic> json) => $checkedCreate(
       'ChatSender',
       json,
@@ -97,20 +124,37 @@ Map<String, dynamic> _$ChatSenderToJson(ChatSender instance) =>
       'phone': instance.phone,
     };
 
-ChatSocketPayload _$ChatSocketPayloadFromJson(Map<String, dynamic> json) =>
-    ChatSocketPayload(
-      conversationId: json['conversationId'] as String,
-      operatorId: json['operatorId'] as String?,
-      targetId: json['targetId'] as String?,
-      updates: json['updates'] as Map<String, dynamic>? ?? const {},
-      mutedUntil: (json['mutedUntil'] as num?)?.toInt(),
-      newRole: json['newRole'] as String?,
-      timestamp: (json['timestamp'] as num?)?.toInt(),
-      member: json['member'] == null
-          ? null
-          : ChatMember.fromJson(json['member'] as Map<String, dynamic>),
-      syncType: json['syncType'] as String?,
+ChatMember _$ChatMemberFromJson(Map<String, dynamic> json) => $checkedCreate(
+      'ChatMember',
+      json,
+      ($checkedConvert) {
+        final val = ChatMember(
+          userId: $checkedConvert('userId', (v) => v as String),
+          nickname: $checkedConvert('nickname', (v) => v as String),
+          avatar: $checkedConvert('avatar', (v) => v as String?),
+          role: $checkedConvert(
+              'role', (v) => $enumDecode(_$GroupRoleEnumMap, v)),
+          mutedUntil:
+              $checkedConvert('mutedUntil', (v) => (v as num?)?.toInt()),
+        );
+        return val;
+      },
     );
+
+Map<String, dynamic> _$ChatMemberToJson(ChatMember instance) =>
+    <String, dynamic>{
+      'userId': instance.userId,
+      'nickname': instance.nickname,
+      'avatar': instance.avatar,
+      'role': _$GroupRoleEnumMap[instance.role]!,
+      'mutedUntil': instance.mutedUntil,
+    };
+
+const _$GroupRoleEnumMap = {
+  GroupRole.owner: 'OWNER',
+  GroupRole.admin: 'ADMIN',
+  GroupRole.member: 'MEMBER',
+};
 
 ChatMessage _$ChatMessageFromJson(Map<String, dynamic> json) => $checkedCreate(
       'ChatMessage',
@@ -147,38 +191,6 @@ Map<String, dynamic> _$ChatMessageToJson(ChatMessage instance) =>
       'meta': instance.meta,
       'isSelf': instance.isSelf,
     };
-
-ChatMember _$ChatMemberFromJson(Map<String, dynamic> json) => $checkedCreate(
-      'ChatMember',
-      json,
-      ($checkedConvert) {
-        final val = ChatMember(
-          userId: $checkedConvert('userId', (v) => v as String),
-          nickname: $checkedConvert('nickname', (v) => v as String),
-          avatar: $checkedConvert('avatar', (v) => v as String?),
-          role: $checkedConvert(
-              'role', (v) => $enumDecode(_$GroupRoleEnumMap, v)),
-          mutedUntil:
-              $checkedConvert('mutedUntil', (v) => (v as num?)?.toInt()),
-        );
-        return val;
-      },
-    );
-
-Map<String, dynamic> _$ChatMemberToJson(ChatMember instance) =>
-    <String, dynamic>{
-      'userId': instance.userId,
-      'nickname': instance.nickname,
-      'avatar': instance.avatar,
-      'role': _$GroupRoleEnumMap[instance.role]!,
-      'mutedUntil': instance.mutedUntil,
-    };
-
-const _$GroupRoleEnumMap = {
-  GroupRole.owner: 'OWNER',
-  GroupRole.admin: 'ADMIN',
-  GroupRole.member: 'MEMBER',
-};
 
 ConversationIdResponse _$ConversationIdResponseFromJson(
         Map<String, dynamic> json) =>

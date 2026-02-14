@@ -21,6 +21,43 @@ extension GlobalHandlerSocketExtension on _GlobalHandlerState {
       ref.invalidate(contactListProvider);
     });
 
+    // ========================================================
+    // [新增] 5. 群组事件监听 (只负责弹窗，不负责业务逻辑)
+    // ========================================================
+    _groupEventSub = service.groupEventStream.listen((event) {
+      if (!mounted) return;
+
+      final payload = event.payload;
+
+      switch (event.type) {
+      // A. 管理员收到新申请
+        case SocketEvents.groupApplyNew:
+          _showSuccessToast(
+              "New Group Request",
+              "${payload.nickname ?? 'Someone'} wants to join the group"
+          );
+          break;
+
+      // B. 申请人收到结果
+        case SocketEvents.groupApplyResult:
+          final groupName = payload.groupName ?? 'Group';
+          if (payload.approved == true) {
+            _showSuccessToast("Application Approved", "You have joined $groupName");
+          } else {
+            _showErrorToast("Application Rejected", "Your request to join $groupName was rejected");
+          }
+          break;
+
+      // C. 成员被踢 (给自己弹个提示)
+        case SocketEvents.memberKicked:
+          final myId = ref.read(userProvider)?.id;
+          if (payload.targetId == myId) {
+            _showErrorToast("Removed", "You were removed from the group");
+          }
+          break;
+      }
+    });
+
 
     // 3. 通用业务通知
     _notificationSub = service.notificationStream.listen((notification) {
@@ -53,5 +90,6 @@ extension GlobalHandlerSocketExtension on _GlobalHandlerState {
     _updateSub?.cancel();
     _contactApplySub?.cancel();
     _contactAcceptSub?.cancel();
+    _groupEventSub?.cancel();
   }
 }

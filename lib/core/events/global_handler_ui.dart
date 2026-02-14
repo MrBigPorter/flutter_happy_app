@@ -31,7 +31,7 @@ extension GlobalHandlerUIExtension on _GlobalHandlerState {
     );
   }
 
-  /// ✅ 2. 成功提示：直接调用封装好的 RadixToast
+  ///  2. 成功提示：直接调用封装好的 RadixToast
   void _showSuccessToast(String title, String msg) {
     if (_isDuplicate(title, msg)) return;
     RadixToast.success(msg, title: title);

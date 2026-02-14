@@ -4,7 +4,10 @@ import 'group_role.dart';
 
 part 'conversation.g.dart';
 
-// 1. 优化：统一枚举命名风格
+// =================================================================
+// 1. 枚举定义 (Enums)
+// =================================================================
+
 enum ConversationType {
   @JsonValue('DIRECT') direct,
   @JsonValue('GROUP') group,
@@ -22,6 +25,10 @@ enum RelationshipStatus {
   bool get isStranger => this == RelationshipStatus.stranger;
   bool get isSent => this == RelationshipStatus.sent;
 }
+
+// =================================================================
+// 2. Conversation 列表项模型
+// =================================================================
 
 @JsonSerializable(checked: true)
 class Conversation {
@@ -78,9 +85,9 @@ class Conversation {
     int? lastMsgSeqId,
     MessageStatus? lastMsgStatus,
 
-      String? announcement,
-      bool? isMuteAll,
-      bool? joinNeedApproval,
+    String? announcement,
+    bool? isMuteAll,
+    bool? joinNeedApproval,
   }) {
     return Conversation(
       id: id ?? this.id,
@@ -109,41 +116,40 @@ class Conversation {
   String toString() => toJson().toString();
 }
 
-@JsonSerializable(checked: true)
-class ChatSender {
-  final String id;
-  final String nickname;
-  final String? avatar;
-  final String? phone;
-
-  ChatSender({required this.id, required this.nickname, this.avatar, this.phone});
-
-  factory ChatSender.fromJson(Map<String, dynamic> json) => _$ChatSenderFromJson(json);
-  Map<String, dynamic> toJson() => _$ChatSenderToJson(this);
-
-  @override
-  String toString() => toJson().toString();
-}
+// =================================================================
+// 3. Socket Payload & Event (核心修复区)
+// =================================================================
 
 @JsonSerializable(createToJson: false) // 只需反序列化
 class ChatSocketPayload {
-  // 1. 核心三要素 (Context, Subject, Object)
+  // 3.1 核心三要素 (Context, Subject, Object)
   final String conversationId;
   final String? operatorId; // 操作人
-  final String? targetId;   // 目标人 (标准化后)
+  final String? targetId;   // 目标人 (标准化后，兼容所有ID字段)
 
-  // 2. 附加信息 (Details)
+  // 3.2 [新增] 入群审批系统专用字段
+  final bool? approved;      // 对应 GroupApplyResultEvent.approved
+  final String? applicantId; // 对应 GroupApplyResultEvent.applicantId
+  final String? groupName;   // 对应 GroupApplyResultEvent.groupName
+  final String? reason;      // 对应 GroupApplyNewEvent.reason
+  final String? nickname;    // 对应 GroupApplyNewEvent.nickname
+  final String? avatar;      // 对应 GroupApplyNewEvent.avatar
+  final String? requestId;   // 对应 GroupRequestHandledEvent.requestId
+  final int? status;         // 对应 GroupRequestHandledEvent.status
+  final String? handlerName; // 对应 GroupRequestHandledEvent.handlerName
+
+  // 3.3 原有业务字段 (Details)
   final Map<String, dynamic> updates; // 群信息更新内容
   final int? mutedUntil;              // 禁言截止时间
   final String? newRole;              // 新角色
   final int? timestamp;               // 时间戳
-  final String? syncType;            // 同步类型 (e.g. "full", "partial")，可选字段用于优化数据同步策略
+  final String? syncType;            // 同步类型
 
+  // 3.4 复杂对象 (Complex Objects)
+  final ChatMember? member; // 单个成员信息
+  final List<ChatMember>? members; // [新增] 批量成员信息
 
-  // 3. 复杂对象 (Complex Objects)
-  final ChatMember? member; // 入群等事件携带的完整成员信息
-
-  // 兼容旧字段 (不参与构造，仅用于逻辑辅助，或者直接在 fromJson 映射掉)
+  // 3.5 兼容旧字段 (不参与构造，逻辑辅助)
   @JsonKey(includeFromJson: false)
   final String? kickedUserId;
 
@@ -151,11 +157,24 @@ class ChatSocketPayload {
     required this.conversationId,
     this.operatorId,
     this.targetId,
+
+    // 新增字段
+    this.approved,
+    this.applicantId,
+    this.groupName,
+    this.reason,
+    this.nickname,
+    this.avatar,
+    this.requestId,
+    this.status,
+    this.handlerName,
+
     this.updates = const {},
     this.mutedUntil,
     this.newRole,
     this.timestamp,
     this.member,
+    this.members,
     this.kickedUserId,
     this.syncType
   });
@@ -168,12 +187,13 @@ class ChatSocketPayload {
       //  统一读取 operatorId
       operatorId: json['operatorId']?.toString(),
 
-      //  统一读取 targetId (强力兼容后端旧字段)
+      //  统一读取 targetId (强力兼容后端旧字段 + 新增的 applicantId)
       targetId: json['targetId']?.toString()
           ?? json['memberId']?.toString()
           ?? json['userId']?.toString()
           ?? json['kickedUserId']?.toString()
-          ?? json['newOwnerId']?.toString(),
+          ?? json['newOwnerId']?.toString()
+          ?? json['applicantId']?.toString(), //  兼容申请人ID
 
       //  解析 updates (防空、防嵌套)
       updates: (json['updates'] is Map)
@@ -184,20 +204,35 @@ class ChatSocketPayload {
       mutedUntil: json['mutedUntil'] is int ? json['mutedUntil'] : null,
       newRole: json['newRole']?.toString(),
       timestamp: json['timestamp'] is int ? json['timestamp'] : null,
+      syncType: json['syncType']?.toString(),
 
-      //  直接解析为 ChatMember 对象 (因为在同一个文件，可以直接用)
+      //   解析审批流新字段 (防止类型错误导致 Crash)
+      approved: json['approved'] is bool ? json['approved'] : null,
+      applicantId: json['applicantId']?.toString(),
+      groupName: json['groupName']?.toString(),
+      reason: json['reason']?.toString(),
+      nickname: json['nickname']?.toString(),
+      avatar: json['avatar']?.toString(),
+      requestId: json['requestId']?.toString(),
+      status: json['status'] is int ? json['status'] : null,
+      handlerName: json['handlerName']?.toString(),
+
+      //  直接解析为 ChatMember 对象
       member: json['member'] != null
           ? ChatMember.fromJson(json['member'])
           : null,
+
+      //   解析批量成员列表
+      members: (json['members'] as List<dynamic>?)
+          ?.map((e) => ChatMember.fromJson(e))
+          .toList(),
     );
   }
 
   @override
   String toString() {
-    return 'ChatSocketPayload(targetId: $targetId, operatorId: $operatorId, updates: $updates, mutedUntil: $mutedUntil)';
+    return 'ChatSocketPayload(targetId: $targetId, operatorId: $operatorId, syncType: $syncType)';
   }
-
-  String? operator [](String other) {}
 }
 
 class SocketGroupEvent {
@@ -205,7 +240,7 @@ class SocketGroupEvent {
   final Map<String, dynamic> rawData; // 原始数据
   late final ChatSocketPayload payload; // 解析后的强类型数据
 
-  // 快捷访问器
+  //  [修复] 补回 groupId getter，供 Provider 使用
   String get groupId => payload.conversationId;
 
   SocketGroupEvent({
@@ -216,6 +251,7 @@ class SocketGroupEvent {
     payload = ChatSocketPayload.fromJson(rawData);
   }
 
+  //  [修复] 补回 factory，供 chat_extension.dart 使用
   factory SocketGroupEvent.fromJson(String type, Map<String, dynamic> json) {
     return SocketGroupEvent(
       type: type,
@@ -224,108 +260,9 @@ class SocketGroupEvent {
   }
 }
 
-@JsonSerializable(checked: true)
-class ChatMessage {
-  final String id;
-  final int type; // 0:Text, 1:Image
-  final String content;
-  final int createdAt;
-  final ChatSender? sender;
-  final int? seqId;
-  @JsonKey(defaultValue: false)
-  final bool isRecalled;
-
-  final Map<String, dynamic>? meta;
-
-  @JsonKey(defaultValue: false)
-  final bool isSelf;
-
-  ChatMessage({
-    required this.id,
-    required this.type,
-    required this.content,
-    required this.createdAt,
-    this.isRecalled = false,
-    this.sender,
-    this.isSelf = false,
-    this.seqId,
-    this.meta,
-  });
-
-  factory ChatMessage.fromJson(Map<String, dynamic> json) => _$ChatMessageFromJson(json);
-  Map<String, dynamic> toJson() => _$ChatMessageToJson(this);
-
-  @override
-  String toString() => toJson().toString();
-}
-
-// ==========================================
-// 成员模型
-// ==========================================
-@JsonSerializable(checked: true)
-class ChatMember {
-  final String userId;
-  final String nickname;
-  final String? avatar;
-  final GroupRole role;
-  final int? mutedUntil;
-
-  ChatMember({
-    required this.userId,
-    required this.nickname,
-    this.avatar,
-    required this.role,
-    this.mutedUntil,
-  });
-
-  bool get isOwner => role == GroupRole.owner;
-  bool get isAdmin => role == GroupRole.admin;
-  bool get isManagement => isOwner || isAdmin;
-
-  //  2. 权限比较
-  // "我"是否有权管理 "target"？
-  bool canManage(ChatMember target) {
-    if (userId == target.userId) return false; // 不能动自己
-    return role.canManageMembers(target.role); // 依赖 Enum 里的逻辑
-  }
-
-  // computed property to check if currently muted
-  bool get isMuted {
-    if (mutedUntil == null) return false;
-    final until = DateTime.fromMillisecondsSinceEpoch(mutedUntil!);
-    return DateTime.now().isBefore(until);
-  }
-
-  // return seconds left to unmute, or 0 if not muted
-  Duration get muteRemaining {
-    if (mutedUntil == null) return Duration.zero;
-    final until = DateTime.fromMillisecondsSinceEpoch(mutedUntil!);
-    final diff = until.difference(DateTime.now());
-    return diff.isNegative ? Duration.zero : diff;
-  }
-
-  factory ChatMember.fromJson(Map<String, dynamic> json) =>
-      _$ChatMemberFromJson(json);
-
-  Map<String, dynamic> toJson() => _$ChatMemberToJson(this);
-
-  ChatMember copyWith({
-    String? userId,
-    String? nickname,
-    String? avatar,
-    GroupRole? role,
-    int? mutedUntil,
-  }) {
-    return ChatMember(
-      userId: userId ?? this.userId,
-      nickname: nickname ?? this.nickname,
-      avatar: avatar ?? this.avatar,
-      role: role ?? this.role,
-      mutedUntil: mutedUntil ?? this.mutedUntil,
-    );
-  }
-}
-
+// =================================================================
+// 4. ConversationDetail 详情模型
+// =================================================================
 
 class ConversationDetail {
   final String id;
@@ -412,9 +349,9 @@ class ConversationDetail {
       // 关键修复：必填 String 字段必须给默认值，防止数据库脏数据导致 Crash
       id: json['id']?.toString() ?? '',
       name: json['name']?.toString() ?? 'Unknown Group',
-      ownerId: json['ownerId']?.toString() ?? '', // 这里如果为 null 之前会崩
+      ownerId: json['ownerId']?.toString() ?? '',
 
-      avatar: json['avatar'], // 可空字段可以直接赋值
+      avatar: json['avatar'],
       unreadCount: json['unreadCount'] ?? 0,
       type: typeEnum,
 
@@ -433,7 +370,6 @@ class ConversationDetail {
     );
   }
 
-  //  修复：补充了漏掉的字段，否则存入本地数据库后数据会丢失
   Map<String, dynamic> toJson() {
     return {
       'id': id,
@@ -458,9 +394,125 @@ class ConversationDetail {
   int get memberCount => members.length;
 }
 
-// ==========================================
-//  其他 API 请求/响应模型 (保持不变)
-// ==========================================
+// =================================================================
+// 5. 辅助模型 (Sender, Member, Message)
+// =================================================================
+
+@JsonSerializable(checked: true)
+class ChatSender {
+  final String id;
+  final String nickname;
+  final String? avatar;
+  final String? phone;
+
+  ChatSender({required this.id, required this.nickname, this.avatar, this.phone});
+
+  factory ChatSender.fromJson(Map<String, dynamic> json) => _$ChatSenderFromJson(json);
+  Map<String, dynamic> toJson() => _$ChatSenderToJson(this);
+
+  @override
+  String toString() => toJson().toString();
+}
+
+@JsonSerializable(checked: true)
+class ChatMember {
+  final String userId;
+  final String nickname;
+  final String? avatar;
+  final GroupRole role;
+  final int? mutedUntil;
+
+  ChatMember({
+    required this.userId,
+    required this.nickname,
+    this.avatar,
+    required this.role,
+    this.mutedUntil,
+  });
+
+  bool get isOwner => role == GroupRole.owner;
+  bool get isAdmin => role == GroupRole.admin;
+  bool get isManagement => isOwner || isAdmin;
+
+  //  2. 权限比较
+  bool canManage(ChatMember target) {
+    if (userId == target.userId) return false; // 不能动自己
+    return role.canManageMembers(target.role); // 依赖 Enum 里的逻辑
+  }
+
+  bool get isMuted {
+    if (mutedUntil == null) return false;
+    final until = DateTime.fromMillisecondsSinceEpoch(mutedUntil!);
+    return DateTime.now().isBefore(until);
+  }
+
+  Duration get muteRemaining {
+    if (mutedUntil == null) return Duration.zero;
+    final until = DateTime.fromMillisecondsSinceEpoch(mutedUntil!);
+    final diff = until.difference(DateTime.now());
+    return diff.isNegative ? Duration.zero : diff;
+  }
+
+  factory ChatMember.fromJson(Map<String, dynamic> json) =>
+      _$ChatMemberFromJson(json);
+
+  Map<String, dynamic> toJson() => _$ChatMemberToJson(this);
+
+  ChatMember copyWith({
+    String? userId,
+    String? nickname,
+    String? avatar,
+    GroupRole? role,
+    int? mutedUntil,
+  }) {
+    return ChatMember(
+      userId: userId ?? this.userId,
+      nickname: nickname ?? this.nickname,
+      avatar: avatar ?? this.avatar,
+      role: role ?? this.role,
+      mutedUntil: mutedUntil ?? this.mutedUntil,
+    );
+  }
+}
+
+@JsonSerializable(checked: true)
+class ChatMessage {
+  final String id;
+  final int type; // 0:Text, 1:Image
+  final String content;
+  final int createdAt;
+  final ChatSender? sender;
+  final int? seqId;
+  @JsonKey(defaultValue: false)
+  final bool isRecalled;
+
+  final Map<String, dynamic>? meta;
+
+  @JsonKey(defaultValue: false)
+  final bool isSelf;
+
+  ChatMessage({
+    required this.id,
+    required this.type,
+    required this.content,
+    required this.createdAt,
+    this.isRecalled = false,
+    this.sender,
+    this.isSelf = false,
+    this.seqId,
+    this.meta,
+  });
+
+  factory ChatMessage.fromJson(Map<String, dynamic> json) => _$ChatMessageFromJson(json);
+  Map<String, dynamic> toJson() => _$ChatMessageToJson(this);
+
+  @override
+  String toString() => toJson().toString();
+}
+
+// =================================================================
+// 6. 其他 API 请求/响应模型 (保持不变)
+// =================================================================
 
 @JsonSerializable(checked: true)
 class ConversationIdResponse {
