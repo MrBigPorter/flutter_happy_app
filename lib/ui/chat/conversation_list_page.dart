@@ -68,23 +68,31 @@ class _AddMenuButton extends StatelessWidget {
         color: context.bgPrimary,
         onSelected: (value) {
           switch (value) {
-            case 'contacts':
-              appRouter.push('/chat/contacts');
+            case 'create_group':
+            // 创建群聊 (选人)
+              context.push('/chat/group/select/member');
               break;
-            case 'group':
-              appRouter.push('/chat/group/select/member');
+            case 'join_group':
+            // [新增] 加入群聊 (搜索)
+              context.push('/chat/group/search');
               break;
-            case 'friend':
+            case 'add_friend':
+            // 添加好友 (搜索用户)
               showDialog(context: context, builder: (_) => const UserSearchDialog());
+              break;
+            case 'contacts':
+            // 通讯录
+              context.push('/chat/contacts');
               break;
           }
         },
         itemBuilder: (context) => [
-          _buildMenuItem(context, 'group', Icons.chat_bubble_outline, 'New Chat'),
-          PopupMenuDivider(color: context.borderPrimary),
-          _buildMenuItem(context, 'friend', Icons.person_add_alt_1_outlined, 'Add Contact'),
-          PopupMenuDivider(color: context.borderPrimary),
-          _buildMenuItem(context, 'contacts', Icons.contacts, 'Contacts'),
+          _buildMenuItem(context, 'create_group', Icons.chat_bubble_outline, 'New Group'),
+          _buildMenuItem(context, 'join_group', Icons.group_add_outlined, 'Join Group'), // [新增]
+          const PopupMenuDivider(),
+          _buildMenuItem(context, 'add_friend', Icons.person_add_alt_1_outlined, 'Add Contact'),
+          const PopupMenuDivider(),
+          _buildMenuItem(context, 'contacts', Icons.contacts_outlined, 'Contacts'),
         ],
       ),
     );

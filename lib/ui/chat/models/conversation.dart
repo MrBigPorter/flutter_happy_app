@@ -1,5 +1,6 @@
 import 'package:json_annotation/json_annotation.dart';
 import 'chat_ui_model.dart';
+import 'group_manage_req.dart';
 import 'group_role.dart';
 
 part 'conversation.g.dart';
@@ -484,7 +485,7 @@ class ChatMessage {
   final ChatSender? sender;
   final int? seqId;
   @JsonKey(defaultValue: false)
-  final bool isRecalled;
+  final bool? isRecalled;
 
   final Map<String, dynamic>? meta;
 
@@ -496,7 +497,7 @@ class ChatMessage {
     required this.type,
     required this.content,
     required this.createdAt,
-    this.isRecalled = false,
+     this.isRecalled,
     this.sender,
     this.isSelf = false,
     this.seqId,
@@ -872,4 +873,28 @@ class LeaveGroupResponse {
 
   @override
   String toString() => toJson().toString();
+}
+
+@JsonSerializable(checked: true)
+class GroupSearchResult {
+  final String id;
+  final String name;
+  final String? avatar;
+  final int memberCount; // 后端通过 _count 计算出来的
+  final bool joinNeedApproval;
+  final bool isMember;   // 核心字段：前端据此判断显示 "Join" 还是 "Enter"
+
+  GroupSearchResult({
+    required this.id,
+    required this.name,
+    this.avatar,
+    required this.memberCount,
+    required this.joinNeedApproval,
+    required this.isMember,
+  });
+
+  factory GroupSearchResult.fromJson(Map<String, dynamic> json) =>
+      _$GroupSearchResultFromJson(json);
+
+  Map<String, dynamic> toJson() => _$GroupSearchResultToJson(this);
 }

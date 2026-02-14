@@ -613,3 +613,32 @@ Map<String, dynamic> _$LeaveGroupResponseToJson(LeaveGroupResponse instance) =>
     <String, dynamic>{
       'success': instance.success,
     };
+
+GroupSearchResult _$GroupSearchResultFromJson(Map<String, dynamic> json) =>
+    $checkedCreate(
+      'GroupSearchResult',
+      json,
+      ($checkedConvert) {
+        final val = GroupSearchResult(
+          id: $checkedConvert('id', (v) => v as String),
+          name: $checkedConvert('name', (v) => v as String),
+          avatar: $checkedConvert('avatar', (v) => v as String?),
+          memberCount:
+              $checkedConvert('memberCount', (v) => (v as num).toInt()),
+          joinNeedApproval:
+              $checkedConvert('joinNeedApproval', (v) => v as bool),
+          isMember: $checkedConvert('isMember', (v) => v as bool),
+        );
+        return val;
+      },
+    );
+
+Map<String, dynamic> _$GroupSearchResultToJson(GroupSearchResult instance) =>
+    <String, dynamic>{
+      'id': instance.id,
+      'name': instance.name,
+      'avatar': instance.avatar,
+      'memberCount': instance.memberCount,
+      'joinNeedApproval': instance.joinNeedApproval,
+      'isMember': instance.isMember,
+    };

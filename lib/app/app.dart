@@ -6,7 +6,6 @@ import 'package:flutter_app/common.dart';
 import 'package:flutter_app/core/events/global_handler.dart';
 import 'package:flutter_app/core/providers/app_router_provider.dart';
 import 'package:flutter_app/core/providers/fcm_service_provider.dart';
-import 'package:flutter_app/core/store/auth/auth_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:easy_localization/easy_localization.dart';

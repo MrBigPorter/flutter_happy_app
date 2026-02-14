@@ -24,7 +24,7 @@ import 'package:flutter_app/ui/chat/core/extensions/chat_permissions.dart';
 import 'package:flutter_app/ui/chat/models/conversation.dart';
 import 'package:image_picker/image_picker.dart';
 
-import '../models/group_role.dart';
+import 'package:flutter_app/ui/chat/models/group_role.dart';
 
 // 拆分的文件引用
 part 'group_profile_widgets.dart';

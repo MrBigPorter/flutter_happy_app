@@ -4,12 +4,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import 'package:flutter_app/common.dart';
-import 'package:flutter_app/ui/chat/models/conversation.dart';
 import 'package:flutter_app/ui/chat/providers/chat_group_provider.dart';
 import 'package:flutter_app/utils/media/url_resolver.dart';
 import 'package:flutter_app/ui/toast/radix_toast.dart';
 
-import '../models/group_manage_req.dart';
+import 'package:flutter_app/ui/chat/models/group_manage_req.dart';
 
 class GroupRequestListPage extends ConsumerStatefulWidget {
   final String groupId;

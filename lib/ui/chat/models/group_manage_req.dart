@@ -229,3 +229,4 @@ class GroupJoinRequest {
   factory GroupJoinRequest.fromJson(Map<String, dynamic> json) =>
       _$GroupJoinRequestFromJson(json);
 }
+

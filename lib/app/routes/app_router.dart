@@ -27,8 +27,7 @@ import 'package:flutter_app/ui/chat/chat_room/chat_page.dart';
 import 'package:flutter_app/ui/chat/contact_list/contact_list_page.dart';
 import 'package:flutter_app/ui/chat/contact_profile_page.dart';
 import 'package:flutter_app/ui/chat/contact_search_page.dart';
-import 'package:flutter_app/ui/chat/group_member_select_page.dart';
-import 'package:flutter_app/ui/chat/group_profile/group_profile_page.dart';
+import 'package:flutter_app/ui/chat/group/group_member_select_page.dart';
 import 'package:flutter_app/ui/chat/new_friend_page.dart';
 import 'package:flutter_app/app/page/deposit_detail_page.dart';
 import 'package:flutter_app/app/page/group_lobby_page.dart';
@@ -41,12 +40,14 @@ import 'package:flutter_app/app/page/me_page.dart';
 import 'package:flutter_app/app/page/login_page.dart';
 import 'package:flutter_app/app/page/product_detail_page.dart';
 import 'package:flutter_app/app/page/withdraw_page.dart';
-import '../../ui/chat/group_request_list/group_request_list_page.dart';
+import 'package:flutter_app/ui/chat/group/group_request_list/group_request_list_page.dart';
+import 'package:flutter_app/ui/chat/group/group_profile/group_profile_page.dart';
+import '../../ui/chat/group/group_search/group_search_page.dart';
 import 'extra_codec.dart';
-import '../../ui/chat/direct_chat_settings_page.dart';
-import '../../ui/chat/local_contact_search_page.dart';
-import '../../ui/chat/models/selection_types.dart';
-import '../../ui/chat/selector/contact_selection_page.dart';
+import 'package:flutter_app/ui/chat/direct_chat_settings_page.dart';
+import 'package:flutter_app/ui/chat/local_contact_search_page.dart';
+import 'package:flutter_app/ui/chat/models/selection_types.dart';
+import 'package:flutter_app/ui/chat/selector/contact_selection_page.dart';
 
 final _shellKey = GlobalKey<NavigatorState>(debugLabel: 'shell');
 // 全局路由器实例  Global router instance
@@ -136,6 +137,11 @@ class AppRouter {
             final cid = state.pathParameters['id']!;
             return GroupProfilePage(conversationId: cid);
           },
+        ),
+        GoRoute(
+          path: '/chat/group/search',
+          name: 'group_search',
+          builder: (context, state) => const GroupSearchPage(),
         ),
         GoRoute(
           path: '/chat/contacts',

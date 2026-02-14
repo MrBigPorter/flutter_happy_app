@@ -10,7 +10,7 @@ class ChatUiModelMapper {
     MessageType uiType = MessageType.fromValue(apiMsg.type);
 
     // [修正] 严格透传状态，不要跟 MessageType.system 挂钩
-    bool isRecalled = apiMsg.isRecalled;
+    bool? isRecalled = apiMsg.isRecalled;
 
 
     final Map<String, dynamic> meta = apiMsg.meta ?? {};
@@ -30,7 +30,7 @@ class ChatUiModelMapper {
       createdAt: apiMsg.createdAt,
       senderName: apiMsg.sender?.nickname,
       senderAvatar: apiMsg.sender?.avatar,
-      isRecalled: isRecalled,
+      isRecalled: isRecalled ?? false,
       conversationId: conversationId,
       duration: meta['duration'] is num ? (meta['duration'] as num).toInt() : null,
       meta: meta,

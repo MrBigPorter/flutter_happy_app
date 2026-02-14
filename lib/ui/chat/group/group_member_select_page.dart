@@ -8,8 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 
-import '../toast/radix_toast.dart';
-import 'models/conversation.dart';
+import '../../toast/radix_toast.dart';
 
 class GroupMemberSelectPage extends ConsumerStatefulWidget {
   final String? existingGroupId;

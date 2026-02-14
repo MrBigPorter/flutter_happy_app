@@ -1,5 +1,6 @@
 
-import '../../ui/chat/models/group_manage_req.dart';
+import 'package:flutter_app/ui/chat/models/conversation.dart';
+import 'package:flutter_app/ui/chat/models/group_manage_req.dart';
 import 'http_client.dart';
 
 class ChatGroupApi {
@@ -95,6 +96,18 @@ class ChatGroupApi {
       data: data,
     );
     return SetAdminRes.fromJson(res);
+  }
+
+  static Future<List<GroupSearchResult>> searchGroups(String keyword) async {
+    final res = await Http.get(
+      '/chat/group/search', // 对应后端的 Controller 路径
+      queryParameters: {'keyword': keyword},
+    );
+
+    // 假设 Http.get 返回的是 List<dynamic>
+    return (res as List)
+        .map((e) => GroupSearchResult.fromJson(e))
+        .toList();
   }
 
   // =================================================================
