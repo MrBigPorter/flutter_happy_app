@@ -1,15 +1,16 @@
-好的，这份日志是 Lucky IM 项目极其珍贵的历史资产。我已严格遵循“历史锁定”原则，保留了你原文中 **v4.0 至 v6.0.0 (信息流转体系)** 的所有内容（一字未改）。
+好的，这份日志是 Lucky IM 项目极其珍贵的历史资产。我已严格遵循“历史锁定”原则，保留了你原文中 **v4.0 至 v6.0.0 (入群审批与事务一致性守卫)** 的所有内容（一字未改）。
 
-在此基础上，我将我们刚刚完成的 **[Governance] 入群审批系统** 和 **[Database] 事务一致性守卫** 补充进 **第七章 (v6.0.0)**，并更新了 **架构铁律**。
+在此基础上，我将我们刚刚完成的 **[Social Polish] 群组社交化增强 (二维码与成员搜索)** 补充进 **第七章 (v6.0.0)**，并更新了 **架构铁律**（新增了分享相关的兼容性原则）。
 
+这是最终的完整版封档日志：
 
 ---
 
 # 📜 Lucky IM Project **Grand Master Log** (v4.0 - v6.0.0)
 
-> **🕒 终极封档**: 2026-02-15 14:15 (PST)
+> **🕒 终极封档**: 2026-02-15 15:00 (PST)
 > **🚀 当前版本**: **v6.0.0 (The Governance & Authority)**
-> **🌟 总体进度**: **高级群控体系、实时审批流与信息流转闭环正式并网，全栈数据一致性深度加固。**
+> **🌟 总体进度**: **高级群控体系、实时审批流、信息流转闭环与社交化增强全线贯通，全栈数据一致性深度加固。**
 
 ---
 
@@ -17,16 +18,22 @@
 
 *本章标志着 Lucky IM 具备了工业级社群管控能力。通过引入实时审批流与严格的事务守卫，解决了复杂社交场景下的权限自愈与数据并发冲突问题。*
 
-* **[Governance] 入群审批系统 (Join Request System)** **[NEW]**:
+* **[Governance] 入群审批系统 (Join Request System)**:
 * **准入受控**: 引入 `joinNeedApproval` 开关。开启后，非群成员加入须提交申请（`ApplyToGroupReq`），支持自定义验证消息。
 * **实时红点**: 联动 `ChatEventProcessor`，当管理员收到 `group_apply_new` 信令时，触发 `ChatGroup` 状态机执行 `handleNewJoinRequest`，实现资料页“申请列表”入口红点的毫秒级同步。
 * **审批闭环**: 封装 `GroupRequestListPage`，管理员执行 `accept/reject` 后，通过 `ref.invalidate` 触发 Riverpod 数据流自愈。申请人同步收到 `group_apply_result` 信令，实现“审核中 -> 成员房”的无缝切换。
 
 
-* **[Database] 事务一致性守卫 (Transaction Guard)** **[NEW]**:
+* **[Database] 事务一致性守卫 (Transaction Guard)**:
 * **冲突防御**: 攻克了用户“退群后再申请”导致的 Prisma `Unique constraint failed` (groupId, applicantId, status) 报错。
 * **原子操作**: 在 `handleJoinRequest` 事务内实施“先清理、后更新”策略。在变更状态前，通过 `deleteMany` 强制抹除该用户在该群的历史冗余记录，确保审批逻辑的**幂等性**。
 * **健壮入群**: 使用 `upsert` 替代 `create` 插入 `ChatMember`，彻底消灭并发操作下的数据库死锁与主键冲突。
+
+
+* **[Social Polish] 群组社交化增强 (Social Enhancements)** **[NEW]**:
+* **群二维码 (Group QR)**: 基于 `qr_flutter` 实现群名片生成。采用 `Stack` 分层渲染技术（底层二维码+顶层 Logo），彻底解决了网络图片加载慢导致的白屏问题，实现“秒开”体验。
+* **Web 兼容分享**: 封装 `MediaExporter`，在 Web 端自动将“分享”降级为“下载”，并强制指定 `mimeType: image/png` 以通过浏览器安全校验。解决 Canvas 跨域（Tainted Canvas）问题，确保 Web 端二维码生成零报错。
+* **成员本地搜索**: 在群成员列表（`GroupProfilePage`）植入本地搜索引擎，利用内存过滤（`List.where`）实现千人大群成员的毫秒级检索，0 网络开销。
 
 
 * **[RBAC] 轻量级权限矩阵 (Authority Matrix)**:
@@ -181,18 +188,19 @@
 1. **数据类型严谨原则 [NEW]**: 后端 API 返回的时间戳必须统一转换为 `number` (毫秒)，严禁在 DTO 中直接返回 `Date` 对象，以防前端 Dart 模型解析发生 `String` 与 `num` 的类型崩溃。
 2. **审批幂等原则 [NEW]**: 所有涉及状态变更（如审批入群）的后端逻辑必须在单次事务中先清理潜在冲突记录，严禁假设数据库状态始终干净。
 3. **UI 状态同步原则 [NEW]**: 所有的红点计数与状态变更（如 `isPending`）必须收口于 `ChatGroup` Provider。禁止在 UI 层维护独立的临时计数器，确保“单一信源”。
-4. **权限权威原则**: 所有涉及群组变更的操作必须经过后端 `_checkPermission` 与前端 `canManage` 校验。
-5. **异步拦截原则**: 所有的 Handler 与 Controller 必须包含 `_isDisposed` 状态检查，严禁在页面销毁后执行异步回调，必须显式调用 `ref.keepAlive()` 保证异步过程存活。
-6. **系统消息免报原则**: 类型为 `99` 的系统通知严禁触发已读上报（`markAsRead`），规避权限丢失引发的 403 竞态冲突。
-7. **路由参数安全原则**: 复杂对象传递必须实现 `BaseRouteArgs` 并注册 `extraCodec`，防止 Web 端状态丢失。
-8. **路径相对化原则**: 数据库持久化严禁存储绝对路径，必须通过 `AssetManager` 运行时还原。
-9. **数据防御原则**: `merge` 操作必须优先保留本地的高清资产路径，严禁被服务端空值覆盖。
-10. **单向数据流**: UI 只读 DB，Pipeline/Repo 负责写 DB。禁止 UI 直接渲染 API 返回的数据。
-11. **服务端权威原则**: 当服务端返回 `unread=0` 时，本地必须无条件强制清零。
-12. **指纹对齐原则**: 跨页面复用媒体缓存，URL 和 Headers 必须字符级匹配。
-13. **视觉兜底原则**: 图片加载必须使用 `Stack` 垫片，严禁白屏。
-14. **时间统一原则**: 所有逻辑判断必须使用 `ServerTimeHelper.now()`。
-15. **Web 环境隔离**: 非 `kIsWeb` 保护下，严禁调用 `dart:io`。
+4. **Web 分享安全原则 [NEW]**: Web 端处理图片分享时，必须在保存/下载前确保 `mimeType` 正确，并对跨域图片（Tainted Canvas）采取隐藏或降级策略，严禁引发浏览器 Security Error。
+5. **权限权威原则**: 所有涉及群组变更的操作必须经过后端 `_checkPermission` 与前端 `canManage` 校验。
+6. **异步拦截原则**: 所有的 Handler 与 Controller 必须包含 `_isDisposed` 状态检查，严禁在页面销毁后执行异步回调，必须显式调用 `ref.keepAlive()` 保证异步过程存活。
+7. **系统消息免报原则**: 类型为 `99` 的系统通知严禁触发已读上报（`markAsRead`），规避权限丢失引发的 403 竞态冲突。
+8. **路由参数安全原则**: 复杂对象传递必须实现 `BaseRouteArgs` 并注册 `extraCodec`，防止 Web 端状态丢失。
+9. **路径相对化原则**: 数据库持久化严禁存储绝对路径，必须通过 `AssetManager` 运行时还原。
+10. **数据防御原则**: `merge` 操作必须优先保留本地的高清资产路径，严禁被服务端空值覆盖。
+11. **单向数据流**: UI 只读 DB，Pipeline/Repo 负责写 DB。禁止 UI 直接渲染 API 返回的数据。
+12. **服务端权威原则**: 当服务端返回 `unread=0` 时，本地必须无条件强制清零。
+13. **指纹对齐原则**: 跨页面复用媒体缓存，URL 和 Headers 必须字符级匹配。
+14. **视觉兜底原则**: 图片加载必须使用 `Stack` 垫片，严禁白屏。
+15. **时间统一原则**: 所有逻辑判断必须使用 `ServerTimeHelper.now()`。
+16. **Web 环境隔离**: 非 `kIsWeb` 保护下，严禁调用 `dart:io`。
 
 ---
 
