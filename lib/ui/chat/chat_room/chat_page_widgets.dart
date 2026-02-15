@@ -116,6 +116,52 @@ PreferredSizeWidget _buildAppBar(
       ],
     ),
     actions: [
+      // 📹 1. 视频通话按钮
+      IconButton(
+        icon: Icon(Icons.videocam, color: context.textPrimary900, size: 24.sp),
+        onPressed: () {
+          // 解析完整头像 URL (防止相对路径导致 CallPage 图片加载失败)
+          final avatarUrl = detail?.avatar != null
+              ? UrlResolver.resolveImage(context, detail!.avatar!)
+              : null;
+
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => CallPage(
+                targetName: detail?.name ?? "Chat User",
+                targetAvatar: avatarUrl,
+                isVideo: true, // 开启摄像头
+              ),
+            ),
+          );
+        },
+      ),
+
+      // 📞 2. 语音通话按钮 (可选，如果只想测视频可以先不加)
+      IconButton(
+        icon: Icon(
+          Icons.call,
+          color: context.textPrimary900,
+          size: 22.sp, // 稍微调小一点点视觉平衡
+        ),
+        onPressed: () {
+          final avatarUrl = detail?.avatar != null
+              ? UrlResolver.resolveImage(context, detail!.avatar!)
+              : null;
+
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => CallPage(
+                targetName: detail?.name ?? "Chat User",
+                targetAvatar: avatarUrl,
+                isVideo: false, // 关闭摄像头，纯语音模式
+              ),
+            ),
+          );
+        },
+      ),
       IconButton(
         icon: Icon(
           Icons.more_horiz,
