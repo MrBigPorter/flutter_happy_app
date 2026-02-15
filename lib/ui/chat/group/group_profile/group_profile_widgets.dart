@@ -198,14 +198,10 @@ class _MenuSection extends ConsumerWidget {
                 // [NEW] 入群申请入口
                 Consumer(
                   builder: (context, ref, _) {
-                    final count = ref.watch(
-                      groupRequestCountProvider(detail.id),
-                    );
-
                     return _MenuItem(
                       label: "Join Requests",
                       showArrow: true,
-                      trailing: count > 0
+                      trailing: detail.pendingRequestCount > 0
                           ? Container(
                               padding: EdgeInsets.symmetric(
                                 horizontal: 8.w,
@@ -216,7 +212,7 @@ class _MenuSection extends ConsumerWidget {
                                 borderRadius: BorderRadius.circular(10.r),
                               ),
                               child: Text(
-                                count > 99 ? '99+' : '$count',
+                                detail.pendingRequestCount > 99 ? '99+' : '${detail.pendingRequestCount}',
                                 style: TextStyle(
                                   color: Colors.white,
                                   fontSize: 12.sp,
@@ -226,10 +222,6 @@ class _MenuSection extends ConsumerWidget {
                             )
                           : null,
                       onTap: () {
-                        // 清除红点 (可选)
-                        ref
-                            .read(groupRequestCountProvider(detail.id).notifier)
-                            .clear();
                         // 跳转到申请列表页 (路由稍后注册)
                         context.push('/chat/group/requests/${detail.id}');
                       },
@@ -379,7 +371,6 @@ class _FooterButtons extends ConsumerWidget {
     final isMember = me != null;
     final isOwner = me?.isOwner ?? false;
     
-    print("Debug: isMember=$isMember, applicationStatus=${detail.toString()}");
 
     //  核心判断：是否处于 "审核中" 状态
     final isPending = detail.applicationStatus == 'PENDING';
@@ -640,9 +631,12 @@ class _PublicGroupHeader extends StatelessWidget {
   final ConversationDetail detail;
 
   const _PublicGroupHeader({required this.detail});
+  
 
   @override
   Widget build(BuildContext context) {
+    
+
     return Container(
       width: double.infinity,
       color: context.bgPrimary,

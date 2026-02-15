@@ -1,14 +1,16 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_app/common.dart';
 import 'package:flutter_app/components/skeleton.dart';
-import 'package:flutter_app/ui/chat/providers/chat_group_provider.dart'; // 引入合并后的 ChatGroup
+import 'package:flutter_app/ui/chat/providers/chat_group_provider.dart';
 import 'package:flutter_app/ui/chat/providers/contact_provider.dart';
-import 'package:flutter_app/ui/index.dart';
+import 'package:flutter_app/utils/media/url_resolver.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../toast/radix_toast.dart';
+import '../../modal/dialog/radix_modal.dart';
 
 class GroupMemberSelectPage extends ConsumerStatefulWidget {
   final String? existingGroupId;
@@ -26,6 +28,8 @@ class GroupMemberSelectPage extends ConsumerStatefulWidget {
 
 class _GroupMemberSelectPageState extends ConsumerState<GroupMemberSelectPage> {
   final Set<String> _selectedIds = {};
+  String _searchKeyword = "";
+  final TextEditingController _searchController = TextEditingController();
 
   bool get isInviteMode => widget.existingGroupId != null;
 
@@ -41,81 +45,199 @@ class _GroupMemberSelectPageState extends ConsumerState<GroupMemberSelectPage> {
   Widget build(BuildContext context) {
     final contactState = ref.watch(contactListProvider);
 
-    final bool isLoading;
-    if (isInviteMode) {
-      // 邀请模式：监听特定群组的加载状态
-      isLoading = ref.watch(chatGroupProvider(widget.existingGroupId!)).isLoading;
-    } else {
-      // 建群模式：监听创建控制器的状态
-      isLoading = ref.watch(groupCreateControllerProvider).isLoading;
-    }
-
-    final title = isInviteMode ? "Invite Members" : "New Group";
-    final btnText = isInviteMode
-        ? "Invite (${_selectedIds.length})"
-        : "Next (${_selectedIds.length})";
+    // 状态监听保持不变
+    final bool isLoading = isInviteMode
+        ? ref.watch(chatGroupProvider(widget.existingGroupId!)).isLoading
+        : ref.watch(groupCreateControllerProvider).isLoading;
 
     return Scaffold(
-      resizeToAvoidBottomInset: true,
-      appBar: AppBar(
-        backgroundColor: context.bgSecondary,
-        title: Text(title, style: TextStyle(fontSize: 20.sp, fontWeight: FontWeight.bold)),
-        centerTitle: true,
-        actions: [
-          TextButton(
-            onPressed: (_selectedIds.isEmpty || isLoading) ? null : _handleDoneAction,
-            child: isLoading
-                ? SizedBox(width: 16.w, height: 16.w, child: CircularProgressIndicator(strokeWidth: 2.r))
-                : Text(btnText, style: TextStyle(
-              color: _selectedIds.isEmpty ? context.textDisabled : context.textBrandPrimary900,
-              fontWeight: FontWeight.bold,
-              fontSize: 16.sp,
-            )),
+      backgroundColor: context.bgPrimary,
+      appBar: _buildAppBar(context, isLoading),
+      body: Column(
+        children: [
+          _buildSearchBar(context),
+          if (_selectedIds.isNotEmpty) _buildSelectedList(context, contactState),
+          Expanded(
+            child: contactState.when(
+              loading: () => _buildSkeletonList(context),
+              error: (err, _) => Center(child: Text("Load failed: $err")),
+              data: (friends) {
+                // 客户端搜索过滤
+                final filtered = friends.where((f) =>
+                    f.nickname.toLowerCase().contains(_searchKeyword.toLowerCase())).toList();
+
+                if (filtered.isEmpty) return _buildEmptyState(context);
+
+                return ListView.builder(
+                  itemCount: filtered.length,
+                  itemBuilder: (context, index) => _buildMemberItem(context, filtered[index]),
+                );
+              },
+            ),
           ),
-          SizedBox(width: 8.w),
         ],
-      ),
-      body: contactState.when(
-        loading: () => _buildSkeletonList(context),
-        error: (err, _) => Center(child: Text("Load failed")),
-        data: (friends) {
-          if (friends.isEmpty) return const Center(child: Text("No friends found"));
-          return ListView.separated(
-            itemCount: friends.length,
-            separatorBuilder: (_, __) => const Divider(height: 1, indent: 70),
-            itemBuilder: (context, index) {
-              final user = friends[index];
-              return CheckboxListTile(
-                value: _selectedIds.contains(user.id),
-                activeColor: context.utilityGreen500,
-                title: Text(user.nickname),
-                onChanged: (bool? checked) {
-                  setState(() {
-                    if (checked == true) _selectedIds.add(user.id);
-                    else _selectedIds.remove(user.id);
-                  });
-                },
-              );
-            },
-          );
-        },
       ),
     );
   }
+
+  // --- 模块化 UI 组件 ---
+
+  PreferredSizeWidget _buildAppBar(BuildContext context, bool isLoading) {
+    return AppBar(
+      elevation: 0,
+      backgroundColor: context.bgPrimary,
+      title: Text(isInviteMode ? "Invite Members" : "New Group",
+          style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold, color: context.textPrimary900)),
+      centerTitle: true,
+      actions: [
+        Padding(
+          padding: EdgeInsets.only(right: 8.w),
+          child: Center(
+            child: InkWell(
+              onTap: (_selectedIds.isEmpty || isLoading) ? null : _handleDoneAction,
+              child: Container(
+                padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 6.h),
+                decoration: BoxDecoration(
+                  color: _selectedIds.isEmpty ? context.bgSecondary : context.textBrandPrimary900,
+                  borderRadius: BorderRadius.circular(20.r),
+                ),
+                child: isLoading
+                    ? SizedBox(width: 18.w, height: 18.w, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                    : Text(isInviteMode ? "Invite" : "Next", style: TextStyle(
+                    color: _selectedIds.isEmpty ? context.textDisabled : Colors.white,
+                    fontWeight: FontWeight.bold, fontSize: 14.sp)),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSearchBar(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
+      child: TextField(
+        controller: _searchController,
+        onChanged: (val) => setState(() => _searchKeyword = val),
+        decoration: InputDecoration(
+          hintText: "Search friends...",
+          prefixIcon: Icon(Icons.search, size: 20.r, color: context.textSecondary700),
+          filled: true,
+          fillColor: context.bgSecondary,
+          contentPadding: EdgeInsets.zero,
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12.r), borderSide: BorderSide.none),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSelectedList(BuildContext context, AsyncValue<List<dynamic>> contactState) {
+    return contactState.maybeWhen(
+      data: (friends) {
+        final selectedFriends = friends.where((f) => _selectedIds.contains(f.id)).toList();
+        return Container(
+          height: 60.h,
+          padding: EdgeInsets.symmetric(vertical: 8.h),
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            padding: EdgeInsets.symmetric(horizontal: 16.w),
+            itemCount: selectedFriends.length,
+            itemBuilder: (context, index) {
+              final user = selectedFriends[index];
+              return Padding(
+                padding: EdgeInsets.only(right: 12.w),
+                child: Stack(
+                  children: [
+                    CircleAvatar(
+                      radius: 22.r,
+                      backgroundImage: CachedNetworkImageProvider(UrlResolver.resolveImage(context, user.avatar)),
+                    ),
+                    Positioned(
+                      right: 0, top: 0,
+                      child: GestureDetector(
+                        onTap: () => setState(() => _selectedIds.remove(user.id)),
+                        child: Container(
+                          padding: EdgeInsets.all(2.r),
+                          decoration: BoxDecoration(color: context.utilityError200, shape: BoxShape.circle),
+                          child: Icon(Icons.close, size: 10.r, color: Colors.white),
+                        ),
+                      ),
+                    )
+                  ],
+                ),
+              );
+            },
+          ),
+        );
+      },
+      orElse: () => const SizedBox(),
+    );
+  }
+
+  Widget _buildMemberItem(BuildContext context, dynamic user) {
+    final isSelected = _selectedIds.contains(user.id);
+    return InkWell(
+      onTap: () {
+        setState(() {
+          if (isSelected) _selectedIds.remove(user.id);
+          else _selectedIds.add(user.id);
+        });
+      },
+      child: Padding(
+        padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 10.h),
+        child: Row(
+          children: [
+            // 自定义勾选框
+            Container(
+              width: 22.r, height: 22.r,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: isSelected ? context.textBrandPrimary900 : context.borderPrimary, width: 2),
+                color: isSelected ? context.textBrandPrimary900 : Colors.transparent,
+              ),
+              child: isSelected ? Icon(Icons.check, size: 14.r, color: Colors.white) : null,
+            ),
+            SizedBox(width: 16.w),
+            CircleAvatar(
+              radius: 20.r,
+              backgroundColor: context.bgSecondary,
+              backgroundImage: CachedNetworkImageProvider(UrlResolver.resolveImage(context, user.avatar)),
+            ),
+            SizedBox(width: 12.w),
+            Text(user.nickname, style: TextStyle(fontSize: 16.sp, color: context.textPrimary900, fontWeight: FontWeight.w500)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.person_search, size: 64.r, color: context.textDisabled),
+          SizedBox(height: 12.h),
+          Text("No results for '$_searchKeyword'", style: TextStyle(color: context.textSecondary700)),
+        ],
+      ),
+    );
+  }
+
+  // --- 业务逻辑保持不变 ---
 
   void _handleDoneAction() {
     if (isInviteMode) _executeInvite();
     else _showGroupNameDialog();
   }
 
-  ///  逻辑 A: 邀请 (整合进 ChatGroup)
   Future<void> _executeInvite() async {
     final success = await ref
         .read(chatGroupProvider(widget.existingGroupId!).notifier)
         .inviteMembers(_selectedIds.toList());
 
     if (!mounted) return;
-
     if (success) {
       RadixToast.success("Invitation sent");
       context.pop();
@@ -124,37 +246,41 @@ class _GroupMemberSelectPageState extends ConsumerState<GroupMemberSelectPage> {
     }
   }
 
-  /// 逻辑 B: 建群 (使用 GroupCreateController)
   Future<void> _executeCreate(String name) async {
     final newGroupId = await ref
         .read(groupCreateControllerProvider.notifier)
         .create(name: name, memberIds: _selectedIds.toList());
 
     if (newGroupId != null && mounted) {
-      RadixToast.success("Group created successfully");
-      // 自动导航到新房间
+      RadixToast.success("Group created");
       context.go('/chat/room/$newGroupId');
     }
   }
 
-  // --- 弹窗与骨架屏代码基本保持不变 ---
   void _showGroupNameDialog() {
     final TextEditingController nameController = TextEditingController();
     RadixModal.show(
-      title: "New Group",
+      title: "Group Name",
       builder: (ctx, _) => Material(
-        color: Colors.transparent,
+        type: MaterialType.transparency,
         child: TextField(
           controller: nameController,
           autofocus: true,
-          decoration: const InputDecoration(hintText: "Enter group name"),
+          decoration: InputDecoration(
+            hintText: "Enter group name",
+            filled: true,
+            fillColor: context.bgSecondary,
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8.r), borderSide: BorderSide.none),
+          ),
         ),
       ),
       confirmText: "Create",
       onConfirm: (close) {
-        close();
         final name = nameController.text.trim();
-        if (name.isNotEmpty) _executeCreate(name);
+        if (name.isNotEmpty) {
+          close();
+          _executeCreate(name);
+        }
       },
     );
   }

@@ -389,12 +389,17 @@ class _GroupProfileLogic {
       BuildContext context, WidgetRef ref, String groupId) async {
       // 复用 GroupJoinController 的 apply 方法，reason 传空即可
       // 后端逻辑：如果 joinNeedApproval=false，apply 接口会自动把人加进去并返回 ACCEPTED
-      final res = await ref.read(groupJoinControllerProvider.notifier)
-          .apply(groupId, "");
-      if (res?.status == 'ACCEPTED') { // 1 = ACCEPTED
-        RadixToast.success("Joined successfully");
-        // 刷新页面状态，或者直接跳转聊天
-        ref.invalidate(chatGroupProvider(groupId));
+      RadixToast.showLoading(message: "Sending application...");
+      try{
+        final res = await ref.read(groupJoinControllerProvider.notifier)
+            .apply(groupId, "");
+        if (res?.status == 'ACCEPTED') { // 1 = ACCEPTED
+          RadixToast.success("Joined successfully");
+          // 刷新页面状态，或者直接跳转聊天
+          ref.invalidate(chatGroupProvider(groupId));
+        }
+      }catch(e){
+        RadixToast.hide();
       }
   }
 
@@ -406,11 +411,10 @@ class _GroupProfileLogic {
       final res = await ref.read(groupJoinControllerProvider.notifier)
           .apply(groupId, reason);
 
-      RadixToast.hide();
-
       if (res != null) {
         RadixToast.success("Application sent");
         // 这里可以禁用按钮，或者显示 "Pending" 状态
+        ref.invalidate(chatGroupProvider(groupId));
       }
     } catch (e) {
       RadixToast.hide();

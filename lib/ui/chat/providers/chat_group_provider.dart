@@ -241,6 +241,40 @@ class ChatGroup extends _$ChatGroup {
     }
   }
 
+  // ===========================================================================
+  //  [新增] 处理 Socket 新申请事件：直接修改详情里的 count
+  // ===========================================================================
+  void handleNewJoinRequest() {
+    // 1. 如果当前没有数据，或者数据还没加载完，直接忽略
+    // (因为下次加载时，API 会拉取最新的 count)
+    if (!state.hasValue || state.value == null) return;
+
+    final currentDetail = state.requireValue;
+
+    // 2. 直接增加 count
+    final newCount = currentDetail.pendingRequestCount + 1;
+
+    // 3. 更新状态和本地数据库
+    final newDetail = currentDetail.copyWith(pendingRequestCount: newCount);
+    state = AsyncData(newDetail);
+    // 4. 同步到本地数据库
+    LocalDatabaseService().saveConversationDetail(newDetail);
+  }
+
+  // ===========================================================================
+  //  [新增] 处理申请被处理事件（比如你在列表页处理完了，回来红点要消失）
+  // ===========================================================================
+  void resetRequestCount() {
+    if (!state.hasValue) return;
+
+    final currentDetail = state.requireValue;
+    if (currentDetail.pendingRequestCount == 0) return;
+
+    final newDetail = currentDetail.copyWith(pendingRequestCount: 0);
+    state = AsyncData(newDetail);
+    LocalDatabaseService().saveConversationDetail(newDetail);
+  }
+
   Future<bool> leaveGroup() async {
     try {
       final res = await ChatGroupApi.leaveGroup(conversationId);
@@ -319,26 +353,27 @@ class GroupCreateController extends _$GroupCreateController {
 
 // 1. 数据 Provider：获取某个群的待审批列表
 @riverpod
-Future<List<GroupJoinRequest>> groupJoinRequests(GroupJoinRequestsRef ref,String groupId) async{
+Future<List<GroupJoinRequestItem>> groupJoinRequests(
+  GroupJoinRequestsRef ref,
+  String groupId,
+) async {
   // 进入页面时watch,离开时onDispose
   return await ChatGroupApi.getJoinRequests(groupId);
 }
 
-// 2. 状态 Provider：管理全局申请红点
-@riverpod
-class GroupRequestCount extends _$GroupRequestCount {
-  @override
-  int build(String groupId) => 0;
 
-  void increment() => state++;
-  void clear() => state = 0;
-}
 
 // 3. 控制器 Provider：负责“申请”和“审批”动作
 @riverpod
-class GroupJoinController extends _$GroupJoinController { // 修改为 GroupJoinController
+class GroupJoinController extends _$GroupJoinController {
+  // 修改为 GroupJoinController
   @override
-  FutureOr<void> build() {}
+  FutureOr<void> build() {
+    //  [关键修复] 保活机制
+    // 防止 Controller 在异步请求过程中被自动销毁 (autoDispose)
+    // 导致 "Bad state: Future already completed" 报错
+    ref.keepAlive();
+  }
 
   /// [管理员操作] 处理入群申请
   Future<bool> handleRequest({
@@ -371,7 +406,6 @@ class GroupJoinController extends _$GroupJoinController { // 修改为 GroupJoin
         reason: reason,
       );
     });
-
     return result;
   }
 }

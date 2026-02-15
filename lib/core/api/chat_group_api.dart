@@ -1,6 +1,6 @@
-
 import 'package:flutter_app/ui/chat/models/conversation.dart';
-import 'package:flutter_app/ui/chat/models/group_manage_req.dart';
+import '../../ui/chat/models/group_manage_req.dart';
+import '../../utils/helper.dart';
 import 'http_client.dart';
 
 class ChatGroupApi {
@@ -83,77 +83,84 @@ class ChatGroupApi {
       String targetUserId,
       bool isAdmin,
       ) async {
-    // 假设您没有专门定义 Request DTO，直接传 Map 也可以
-    // 但如果有 SetAdminReq 最好用对象
-    final data = {
-      'conversationId': conversationId,
-      'targetUserId': targetUserId,
-      'isAdmin': isAdmin,
-    };
+    //  修正：使用 SetAdminReq 对象
+    final request = SetAdminReq(
+        conversationId: conversationId,
+        targetUserId: targetUserId,
+        isAdmin: isAdmin
+    );
 
     final res = await Http.post(
       '/api/v1/chat/group/admin',
-      data: data,
+      data: request.toJson(),
     );
     return SetAdminRes.fromJson(res);
   }
 
+  // =================================================================
+  // 5. 搜索群组 (Search Groups)
+  // URL: GET /api/v1/chat/group/search
+  // =================================================================
   static Future<List<GroupSearchResult>> searchGroups(String keyword) async {
     final res = await Http.get(
-      '/api/v1/chat/group/search', // 对应后端的 Controller 路径
+      '/api/v1/chat/group/search',
       queryParameters: {'keyword': keyword},
     );
 
-    // 假设 Http.get 返回的是 List<dynamic>
+    // 假设 GroupSearchResult 定义在 conversation.dart 或 group_manage_req.dart 中
     return (res as List)
         .map((e) => GroupSearchResult.fromJson(e))
         .toList();
   }
 
   // =================================================================
-  // 5. 转让群主 (Transfer Owner)
+  // 6. 转让群主 (Transfer Owner)
   // URL: POST /api/v1/chat/group/transfer-owner
   // =================================================================
-  static Future<TransferOwnerRes> transferOwner(
+  static Future<SimpleSuccessRes> transferOwner(
       String conversationId,
       String newOwnerId,
       ) async {
-    final data = {
-      'conversationId': conversationId,
-      'newOwnerId': newOwnerId,
-    };
+    //  修正：使用 TransferOwnerReq 对象
+    final request = TransferOwnerReq(
+        conversationId: conversationId,
+        newOwnerId: newOwnerId
+    );
 
     final res = await Http.post(
       '/api/v1/chat/group/transfer-owner',
-      data: data,
+      data: request.toJson(),
     );
-    return TransferOwnerRes.fromJson(res);
+    //  修正：返回 SimpleSuccessRes
+    return SimpleSuccessRes.fromJson(res);
   }
 
   // =================================================================
-  // 6. 主动退群 (Leave Group)
+  // 7. 主动退群 (Leave Group)
   // URL: DELETE /api/v1/chat/group/leave/:id
   // =================================================================
-  static Future<LeaveGroupRes> leaveGroup(String conversationId) async {
+  static Future<SimpleSuccessRes> leaveGroup(String conversationId) async {
     final res = await Http.delete(
       '/api/v1/chat/group/leave/$conversationId',
     );
-    return LeaveGroupRes.fromJson(res);
+    //  修正：返回 SimpleSuccessRes
+    return SimpleSuccessRes.fromJson(res);
   }
 
   // =================================================================
-  // 7. 解散群 (Disband Group)
+  // 8. 解散群 (Disband Group)
   // URL: DELETE /api/v1/chat/group/disband/:id
   // =================================================================
-  static Future<DisbandGroupRes> disbandGroup(String conversationId) async {
+  static Future<SimpleSuccessRes> disbandGroup(String conversationId) async {
     final res = await Http.delete(
       '/api/v1/chat/group/disband/$conversationId',
     );
-    return DisbandGroupRes.fromJson(res);
+    //  修正：返回 SimpleSuccessRes
+    return SimpleSuccessRes.fromJson(res);
   }
 
   // =================================================================
-  // 8. 申请加入群组 (Apply to Group)
+  // 9. 申请加入群组 (Apply to Group)
   // URL: POST /api/v1/chat/group/apply
   // =================================================================
   static Future<ApplyToGroupRes> applyToGroup({
@@ -173,23 +180,19 @@ class ChatGroupApi {
   }
 
   // =================================================================
-  // 9. 获取入群申请列表 (Get Join Requests)
+  // 10. 获取入群申请列表 (Get Join Requests)
   // URL: GET /api/v1/chat/group/requests/:conversationId
   // =================================================================
-  static Future<List<GroupJoinRequest>> getJoinRequests(String conversationId) async {
+  //  修正：返回 List<GroupJoinRequestItem>
+  static Future<List<GroupJoinRequestItem>> getJoinRequests(String conversationId) async {
     final res = await Http.get(
       '/api/v1/chat/group/requests/$conversationId',
     );
-
-    // 使用通用解析逻辑处理列表数据
-    if (res is List) {
-      return res.map((e) => GroupJoinRequest.fromJson(e)).toList();
-    }
-    return [];
+    return parseList(res, (e) => GroupJoinRequestItem.fromJson(e));
   }
 
   // =================================================================
-  // 10. 处理入群申请 (Handle Join Request)
+  // 11. 处理入群申请 (Handle Join Request)
   // URL: POST /api/v1/chat/group/request/handle
   // =================================================================
   static Future<bool> handleJoinRequest({
@@ -206,7 +209,6 @@ class ChatGroupApi {
       data: request.toJson(),
     );
 
-    // 后端 handle 接口通常只返回成功标识
     return true;
   }
 }

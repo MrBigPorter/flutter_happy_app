@@ -155,14 +155,15 @@ class ChatEventProcessor {
         // 管理员收到申请 -> 刷新“申请列表” Provider
         // invalidate 会导致下次读取该 provider 时重新执行 build (拉取 API)
         ref.invalidate(groupJoinRequestsProvider(groupId));
+        ref.read(chatGroupProvider(groupId).notifier).handleNewJoinRequest();
         break;
 
       case SocketEvents.groupApplyResult:
-        // 申请人收到结果 -> 决定是否刷新首页列表
         //  [Fix] 直接从 payload 读取 approved，不再查 updates
         if (payload.approved == true) {
           // 实际上后端会同时发 conversationAdded，这里做双重保险
           ref.read(conversationListProvider.notifier).refresh();
+          ref.invalidate(chatGroupProvider(groupId));
         }
         break;
 

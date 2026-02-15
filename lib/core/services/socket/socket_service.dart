@@ -10,16 +10,25 @@ import '../../api/http_client.dart';
 
 //  标注：使用 part 引用拆分出的业务模块
 part 'chat_extension.dart';
+
 part 'contact_extension.dart';
+
 part 'notification_extension.dart';
+
 part 'lobby_extension.dart';
 
 typedef TokenRefreshCallback = Future<String?> Function();
-typedef AckResponse = ({bool success, String? message, Map<String, dynamic>? data});
+typedef AckResponse = ({
+  bool success,
+  String? message,
+  Map<String, dynamic>? data,
+});
 
 class SocketException implements Exception {
   final String message;
+
   SocketException(this.message);
+
   @override
   String toString() => 'SocketException: $message';
 }
@@ -30,15 +39,23 @@ class GlobalNotification {
   final String message;
   final dynamic originalData;
 
-  GlobalNotification({required this.isSuccess, required this.title, required this.message, this.originalData});
+  GlobalNotification({
+    required this.isSuccess,
+    required this.title,
+    required this.message,
+    this.originalData,
+  });
 }
 
 abstract class _SocketBase {
   IO.Socket? _socket;
+
   IO.Socket? get socket => _socket;
+
   bool get isConnected => _socket != null && _socket!.connected;
 
   final _syncController = StreamController<void>.broadcast();
+
   Stream<void> get onSyncNeeded => _syncController.stream;
 
   void triggerSync() {
@@ -56,19 +73,31 @@ mixin SocketDispatcherMixin on _SocketBase {
 
     final String type = payload['type']?.toString() ?? 'unknown';
     final dynamic data = payload['data'];
-    if(kDebugMode){
+    if (kDebugMode) {
       debugPrint(" [SocketService] 底层分发中心收到信号: type=$type, data=$data");
     }
 
     switch (type) {
       // base events
-      case SocketEvents.chatMessage: _onChatMessage(data); break;
-      case SocketEvents.conversationRead: _onReadReceipt(data); break;
-      case SocketEvents.messageRecall: _onMessageRecall(data); break;
-      case SocketEvents.conversationUpdated: _onConversationUpdated(data); break;
+      case SocketEvents.chatMessage:
+        _onChatMessage(data);
+        break;
+      case SocketEvents.conversationRead:
+        _onReadReceipt(data);
+        break;
+      case SocketEvents.messageRecall:
+        _onMessageRecall(data);
+        break;
+      case SocketEvents.conversationUpdated:
+        _onConversationUpdated(data);
+        break;
       // contact events
-      case SocketEvents.contactApply: _onContactApply(data); break;
-      case SocketEvents.contactAccept: _onContactAccept(data); break;
+      case SocketEvents.contactApply:
+        _onContactApply(data);
+        break;
+      case SocketEvents.contactAccept:
+        _onContactAccept(data);
+        break;
 
       // group events are treated as notifications or business events, not chat events
       case SocketEvents.memberKicked:
@@ -80,43 +109,71 @@ mixin SocketDispatcherMixin on _SocketBase {
       case SocketEvents.memberLeft:
       case SocketEvents.groupDisbanded:
       case SocketEvents.groupInfoUpdated:
-      _onGroupEvent(type, data);
-      break;
+      case SocketEvents.groupApplyNew:
+      case SocketEvents.groupApplyResult:
+      case SocketEvents.groupRequestHandled:
+        _onGroupEvent(type, data);
+        break;
 
       // business/system notifications
       case SocketEvents.groupSuccess:
-      case SocketEvents.groupFailed: _onGroupNotification(type, data); break;
+      case SocketEvents.groupFailed:
+        _onGroupNotification(type, data);
+        break;
       case SocketEvents.groupUpdate:
-      case SocketEvents.walletChange: _onBusinessEvent(type, data); break;
-      default: debugPrint(" [Socket] Unknown type: $type");
+      case SocketEvents.walletChange:
+        _onBusinessEvent(type, data);
+        break;
+      default:
+        debugPrint(" [SocketService] Unhandled event type: $type, data: $data");
+
     }
   }
 
   // 抽象方法由各 Part Mixin 实现
   void _onChatMessage(dynamic data);
+
   void _onReadReceipt(dynamic data);
+
   void _onMessageRecall(dynamic data);
+
   void _onConversationUpdated(dynamic data);
+
   void _onGroupNotification(String type, dynamic data);
+
   void _onBusinessEvent(String type, dynamic data);
+
   void _onContactApply(dynamic data);
+
   void _onContactAccept(dynamic data);
+
   void _onGroupEvent(String type, dynamic data);
 }
 
 class SocketService extends _SocketBase
-    with SocketDispatcherMixin, SocketChatMixin, SocketContactMixin, SocketNotificationMixin, SocketLobbyMixin {
+    with
+        SocketDispatcherMixin,
+        SocketChatMixin,
+        SocketContactMixin,
+        SocketNotificationMixin,
+        SocketLobbyMixin {
   static final SocketService _instance = SocketService._internal();
+
   factory SocketService() => _instance;
+
   SocketService._internal();
 
   TokenRefreshCallback? onTokenRefreshRequest;
   TokenRefreshCallback? _tokenRefresher;
   bool _isInitializing = false;
 
-  Future<void> init({required String token, TokenRefreshCallback? onTokenRefresh}) async {
+  Future<void> init({
+    required String token,
+    TokenRefreshCallback? onTokenRefresh,
+  }) async {
     if (_isInitializing) return;
-    _tokenRefresher = onTokenRefresh ?? onTokenRefreshRequest ?? _defaultTokenRefresher;
+    _tokenRefresher =
+        onTokenRefresh ?? onTokenRefreshRequest ?? _defaultTokenRefresher;
     _isInitializing = true;
 
     try {
@@ -128,20 +185,28 @@ class SocketService extends _SocketBase
       }
 
       disconnect();
-      _socket = IO.io('${AppConfig.apiBaseUrl}/events', IO.OptionBuilder()
-          .setTransports(['websocket'])
-          .disableAutoConnect()
-      // 修复：强制 Map 类型并确保值被正确处理
-          .setQuery(<String, dynamic>{'token': validToken.toString()})
-          .setReconnectionAttempts(5)
-          .setAuth(<String, dynamic>{'token': validToken})
-          .build());
+      _socket = IO.io(
+        '${AppConfig.apiBaseUrl}/events',
+        IO.OptionBuilder()
+            .setTransports(['websocket'])
+            .disableAutoConnect()
+            // 修复：强制 Map 类型并确保值被正确处理
+            .setQuery(<String, dynamic>{'token': validToken.toString()})
+            .setReconnectionAttempts(5)
+            .setAuth(<String, dynamic>{'token': validToken})
+            .build(),
+      );
 
-      _socket!.onConnect((_) { debugPrint(' [Socket] Connected'); triggerSync(); });
+      _socket!.onConnect((_) {
+        debugPrint(' [Socket] Connected');
+        triggerSync();
+      });
       _socket!.onDisconnect((r) => debugPrint(' [Socket] Disconnected: $r'));
       _socket!.on(SocketEvents.dispatch, (data) => _handleDispatch(data));
       _socket!.connect();
-    } finally { _isInitializing = false; }
+    } finally {
+      _isInitializing = false;
+    }
   }
 
   Future<String?> _ensureValidToken(String token) async {

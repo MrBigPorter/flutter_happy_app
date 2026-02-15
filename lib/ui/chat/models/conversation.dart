@@ -281,6 +281,8 @@ class ConversationDetail {
   //  [新增] 申请状态: 'NONE' | 'PENDING'
   // 注意：后端如果返回 null，默认视为 'NONE'
   final String? applicationStatus;
+  final int pendingRequestCount;
+  final int memberCount;
 
   // [NEW] 详情页补充字段
   final int lastMsgSeqId;
@@ -306,6 +308,8 @@ class ConversationDetail {
     this.isMuteAll = false,
     this.joinNeedApproval = false,
     this.applicationStatus,
+    this.pendingRequestCount = 0,
+    required this.memberCount,
   });
 
   ConversationDetail copyWith({
@@ -324,6 +328,8 @@ class ConversationDetail {
     bool? isMuteAll,
     bool? joinNeedApproval,
     String? applicationStatus,
+    int? pendingRequestCount,
+    int? memberCount,
   }) {
     return ConversationDetail(
       id: id ?? this.id,
@@ -341,6 +347,8 @@ class ConversationDetail {
       isMuteAll: isMuteAll ?? this.isMuteAll,
       joinNeedApproval: joinNeedApproval ?? this.joinNeedApproval,
       applicationStatus:  applicationStatus?? this.applicationStatus,
+      pendingRequestCount: pendingRequestCount ?? this.pendingRequestCount,
+      memberCount: memberCount ?? this.memberCount,
     );
 
   }
@@ -376,7 +384,9 @@ class ConversationDetail {
       announcement: json['announcement'],
       isMuteAll: json['isMuteAll'] ?? false,
       joinNeedApproval: json['joinNeedApproval'] ?? false,
-      applicationStatus: json['applicationStatus']?.toString()
+      applicationStatus: json['applicationStatus']?.toString(),
+      pendingRequestCount: json['pendingRequestCount'] ?? 0,
+      memberCount: json['memberCount'] ?? 0,
     );
   }
 
@@ -399,13 +409,13 @@ class ConversationDetail {
       'isMuteAll': isMuteAll,
       'joinNeedApproval': joinNeedApproval,
       'applicationStatus': applicationStatus,
+      'pendingRequestCount': pendingRequestCount,
     };
   }
 
   @override
   String toString() => toJson().toString();
 
-  int get memberCount => members.length;
 }
 
 // =================================================================

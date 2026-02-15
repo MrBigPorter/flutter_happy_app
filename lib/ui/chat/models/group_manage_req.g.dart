@@ -6,38 +6,11 @@ part of 'group_manage_req.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-KickMemberReq _$KickMemberReqFromJson(Map<String, dynamic> json) =>
-    $checkedCreate(
-      'KickMemberReq',
-      json,
-      ($checkedConvert) {
-        final val = KickMemberReq(
-          conversationId: $checkedConvert('conversationId', (v) => v as String),
-          targetUserId: $checkedConvert('targetUserId', (v) => v as String),
-        );
-        return val;
-      },
-    );
-
 Map<String, dynamic> _$KickMemberReqToJson(KickMemberReq instance) =>
     <String, dynamic>{
       'conversationId': instance.conversationId,
       'targetUserId': instance.targetUserId,
     };
-
-MuteMemberReq _$MuteMemberReqFromJson(Map<String, dynamic> json) =>
-    $checkedCreate(
-      'MuteMemberReq',
-      json,
-      ($checkedConvert) {
-        final val = MuteMemberReq(
-          conversationId: $checkedConvert('conversationId', (v) => v as String),
-          targetUserId: $checkedConvert('targetUserId', (v) => v as String),
-          duration: $checkedConvert('duration', (v) => (v as num).toInt()),
-        );
-        return val;
-      },
-    );
 
 Map<String, dynamic> _$MuteMemberReqToJson(MuteMemberReq instance) =>
     <String, dynamic>{
@@ -45,24 +18,6 @@ Map<String, dynamic> _$MuteMemberReqToJson(MuteMemberReq instance) =>
       'targetUserId': instance.targetUserId,
       'duration': instance.duration,
     };
-
-UpdateGroupInfoReq _$UpdateGroupInfoReqFromJson(Map<String, dynamic> json) =>
-    $checkedCreate(
-      'UpdateGroupInfoReq',
-      json,
-      ($checkedConvert) {
-        final val = UpdateGroupInfoReq(
-          conversationId: $checkedConvert('conversationId', (v) => v as String),
-          name: $checkedConvert('name', (v) => v as String?),
-          announcement: $checkedConvert('announcement', (v) => v as String?),
-          isMuteAll: $checkedConvert('isMuteAll', (v) => v as bool?),
-          joinNeedApproval:
-              $checkedConvert('joinNeedApproval', (v) => v as bool?),
-          avatar: $checkedConvert('avatar', (v) => v as String?),
-        );
-        return val;
-      },
-    );
 
 Map<String, dynamic> _$UpdateGroupInfoReqToJson(UpdateGroupInfoReq instance) =>
     <String, dynamic>{
@@ -74,73 +29,29 @@ Map<String, dynamic> _$UpdateGroupInfoReqToJson(UpdateGroupInfoReq instance) =>
       'avatar': instance.avatar,
     };
 
-SetAdminRes _$SetAdminResFromJson(Map<String, dynamic> json) => $checkedCreate(
-      'SetAdminRes',
-      json,
-      ($checkedConvert) {
-        final val = SetAdminRes(
-          success: $checkedConvert('success', (v) => v as bool),
-          role: $checkedConvert('role', (v) => v as String),
-        );
-        return val;
-      },
-    );
-
-Map<String, dynamic> _$SetAdminResToJson(SetAdminRes instance) =>
+Map<String, dynamic> _$TransferOwnerReqToJson(TransferOwnerReq instance) =>
     <String, dynamic>{
-      'success': instance.success,
-      'role': instance.role,
+      'conversationId': instance.conversationId,
+      'newOwnerId': instance.newOwnerId,
     };
 
-TransferOwnerRes _$TransferOwnerResFromJson(Map<String, dynamic> json) =>
-    $checkedCreate(
-      'TransferOwnerRes',
-      json,
-      ($checkedConvert) {
-        final val = TransferOwnerRes(
-          success: $checkedConvert('success', (v) => v as bool),
-        );
-        return val;
-      },
-    );
-
-Map<String, dynamic> _$TransferOwnerResToJson(TransferOwnerRes instance) =>
+Map<String, dynamic> _$SetAdminReqToJson(SetAdminReq instance) =>
     <String, dynamic>{
-      'success': instance.success,
+      'conversationId': instance.conversationId,
+      'targetUserId': instance.targetUserId,
+      'isAdmin': instance.isAdmin,
     };
 
-LeaveGroupRes _$LeaveGroupResFromJson(Map<String, dynamic> json) =>
-    $checkedCreate(
-      'LeaveGroupRes',
-      json,
-      ($checkedConvert) {
-        final val = LeaveGroupRes(
-          success: $checkedConvert('success', (v) => v as bool),
-        );
-        return val;
-      },
-    );
-
-Map<String, dynamic> _$LeaveGroupResToJson(LeaveGroupRes instance) =>
+Map<String, dynamic> _$ApplyToGroupReqToJson(ApplyToGroupReq instance) =>
     <String, dynamic>{
-      'success': instance.success,
+      'conversationId': instance.conversationId,
+      'reason': instance.reason,
     };
 
-DisbandGroupRes _$DisbandGroupResFromJson(Map<String, dynamic> json) =>
-    $checkedCreate(
-      'DisbandGroupRes',
-      json,
-      ($checkedConvert) {
-        final val = DisbandGroupRes(
-          success: $checkedConvert('success', (v) => v as bool),
-        );
-        return val;
-      },
-    );
-
-Map<String, dynamic> _$DisbandGroupResToJson(DisbandGroupRes instance) =>
+Map<String, dynamic> _$HandleGroupJoinReqToJson(HandleGroupJoinReq instance) =>
     <String, dynamic>{
-      'success': instance.success,
+      'requestId': instance.requestId,
+      'action': instance.action,
     };
 
 KickMemberRes _$KickMemberResFromJson(Map<String, dynamic> json) =>
@@ -149,23 +60,11 @@ KickMemberRes _$KickMemberResFromJson(Map<String, dynamic> json) =>
       kickedUserId: json['kickedUserId'] as String,
     );
 
-Map<String, dynamic> _$KickMemberResToJson(KickMemberRes instance) =>
-    <String, dynamic>{
-      'success': instance.success,
-      'kickedUserId': instance.kickedUserId,
-    };
-
 MuteMemberRes _$MuteMemberResFromJson(Map<String, dynamic> json) =>
     MuteMemberRes(
       success: json['success'] as bool,
       mutedUntil: (json['mutedUntil'] as num?)?.toInt(),
     );
-
-Map<String, dynamic> _$MuteMemberResToJson(MuteMemberRes instance) =>
-    <String, dynamic>{
-      'success': instance.success,
-      'mutedUntil': instance.mutedUntil,
-    };
 
 UpdateGroupRes _$UpdateGroupResFromJson(Map<String, dynamic> json) =>
     UpdateGroupRes(
@@ -177,21 +76,10 @@ UpdateGroupRes _$UpdateGroupResFromJson(Map<String, dynamic> json) =>
       joinNeedApproval: json['joinNeedApproval'] as bool?,
     );
 
-Map<String, dynamic> _$UpdateGroupResToJson(UpdateGroupRes instance) =>
-    <String, dynamic>{
-      'id': instance.id,
-      'name': instance.name,
-      'announcement': instance.announcement,
-      'isMuteAll': instance.isMuteAll,
-      'avatar': instance.avatar,
-      'joinNeedApproval': instance.joinNeedApproval,
-    };
-
-Map<String, dynamic> _$ApplyToGroupReqToJson(ApplyToGroupReq instance) =>
-    <String, dynamic>{
-      'conversationId': instance.conversationId,
-      'reason': instance.reason,
-    };
+SetAdminRes _$SetAdminResFromJson(Map<String, dynamic> json) => SetAdminRes(
+      success: json['success'] as bool,
+      role: json['role'] as String,
+    );
 
 ApplyToGroupRes _$ApplyToGroupResFromJson(Map<String, dynamic> json) =>
     ApplyToGroupRes(
@@ -200,38 +88,20 @@ ApplyToGroupRes _$ApplyToGroupResFromJson(Map<String, dynamic> json) =>
       message: json['message'] as String?,
     );
 
-Map<String, dynamic> _$ApplyToGroupResToJson(ApplyToGroupRes instance) =>
-    <String, dynamic>{
-      'status': instance.status,
-      'requestId': instance.requestId,
-      'message': instance.message,
-    };
+SimpleSuccessRes _$SimpleSuccessResFromJson(Map<String, dynamic> json) =>
+    SimpleSuccessRes(
+      success: json['success'] as bool,
+    );
 
-Map<String, dynamic> _$HandleGroupJoinReqToJson(HandleGroupJoinReq instance) =>
-    <String, dynamic>{
-      'requestId': instance.requestId,
-      'action': instance.action,
-    };
-
-GroupJoinRequest _$GroupJoinRequestFromJson(Map<String, dynamic> json) =>
-    GroupJoinRequest(
+GroupJoinRequestItem _$GroupJoinRequestItemFromJson(
+        Map<String, dynamic> json) =>
+    GroupJoinRequestItem(
       id: json['id'] as String,
-      groupId: json['groupId'] as String,
-      applicant: ChatUser.fromJson(json['applicant'] as Map<String, dynamic>),
       reason: json['reason'] as String,
       status: $enumDecode(_$GroupRequestStatusEnumMap, json['status']),
       createdAt: (json['createdAt'] as num).toInt(),
+      applicant: ChatUser.fromJson(json['applicant'] as Map<String, dynamic>),
     );
-
-Map<String, dynamic> _$GroupJoinRequestToJson(GroupJoinRequest instance) =>
-    <String, dynamic>{
-      'id': instance.id,
-      'groupId': instance.groupId,
-      'applicant': instance.applicant,
-      'reason': instance.reason,
-      'status': _$GroupRequestStatusEnumMap[instance.status]!,
-      'createdAt': instance.createdAt,
-    };
 
 const _$GroupRequestStatusEnumMap = {
   GroupRequestStatus.pending: 0,

@@ -25,10 +25,14 @@ class _GroupRequestListPageState extends ConsumerState<GroupRequestListPage> {
   Future<void> _handleRequest(String requestId, bool isAccept) async {
     setState(() => _processingIds.add(requestId));
 
+    // 调用 Controller 处理
     final success = await ref
         .read(groupJoinControllerProvider.notifier)
         .handleRequest(
-        groupId: widget.groupId, requestId: requestId, isAccept: isAccept);
+        groupId: widget.groupId,
+        requestId: requestId,
+        isAccept: isAccept
+    );
 
     if (mounted) {
       setState(() => _processingIds.remove(requestId));
@@ -42,10 +46,12 @@ class _GroupRequestListPageState extends ConsumerState<GroupRequestListPage> {
 
   @override
   Widget build(BuildContext context) {
+    // 监听 Provider
     final asyncList = ref.watch(groupJoinRequestsProvider(widget.groupId));
+    print("GroupRequestListPage: rebuild with state = ${asyncList.value.toString()}");
 
     return Scaffold(
-      backgroundColor: context.bgSecondary, // 浅灰背景
+      backgroundColor: context.bgSecondary,
       appBar: AppBar(
         title: Text("Join Applications",
             style: TextStyle(
@@ -100,7 +106,8 @@ class _GroupRequestListPageState extends ConsumerState<GroupRequestListPage> {
 }
 
 class _RequestCard extends StatelessWidget {
-  final GroupJoinRequest request;
+  // 1. 【修改】类型改为 GroupJoinRequestItem
+  final GroupJoinRequestItem request;
   final bool isProcessing;
   final Function(bool) onHandle;
 
@@ -112,8 +119,10 @@ class _RequestCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // status: 0=Pending, 1=Accepted, 2=Rejected
-    final isPending = request.status == 0;
+    // 2. 【修改】使用 Enum 判断状态
+    final isPending = request.status == GroupRequestStatus.pending;
+
+    // 3. 【修改】字段名改为 createTime (int)
     final dateStr = DateTime.fromMillisecondsSinceEpoch(request.createdAt);
 
     return Container(
@@ -139,8 +148,9 @@ class _RequestCard extends StatelessWidget {
               ClipRRect(
                 borderRadius: BorderRadius.circular(20.r),
                 child: CachedNetworkImage(
+                  // applicant 现在是非空的，可以直接用
                   imageUrl: UrlResolver.resolveImage(
-                      context, request.applicant?.avatar,
+                      context, request.applicant.avatar,
                       logicalWidth: 40),
                   width: 40.r,
                   height: 40.r,
@@ -157,7 +167,7 @@ class _RequestCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      request.applicant?.nickname ?? "Unknown User",
+                      request.applicant.nickname,
                       style: TextStyle(
                         fontSize: 15.sp,
                         fontWeight: FontWeight.w600,
@@ -165,7 +175,7 @@ class _RequestCard extends StatelessWidget {
                       ),
                     ),
                     SizedBox(height: 2.h),
-                    // 使用 timeago 或简单的日期显示
+                    // 时间显示
                     Text(
                       "${dateStr.month}/${dateStr.day} ${dateStr.hour}:${dateStr.minute.toString().padLeft(2, '0')}",
                       style: TextStyle(
@@ -186,7 +196,7 @@ class _RequestCard extends StatelessWidget {
             width: double.infinity,
             padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
             decoration: BoxDecoration(
-              color: context.bgSecondary, // 浅色背景框
+              color: context.bgSecondary,
               borderRadius: BorderRadius.circular(8.r),
             ),
             child: Text.rich(
@@ -274,7 +284,8 @@ class _RequestCard extends StatelessWidget {
 
   // 状态：已处理 (显示结果)
   Widget _buildHandledStatus(BuildContext context) {
-    final isAccepted = request.status == 1;
+    // 4. 【修改】使用 Enum 判断
+    final isAccepted = request.status == GroupRequestStatus.accepted;
     return Container(
       width: double.infinity,
       padding: EdgeInsets.symmetric(vertical: 8.h),
