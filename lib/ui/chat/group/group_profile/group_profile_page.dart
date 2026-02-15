@@ -24,22 +24,38 @@ import 'package:flutter_app/ui/chat/core/extensions/chat_permissions.dart';
 import 'package:flutter_app/ui/chat/models/conversation.dart';
 import 'package:flutter_app/ui/chat/models/group_role.dart';
 
-// 引入拆分文件
+import '../group_qr_page.dart';
+
 part 'group_profile_widgets.dart';
 part 'group_profile_logic.dart';
 
-class GroupProfilePage extends ConsumerWidget {
+// 改为 ConsumerStatefulWidget 以维持搜索状态
+class GroupProfilePage extends ConsumerStatefulWidget {
   final String conversationId;
 
   const GroupProfilePage({super.key, required this.conversationId});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final asyncDetail = ref.watch(chatGroupProvider(conversationId));
+  ConsumerState<GroupProfilePage> createState() => _GroupProfilePageState();
+}
+
+class _GroupProfilePageState extends ConsumerState<GroupProfilePage> {
+  // [修改 2] 搜索状态
+  String _searchKeyword = "";
+  final TextEditingController _searchController = TextEditingController();
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final asyncDetail = ref.watch(chatGroupProvider(widget.conversationId));
     final myUserId = ref.watch(userProvider.select((s) => s?.id)) ?? '';
 
     return BaseScaffold(
-      // 标题动态变化
       title: asyncDetail.valueOrNull != null
           ? (asyncDetail.value!.type == ConversationType.group
           ? "Group Chat (${asyncDetail.value!.memberCount})"
@@ -54,9 +70,15 @@ class GroupProfilePage extends ConsumerWidget {
             return const Center(child: Text("This is not a group."));
           }
 
-          //  核心判断：我是不是成员？
           final me = detail.members.findMember(myUserId);
           final isMember = me != null;
+
+          // [修改 3] 执行本地过滤逻辑
+          final displayMembers = _searchKeyword.isEmpty
+              ? detail.members
+              : detail.members.where((m) => m.nickname
+              .toLowerCase()
+              .contains(_searchKeyword.toLowerCase())).toList();
 
           return SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
@@ -66,11 +88,45 @@ class GroupProfilePage extends ConsumerWidget {
                 // 1. 顶部区域：根据身份区分
                 // =================================================
                 if (isMember)
-                // 成员：看九宫格
+                // 成员：看九宫格 (带搜索框)
                   Container(
                     color: context.bgPrimary,
                     padding: EdgeInsets.only(top: 16.h, bottom: 20.h),
-                    child: _MemberGrid(detail: detail, myUserId: myUserId),
+                    child: Column(
+                      children: [
+                        // [新增] 搜索框
+                        if (detail.memberCount > 5) // 人少的时候没必要显示搜索框
+                          Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
+                            child: TextField(
+                              controller: _searchController,
+                              onChanged: (val) => setState(() => _searchKeyword = val),
+                              decoration: InputDecoration(
+                                hintText: "Search members",
+                                prefixIcon: Icon(Icons.search,
+                                    size: 20.r, color: context.textSecondary700),
+                                filled: true,
+                                fillColor: context.bgSecondary,
+                                contentPadding: EdgeInsets.symmetric(vertical: 0, horizontal: 12.w),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8.r),
+                                  borderSide: BorderSide.none,
+                                ),
+                              ),
+                              style: TextStyle(fontSize: 14.sp),
+                            ),
+                          ),
+
+                        SizedBox(height: 12.h),
+
+                        // [修改 4] 传入过滤后的 displayMembers
+                        _MemberGrid(
+                          detail: detail,
+                          myUserId: myUserId,
+                          members: displayMembers,
+                        ),
+                      ],
+                    ),
                   )
                 else
                 // 陌生人：看大头像名片
@@ -82,17 +138,15 @@ class GroupProfilePage extends ConsumerWidget {
                 // 2. 内容/设置区域
                 // =================================================
                 if (isMember) ...[
-                  // 成员：完整设置菜单
                   _MenuSection(detail: detail, myUserId: myUserId),
                   SizedBox(height: 30.h),
                 ] else ...[
-                  // 陌生人：只看公告
                   _AnnouncementCard(detail: detail),
                   SizedBox(height: 30.h),
                 ],
 
                 // =================================================
-                // 3. 底部按钮 (Join / Chat)
+                // 3. 底部按钮
                 // =================================================
                 _FooterButtons(detail: detail, myUserId: myUserId),
 

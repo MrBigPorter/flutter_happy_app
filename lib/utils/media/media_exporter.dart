@@ -44,6 +44,55 @@ class MediaExporter {
     }
   }
 
+  /// 3. 保存内存图片到相册
+  static Future<bool> saveImageBytes(BuildContext context, Uint8List bytes) async {
+    if (kIsWeb) {
+      await downloadImageOnWeb(bytes);
+      return true;
+    }
+
+    try {
+      if (!await Gal.hasAccess()) {
+        final ok = await Gal.requestAccess();
+        if (!ok) return false;
+      }
+      // 直接保存二进制数据
+      await Gal.putImageBytes(bytes);
+      return true;
+    } catch (e) {
+      debugPrint("Save bytes error: $e");
+      return false;
+    }
+  }
+
+  /// 4. [修改] 分享内存图片 (通用化)
+  static Future<void> shareImageBytes(
+      BuildContext context,
+      Uint8List bytes, {
+        String filename = 'shared_image.png', // 默认文件名
+        String? subject, // 邮件/系统分享标题
+        String? text,    // 分享文案
+      }) async {
+    try {
+      // 将内存数据包装成 XFile
+      final file = XFile.fromData(
+        bytes,
+        mimeType: 'image/png',
+        name: filename,
+      );
+
+      // 调用现有的 ShareService
+      await ShareService.shareFiles(
+        context,
+        [file],
+        subject: subject,
+        text: text,
+      );
+    } catch (e) {
+      debugPrint("Share bytes error: $e");
+    }
+  }
+
   /// 统一分享入口：分享物理文件
   static Future<void> shareImage(BuildContext context, String source) async {
     if (kIsWeb) {

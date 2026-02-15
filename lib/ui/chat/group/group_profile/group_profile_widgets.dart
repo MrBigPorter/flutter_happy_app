@@ -6,22 +6,27 @@ part of 'group_profile_page.dart';
 class _MemberGrid extends ConsumerWidget {
   final ConversationDetail detail;
   final String myUserId;
+  final List<ChatMember> members;
 
-  const _MemberGrid({required this.detail, required this.myUserId});
+  const _MemberGrid({
+    required this.detail,
+    required this.myUserId,
+    required this.members,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     // 1. 执行排序逻辑 (UI层展示优化)
     // 权重: 群主(3) > 管理员(2) > 普通成员(1)
-    final sortedMembers = [...detail.members];
+    // [NEW] 3. 排序逻辑：直接使用传入的 this.members
+    final sortedMembers = [...members];
     sortedMembers.sort((a, b) {
       int getScore(ChatMember m) {
         if (m.role == GroupRole.owner) return 3;
         if (m.role == GroupRole.admin) return 2;
         return 1;
       }
-
-      return getScore(b) - getScore(a); // 降序排列
+      return getScore(b) - getScore(a);
     });
 
     final bool showAddBtn = true;
@@ -212,7 +217,9 @@ class _MenuSection extends ConsumerWidget {
                                 borderRadius: BorderRadius.circular(10.r),
                               ),
                               child: Text(
-                                detail.pendingRequestCount > 99 ? '99+' : '${detail.pendingRequestCount}',
+                                detail.pendingRequestCount > 99
+                                    ? '99+'
+                                    : '${detail.pendingRequestCount}',
                                 style: TextStyle(
                                   color: Colors.white,
                                   fontSize: 12.sp,
@@ -308,6 +315,24 @@ class _MenuSection extends ConsumerWidget {
             RadixToast.info("Group ID copied");
           },
         ),
+        // [NEW] 5. 群二维码
+        _MenuItem(
+          label: "Group QR Code",
+          trailing: Icon(Icons.qr_code, size: 20.r, color: context.textSecondary700),
+          onTap: () {
+            // 直接跳转页面
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => GroupQrPage(
+                  groupId: detail.id,
+                  groupName: detail.name,
+                  groupAvatar: detail.avatar,
+                ),
+              ),
+            );
+          },
+        ),
 
         SizedBox(height: 12.h),
 
@@ -370,7 +395,6 @@ class _FooterButtons extends ConsumerWidget {
     final me = detail.members.findMember(myUserId);
     final isMember = me != null;
     final isOwner = me?.isOwner ?? false;
-    
 
     //  核心判断：是否处于 "审核中" 状态
     final isPending = detail.applicationStatus == 'PENDING';
@@ -384,24 +408,27 @@ class _FooterButtons extends ConsumerWidget {
           // =================================================
           if (!isMember) ...[
             if (isPending)
-            // 状态 1: 已申请，等待审核 (灰色不可点)
+              // 状态 1: 已申请，等待审核 (灰色不可点)
               Button(
                 width: double.infinity,
-                variant: ButtonVariant.secondary, // 使用次级颜色 (灰色)
-                disabled: true, // 禁用点击
+                variant: ButtonVariant.secondary,
+                // 使用次级颜色 (灰色)
+                disabled: true,
+                // 禁用点击
                 trailing: Icon(
                   Icons.hourglass_top,
                   size: 16.r,
                   color: context.textSecondary700, // 灰色图标
                 ),
-                onPressed: () {}, // 空操作
+                onPressed: () {},
+                // 空操作
                 child: Text(
                   "Application Pending",
                   style: TextStyle(color: context.textSecondary700), // 灰色文字
                 ),
               )
             else
-            // 状态 2: 未申请 (显示 Join 或 Apply)
+              // 状态 2: 未申请 (显示 Join 或 Apply)
               Button(
                 width: double.infinity,
                 variant: ButtonVariant.primary,
@@ -414,7 +441,6 @@ class _FooterButtons extends ConsumerWidget {
                 ),
               ),
           ],
-
 
           // =================================================
           // B. 成员视角：显示 "发消息" 和 "退群"
@@ -631,12 +657,9 @@ class _PublicGroupHeader extends StatelessWidget {
   final ConversationDetail detail;
 
   const _PublicGroupHeader({required this.detail});
-  
 
   @override
   Widget build(BuildContext context) {
-    
-
     return Container(
       width: double.infinity,
       color: context.bgPrimary,
