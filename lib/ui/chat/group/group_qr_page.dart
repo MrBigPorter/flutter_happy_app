@@ -1,9 +1,11 @@
-import 'dart:ui' as ui; // [新增] 用于图片处理
+import 'dart:ui' as ui;
+import 'package:flutter/foundation.dart'; // kIsWeb
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart'; // [新增] 用于截图边界处理
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_app/common.dart';
 import 'package:flutter_app/components/base_scaffold.dart';
 import 'package:flutter_app/ui/button/button.dart';
@@ -12,7 +14,6 @@ import 'package:flutter_app/utils/media/url_resolver.dart';
 import 'package:flutter_app/ui/toast/radix_toast.dart';
 import 'package:flutter_app/utils/media/media_exporter.dart';
 
-// [修改] 改为 StatefulWidget
 class GroupQrPage extends StatefulWidget {
   final String groupId;
   final String groupName;
@@ -30,62 +31,84 @@ class GroupQrPage extends StatefulWidget {
 }
 
 class _GroupQrPageState extends State<GroupQrPage> {
-  // [新增] 1. 定义截图边界 Key
   final GlobalKey _qrRepaintKey = GlobalKey();
 
-  // [新增] 2. 截图核心逻辑
+  /// 截图核心逻辑
   Future<Uint8List?> _capturePng() async {
     try {
       RenderRepaintBoundary? boundary = _qrRepaintKey.currentContext
           ?.findRenderObject() as RenderRepaintBoundary?;
+
       if (boundary == null) return null;
 
-      // pixelRatio: 3.0 保证生成高清大图
-      ui.Image image = await boundary.toImage(pixelRatio: 3.0);
+      // Web 端像素倍率设低一点，防止 Canvas 内存溢出
+      final ratio = kIsWeb ? 1.5 : 3.0;
+
+      ui.Image image = await boundary.toImage(pixelRatio: ratio);
       ByteData? byteData = await image.toByteData(format: ui.ImageByteFormat.png);
       return byteData?.buffer.asUint8List();
     } catch (e) {
       debugPrint("Capture error: $e");
+      // Web 端常见错误：Tainted canvas (图片跨域)
+      if (kIsWeb && e.toString().contains("Tainted")) {
+        RadixToast.error("Security Error: Image CORS issue");
+      }
       return null;
     }
   }
 
-  // [新增] 3. 处理保存
   Future<void> _handleSave() async {
     RadixToast.showLoading(message: "Saving...");
-    final bytes = await _capturePng();
-
-    if (bytes != null) {
-      final success = await MediaExporter.saveImageBytes(context, bytes);
-      RadixToast.hide();
-      if (success) {
-        RadixToast.success("Saved to Photos");
+    try {
+      final bytes = await _capturePng();
+      if (bytes != null) {
+        final success = await MediaExporter.saveImageBytes(context, bytes);
+        RadixToast.hide();
+        if (success) {
+          RadixToast.success(kIsWeb ? "Image Downloaded" : "Saved to Photos");
+        } else {
+          RadixToast.error("Failed to save");
+        }
       } else {
-        RadixToast.error("Failed to save");
+        RadixToast.hide();
+        RadixToast.error("Generation failed");
       }
-    } else {
+    } catch (e) {
       RadixToast.hide();
-      RadixToast.error("Capture failed");
     }
   }
 
-  // [新增] 4. 处理分享
   Future<void> _handleShare() async {
-    final bytes = await _capturePng();
-    if (bytes != null) {
-      await MediaExporter.shareImageBytes(
-        context,
-        bytes,
-        filename: 'group_qr_${widget.groupId}.png',
-        subject: 'Join Group: ${widget.groupName}',
-        text: 'Scan this QR code to join my group!',
-      );
+    RadixToast.showLoading(message: "Preparing...");
+    try {
+      final bytes = await _capturePng();
+      RadixToast.hide();
+
+      if (bytes != null && mounted) {
+        await MediaExporter.shareImageBytes(
+          context,
+          bytes,
+          filename: 'group_qr_${widget.groupId}.png',
+          subject: 'Join Group: ${widget.groupName}',
+          text: 'Scan this QR code to join my group!',
+        );
+      }
+    } catch (e) {
+      RadixToast.hide();
+      RadixToast.error("Share failed");
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final qrData = "luckyapp://group/join?id=${widget.groupId}";
+    final avatarUrl = widget.groupAvatar != null
+        ? UrlResolver.resolveImage(context, widget.groupAvatar!)
+        : null;
+
+    // Web 端如果图片没有配置 CORS，截图会报错，所以 Web 端暂时隐藏中间 Logo
+    // 或者你可以换成本地的 App Logo
+    final showLogo = avatarUrl != null && !kIsWeb;
 
     return BaseScaffold(
       title: "Group QR Code",
@@ -94,27 +117,23 @@ class _GroupQrPageState extends State<GroupQrPage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // [修改] 5. 使用 RepaintBoundary 包裹卡片
+            // 截图区域
             RepaintBoundary(
               key: _qrRepaintKey,
               child: Container(
                 width: 300.w,
                 padding: EdgeInsets.all(24.w),
                 decoration: BoxDecoration(
-                  color: Colors.white, // 建议强制白色背景，保证保存后二维码清晰可读
+                  color: Colors.white,
                   borderRadius: BorderRadius.circular(16.r),
                   boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
-                      blurRadius: 20,
-                      offset: const Offset(0, 4),
-                    ),
+                    BoxShadow(color: Colors.black12, blurRadius: 20, offset: Offset(0, 4)),
                   ],
                 ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // 群信息头部
+                    // 头部信息
                     Row(
                       children: [
                         Container(
@@ -123,13 +142,10 @@ class _GroupQrPageState extends State<GroupQrPage> {
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(8.r),
                             color: context.bgSecondary,
-                            image: widget.groupAvatar != null
+                            image: avatarUrl != null
                                 ? DecorationImage(
-                              image: NetworkImage(
-                                UrlResolver.resolveImage(context, widget.groupAvatar),
-                              ),
-                              fit: BoxFit.cover,
-                            )
+                                image: CachedNetworkImageProvider(avatarUrl),
+                                fit: BoxFit.cover)
                                 : null,
                           ),
                         ),
@@ -137,11 +153,7 @@ class _GroupQrPageState extends State<GroupQrPage> {
                         Expanded(
                           child: Text(
                             widget.groupName,
-                            style: TextStyle(
-                              fontSize: 18.sp,
-                              fontWeight: FontWeight.bold,
-                              color: context.textSecondary700,
-                            ),
+                            style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -150,27 +162,49 @@ class _GroupQrPageState extends State<GroupQrPage> {
                     ),
                     SizedBox(height: 24.h),
 
-                    // 二维码主体
-                    QrImageView(
-                      data: qrData,
-                      version: QrVersions.auto,
-                      size: 220.w,
-                      backgroundColor: Colors.white,
-                      embeddedImage: widget.groupAvatar != null
-                          ? NetworkImage(UrlResolver.resolveImage(context, widget.groupAvatar))
-                          : null,
-                      embeddedImageStyle: QrEmbeddedImageStyle(
-                        size: Size(40.w, 40.w),
+                    // [核心优化] 使用 Stack 分层渲染，不再阻塞二维码生成
+                    SizedBox(
+                      width: 220.w,
+                      height: 220.w,
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          // 1. 底层：纯二维码 (秒开)
+                          QrImageView(
+                            data: qrData,
+                            version: QrVersions.auto,
+                            size: 220.w,
+                            backgroundColor: Colors.white,
+                            // 注意：这里不要传 embeddedImage 了
+                            errorStateBuilder: (cxt, err) => Center(child: Text("Error")),
+                          ),
+
+                          // 2. 顶层：Logo (异步加载，带白边)
+                          if (showLogo)
+                            Container(
+                              width: 48.w,
+                              height: 48.w,
+                              padding: EdgeInsets.all(3.w), // 白边
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(8.r),
+                              ),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(6.r),
+                                child: CachedNetworkImage(
+                                  imageUrl: avatarUrl!,
+                                  fit: BoxFit.cover,
+                                  placeholder: (context, url) => Container(color: Colors.grey[200]),
+                                  errorWidget: (context, url, error) => Icon(Icons.error),
+                                ),
+                              ),
+                            ),
+                        ],
                       ),
                     ),
+
                     SizedBox(height: 12.h),
-                    Text(
-                      "Scan to join group",
-                      style: TextStyle(
-                        color: context.textSecondary700,
-                        fontSize: 12.sp,
-                      ),
-                    ),
+                    Text("Scan to join group", style: TextStyle(color: context.textSecondary700)),
                   ],
                 ),
               ),
@@ -178,7 +212,7 @@ class _GroupQrPageState extends State<GroupQrPage> {
 
             SizedBox(height: 40.h),
 
-            // [修改] 6. 底部双按钮 (分享 + 保存)
+            // 底部按钮
             Padding(
               padding: EdgeInsets.symmetric(horizontal: 40.w),
               child: Row(

@@ -65,23 +65,29 @@ class MediaExporter {
     }
   }
 
-  /// 4. [修改] 分享内存图片 (通用化)
+  /// [修改] 通用分享图片 (兼容 Web)
   static Future<void> shareImageBytes(
       BuildContext context,
       Uint8List bytes, {
-        String filename = 'shared_image.png', // 默认文件名
-        String? subject, // 邮件/系统分享标题
-        String? text,    // 分享文案
+        String filename = 'shared_image.png',
+        String? subject,
+        String? text,
       }) async {
+    // 1. Web 桌面端特殊处理：通常不支持分享文件，降级为下载
+    if (kIsWeb) {
+      await saveImageBytes(context, bytes); // Web 上 save 就是下载
+      return;
+    }
+
     try {
-      // 将内存数据包装成 XFile
+      // 2. 构造 XFile (Web 必须传 mimeType)
       final file = XFile.fromData(
         bytes,
-        mimeType: 'image/png',
+        mimeType: 'image/png', // [关键] Web Share API 强校验
         name: filename,
       );
 
-      // 调用现有的 ShareService
+      // 3. 调用分享服务
       await ShareService.shareFiles(
         context,
         [file],
