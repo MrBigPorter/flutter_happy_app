@@ -23,8 +23,6 @@ extension CallPageWidgets on _CallPageState {
       // 只有在视频模式且摄像头未关闭时，才算是有视频
       isVideo: widget.isVideo && !state.isCameraOff,
       targetAvatar: widget.targetAvatar,
-      duration: isConnected ? state.duration : "Waiting...",
-      remoteRenderer:safeRenderer, // 从 state 取渲染器
       onTap: () {
         // 1. 隐藏悬浮窗
         OverlayManager.instance.hide();
