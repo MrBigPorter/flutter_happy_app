@@ -50,7 +50,13 @@ class _CallPageState extends ConsumerState<CallPage> {
     // 注意：更好的做法是在 listen 里做导航，防止 build 时报错
     ref.listen(callControllerProvider, (prev, next) {
       if (next.status == CallStatus.ended) {
-        Navigator.pop(context);
+        if(Navigator.canPop(context)){
+          Navigator.pop(context);
+        }
+
+        // 2.  核心：彻底销毁 Provider，释放内存，为下一次通话重置状态
+        // 这样下次进来就是一个全新的 Controller
+        ref.invalidate(callControllerProvider);
       }
     });
 

@@ -12,12 +12,19 @@ extension CallPageWidgets on _CallPageState {
     // 判断是否已连接 (用于显示时间 vs Waiting)
     final isConnected = state.status == CallStatus.connected;
 
+    //  防御：确保 remoteRenderer 活着
+    // 只有当 接通 && 渲染器存在 时，才传给 CallOverlay
+    // 否则传 null，让 CallOverlay 显示头像
+    final safeRenderer = (isConnected && state.remoteRenderer != null)
+        ? state.remoteRenderer
+        : null;
+
     return CallOverlay(
       // 只有在视频模式且摄像头未关闭时，才算是有视频
       isVideo: widget.isVideo && !state.isCameraOff,
       targetAvatar: widget.targetAvatar,
       duration: isConnected ? state.duration : "Waiting...",
-      remoteRenderer: state.remoteRenderer, // 从 state 取渲染器
+      remoteRenderer:safeRenderer, // 从 state 取渲染器
       onTap: () {
         // 1. 隐藏悬浮窗
         OverlayManager.instance.hide();
@@ -40,6 +47,10 @@ extension CallPageWidgets on _CallPageState {
 
   /// 构建本地小窗
   Widget _buildLocalWindow(CallState state, {bool isDragging = false}) {
+    //  防御：如果渲染器已置空，返回空容器，防止报错
+    if(state.localRenderer == null) {
+      return SizedBox();
+    }
     return Opacity(
       opacity: isDragging ? 0.7 : 1.0,
       child: LocalVideoView(
@@ -51,7 +62,7 @@ extension CallPageWidgets on _CallPageState {
 
   /// 构建背景层 (远端视频或模糊图)
   Widget _buildBackgroundLayer(CallState state, bool showVideoUI, bool isConnected) {
-    if (showVideoUI && isConnected) {
+    if (showVideoUI && isConnected && state.remoteRenderer != null) {
       // 场景 A: 接通且有视频 -> 显示远端流
       return RemoteVideoView(
         renderer: state.remoteRenderer,
