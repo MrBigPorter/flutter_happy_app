@@ -33,6 +33,7 @@ extension CallPageWidgets on _CallPageState {
         OverlayManager.instance.navigatorKey.currentState?.push(
           MaterialPageRoute(
             builder: (_) => CallPage(
+              targetId: widget.targetId,
               targetName: widget.targetName,
               targetAvatar: widget.targetAvatar,
               isVideo: widget.isVideo,

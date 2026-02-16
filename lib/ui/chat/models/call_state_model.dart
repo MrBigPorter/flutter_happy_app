@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 
-enum CallStatus { dialing, ringing, connected, ended }
+enum CallStatus { idle, dialing, ringing, connected, ended }
 
 class CallState {
   final CallStatus status;
@@ -19,7 +19,7 @@ class CallState {
   final Offset floatOffset;
 
   const CallState({
-    this.status = CallStatus.dialing,
+    this.status = CallStatus.idle,
     this.isMuted = false,
     this.isSpeakerOn = false,
     this.isCameraOff = false,

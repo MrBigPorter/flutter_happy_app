@@ -92,7 +92,7 @@ class _ChatPageState extends ConsumerState<ChatPage> with ChatPageLogic {
       child: Scaffold(
         backgroundColor: context.bgPrimary,
         resizeToAvoidBottomInset: true,
-        appBar: _buildAppBar(context, detail, isGroup),
+        appBar: _buildAppBar(context, detail, isGroup, ref),
         body: Column(
           children: [
             // 公告栏
@@ -147,7 +147,7 @@ class _ChatPageState extends ConsumerState<ChatPage> with ChatPageLogic {
                               message: msg,
                               showReadStatus: msg.isMe && msg.status == MessageStatus.read && index == 0,
                               onRetry: () => actionService.resend(msg.id),
-                              // 🔥 [核心改动] 将 Logic 中的长按方法传递进去
+                              // [核心改动] 将 Logic 中的长按方法传递进去
                               onLongPress: (m) => onMessageLongPress(context, m),
                             );
                           },

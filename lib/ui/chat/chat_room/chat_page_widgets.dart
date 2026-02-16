@@ -61,7 +61,19 @@ PreferredSizeWidget _buildAppBar(
   BuildContext context,
   ConversationDetail? detail,
   bool isGroup,
+    WidgetRef ref,
 ) {
+
+  // 1. 获取当前用户 ID
+  final myUserId = ref.read(userProvider)?.id;
+  //2. 直接调用 Model 的方法获取 TargetId
+  // 即使 detail 为 null，不会崩
+  final targetUserId = detail?.getTargetId(myUserId);
+
+  // 3. 标题和头像
+  final displayName = detail?.getDisplayName(myUserId) ?? "Chat";
+  final displayAvatar = detail?.getDisplayAvatar(myUserId);
+
   return AppBar(
     backgroundColor: context.bgPrimary,
     surfaceTintColor: Colors.transparent,
@@ -87,7 +99,7 @@ PreferredSizeWidget _buildAppBar(
               ? CachedNetworkImageProvider(
                   UrlResolver.resolveImage(
                     context,
-                    detail!.avatar!,
+                    displayAvatar,
                     logicalWidth: 36,
                   ),
                 )
@@ -102,7 +114,7 @@ PreferredSizeWidget _buildAppBar(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                detail?.name ?? "Chat",
+                displayName,
                 style: TextStyle(
                   fontSize: 17.sp,
                   fontWeight: FontWeight.w600,
@@ -116,20 +128,30 @@ PreferredSizeWidget _buildAppBar(
       ],
     ),
     actions: [
-      // 📹 1. 视频通话按钮
+      //  1. 视频通话按钮
       IconButton(
         icon: Icon(Icons.videocam, color: context.textPrimary900, size: 24.sp),
         onPressed: () {
+          // 逻辑变得非常简单清晰
+          if (isGroup) {
+            // 提示不支持群聊
+            return;
+          }
+          if (targetUserId == null) {
+            // 提示找不到人
+            return;
+          }
           // 解析完整头像 URL (防止相对路径导致 CallPage 图片加载失败)
           final avatarUrl = detail?.avatar != null
-              ? UrlResolver.resolveImage(context, detail!.avatar!)
+              ? UrlResolver.resolveImage(context, displayAvatar)
               : null;
 
           Navigator.push(
             context,
             MaterialPageRoute(
               builder: (context) => CallPage(
-                targetName: detail?.name ?? "Chat User",
+                targetId:targetUserId,
+                targetName: displayName,
                 targetAvatar: avatarUrl,
                 isVideo: true, // 开启摄像头
               ),
@@ -154,8 +176,9 @@ PreferredSizeWidget _buildAppBar(
             context,
             MaterialPageRoute(
               builder: (context) => CallPage(
-                targetName: detail?.name ?? "Chat User",
-                targetAvatar: avatarUrl,
+                targetId: targetUserId ?? "",
+                targetName: displayName,
+                targetAvatar: displayAvatar,
                 isVideo: false, // 关闭摄像头，纯语音模式
               ),
             ),

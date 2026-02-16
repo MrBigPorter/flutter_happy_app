@@ -68,6 +68,15 @@ abstract class SocketEvents {
   /// Typing indicator
   static const String typing = 'typing';
 
+    /// Call invitation
+  static const String callAccept = 'call_accept';
+  /// Call termination
+  static const String callIce = 'call_ice';
+  /// Call termination
+  static const String callEnd = 'call_end';
+  /// Call invitation
+  static const String callInvite = 'call_invite';
+
   // --- Business/System Notifications ---
   static const String groupSuccess = 'group_success';
   static const String groupFailed = 'group_failed';

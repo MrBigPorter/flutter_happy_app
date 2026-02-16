@@ -16,12 +16,14 @@ part 'call_page_widgets.dart';
 
 // 改为 ConsumerStatefulWidget
 class CallPage extends ConsumerStatefulWidget {
+  final String targetId; // 目标用户 ID，必须有
   final String targetName;
   final String? targetAvatar;
   final bool isVideo;
 
   const CallPage({
     super.key,
+    required this.targetId,
     required this.targetName,
     this.targetAvatar,
     this.isVideo = true,
@@ -33,7 +35,24 @@ class CallPage extends ConsumerStatefulWidget {
 
 class _CallPageState extends ConsumerState<CallPage> {
 
-  // 这里的状态变量全删掉！全部移交给 CallController 管理
+  @override
+  void initState() {
+    super.initState();
+    // 1. 发起呼叫
+    WidgetsBinding.instance.addPostFrameCallback((_){
+      // 获取控制器并调用方法
+      final controller = ref.read(callControllerProvider.notifier);
+      final currentStatus = ref.read(callControllerProvider).status;
+
+      // 2. 判断我是"主叫"还是"被叫"
+      // CallStatus.idle (初始状态) -> 说明我是主叫，我刚点进来，需要拨号
+      // CallStatus.dialing (拨号中) -> 也是主叫 (可能是热重载导致的，安全起见也可以调用)
+      // 只有闲置状态才拨号，防止被叫方误拨回去
+      if (currentStatus == CallStatus.idle) {
+        controller.startCall(widget.targetId, isVideo: widget.isVideo);
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {

@@ -353,6 +353,46 @@ class ConversationDetail {
 
   }
 
+  /// 获取对方成员对象 (仅限单聊)
+  /// [myUserId]: 当前登录用户的 ID
+  ChatMember? getOtherMember(String? myUserId) {
+    if(type != ConversationType.direct) return null; // 仅单聊适用
+    if(myUserId == null) return null; // 无法确定对方
+    if(members.isEmpty) return null; // 没有成员数据
+    try {
+      // 找到第一个 ID 不等于我的成员
+      return members.firstWhere((m) => m.userId != myUserId);
+    } catch (e) {
+      // 如果只有我自己 (比如自己跟自己发消息)，或者数据异常
+      // 兜底返回第一个人，或者 null
+      return members.isNotEmpty ? members.first : null;
+    }
+
+  }
+
+  // 获取对方 UserID (快捷方式)
+  String? getTargetId(String? myUserId) {
+    return getOtherMember(myUserId)?.userId;
+  }
+
+  /// 获取显示名称 (如果是单聊显示对方名，群聊显示群名)
+  String getDisplayName(String? myUserId) {
+    if (type == ConversationType.group) {
+      return name; // 群聊直接返回群名
+    }
+    // 单聊返回对方昵称，找不到就返回默认 name
+    return getOtherMember(myUserId)?.nickname ?? name;
+  }
+
+  /// 获取显示头像 (如果是单聊显示对方头像，群聊显示群头像)
+  String? getDisplayAvatar(String? myUserId) {
+    if (type == ConversationType.group) {
+      return avatar;
+    }
+    // 单聊返回对方头像，如果对方没头像，再看 detail.avatar
+    return getOtherMember(myUserId)?.avatar ?? avatar;
+  }
+
   factory ConversationDetail.fromJson(Map<String, dynamic> json) {
     // 处理枚举
     final typeStr = json['type']?.toString().toUpperCase() ?? 'GROUP';
