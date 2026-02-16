@@ -91,7 +91,7 @@ class _CallOverlayState extends ConsumerState<CallOverlay> {
               color: Colors.black54,
               padding: EdgeInsets.symmetric(vertical: 2),
               child: Text(
-                duration, // 🔥 这里现在是实时的
+                duration, // 这里现在是实时的
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: Colors.white,

@@ -102,61 +102,77 @@ extension CallPageWidgets on _CallPageState {
   //  按钮组构建 (Action Buttons)
   // ==========================================
 
-  /// 呼叫中操作栏 (接听/挂断)
-  /// 直接接受 Controller 来触发动作
-  Widget _buildIncomingActions(CallController controller) {
+  /// 1. 主叫方操作栏 (正在拨号...)
+  /// 场景：我打给别人，对方还没接
+  /// 按钮：只有一个 "取消/挂断"
+  Widget _buildDialingActions(CallController controller) {
+    return Center(
+      child: CallActionButton(
+        icon: Icons.call_end,
+        backgroundColor: Colors.red,
+        iconColor: Colors.white,
+        label: "Cancel",
+        size: 72.r, // 稍微大一点
+        onPressed: controller.hangUp,
+      ),
+    );
+  }
+
+  /// 2. 被叫方操作栏 (来电中...)
+  /// 场景：别人打给我，我在响铃
+  /// 按钮：接听(绿) / 拒绝(红)
+  Widget _buildRingingActions(CallController controller) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
+        // 拒绝
         CallActionButton(
           icon: Icons.call_end,
           backgroundColor: Colors.red,
           iconColor: Colors.white,
           label: "Decline",
-          onPressed: controller.hangUp, //  直接绑定控制器方法
+          size: 64.r,
+          onPressed: controller.hangUp,
         ),
+        // 接听
         CallActionButton(
+          // 根据是视频还是语音显示不同图标
           icon: widget.isVideo ? Icons.videocam : Icons.call,
           backgroundColor: Colors.green,
           iconColor: Colors.white,
           label: "Accept",
-          onPressed: controller.acceptCall, //  直接绑定控制器方法
+          size: 64.r,
+          onPressed: controller.acceptCall,
         ),
       ],
     );
   }
 
-  /// 通话中操作栏 (静音/免提等)
-  /// 需要 State (渲染图标状态) 和 Controller (触发点击)
+  /// 3. 通话中操作栏 (已接通)
+  /// 场景：正在聊天
+  /// 按钮：静音、摄像头、扬声器、挂断
   Widget _buildConnectedActions(CallState state, CallController controller) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
-        // 静音按钮
         CallActionButton(
           icon: state.isMuted ? Icons.mic_off : Icons.mic,
           label: "Mute",
           isActive: state.isMuted,
           onPressed: controller.toggleMute,
         ),
-
-        // 摄像头开关
         CallActionButton(
           icon: state.isCameraOff ? Icons.videocam_off : Icons.videocam,
           label: "Camera",
           isActive: state.isCameraOff,
           onPressed: controller.toggleCamera,
         ),
-
-        // 扬声器
         CallActionButton(
           icon: state.isSpeakerOn ? Icons.volume_up : Icons.volume_off,
           label: "Speaker",
           isActive: state.isSpeakerOn,
           onPressed: controller.toggleSpeaker,
         ),
-
-        // 挂断
         CallActionButton(
           icon: Icons.call_end,
           backgroundColor: Colors.red,

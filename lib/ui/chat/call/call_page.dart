@@ -73,9 +73,11 @@ class _CallPageState extends ConsumerState<CallPage> {
           Navigator.pop(context);
         }
 
-        // 2.  核心：彻底销毁 Provider，释放内存，为下一次通话重置状态
-        // 这样下次进来就是一个全新的 Controller
-        ref.invalidate(callControllerProvider);
+        //  修复核心：使用 Future.microtask 包裹 invalidate
+        // 这样会把"销毁"操作推迟到当前通知循环结束后执行，避免冲突
+        Future.microtask(() {
+          ref.invalidate(callControllerProvider);
+        });
       }
     });
 
@@ -130,9 +132,7 @@ class _CallPageState extends ConsumerState<CallPage> {
             right: 0,
             bottom: 40.h,
             child: SafeArea(
-              child: isConnected
-                  ? _buildConnectedActions(state, controller)
-                  : _buildIncomingActions(controller),
+              child: _buildActionButtons(state, controller),
             ),
           ),
 
@@ -150,8 +150,29 @@ class _CallPageState extends ConsumerState<CallPage> {
     );
   }
 
-  // --- 逻辑方法也只是简单的转发 ---
+  /// 根据状态分发按钮组
+  Widget _buildActionButtons(CallState state, CallController controller) {
+    switch (state.status) {
+      case CallStatus.dialing:
+      // 主叫：显示取消按钮
+        return _buildDialingActions(controller);
 
+      case CallStatus.ringing:
+      // 被叫：显示接听/拒绝
+        return _buildRingingActions(controller);
+
+      case CallStatus.connected:
+      // 通话中：显示功能面板
+        return _buildConnectedActions(state, controller);
+
+      case CallStatus.idle:
+      case CallStatus.ended:
+      // 其它状态显示空的或者退出按钮
+        return const SizedBox();
+    }
+  }
+
+  // --- 逻辑方法也只是简单的转发 ---
   void _minimizeToOverlay(CallState state, CallController controller) {
     Navigator.pop(context);
     OverlayManager.instance.show(
