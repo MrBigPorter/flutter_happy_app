@@ -8,11 +8,46 @@
 
 # 📜 Lucky IM Project **Grand Master Log** (v4.0 - v6.0.0)
 
-> **🕒 终极封档**: 2026-02-15 15:00 (PST)
-> **🚀 当前版本**: **v6.0.0 (The Governance & Authority)**
-> **🌟 总体进度**: **高级群控体系、实时审批流、信息流转闭环与社交化增强全线贯通，全栈数据一致性深度加固。**
+🎥 第八章：实时音视频与跨端融合 (The RTC Era) [v6.1.0 - CURRENT]
+本章标志着 Lucky IM 突破了“异步图文”的边界，进入了“实时同步”领域。我们攻克了 WebRTC 最复杂的信令竞态、平台差异与后台保活难题，实现了微信级的通话体验。
 
----
+[RTC] 全栈实时引擎 (Full-Stack RTC Core):
+
+核心: 基于 flutter_webrtc 构建点对点 (P2P) 通话链路。
+
+配置: 集成 Google STUN 服务 (stun.l.google.com) 实现内网穿透。预留了 TURN 扩展接口，支持未来复杂网络环境升级。
+
+策略: 实现了 音频优先 策略。语音模式默认使用听筒 (Earpiece)，视频模式默认使用扬声器 (Speaker)，并支持通话中动态切换 (Helper.setSpeakerphoneOn)。
+
+[Signal] 高一致性信令 (Robust Signaling):
+
+协议: 定义了标准的 SDP 交换流程 (Offer -> Answer)。
+
+竞态防御: 攻克了 ICE Candidate 提前到达 导致的连接失败问题。在 CallController 引入 _iceCandidateQueue，当远端描述 (RemoteDescription) 尚未设置时，自动缓存 ICE 候选者，待 SDP 就绪后自动冲刷 (_flushIceCandidateQueue)，确保 0 丢包。
+
+闭环: 实现了 CallInvite, CallAccept, CallEnd 的完整状态机闭环，支持异常挂断检测。
+
+[UX] 悬浮窗与画中画 (Overlay & PiP):
+
+架构: 采用 OverlayEntry 实现全局悬浮窗 (CallOverlay)，脱离页面栈限制。
+
+交互: 支持全屏/小窗无缝切换。本地视频小窗支持边界限制拖拽 (Draggable + clamp)，防止拖出屏幕。
+
+自愈: 悬浮窗通过 ref.listen 独立监听通话状态，一旦检测到 CallStatus.ended，自动执行自我销毁，防止“幽灵窗口”。
+
+[Platform] 跨平台防御体系 (Platform Defense):
+
+Crash 修复: 彻底解决了 flutter_background 插件在 iOS/Web 端引发的 MissingPluginException。
+
+实现: 在 _enableBackgroundMode 与 hangUp 中引入 kIsWeb || Platform.isIOS 守卫，实施物理级代码隔离。
+
+资源销毁: 建立了严格的 dispose 流程。挂断时按照 Timer -> Socket监听 -> Overlay -> Stream Tracks -> PeerConnection -> Renderer 的顺序销毁，杜绝内存泄漏与摄像头占用。
+
+[Infra] iOS 原生保活 (iOS Keep-Alive):
+
+配置: 修正了 Xcode 工程配置，启用 Background Modes (Audio + VoIP)。
+
+机制: 通过 AVAudioSession 激活系统级通话状态，确保 App 在后台或锁屏状态下 Socket 不断连、麦克风不静音。
 
 ## 👑 第七章：权力治理与信息流转 (Governance & Flow) **[UPDATED - v6.0.0]**
 
@@ -201,6 +236,8 @@
 14. **视觉兜底原则**: 图片加载必须使用 `Stack` 垫片，严禁白屏。
 15. **时间统一原则**: 所有逻辑判断必须使用 `ServerTimeHelper.now()`。
 16. **Web 环境隔离**: 非 `kIsWeb` 保护下，严禁调用 `dart:io`。
-
+16. **[NEW] 插件隔离原则: 任何涉及原生能力的插件（如 flutter_background），必须使用 defaultTargetPlatform 或 kIsWeb 进行平台判定，严禁在不支持的平台上执行初始化代码。
+17. **[NEW] ICE 缓存原则: WebRTC 信令处理中，严禁在 SetRemoteDescription 完成前直接添加 ICE Candidate，必须使用队列缓存机制，防止信令时序错乱导致黑屏。
+18: **[NEW] 资源释放原则: 视频通话结束时，必须显式调用 MediaStreamTrack.stop() 并置空 srcObject，严禁仅依赖 Garbage Collection，防止摄像头/麦克风指示灯残留。
 ---
 
