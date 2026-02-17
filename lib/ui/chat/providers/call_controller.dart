@@ -36,8 +36,10 @@ class CallController extends StateNotifier<CallState> {
   // 实际生产环境请使用 coturn 搭建的 TURN 服务器，这里用 Google 公共 STUN 演示
   final Map<String, dynamic> _iceServers = {
     'iceServers': [
+      // 换一个公共 STUN 试试，或者多加几个
       {'urls': 'stun:stun.l.google.com:19302'},
-      // {'urls': 'turn:your.turn.server:3478', 'username': 'user', 'credential': 'pass'},
+      {'urls': 'stun:stun1.l.google.com:19302'},
+      {'urls': 'stun:stun.miwifi.com:3478'}, // 小米的有时候在国内/华为上更好用
     ],
   };
 

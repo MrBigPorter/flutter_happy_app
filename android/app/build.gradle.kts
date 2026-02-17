@@ -10,7 +10,7 @@ plugins {
 
 android {
     namespace = "com.porter.joyminis"
-    compileSdk = 36  // ✅ 满足 webview 等插件的要求
+    compileSdk = 36  //  满足 webview 等插件的要求
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
@@ -51,6 +51,9 @@ configurations.all {
         force("androidx.browser:browser:1.8.0")
         force("androidx.core:core-ktx:1.13.1")
         force("androidx.core:core:1.13.1")
+        force("androidx.activity:activity:1.8.2")
+        force("androidx.activity:activity-ktx:1.8.2")
+        force("androidx.activity:activity-compose:1.8.2")
     }
 }
 
@@ -77,11 +80,11 @@ dependencies {
     implementation("com.google.mlkit:text-recognition-chinese:16.0.0")
     implementation("com.google.android.gms:play-services-mlkit-face-detection:17.1.0")
 
-    // 👇 【精华】引入 Firebase BOM (Bill of Materials)
+    //  【精华】引入 Firebase BOM (Bill of Materials)
     // 它的好处是：以后添加具体的 Firebase 库（如 Analytics, Messaging）不需要写版本号了！
     implementation(platform("com.google.firebase:firebase-bom:33.7.0")) // 版本号可以用最新的
 
-    // 👇 添加具体功能，不用写版本号，BOM 会自动配对
+    //  添加具体功能，不用写版本号，BOM 会自动配对
     implementation("com.google.firebase:firebase-analytics")
     implementation("com.google.firebase:firebase-messaging") // 如果你要做推送，就把这个加上
 

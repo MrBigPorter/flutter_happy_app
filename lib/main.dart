@@ -6,7 +6,9 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import 'app/app.dart';
 import 'app/app_startup.dart';
-import 'app/bootstrap.dart'; // 引入刚才新建的文件
+import 'app/bootstrap.dart';
+
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 Future<void> main() async {
   // 1. 系统初始化 (无返回值，纯副作用)

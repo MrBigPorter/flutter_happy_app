@@ -17,6 +17,7 @@ import 'package:flutter_app/ui/modal/dialog/radix_modal.dart';
 import 'package:flutter_app/utils/events/event_bus.dart';
 import 'package:flutter_app/utils/events/global_events.dart';
 import '../../app/routes/app_router.dart';
+import '../../main.dart';
 import '../../theme/design_tokens.g.dart';
 import '../../ui/chat/call/call_page.dart';
 import '../../ui/chat/handlers/global_chat_handler.dart';
@@ -56,6 +57,8 @@ class _GlobalHandlerState extends ConsumerState<GlobalHandler> {
 
   DateTime? _lastToastTime;
   String? _lastToastKey;
+
+  SocketService? _cachedSocketService;
 
   @override
   void initState() {

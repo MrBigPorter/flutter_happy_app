@@ -3,6 +3,10 @@ part of 'global_handler.dart';
 //  修改标注 3: 专注于“信号接收与路由”
 extension GlobalHandlerSocketExtension on _GlobalHandlerState {
   void _subscribeToSocket(SocketService service) {
+
+     // 缓存 service 引用
+    _cachedSocketService = service;
+
     _cancelSocketSubscriptions();
 
     service.socket?.on(SocketEvents.callInvite, (data) {
@@ -23,7 +27,7 @@ extension GlobalHandlerSocketExtension on _GlobalHandlerState {
 
       // 2. 导航到通话界面
       // 注意：这里使用 context 需要确保 GlobalHandler 在 MaterialApp 下面
-      NavHub.key.currentState?.push(
+      navigatorKey.currentState?.push(
         MaterialPageRoute(
           builder: (_) => CallPage(
             targetId: data['senderId'], // 对方 ID
@@ -128,9 +132,7 @@ extension GlobalHandlerSocketExtension on _GlobalHandlerState {
     _contactAcceptSub?.cancel();
     _groupEventSub?.cancel();
 
-    //  [新增] 记得销毁监听，防止内存泄漏
-    // 这里的 service 需要通过 ref 获取，因为这个方法里没有传 service
-    // 或者你可以把 socket 存个引用，或者直接通过 ref 读取
-    ref.read(socketServiceProvider).socket?.off(SocketEvents.callInvite);
+    _cachedSocketService?.socket?.off(SocketEvents.callInvite);
+
   }
 }

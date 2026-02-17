@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:io';
+import 'package:app_badge_plus/app_badge_plus.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter_app_badger/flutter_app_badger.dart';
 import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:sembast/sembast.dart';
@@ -444,8 +444,8 @@ class LocalDatabaseService {
       int total = 0;
       for (var snap in snapshots)
         total += (snap.value['unreadCount'] as int?) ?? 0;
-      if (await FlutterAppBadger.isAppBadgeSupported())
-        total > 0 ? FlutterAppBadger.updateBadgeCount(total) : FlutterAppBadger.removeBadge();
+      if (await AppBadgePlus.isSupported())
+        total > 0 ? AppBadgePlus.updateBadge(total) : AppBadgePlus.updateBadge(0);
     } catch (_) {}
   }
 
