@@ -27,7 +27,7 @@ extension GlobalHandlerSocketExtension on _GlobalHandlerState {
 
       // 2. 导航到通话界面
       // 注意：这里使用 context 需要确保 GlobalHandler 在 MaterialApp 下面
-      navigatorKey.currentState?.push(
+      NavHub.key.currentState?.push(
         MaterialPageRoute(
           builder: (_) => CallPage(
             targetId: data['senderId'], // 对方 ID

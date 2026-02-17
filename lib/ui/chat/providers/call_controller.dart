@@ -1,14 +1,17 @@
 
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_app/core/constants/socket_events.dart';
 import 'package:flutter_app/core/services/socket/socket_service.dart';
+import 'package:flutter_background/flutter_background.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../core/providers/socket_provider.dart';
+import '../../../utils/overlay_manager.dart';
 import '../models/call_state_model.dart';
 
 // 定义 Provider,持久化
@@ -47,6 +50,28 @@ class CallController extends StateNotifier<CallState> {
     _initSocketListeners();
   }
 
+  // 配置后台保活
+  Future<bool> _enableBackgroundMode() async {
+    if (defaultTargetPlatform == TargetPlatform.iOS || kIsWeb) {
+      return true;
+    }
+    final androidConfig = FlutterBackgroundAndroidConfig(
+      notificationTitle: "Joyminis Call",
+      notificationText: "Call in progress...",
+      notificationImportance: AndroidNotificationImportance.normal,
+      notificationIcon: const AndroidResource(name: 'ic_launcher', defType: 'mipmap'),
+    );
+
+    // 1. 初始化
+    bool hasPermissions = await FlutterBackground.initialize(androidConfig: androidConfig);
+
+    // 2. 开启保活 (这会在通知栏显示一个常驻通知)
+    if (hasPermissions) {
+      return await FlutterBackground.enableBackgroundExecution();
+    }
+    return false;
+  }
+
   //  1. Socket 监听 (接电话线)
   void _initSocketListeners(){
     final socket = _socketService.socket;
@@ -62,6 +87,7 @@ class CallController extends StateNotifier<CallState> {
       _flushIceCandidateQueue();
 
       state = state.copyWith(status: CallStatus.connected);
+      await _enableBackgroundMode(); // 接通时启用后台保活
       _startTimer();
 
       // 接通时重置悬浮窗位置
@@ -184,6 +210,7 @@ class CallController extends StateNotifier<CallState> {
       });
 
       state = state.copyWith(status: CallStatus.connected);
+      await _enableBackgroundMode(); // 接通时启用后台保活
       _startTimer();
 
        // 接通时重置悬浮窗位置
@@ -196,9 +223,23 @@ class CallController extends StateNotifier<CallState> {
 
   //  WebRTC 内部初始化
   Future<void> _initLocalMedia(bool isVideo) async {
+
+    // 【必须加】告诉 iOS/Android 这是一个 VOIP 通话
+    // 这会激活底层的 AudioSession，把模式切到 .voiceChat
+    try{
+      // 语音通话默认关扬声器(false)，视频默认开(true)
+      await Helper.setSpeakerphoneOn(isVideo);
+    }catch(e){
+      debugPrint("Audio session config error: $e");
+    }
+
     //  修复：使用标准 WebRTC 约束语法 (移除 mandatory/optional)
     final Map<String, dynamic> mediaConstraints = {
-      'audio': true,
+      'audio': {
+        'echoCancellation': true, // 回声消除
+        'noiseSuppression': true, // 降噪
+        'autoGainControl': true,  // 自动增益
+      },
       'video': isVideo
           ? {
         // 想要前置摄像头
@@ -268,6 +309,19 @@ class CallController extends StateNotifier<CallState> {
     // 1. 停止计时器
     _timer?.cancel();
 
+    //  关闭后台保活 (通知栏图标消失)
+    try {
+      if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android && FlutterBackground.isBackgroundExecutionEnabled) {
+        FlutterBackground.disableBackgroundExecution();
+      }
+
+
+      OverlayManager.instance.hide();
+
+    } catch (e) {
+      debugPrint("Close background error: $e");
+    }
+
     // 1. 通知服务器
     if(emitEvent && _currentSessionId != null){
       _socketService.socket?.emit(SocketEvents.callEnd, {
@@ -326,22 +380,51 @@ class CallController extends StateNotifier<CallState> {
     }
   }
 
-  void toggleSpeaker() {
-    // 需要 flutter_webrtc Helper 支持，暂时只改状态
-    state = state.copyWith(isSpeakerOn: !state.isSpeakerOn);
+  void toggleSpeaker() async{
+
+    try{
+      // 1. 计算新状态
+      bool newStatus = !state.isSpeakerOn;
+      // 2. 【必须加】调用硬件接口切换输出设备
+      await Helper.setSpeakerphoneOn(newStatus);
+
+      // 需要 flutter_webrtc Helper 支持，暂时只改状态
+      state = state.copyWith(isSpeakerOn: !state.isSpeakerOn);
+    }catch(e){
+      debugPrint("Toggle speaker error: $e");
+    }
+
   }
 
   void updateFloatOffset(Offset newOffset) {
     state = state.copyWith(floatOffset: newOffset);
   }
 
+  // 修改 call_controller.dart
+
   void _startTimer() {
+    // 1. 防御：先取消可能存在的旧定时器
+    _timer?.cancel();
+
+    // 2. 核心修复：重置计数器！否则第二次通话会接着上次的时间跑，或者出现逻辑错误
+    _seconds = 0;
+
+    debugPrint("⏰ 计时器启动...");
+
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      // 3. 累加
       _seconds++;
+
+      // 4. 格式化
       final minutes = (_seconds ~/ 60).toString().padLeft(2, '0');
       final seconds = (_seconds % 60).toString().padLeft(2, '0');
-      if (state.status != CallStatus.ended) {
-        state = state.copyWith(duration: "$minutes:$seconds");
+      final timeStr = "$minutes:$seconds";
+
+      // 5. 只有状态是 Connected 时才更新 UI (避免挂断后还在跑)
+      if (state.status == CallStatus.connected) {
+        state = state.copyWith(duration: timeStr);
+      } else {
+        timer.cancel(); // 如果状态不对，自动停止
       }
     });
   }

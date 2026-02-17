@@ -4,6 +4,8 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
+import '../../../utils/overlay_manager.dart';
+import '../models/call_state_model.dart';
 import '../providers/call_controller.dart';
 
 class CallOverlay extends ConsumerStatefulWidget {
@@ -25,6 +27,15 @@ class CallOverlay extends ConsumerStatefulWidget {
 class _CallOverlayState extends ConsumerState<CallOverlay> {
   @override
   Widget build(BuildContext context) {
+
+    // 1. 监听状态变化 (用于自动关闭)
+    // 这里的逻辑是：一旦监听到状态变为 ended，立刻关闭悬浮窗
+    ref.listen(callControllerProvider, (previous, next) {
+      if (next.status == CallStatus.ended) {
+        OverlayManager.instance.hide(); // 关掉自己
+      }
+    });
+
     //  核心：在这里监听状态！
     // 只要 Controller 里的 duration 变了，这个 build 就会重新跑一次
     final state = ref.watch(callControllerProvider);
@@ -70,7 +81,7 @@ class _CallOverlayState extends ConsumerState<CallOverlay> {
     );
   }
 
-  /// 📹 视频模式 UI
+  /// 视频模式 UI
   Widget _buildVideoContent(RTCVideoRenderer? renderer, String duration) {
     // 1. 如果有视频流，显示视频
     if (renderer != null && renderer.textureId != null) {
@@ -84,7 +95,7 @@ class _CallOverlayState extends ConsumerState<CallOverlay> {
           ),
           // 视频模式下，底部显示时间
           Positioned(
-            bottom: 4,
+            bottom: 0,
             left: 0,
             right: 0,
             child: Container(
