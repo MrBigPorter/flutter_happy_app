@@ -188,6 +188,7 @@ class _ChatPageState extends ConsumerState<ChatPage> with ChatPageLogic {
               child: SingleChildScrollView(
                 physics: const NeverScrollableScrollPhysics(),
                 child: ChatActionSheet(
+                  type: ActionSheetType.grid,
                   actions: [
                     ActionItem(label: "Photos", icon: Icons.photo_library, onTap: handlePickImage),
                     ActionItem(label: "Camera", icon: Icons.camera_alt, onTap: handleTakePhoto),
