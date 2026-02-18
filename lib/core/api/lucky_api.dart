@@ -6,6 +6,7 @@ import 'package:flutter_app/core/models/coupon_threshold_data.dart';
 import 'package:flutter_app/core/models/groups.dart';
 import 'package:flutter_app/core/models/payment.dart';
 import 'package:flutter_app/core/models/region.dart';
+import 'package:flutter_app/ui/chat/models/call_ice_server.dart';
 import 'package:flutter_app/ui/chat/models/conversation.dart';
 
 import 'package:flutter_app/utils/helper.dart';
@@ -677,6 +678,12 @@ class Api {
     final req = HandleFriendRequest(targetId: targetId, action: action);
     await Http.post('/api/v1/chat/contacts/handle', data: req.toJson());
     return true;
+  }
+
+  // 4. 获取 ICE 服务器列表 (WebRTC)
+  static Future<List<CallIceServer>> chatIceServers() async {
+    final res = await Http.get('/api/v1/chat/ice-servers');
+    return parseList(res, (e) => CallIceServer.fromJson(e));
   }
 
 

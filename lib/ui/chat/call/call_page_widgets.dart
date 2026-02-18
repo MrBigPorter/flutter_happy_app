@@ -167,6 +167,7 @@ extension CallPageWidgets on _CallPageState {
           isActive: state.isCameraOff,
           onPressed: controller.toggleCamera,
         ),
+        if(!kIsWeb)
         CallActionButton(
           icon: state.isSpeakerOn ? Icons.volume_up : Icons.volume_off,
           label: "Speaker",

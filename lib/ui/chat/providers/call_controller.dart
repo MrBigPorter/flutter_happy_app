@@ -2,6 +2,7 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_app/common.dart';
 import 'package:flutter_app/core/constants/socket_events.dart';
 import 'package:flutter_app/core/services/socket/socket_service.dart';
 import 'package:flutter_background/flutter_background.dart';
@@ -37,7 +38,7 @@ class CallController extends StateNotifier<CallState> {
 
   // ICE 服务器配置 (STUN/TURN)
   // 实际生产环境请使用 coturn 搭建的 TURN 服务器，这里用 Google 公共 STUN 演示
-  final Map<String, dynamic> _iceServers = {
+   Map<String, dynamic> _iceServers = {
     'iceServers': [
       // 换一个公共 STUN 试试，或者多加几个
       {'urls': 'stun:stun.l.google.com:19302'},
@@ -46,8 +47,44 @@ class CallController extends StateNotifier<CallState> {
     ],
   };
 
+
   CallController(this._socketService) : super(const CallState()) {
     _initSocketListeners();
+    _fetchIceCredentials();
+  }
+
+  // 从服务器获取 ICE 服务器列表 (如果有的话)，并更新配置
+  Future<void> _fetchIceCredentials() async {
+    try{
+      final result = await Api.chatIceServers();
+      final List<Map<String, dynamic>> iceConfig = [];
+
+      for(var item in result){
+        final Map<String, dynamic> map = item.toJson();
+        // 重要：清洗掉 null 值。如果 username 为 null，有些 WebRTC 版本会报错
+        map.removeWhere((key, value) => value == null || value == "");
+        iceConfig.add(map);
+      }
+
+      if (iceConfig.isNotEmpty) {
+        _iceServers = { 'iceServers': iceConfig };
+        debugPrint(" 最终配置: $_iceServers");
+      }
+
+    }catch(e){
+      debugPrint("Fetch ICE servers error: $e");
+    }
+  }
+
+  Future<void> _ensureIceServersReady() async {
+    // 默认配置里只有 urls，没有 username。如果 username 为空，说明还没拿到 TURN 配置。
+    final firstServer = _iceServers['iceServers']?.first;
+    bool isDefaultConfig = firstServer['username'] == null || firstServer['username'].isEmpty;
+    debugPrint("Checking ICE server config... current config: ${_iceServers['iceServers']}, isDefaultConfig: $isDefaultConfig");
+    if(isDefaultConfig){
+      // 还在用默认配置，尝试刷新一次
+      await _fetchIceCredentials();
+    }
   }
 
   // 配置后台保活
@@ -96,16 +133,37 @@ class CallController extends StateNotifier<CallState> {
 
     // 监听对方的 ICE 候选者 (打洞)
     socket?.on(SocketEvents.callIce, (data) async {
-      if(data['sessionId'] != _currentSessionId) return; // 只处理当前会话的事件
+      if(data['sessionId'] != _currentSessionId) return;
+
+      //  核心修复：防御性解析 Candidate
+      dynamic rawCandidate = data['candidate'];
+      String actualCandidateStr = "";
+
+      if (rawCandidate is Map) {
+        // 如果是对象格式，取内部的 candidate 字段
+        actualCandidateStr = rawCandidate['candidate'] ?? "";
+      } else {
+        // 如果本身就是字符串（常见情况），直接转换
+        actualCandidateStr = rawCandidate.toString();
+      }
 
       final candidate = RTCIceCandidate(
-        data['candidate'],
+        actualCandidateStr,
         data['sdpMid'],
         data['sdpMLineIndex'],
       );
-      //  核心修复 2：如果还没设置远端描述，先存队列；否则直接添加
+
+      // 打印对方发过来的地址类型
+      if (actualCandidateStr.contains("typ relay")) {
+        debugPrint("🏆 关键证据：正在通过你的 TURN 服务器中继流量！");
+      } else if (actualCandidateStr.contains("typ srflx")) {
+        debugPrint("📡 正在通过 STUN 进行 P2P 直连。");
+      } else if (actualCandidateStr.contains("typ host")) {
+        debugPrint("🏠 局域网直连，不走服务器。");
+      }
+
       if (_peerConnection?.getRemoteDescription() == null) {
-        debugPrint("❄️ ICE 收到太早，加入队列缓存");
+        debugPrint(" 远端描述未就绪，先缓存 Candidate");
         _iceCandidateQueue.add(candidate);
       } else {
         await _peerConnection?.addCandidate(candidate);
@@ -125,7 +183,6 @@ class CallController extends StateNotifier<CallState> {
     _targetId = targetId;
     _currentSessionId = const Uuid().v4(); // 生成唯一会话 ID
 
-    print('Starting call to $targetId with session ID $_currentSessionId');
 
     try{
       // 打开麦克风和摄像头
@@ -274,6 +331,11 @@ class CallController extends StateNotifier<CallState> {
   }
 
   Future<void> _createPeerConnection() async {
+
+    await _ensureIceServersReady(); // 确保 ICE 服务器配置是最新的
+    
+    print("Creating PeerConnection with ICE servers: ${_iceServers['iceServers']}");
+
     _peerConnection = await createPeerConnection(_iceServers);
 
     // 添加本地流到 PeerConnection
@@ -381,6 +443,7 @@ class CallController extends StateNotifier<CallState> {
   }
 
   void toggleSpeaker() async{
+    if(kIsWeb) return; // Web 不支持扬声器切换
 
     try{
       // 1. 计算新状态
