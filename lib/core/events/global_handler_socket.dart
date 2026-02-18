@@ -1,44 +1,97 @@
 part of 'global_handler.dart';
 
-//  修改标注 3: 专注于“信号接收与路由”
-extension GlobalHandlerSocketExtension on _GlobalHandlerState {
-  void _subscribeToSocket(SocketService service) {
 
-     // 缓存 service 引用
+extension GlobalHandlerSocketExtension on _GlobalHandlerState {
+
+  // [新增] 初始化 CallKit 监听 (处理系统来电界面的接听/挂断点击)
+  void _initCallKitListener() {
+    CallKitService.instance.initListener(
+      // A. 用户点了系统界面的【接听】
+      onAccept: (sessionId) {
+        debugPrint("📞 [CallKit] User accepted call: $sessionId");
+
+        // 确保 UI 挂载
+        if (NavHub.key.currentState?.mounted ?? false) {
+          final controller = ref.read(callControllerProvider.notifier);
+
+          // 1. 告诉 Controller 用户接了 (这会触发 accept 信令)
+          controller.acceptCall();
+
+          // 2. 导航到通话界面
+          // 注意：此时 Controller 状态已变，CallPage 会自动渲染 Connected 状态
+          // 这里的参数最好在 incomingCall 时存入 Controller，或者后端带过来
+          NavHub.key.currentState?.push(
+            MaterialPageRoute(
+              builder: (_) => const CallPage(
+                targetId: "unknown", // 暂时占位，接通后通常会走 info 查询
+                targetName: "Connecting...",
+                isVideo: true, // 最好从 Controller 或缓存中获取
+              ),
+            ),
+          );
+        }
+      },
+
+      // B. 用户点了系统界面的【挂断】
+      onDecline: (sessionId) {
+        debugPrint(" [CallKit] User declined call");
+        ref.read(callControllerProvider.notifier).hangUp();
+      },
+    );
+  }
+
+  void _subscribeToSocket(SocketService service) {
+    // 缓存 service 引用
     _cachedSocketService = service;
 
     _cancelSocketSubscriptions();
 
-    service.socket?.on(SocketEvents.callInvite, (data) {
+    // [新增] 1. 启动 CallKit 监听
+    _initCallKitListener();
+
+    // [修改] 2. 监听来电信令 (SocketEvents.callInvite)
+    service.socket?.on(SocketEvents.callInvite, (data) async {
       if (!mounted) return;
+
       // 获取当前状态
       final currentStatus = ref.read(callControllerProvider).status;
       // 如果已经在通话或拨号中，直接无视或自动拒绝
       if (currentStatus != CallStatus.idle && currentStatus != CallStatus.ended) {
         debugPrint(' [GlobalHandler] Received call invite but already in call: $currentStatus');
-        // 可选：发送一个 busy 信号给对方
         return;
       }
 
       debugPrint(' [GlobalHandler] Received call invite: $data');
-      // 1. 获取 Controller 并初始化被叫状态
-      // 这一步会将状态改为 ringing，并保存 sessionId
-      ref.read(callControllerProvider.notifier).incomingCall(data);
 
-      // 2. 导航到通话界面
-      // 注意：这里使用 context 需要确保 GlobalHandler 在 MaterialApp 下面
-      NavHub.key.currentState?.push(
-        MaterialPageRoute(
-          builder: (_) => CallPage(
-            targetId: data['senderId'], // 对方 ID
-            targetName: "Incoming Call...", // 暂时显示，可以在 CallPage 里再去查用户信息
-            isVideo: data['mediaType'] == 'video', // 判断是视频还是语音
-          ),
-        ),
+      // A. 初始化 Controller 并初始化被叫状态 (设置为 Ringing)
+      await ref.read(callControllerProvider.notifier).incomingCall(data);
+
+      // [修改] B. 不再直接 Navigator.push，而是显示系统原生来电界面！
+      final senderName = data['senderName'] ?? "Incoming Call";
+      final avatar = data['senderAvatar'] ?? "https://via.placeholder.com/150";
+
+      // C. 唤起原生界面 (Android/iOS)
+      await CallKitService.instance.showIncomingCall(
+        uuid: data['sessionId'],
+        name: senderName,
+        avatar: avatar,
+        isVideo: data['mediaType'] == 'video',
       );
     });
 
+    // [新增] 3. 监听对方挂断 (SocketEvents.callEnd)
+    // 对方挂了，我们要把 CallKit 的系统界面也关掉，否则它会一直响
+    service.socket?.on(SocketEvents.callEnd, (data) {
+      if (data['sessionId'] != null) {
+        CallKitService.instance.endCall(data['sessionId']);
+      }
+    });
+
     debugPrint(' [GlobalHandler] Socket Subscriptions Active');
+
+    // ----------------------------------------------------------------
+    // 下面的逻辑保持不变
+    // ----------------------------------------------------------------
 
     // 1. 联系人申请
     _contactApplySub = service.contactApplyStream.listen((data) {
@@ -53,16 +106,14 @@ extension GlobalHandlerSocketExtension on _GlobalHandlerState {
       ref.invalidate(contactListProvider);
     });
 
-    // ========================================================
-    // [新增] 5. 群组事件监听 (只负责弹窗，不负责业务逻辑)
-    // ========================================================
+    // 3. 群组事件监听
     _groupEventSub = service.groupEventStream.listen((event) {
       if (!mounted) return;
 
       final payload = event.payload;
 
       switch (event.type) {
-        // A. 管理员收到新申请
+      // A. 管理员收到新申请
         case SocketEvents.groupApplyNew:
           _showSuccessToast(
             "New Group Request",
@@ -70,7 +121,7 @@ extension GlobalHandlerSocketExtension on _GlobalHandlerState {
           );
           break;
 
-        // B. 申请人收到结果
+      // B. 申请人收到结果
         case SocketEvents.groupApplyResult:
           final groupName = payload.groupName ?? 'Group';
           if (payload.approved == true) {
@@ -86,7 +137,7 @@ extension GlobalHandlerSocketExtension on _GlobalHandlerState {
           }
           break;
 
-        // C. 成员被踢 (给自己弹个提示)
+      // C. 成员被踢 (给自己弹个提示)
         case SocketEvents.memberKicked:
           final myId = ref.read(userProvider)?.id;
           if (payload.targetId == myId) {
@@ -96,7 +147,7 @@ extension GlobalHandlerSocketExtension on _GlobalHandlerState {
       }
     });
 
-    // 3. 通用业务通知
+    // 4. 通用业务通知
     _notificationSub = service.notificationStream.listen((notification) {
       if (!mounted) return;
       if (notification.isSuccess) {
@@ -106,7 +157,7 @@ extension GlobalHandlerSocketExtension on _GlobalHandlerState {
       }
     });
 
-    // 4. 拼团/更新通知
+    // 5. 拼团/更新通知
     _updateSub = service.groupUpdateStream.listen((data) {
       if (!mounted) return;
       _processGroupUpdate(data);
@@ -134,5 +185,7 @@ extension GlobalHandlerSocketExtension on _GlobalHandlerState {
 
     _cachedSocketService?.socket?.off(SocketEvents.callInvite);
 
+    // [新增] 记得移除 callEnd 监听，防止重复
+    _cachedSocketService?.socket?.off(SocketEvents.callEnd);
   }
 }

@@ -10,3 +10,7 @@
 
 # 保持 Kotlin 元数据
 -keep class kotlin.Metadata { *; }
+
+#  新增：CallKit 混淆规则
+-keep class com.hiennv.flutter_callkit_incoming.** { *; }
+-keep interface com.hiennv.flutter_callkit_incoming.** { *; }
