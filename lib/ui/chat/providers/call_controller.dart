@@ -9,19 +9,24 @@ import 'package:flutter_background/flutter_background.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../core/providers/socket_provider.dart';
 import '../../../utils/overlay_manager.dart';
 import '../models/call_state_model.dart';
+import '../services/callkit_service.dart';
 
 // 定义 Provider,持久化
 final callControllerProvider = StateNotifierProvider<CallController, CallState>((ref) {
-  final socketService = ref.watch(socketServiceProvider);
+  //把 watch 改为 read，防止 Socket 重连时销毁通话控制器
+  final socketService = ref.read(socketServiceProvider);
   return CallController(socketService);
 });
 
-class CallController extends StateNotifier<CallState> {
+class CallController extends StateNotifier<CallState> with WidgetsBindingObserver {
+
+
   final SocketService _socketService;
 
   // RTC 相关对象
@@ -32,6 +37,17 @@ class CallController extends StateNotifier<CallState> {
   int _seconds = 0;
   String? _currentSessionId;
   String? _targetId;
+  String? _remoteSdpStr; // 新增：暂时缓存对方发来的 SDP
+
+  String? targetName;
+  String? targetAvatar;
+  String? get targetId => _targetId;
+
+  // --- 状态锁 ---
+  bool _isAccepting = false;  // 防止重复接听
+  bool _isHangingUp = false;   // 防止重复挂断
+  final Set<String> _recentlyEndedIds = {}; // 幽灵呼叫拦截池
+
 
   //  新增：ICE 候选者缓存队列
   final List<RTCIceCandidate> _iceCandidateQueue = [];
@@ -51,6 +67,26 @@ class CallController extends StateNotifier<CallState> {
   CallController(this._socketService) : super(const CallState()) {
     _initSocketListeners();
     _fetchIceCredentials();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if(_localStream == null) return;
+    final videoTracks = _localStream!.getVideoTracks();
+    if (videoTracks.isEmpty) return;
+
+    if (state == AppLifecycleState.paused || state == AppLifecycleState.hidden) {
+      //  App 切到后台 / 锁屏：主动暂停视频流发送，防止系统强杀相机
+      debugPrint(" [App 生命周期] 切入后台，暂停视频采集");
+      videoTracks[0].enabled = false;
+    } else if (state == AppLifecycleState.resumed) {
+      // 📱 App 回到前台：恢复视频流发送
+      debugPrint("[App 生命周期] 回到前台，恢复视频采集");
+      // 注意：如果用户本来就手动关了摄像头，这里不要强制打开，可以通过 state 判断
+      if (!this.state.isCameraOff) {
+        videoTracks[0].enabled = true;
+      }
+    }
   }
 
   // 从服务器获取 ICE 服务器列表 (如果有的话)，并更新配置
@@ -112,7 +148,7 @@ class CallController extends StateNotifier<CallState> {
   //  1. Socket 监听 (接电话线)
   void _initSocketListeners(){
     final socket = _socketService.socket;
-    
+
     // 监听来电请求
     socket?.on(SocketEvents.callAccept, (data) async {
       if(data['sessionId'] != _currentSessionId) return; // 只处理当前会话的事件
@@ -180,6 +216,7 @@ class CallController extends StateNotifier<CallState> {
 
   //  2. 主叫逻辑 (Start Call)
   Future<void> startCall(String targetId, {bool isVideo = true}) async {
+    if (!mounted) return; //  第一道防线：防止在销毁后拨号
     _targetId = targetId;
     _currentSessionId = const Uuid().v4(); // 生成唯一会话 ID
 
@@ -203,6 +240,7 @@ class CallController extends StateNotifier<CallState> {
         'mediaType': isVideo ? 'video' : 'audio',
       });
 
+      if (!mounted) return; //  异步操作后必须再次检查
       // 更新 UI
       state = state.copyWith(
         status: CallStatus.dialing,
@@ -216,47 +254,68 @@ class CallController extends StateNotifier<CallState> {
     }
   }
 
-  //3. 被叫逻辑 (Incoming Call)
+  // 3. 被叫逻辑 (Incoming Call)
   Future<void> incomingCall(Map<String, dynamic> inviteData) async {
+    if (!mounted) return; // 防御
+
+    final sid = inviteData['sessionId'];
+    // 核心修复：检查磁盘标记，防止“挂了又响”
+    final prefs = await SharedPreferences.getInstance();
+    final isEndedOnDisk = prefs.getBool('ended_$sid') ?? false;
+
+    if (_recentlyEndedIds.contains(sid) || isEndedOnDisk) {
+      debugPrint("[Controller] 拦截已在内存或磁盘标记结束的呼叫: $sid");
+      return;
+    }
+
     _targetId = inviteData['senderId'];
     _currentSessionId = inviteData['sessionId'];
-    final remoteSdp = inviteData['sdp'];
+    _remoteSdpStr = inviteData['sdp'];
+
+    targetName = inviteData['senderName'] ?? "Incoming Call";
+    targetAvatar = inviteData['senderAvatar'] ?? "";
+
     final isVideo = inviteData['mediaType'] == 'video';
 
-    //  核心修复 3：立即更新状态为 ringing
-    // 防止 CallPage 的 initState 误以为是 idle 而再次调用 startCall
-    state = state.copyWith(status: CallStatus.ringing);
-
-    try{
-      await _initLocalMedia(isVideo);
-      await _createPeerConnection();
-
-      // 设置对方的名片
-      final sdp = RTCSessionDescription(remoteSdp, 'offer');
-      await _peerConnection!.setRemoteDescription(sdp);
-
-      // 2. 名片设置好了，现在可以安全地处理刚才堆积的 ICE 候选者了
-      _flushIceCandidateQueue();
-
-
-
-      // 更新 UI 显示来电界面
-      state = state.copyWith(
-        status: CallStatus.ringing,
-        isVideoMode: isVideo,
-      );
-    }catch(e){
-      debugPrint("Incoming call error: $e");
-      hangUp(emitEvent: true);
-    }
+    // 核心修复：仅仅改变状态，绝对不去调用 _initLocalMedia 和创建 PeerConnection！
+    state = state.copyWith(
+      status: CallStatus.ringing,
+      isVideoMode: isVideo,
+    );
   }
 
+
   // --- 业务动作 (Action) ---
+  void acceptCall() async {
+    //  1. 防御：如果正在接听或者已经销毁，直接返回
+    if (_isAccepting || !mounted) return;
+    _isAccepting = true;
 
-  void acceptCall() async{
-    if(_peerConnection == null) return;
+    // 立刻切断 Ringing 状态，强行进入 Connected，消除按钮闪烁
+    state = state.copyWith(status: CallStatus.connected);
 
-    try{
+    if (_peerConnection == null) {
+      try {
+        await _initLocalMedia(state.isVideoMode);
+        await _createPeerConnection();
+
+        if (_remoteSdpStr != null) {
+          //  2. 核心修复：必须 await 确保名片贴好了
+          await _peerConnection!.setRemoteDescription(
+              RTCSessionDescription(_remoteSdpStr!, 'offer')
+          );
+          _flushIceCandidateQueue();
+        }
+      } catch (e) {
+        debugPrint("Media init error: $e");
+        _isAccepting = false; // 出错重置
+        hangUp();
+        return;
+      }
+    }
+
+    try {
+      // 此时状态已经是合法的 have-remote-offer
       final answer = await _peerConnection!.createAnswer();
       await _peerConnection!.setLocalDescription(answer);
 
@@ -266,15 +325,13 @@ class CallController extends StateNotifier<CallState> {
         'sdp': answer.sdp,
       });
 
-      state = state.copyWith(status: CallStatus.connected);
-      await _enableBackgroundMode(); // 接通时启用后台保活
+      await _enableBackgroundMode();
       _startTimer();
-
-       // 接通时重置悬浮窗位置
       state = state.copyWith(floatOffset: Offset(1.sw - 120.w, 60.h));
-
-    }catch(e){
-      debugPrint("Accept call error: $e");
+    } catch (e) {
+      debugPrint("Accept process error: $e");
+    } finally {
+      _isAccepting = false; // 流程走完解锁
     }
   }
 
@@ -312,7 +369,7 @@ class CallController extends StateNotifier<CallState> {
 
     // 打开本地媒体设备
     _localStream = await navigator.mediaDevices.getUserMedia(mediaConstraints);
-    
+
     print("Local media stream initialized with ${_localStream?.getVideoTracks().length ?? 0} video tracks and ${_localStream?.getAudioTracks().length ?? 0} audio tracks.");
 
     // 初始化本地渲染器
@@ -333,7 +390,7 @@ class CallController extends StateNotifier<CallState> {
   Future<void> _createPeerConnection() async {
 
     await _ensureIceServersReady(); // 确保 ICE 服务器配置是最新的
-    
+
     print("Creating PeerConnection with ICE servers: ${_iceServers['iceServers']}");
 
     _peerConnection = await createPeerConnection(_iceServers);
@@ -345,6 +402,7 @@ class CallController extends StateNotifier<CallState> {
 
     // ICE 候选回调
     _peerConnection?.onIceCandidate = (candidate) {
+      if (!mounted) return;
       if(_targetId != null){
         _socketService.socket?.emit(SocketEvents.callIce, {
           'sessionId': _currentSessionId,
@@ -356,8 +414,16 @@ class CallController extends StateNotifier<CallState> {
       }
     };
 
+    // 还有这个状态改变监听
+    _peerConnection!.onConnectionState = (pcState) {
+      if (!mounted) return;
+      debugPrint("RTCPeerConnection State: $pcState");
+    };
+
+
     // 远端流回调 (对方画面)
     _peerConnection?.onTrack = (event) {
+      if (!mounted) return;
       if (event.streams.isNotEmpty) {
         state.remoteRenderer?.srcObject = event.streams[0];
       // 强制刷新 UI
@@ -366,63 +432,71 @@ class CallController extends StateNotifier<CallState> {
     };
   }
 
-  //  挂断与安全销毁 (Safe Dispose)
-  void hangUp({bool emitEvent = true}) {
-    // 1. 停止计时器
+  // 【修改 3】hangUp 增加磁盘写入
+  void hangUp({bool emitEvent = true}) async{
+    if (_isHangingUp || !mounted) return;
+    _isHangingUp = true;
     _timer?.cancel();
 
-    //  关闭后台保活 (通知栏图标消失)
+   // 终极修复：不再依赖 ID，挂断后立刻开启全局 5 秒免打扰锁
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('global_call_lock', DateTime.now().millisecondsSinceEpoch);
+
     try {
       if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android && FlutterBackground.isBackgroundExecutionEnabled) {
         FlutterBackground.disableBackgroundExecution();
       }
-
-
       OverlayManager.instance.hide();
+      try {
+        if(_currentSessionId != null) CallKitService.instance.endCall(_currentSessionId!);
+        CallKitService.instance.clearAllCalls();
+      } catch (_) {}
+    } catch (_) {}
 
-    } catch (e) {
-      debugPrint("Close background error: $e");
-    }
 
-    // 1. 通知服务器
+
+    try {
+      if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android && FlutterBackground.isBackgroundExecutionEnabled) {
+        FlutterBackground.disableBackgroundExecution();
+      }
+      OverlayManager.instance.hide();
+      try {
+        if(_currentSessionId != null) CallKitService.instance.endCall(_currentSessionId!);
+        CallKitService.instance.clearAllCalls();
+      } catch (_) {}
+    } catch (_) {}
+
     if(emitEvent && _currentSessionId != null){
       _socketService.socket?.emit(SocketEvents.callEnd, {
-        'sessionId': _currentSessionId,
-        'targetId': _targetId,
-        'reason': 'hangup',
+        'sessionId': _currentSessionId, 'targetId': _targetId, 'reason': 'hangup',
       });
     }
 
-    // 2. 核心防御：先脱钩 (Detach)
     final oldLocal = state.localRenderer;
     final oldRemote = state.remoteRenderer;
+    state = state.copyWith(localRenderer: null, remoteRenderer: null, status: CallStatus.ended, duration: "00:00");
+    _currentSessionId = null;
 
-    state = state.copyWith(
-      localRenderer: null, // 先置空状态中的渲染器，防止 UI 访问到已销毁的渲染器
-      remoteRenderer: null,
-      status: CallStatus.ended,
-    );
-
-    // 3. 异步销毁 (Dispose)
     Future.microtask(() async {
       try {
         _localStream?.getTracks().forEach((track) => track.stop());
         await _localStream?.dispose();
-
+        _localStream = null;
         await _peerConnection?.close();
+        await _peerConnection?.dispose();
         _peerConnection = null;
-
-        oldLocal?.srcObject = null;
-        await oldLocal?.dispose();
-
-        oldRemote?.srcObject = null;
-        await oldRemote?.dispose();
-      } catch (e) {
-        debugPrint("Resource dispose error: $e");
+        if (oldLocal != null) await oldLocal.dispose();
+        if (oldRemote != null) await oldRemote.dispose();
+      } catch (_) {} finally {
+        _isHangingUp = false; // 重置挂断锁
+        //  挂断 2 秒后，自动将状态重置为 idle，彻底释放通话通道
+        Future.delayed(const Duration(seconds: 2), () {
+          if (mounted && state.status == CallStatus.ended) {
+            state = state.copyWith(status: CallStatus.idle);
+          }
+        });
       }
     });
-
-
   }
 
   // --- 辅助功能 ---
@@ -528,6 +602,8 @@ class CallController extends StateNotifier<CallState> {
       remote.srcObject = null;
       remote.dispose();
     }
+
+    WidgetsBinding.instance.removeObserver(this);
 
     super.dispose();
   }

@@ -49,7 +49,8 @@ class _CallPageState extends ConsumerState<CallPage> {
       // CallStatus.idle (初始状态) -> 说明我是主叫，我刚点进来，需要拨号
       // CallStatus.dialing (拨号中) -> 也是主叫 (可能是热重载导致的，安全起见也可以调用)
       // 只有闲置状态才拨号，防止被叫方误拨回去
-      if (currentStatus == CallStatus.idle) {
+      //  核心修复：允许在 idle (首次) 或 ended (后台挂断遗留) 状态下重新拨号
+      if (currentStatus == CallStatus.idle || currentStatus == CallStatus.ended) {
         controller.startCall(widget.targetId, isVideo: widget.isVideo);
       }
     });

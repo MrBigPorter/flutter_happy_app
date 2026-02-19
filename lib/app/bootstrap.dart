@@ -16,12 +16,50 @@ import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../core/store/auth/auth_provider.dart';
+import '../ui/chat/services/callkit_service.dart';
 
-// FCM 后台处理器 (必须是 Top-level 函数)
+
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp();
-  debugPrint("[FCM] Handling background message: ${message.messageId}");
+
+  final data = message.data;
+  final String type = data['type'] ?? '';
+  final String sessionId = data['sessionId'] ?? '';
+
+  if (sessionId.isEmpty) return;
+
+  //终极修复：后台线程检查全局时间锁
+  final prefs = await SharedPreferences.getInstance();
+  final int lockTime = prefs.getInt('global_call_lock') ?? 0;
+  final int now = DateTime.now().millisecondsSinceEpoch;
+
+  // 如果距离上一次处理邀请或挂断不到 5 秒（5000毫秒），直接拉黑！
+  if (now - lockTime < 5000) {
+    debugPrint(" [FCM Background] 全局冷却期生效！拦截短时间内疯狂轰炸的延迟推送！");
+    return;
+  }
+
+  if (type == 'call_invite') {
+
+    // 准备弹窗了，赶紧把锁续上，防止 1 秒后的下一个 FCM 弹出来
+    await prefs.setInt('global_call_lock', now);
+
+    debugPrint(" [FCM Background] 准备唤醒 CallKit...");
+    await CallKitService.instance.showIncomingCall(
+      uuid: sessionId,
+      name: data['senderName'] ?? "Incoming Call",
+      avatar: data['senderAvatar'] ?? "",
+      isVideo: data['mediaType'] == 'video',
+      extra: Map<String, dynamic>.from(data),
+    );
+  } else if (type == 'call_end') {
+    debugPrint(" [FCM Background] 收到离线挂断，标记并清理");
+    // 收到对方挂断了，也开启 5 秒无敌金身，防止后面的幽灵 invite 把屏幕又亮起来
+    await prefs.setInt('global_call_lock', now);
+    await CallKitService.instance.endCall(sessionId);
+    await CallKitService.instance.clearAllCalls();
+  }
 }
 
 class AppBootstrap {

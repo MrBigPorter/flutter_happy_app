@@ -7,25 +7,45 @@ extension GlobalHandlerSocketExtension on _GlobalHandlerState {
   void _initCallKitListener() {
     CallKitService.instance.initListener(
       // A. 用户点了系统界面的【接听】
-      onAccept: (sessionId) {
-        debugPrint("📞 [CallKit] User accepted call: $sessionId");
+      onAccept: (sessionId) async {
+        debugPrint(" [CallKit] 用户点击接听，开始捞取系统资料... sessionId: $sessionId");
 
-        // 确保 UI 挂载
+        // 1. 【核心逻辑】从系统的 CallKit 库里捞回你在 bootstrap 时塞进去的 extra 资料
+        final List<dynamic>? calls = await FlutterCallkitIncoming.activeCalls();
+        Map<String, dynamic> metadata = {};
+
+        if (calls != null && calls.isNotEmpty) {
+          // 找到当前 ID 对应的那个通话
+          final call = calls.firstWhere((c) => c['id'] == sessionId, orElse: () => null);
+          if (call != null && call['extra'] != null) {
+            // 重点：使用 .cast 解决你日志里那个该死的类型报错 '_Map<Object?, Object?>'
+            metadata = (call['extra'] as Map).cast<String, dynamic>();
+            debugPrint(" [CallKit] 成功找回资料隧道数据: $metadata");
+          }
+        }
+
         if (NavHub.key.currentState?.mounted ?? false) {
           final controller = ref.read(callControllerProvider.notifier);
+          final callState = ref.read(callControllerProvider);
 
-          // 1. 告诉 Controller 用户接了 (这会触发 accept 信令)
+          // 2. 【自愈逻辑】如果当前控制器是空的（冷启动），用 metadata 强制喂饱它
+          if (metadata.isNotEmpty) {
+            await controller.incomingCall(metadata);
+          }
+
+          // 3. 执行接听协议流程
           controller.acceptCall();
 
-          // 2. 导航到通话界面
-          // 注意：此时 Controller 状态已变，CallPage 会自动渲染 Connected 状态
-          // 这里的参数最好在 incomingCall 时存入 Controller，或者后端带过来
-          NavHub.key.currentState?.push(
+          // 4. 【精准跳转】不再用 unknown 占位，直接从 metadata 拿真实数据
+          final String realTargetId = metadata['senderId']?.toString() ?? controller.targetId ?? "unknown";
+          final String realTargetName = metadata['senderName']?.toString() ?? controller.targetName ?? "User";
+
+          NavHub.key.currentState?.pushReplacement(
             MaterialPageRoute(
-              builder: (_) => const CallPage(
-                targetId: "unknown", // 暂时占位，接通后通常会走 info 查询
-                targetName: "Connecting...",
-                isVideo: true, // 最好从 Controller 或缓存中获取
+              builder: (_) => CallPage(
+                targetId: realTargetId,
+                targetName: realTargetName,
+                isVideo: callState.isVideoMode,
               ),
             ),
           );
@@ -53,11 +73,22 @@ extension GlobalHandlerSocketExtension on _GlobalHandlerState {
     service.socket?.on(SocketEvents.callInvite, (data) async {
       if (!mounted) return;
 
-      // 获取当前状态
+      // 终极修复：前台线程检查全局时间锁
+      final prefs = await SharedPreferences.getInstance();
+      final int lockTime = prefs.getInt('global_call_lock') ?? 0;
+      final int now = DateTime.now().millisecondsSinceEpoch;
+
+      if (now - lockTime < 5000) {
+        debugPrint("️ [GlobalHandler] 全局冷却期生效！拦截重复的 Socket invite 信号！");
+        return;
+      }
+
+      // 允许接通了，赶紧上锁！
+      await prefs.setInt('global_call_lock', now);
+
       final currentStatus = ref.read(callControllerProvider).status;
-      // 如果已经在通话或拨号中，直接无视或自动拒绝
       if (currentStatus != CallStatus.idle && currentStatus != CallStatus.ended) {
-        debugPrint(' [GlobalHandler] Received call invite but already in call: $currentStatus');
+        debugPrint(' 拦截无效呼叫：状态=$currentStatus');
         return;
       }
 
@@ -84,6 +115,9 @@ extension GlobalHandlerSocketExtension on _GlobalHandlerState {
     service.socket?.on(SocketEvents.callEnd, (data) {
       if (data['sessionId'] != null) {
         CallKitService.instance.endCall(data['sessionId']);
+
+       //  核心修复：必须触发 hangUp，否则 Flutter 的 CallPage 永远不会消失！
+        ref.read(callControllerProvider.notifier).hangUp(emitEvent: false);
       }
     });
 

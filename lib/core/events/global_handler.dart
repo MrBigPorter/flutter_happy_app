@@ -8,6 +8,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_app/core/providers/fcm_service_provider.dart';
 import 'package:flutter_app/ui/chat/services/network/offline_queue_manager.dart';
 import 'package:flutter_app/ui/modal/base/nav_hub.dart';
+import 'package:flutter_callkit_incoming/flutter_callkit_incoming.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
@@ -16,6 +17,7 @@ import 'package:flutter_app/ui/modal/dialog/modal_dialog_config.dart';
 import 'package:flutter_app/ui/modal/dialog/radix_modal.dart';
 import 'package:flutter_app/utils/events/event_bus.dart';
 import 'package:flutter_app/utils/events/global_events.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../app/routes/app_router.dart';
 import '../../theme/design_tokens.g.dart';
 import '../../ui/chat/call/call_page.dart';
@@ -63,6 +65,9 @@ class _GlobalHandlerState extends ConsumerState<GlobalHandler> {
   @override
   void initState() {
     super.initState();
+
+    //  每次 App 启动时，强制清理上次崩溃遗留的 CallKit 界面
+    CallKitService.instance.clearAllCalls();
 
     // 监听本地 EventBus
     _eventBusSub = EventBus().stream.listen((event) => _handleGlobalEvent(event));

@@ -48,6 +48,12 @@ class FcmDispatcher {
   // 内部逻辑：处理点击跳转
   void _handleInteraction(FcmPayload payload) {
     if (!payload.hasValidAction) return;
+
+    //  新增拦截：电话的接听行为是由 CallKit 原生回调控制的，这里直接 return 即可
+    if (payload.type == FcmType.callInvite) {
+      return;
+    }
+
     print("[FCM Dispatcher] 执行跳转逻辑: ${payload.type}");
     // 架构点：根据类型寻找执行肌肉
     switch (payload.type) {
@@ -66,7 +72,15 @@ class FcmDispatcher {
 
   // 内部逻辑：处理前台弹窗
   void _handleForeground(FcmPayload payload) {
+
+    //  新增拦截：前台收到电话推送，不弹 Toast！(交由 Socket 和 CallKit 自己处理)
+    if (payload.type == FcmType.callInvite) {
+      print("[FCM Dispatcher] 拦截 call_invite 前台推送");
+      return;
+    }
+
     print("[FCM Dispatcher] 执行前台展示逻辑: ${payload.title}");
+
     FcmUiFactory.showNotification(
       payload,
       onTap: () {

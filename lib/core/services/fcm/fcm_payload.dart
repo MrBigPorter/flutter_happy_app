@@ -2,6 +2,7 @@ enum FcmType {
   groupDetail, // 对应原 group_detail
   chat,        // 对应原 chat
   system,      // 对应原 system
+  callInvite,  //  新增电话类型
   unknown      // 兜底类型
 }
 
@@ -41,6 +42,7 @@ class FcmPayload {
       case 'group_detail': return FcmType.groupDetail;
       case 'chat': return FcmType.chat;
       case 'system': return FcmType.system;
+      case 'call_invite': return FcmType.callInvite;
       default: return FcmType.unknown;
     }
   }
