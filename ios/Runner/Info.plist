@@ -52,7 +52,7 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSCameraUsageDescription</key>
-	<string>This app requires access to the camera for identity verification and taking photos to share in conversations.</string>
+	<string>Lucky needs access to the camera for video calls, identity verification, and sharing photos in chats.</string>
 	<key>NSHumanReadableCopyright</key>
 	<string></string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
@@ -60,7 +60,7 @@
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Lucky needs access to your location to share it.</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>This app requires access to the microphone for recording voice messages and performing liveness detection.</string>
+	<string>Lucky needs access to the microphone for audio/video calls and recording voice messages.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>This app requires permission to save photos and images from your chats to your device's library.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
