@@ -79,10 +79,10 @@ class CallStateMachine extends StateNotifier<CallState> with WidgetsBindingObser
 
       final offer = await _peerConnection!.createOffer();
 
-      // 🟢 修正 1：必须把【原封不动】的 offer 喂给本地，保证本地绝对不崩！
+      //  修正 1：必须把【原封不动】的 offer 喂给本地，保证本地绝对不崩！
       await _peerConnection!.setLocalDescription(offer);
 
-      // 🟢 修正 2：对发往网络的字符串动刀子，套上 VP8 护盾！
+      //  修正 2：对发往网络的字符串动刀子，套上 VP8 护盾！
       final String tweakedSdp = _forceVP8(offer.sdp!);
 
       _socketService.socket?.emit(SocketEvents.callInvite, {
@@ -160,10 +160,10 @@ class CallStateMachine extends StateNotifier<CallState> with WidgetsBindingObser
 
         final answer = await _peerConnection!.createAnswer();
 
-        // 🟢 修正 3：原汁原味的 answer 留给自己用
+        //  修正 3：原汁原味的 answer 留给自己用
         await _peerConnection!.setLocalDescription(answer);
 
-        // 🟢 修正 4：魔改后的 SDP 发给对方
+        //  修正 4：魔改后的 SDP 发给对方
         final String tweakedSdp = _forceVP8(answer.sdp!);
 
         _socketService.socket?.emit(SocketEvents.callAccept, {
@@ -184,7 +184,7 @@ class CallStateMachine extends StateNotifier<CallState> with WidgetsBindingObser
     }
 
     if (defaultTargetPlatform == TargetPlatform.iOS) {
-      debugPrint("🍎 [StateMachine] iOS 极速启动媒体流...");
+      debugPrint(" [StateMachine] iOS 极速启动媒体流...");
       await setupWebRTCFlow();
     } else {
       debugPrint("🤖 [StateMachine] Android 延迟 1 秒启动...");
@@ -305,7 +305,7 @@ class CallStateMachine extends StateNotifier<CallState> with WidgetsBindingObser
 
     _localStream = await navigator.mediaDevices.getUserMedia(mediaConstraints);
 
-    // 🟢 终极自愈护盾：如果画板是空的，立刻当场新建！
+    //  终极自愈护盾：如果画板是空的，立刻当场新建！
     // 这完美解决了 iOS 打电话出去时没有初始化画板导致的黑屏问题！
     RTCVideoRenderer localRen = state.localRenderer ?? RTCVideoRenderer();
     RTCVideoRenderer remoteRen = state.remoteRenderer ?? RTCVideoRenderer();

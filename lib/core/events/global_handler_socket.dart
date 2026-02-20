@@ -3,10 +3,10 @@ part of 'global_handler.dart';
 extension GlobalHandlerSocketExtension on _GlobalHandlerState {
   // 【核心修改点 1】：重构 CallKit 监听逻辑，适配新的 onAction 接口
   void _initCallKitListener() {
-    // 🟢 核心改动 1：加上第一个参数 'GlobalHandler' 作为唯一身份标识
+    //  核心改动 1：加上第一个参数 'GlobalHandler' 作为唯一身份标识
     CallKitService.instance.onAction('GlobalHandler', (event) async {
 
-      // 🟢 核心改动 2：防丧尸护盾！页面被安卓销毁时直接拦截，防止报 ref disposed 错误
+      //  核心改动 2：防丧尸护盾！页面被安卓销毁时直接拦截，防止报 ref disposed 错误
       if (!mounted) {
         debugPrint("🛡️ [TRACE-UI] 检测到页面已销毁，拦截丧尸回调！");
         return;
@@ -34,7 +34,7 @@ extension GlobalHandlerSocketExtension on _GlobalHandlerState {
             // 绝对禁止在 Ringing 状态下覆盖已有的完整 SDP！
             if (callState.remoteSdp == null || callState.remoteSdp!.isEmpty) {
 
-              // 🟢 终极修复：优先从内存保险箱中取 SDP，完美绕过原生层的截断！
+              //  终极修复：优先从内存保险箱中取 SDP，完美绕过原生层的截断！
               final cachedInvite = CallDispatcher.instance.currentInvite;
               if (cachedInvite != null && cachedInvite.sessionId == sessionId) {
                 debugPrint("📍 [TRACE-UI] 从内存保险箱完美恢复信令数据！SDP 完好无损！");
@@ -55,7 +55,7 @@ extension GlobalHandlerSocketExtension on _GlobalHandlerState {
             final bool isVideoCall = (metadata['mediaType'] != null) ? metadata['mediaType'] == 'video' : callState.isVideoMode;
             final String? realAvatar = metadata['senderAvatar']?.toString();
 
-            // 🟢 终极修复 1：轮询等待 Flutter 引擎和 Navigator 准备就绪 (最长等待 5 秒)
+            //  终极修复 1：轮询等待 Flutter 引擎和 Navigator 准备就绪 (最长等待 5 秒)
             int retryCount = 0;
             Timer.periodic(const Duration(milliseconds: 500), (timer) {
               retryCount++;

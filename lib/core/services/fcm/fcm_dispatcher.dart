@@ -31,12 +31,12 @@ class FcmDispatcher {
       }
     }
 
-    // 🟢 终极修复：在顶层截获！只要是音视频信令，绝不走普通推送逻辑，直接交给总调度器！
+    //  终极修复：在顶层截获！只要是音视频信令，绝不走普通推送逻辑，直接交给总调度器！
     final String typeStr = message.data['type']?.toString() ?? '';
     if (typeStr == 'call_invite' || typeStr == 'call_end' || typeStr == 'call_accept' || typeStr == 'call_ice') {
       print("[FCM Dispatcher] 收到音视频信令 ($typeStr)，紧急移交 CallDispatcher 处理！");
       CallDispatcher.instance.dispatch(message.data);
-      return; // 🔪 核心护盾：移交后立刻 return，绝对不让它往下走！
+      return; //  核心护盾：移交后立刻 return，绝对不让它往下走！
     }
 
     // 2. 将原始 Map 转化为强类型契约对象 (普通聊天、系统通知等)

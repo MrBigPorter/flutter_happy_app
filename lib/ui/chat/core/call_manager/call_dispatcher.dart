@@ -8,7 +8,7 @@ class CallDispatcher {
   CallDispatcher._();
   static final CallDispatcher instance = CallDispatcher._();
 
-  // 🟢 终极护盾：在内存中死死抱住最新信令，防止安卓原生层把超大 SDP 文本丢弃
+  //  终极护盾：在内存中死死抱住最新信令，防止安卓原生层把超大 SDP 文本丢弃
   CallEvent? currentInvite;
 
   Future<void> dispatch(
@@ -50,9 +50,9 @@ class CallDispatcher {
     await arbitrator.markSessionAsHandled(event.sessionId);
     await arbitrator.lockGlobalCooldown();
 
-    debugPrint("✅ [Dispatcher] 安检通过，正式唤起 CallKit");
+    debugPrint(" [Dispatcher] 安检通过，正式唤起 CallKit");
 
-    // 🟢 存入内存保险箱！
+    //  存入内存保险箱！
     currentInvite = event;
 
     await CallKitService.instance.showIncomingCall(
