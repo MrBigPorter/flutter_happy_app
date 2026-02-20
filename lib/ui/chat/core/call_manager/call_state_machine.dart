@@ -18,7 +18,6 @@ import '../../models/call_event.dart';
 import '../../models/call_state_model.dart';
 import '../../services/callkit_service.dart';
 
-// 暴露给全 App 使用的唯一 Provider
 final callStateMachineProvider = StateNotifierProvider<CallStateMachine, CallState>((ref) {
   final socketService = ref.read(socketServiceProvider);
   return CallStateMachine(socketService);
@@ -27,11 +26,9 @@ final callStateMachineProvider = StateNotifierProvider<CallStateMachine, CallSta
 class CallStateMachine extends StateNotifier<CallState> with WidgetsBindingObserver {
   final SocketService _socketService;
 
-  // --- WebRTC 引擎核心变量 ---
   RTCPeerConnection? _peerConnection;
   MediaStream? _localStream;
   final List<RTCIceCandidate> _iceCandidateQueue = [];
-  String? _remoteSdpStr;
 
   Map<String, dynamic> _iceServers = {
     'iceServers': [
@@ -41,7 +38,6 @@ class CallStateMachine extends StateNotifier<CallState> with WidgetsBindingObser
     ],
   };
 
-  // --- 状态流转锁 ---
   bool _isAccepting = false;
   bool _isHangingUp = false;
   Timer? _timer;
@@ -51,15 +47,30 @@ class CallStateMachine extends StateNotifier<CallState> with WidgetsBindingObser
     WidgetsBinding.instance.addObserver(this);
     _fetchIceCredentials();
     _initSocketListeners();
+    _initCallKitListeners();
   }
 
-  /// ----------------------------------------------------------------
-  /// 动作 1：主叫发起通话 (Dialing)
-  /// ----------------------------------------------------------------
-  Future<void> startCall(String targetId, {bool isVideo = true}) async {
-    //  铁律：只有空闲状态才能向外拨号
-    if (state.status != CallStatus.idle || !mounted) return;
+  void _initCallKitListeners() {
+    CallKitService.instance.onAction('StateMachine', (event) {
+      debugPrint("📱 [CallKit] 收到系统指令: ${event.action}");
+      switch (event.action) {
+        case 'answerCall':
+          if (_isAccepting || state.status == CallStatus.connected) return;
+          acceptCall();
+          break;
+        case 'endCall':
+          if (_isHangingUp || state.status == CallStatus.idle) return;
+          hangUp(emitEvent: true);
+          break;
+        case 'setMuted':
+          toggleMute();
+          break;
+      }
+    });
+  }
 
+  Future<void> startCall(String targetId, {bool isVideo = true}) async {
+    if (state.status != CallStatus.idle || !mounted) return;
     final sessionId = const Uuid().v4();
 
     try {
@@ -67,17 +78,20 @@ class CallStateMachine extends StateNotifier<CallState> with WidgetsBindingObser
       await _createPeerConnection();
 
       final offer = await _peerConnection!.createOffer();
+
+      // 🟢 修正 1：必须把【原封不动】的 offer 喂给本地，保证本地绝对不崩！
       await _peerConnection!.setLocalDescription(offer);
 
-      // 发送信令
+      // 🟢 修正 2：对发往网络的字符串动刀子，套上 VP8 护盾！
+      final String tweakedSdp = _forceVP8(offer.sdp!);
+
       _socketService.socket?.emit(SocketEvents.callInvite, {
         'sessionId': sessionId,
         'targetId': targetId,
-        'sdp': offer.sdp,
+        'sdp': tweakedSdp, // 发送修改后的安全 SDP 给对方
         'mediaType': isVideo ? 'video' : 'audio',
       });
 
-      // 状态流转：Idle -> Dialing
       if (mounted) {
         state = state.copyWith(
           status: CallStatus.dialing,
@@ -86,28 +100,24 @@ class CallStateMachine extends StateNotifier<CallState> with WidgetsBindingObser
           isVideoMode: isVideo,
           floatOffset: Offset(240.w, 100.h),
         );
-        debugPrint("📞 [StateMachine] 状态流转: Idle -> Dialing (Session: $sessionId)");
       }
     } catch (e) {
-      debugPrint(" [StateMachine] 拨号失败: $e");
+      debugPrint("❌ [StateMachine] 拨号失败: $e");
       hangUp(emitEvent: false);
     }
   }
 
-  /// ----------------------------------------------------------------
-  /// 动作 2：收到外来呼叫 (由 CallDispatcher 安检通过后调用)
-  /// ----------------------------------------------------------------
   void onIncomingInvite(CallEvent event) {
-    //  铁律：只有空闲状态，才能响铃！
-    if (state.status != CallStatus.idle) {
-      debugPrint(" [StateMachine] 拦截：当前状态 ${state.status}，拒绝进入 Ringing");
-      return;
+    if ((state.status != CallStatus.idle && state.sessionId != event.sessionId) ||
+        state.status == CallStatus.ended) {
+      _timer?.cancel();
+      _isAccepting = false;
+      _isHangingUp = false;
+      state = CallState.initial();
     }
 
-    // 缓存对方发来的 SDP，等接听时再用
-    _remoteSdpStr = event.rawData['sdp'];
+    if (state.status != CallStatus.idle) return;
 
-    // 状态流转：Idle -> Ringing
     state = state.copyWith(
       status: CallStatus.ringing,
       sessionId: event.sessionId,
@@ -115,76 +125,96 @@ class CallStateMachine extends StateNotifier<CallState> with WidgetsBindingObser
       targetName: event.senderName,
       targetAvatar: event.senderAvatar,
       isVideoMode: event.isVideo,
+      remoteSdp: event.rawData['sdp']?.toString(),
     );
-    debugPrint("🔔 [StateMachine] 状态流转: Idle -> Ringing (Session: ${event.sessionId})");
   }
 
-  /// ----------------------------------------------------------------
-  /// 动作 3：接听通话 (Accept)
-  /// ----------------------------------------------------------------
   Future<void> acceptCall() async {
-    //  铁律：只有在响铃中，才能接听！
     if (state.status != CallStatus.ringing || _isAccepting || !mounted) return;
     _isAccepting = true;
 
-    // 状态流转：Ringing -> Connected
-    state = state.copyWith(status: CallStatus.connected);
-    debugPrint(" [StateMachine] 状态流转: Ringing -> Connected");
+    final localRenderer = RTCVideoRenderer();
+    await localRenderer.initialize();
+    final remoteRenderer = RTCVideoRenderer();
+    await remoteRenderer.initialize();
 
-    try {
-      await _initLocalMedia(state.isVideoMode);
-      await _createPeerConnection();
+    state = state.copyWith(
+      status: CallStatus.connected,
+      localRenderer: localRenderer,
+      remoteRenderer: remoteRenderer,
+    );
 
-      if (_remoteSdpStr != null) {
-        await _peerConnection!.setRemoteDescription(RTCSessionDescription(_remoteSdpStr!, 'offer'));
-        _flushIceCandidateQueue();
+    Future<void> setupWebRTCFlow() async {
+      try {
+        await _initLocalMedia(state.isVideoMode);
+        await _createPeerConnection();
+
+        final incomingSdp = state.remoteSdp;
+        if (incomingSdp != null && incomingSdp.isNotEmpty) {
+          await _peerConnection!.setRemoteDescription(RTCSessionDescription(incomingSdp, 'offer'));
+          _flushIceCandidateQueue();
+        } else {
+          hangUp();
+          return;
+        }
+
+        final answer = await _peerConnection!.createAnswer();
+
+        // 🟢 修正 3：原汁原味的 answer 留给自己用
+        await _peerConnection!.setLocalDescription(answer);
+
+        // 🟢 修正 4：魔改后的 SDP 发给对方
+        final String tweakedSdp = _forceVP8(answer.sdp!);
+
+        _socketService.socket?.emit(SocketEvents.callAccept, {
+          'sessionId': state.sessionId,
+          'targetId': state.targetId,
+          'sdp': tweakedSdp, // 发送修改后的 SDP
+        });
+
+        await _enableBackgroundMode();
+        _startTimer();
+        state = state.copyWith(floatOffset: Offset(1.sw - 120.w, 60.h));
+      } catch (e) {
+        debugPrint("❌ [StateMachine] WebRTC 建立失败: $e");
+        hangUp();
+      } finally {
+        _isAccepting = false;
       }
+    }
 
-      final answer = await _peerConnection!.createAnswer();
-      await _peerConnection!.setLocalDescription(answer);
-
-      _socketService.socket?.emit(SocketEvents.callAccept, {
-        'sessionId': state.sessionId,
-        'targetId': state.targetId,
-        'sdp': answer.sdp,
+    if (defaultTargetPlatform == TargetPlatform.iOS) {
+      debugPrint("🍎 [StateMachine] iOS 极速启动媒体流...");
+      await setupWebRTCFlow();
+    } else {
+      debugPrint("🤖 [StateMachine] Android 延迟 1 秒启动...");
+      Future.delayed(const Duration(milliseconds: 1000), () async {
+        if (mounted && state.status == CallStatus.connected) {
+          await setupWebRTCFlow();
+        } else {
+          _isAccepting = false;
+        }
       });
-
-      await _enableBackgroundMode();
-      _startTimer();
-      state = state.copyWith(floatOffset: Offset(1.sw - 120.w, 60.h));
-    } catch (e) {
-      debugPrint(" [StateMachine] 接听失败: $e");
-      hangUp();
-    } finally {
-      _isAccepting = false;
     }
   }
 
-  /// ----------------------------------------------------------------
-  /// 动作 4：挂断通话 (HangUp)
-  /// ----------------------------------------------------------------
   void hangUp({bool emitEvent = true}) async {
-    //  铁律：如果已经空闲或已经结束，绝不重复执行挂断
     if (_isHangingUp || state.status == CallStatus.idle || state.status == CallStatus.ended || !mounted) return;
+
     _isHangingUp = true;
     _timer?.cancel();
+    _isAccepting = false;
 
-    debugPrint( "[StateMachine] 执行挂断清理流程...");
-
-    // 1. 状态锁定为 Ended
     state = state.copyWith(status: CallStatus.ended);
 
-    // 2. 本地发出挂断指令
     if (emitEvent && state.sessionId != null) {
       _socketService.socket?.emit(SocketEvents.callEnd, {
         'sessionId': state.sessionId, 'targetId': state.targetId, 'reason': 'hangup',
       });
-      // 写入死亡名单，开启无敌金身
       await CallArbitrator.instance.markSessionAsEnded(state.sessionId!);
       await CallArbitrator.instance.lockGlobalCooldown();
     }
 
-    // 3. 清理系统原生资源
     try {
       if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android && FlutterBackground.isBackgroundExecutionEnabled) {
         FlutterBackground.disableBackgroundExecution();
@@ -194,7 +224,6 @@ class CallStateMachine extends StateNotifier<CallState> with WidgetsBindingObser
       CallKitService.instance.clearAllCalls();
     } catch (_) {}
 
-    // 4. 清理 WebRTC 流
     final oldLocal = state.localRenderer;
     final oldRemote = state.remoteRenderer;
 
@@ -210,48 +239,46 @@ class CallStateMachine extends StateNotifier<CallState> with WidgetsBindingObser
         _peerConnection = null;
         if (oldLocal != null) await oldLocal.dispose();
         if (oldRemote != null) await oldRemote.dispose();
+        _iceCandidateQueue.clear();
       } catch (_) {} finally {
         _isHangingUp = false;
-        // ⭐️ 终极失忆大法：2秒后彻底清空状态，回归纯净 Idle
         Future.delayed(const Duration(seconds: 2), () {
           if (mounted && state.status == CallStatus.ended) {
             state = CallState.initial();
-            debugPrint("♻️ [StateMachine] 资源回收完毕，系统已回归 Idle");
           }
         });
       }
     });
   }
 
-
-  /// ================================================================
-  /// 内部 WebRTC 与流媒体引擎支持逻辑 (保持你原有的逻辑不变)
-  /// ================================================================
-
   void _initSocketListeners() {
     final socket = _socketService.socket;
 
-    // A. 对方同意接听
     socket?.on(SocketEvents.callAccept, (data) async {
-      if (data['sessionId'] != state.sessionId) return;
+      if (data['sessionId'] != state.sessionId || state.status == CallStatus.ended || _isHangingUp) return;
+      if (_peerConnection?.signalingState == RTCSignalingState.RTCSignalingStateStable) return;
 
-      final sdp = RTCSessionDescription(data['sdp'], 'answer');
-      await _peerConnection?.setRemoteDescription(sdp);
-      _flushIceCandidateQueue();
+      try {
+        final answerSdp = data['sdp'];
+        await _peerConnection?.setRemoteDescription(RTCSessionDescription(answerSdp, 'answer'));
+        _flushIceCandidateQueue();
 
-      state = state.copyWith(status: CallStatus.connected);
-      await _enableBackgroundMode();
-      _startTimer();
-      state = state.copyWith(floatOffset: Offset(1.sw - 120.w, 60.h));
+        state = state.copyWith(
+          status: CallStatus.connected,
+          remoteSdp: answerSdp,
+        );
+        await _enableBackgroundMode();
+        _startTimer();
+        state = state.copyWith(floatOffset: Offset(1.sw - 120.w, 60.h));
+      } catch (e) {
+        debugPrint("❌ [StateMachine] 应用 Answer SDP 失败: $e");
+      }
     });
 
-    // B. 对方发来打洞数据
     socket?.on(SocketEvents.callIce, (data) async {
       if (data['sessionId'] != state.sessionId) return;
-
       dynamic rawCandidate = data['candidate'];
       String actualCandidateStr = rawCandidate is Map ? (rawCandidate['candidate'] ?? "") : rawCandidate.toString();
-
       final candidate = RTCIceCandidate(actualCandidateStr, data['sdpMid'], data['sdpMLineIndex']);
 
       if (_peerConnection?.getRemoteDescription() == null) {
@@ -261,11 +288,8 @@ class CallStateMachine extends StateNotifier<CallState> with WidgetsBindingObser
       }
     });
 
-    // C. 对方挂断
     socket?.on(SocketEvents.callEnd, (data) {
-      if (data['sessionId'] == state.sessionId) {
-        hangUp(emitEvent: false);
-      }
+      if (data['sessionId'] == state.sessionId) hangUp(emitEvent: false);
     });
   }
 
@@ -275,20 +299,28 @@ class CallStateMachine extends StateNotifier<CallState> with WidgetsBindingObser
     } catch (_) {}
 
     final Map<String, dynamic> mediaConstraints = {
-      'audio': { 'echoCancellation': true, 'noiseSuppression': true, 'autoGainControl': true },
-      'video': isVideo ? { 'facingMode': 'user', 'width': {'ideal': 640}, 'height': {'ideal': 480}, 'frameRate': {'ideal': 30} } : false,
+      'audio': true,
+      'video': isVideo ? { 'facingMode': 'user' } : false,
     };
 
     _localStream = await navigator.mediaDevices.getUserMedia(mediaConstraints);
 
-    final localRenderer = RTCVideoRenderer();
-    await localRenderer.initialize();
-    localRenderer.srcObject = _localStream;
+    // 🟢 终极自愈护盾：如果画板是空的，立刻当场新建！
+    // 这完美解决了 iOS 打电话出去时没有初始化画板导致的黑屏问题！
+    RTCVideoRenderer localRen = state.localRenderer ?? RTCVideoRenderer();
+    RTCVideoRenderer remoteRen = state.remoteRenderer ?? RTCVideoRenderer();
 
-    final remoteRenderer = RTCVideoRenderer();
-    await remoteRenderer.initialize();
+    if (state.localRenderer == null) await localRen.initialize();
+    if (state.remoteRenderer == null) await remoteRen.initialize();
 
-    state = state.copyWith(localRenderer: localRenderer, remoteRenderer: remoteRenderer);
+    localRen.srcObject = _localStream;
+
+    // 更新状态，绑定画板
+    state = state.copyWith(
+      localRenderer: localRen,
+      remoteRenderer: remoteRen,
+      isCameraOff: !isVideo,
+    );
   }
 
   Future<void> _createPeerConnection() async {
@@ -298,6 +330,13 @@ class CallStateMachine extends StateNotifier<CallState> with WidgetsBindingObser
     _localStream?.getTracks().forEach((track) {
       _peerConnection?.addTrack(track, _localStream!);
     });
+
+    _peerConnection?.onIceConnectionState = (state) {
+      debugPrint(" [ICE State] 变更为: $state");
+      if (state == RTCIceConnectionState.RTCIceConnectionStateFailed) {
+        hangUp(emitEvent: true);
+      }
+    };
 
     _peerConnection?.onIceCandidate = (candidate) {
       if (!mounted || state.targetId == null) return;
@@ -310,11 +349,27 @@ class CallStateMachine extends StateNotifier<CallState> with WidgetsBindingObser
       });
     };
 
-    _peerConnection?.onTrack = (event) {
+    _peerConnection?.onAddStream = (MediaStream stream) {
+      debugPrint("🎥 [StateMachine] onAddStream: 拿到完整流，视频轨数量: ${stream.getVideoTracks().length}");
       if (!mounted) return;
+      state.remoteRenderer?.srcObject = stream;
+      state = state.copyWith(duration: "00:00 ");
+    };
+
+    _peerConnection?.onTrack = (event) {
+      debugPrint("🎥 [StateMachine] onTrack 触发: ${event.track.kind}");
+      if (!mounted) return;
+
       if (event.streams.isNotEmpty) {
         state.remoteRenderer?.srcObject = event.streams[0];
-        state = state.copyWith(remoteRenderer: state.remoteRenderer);
+        state = state.copyWith(duration: "00:00  ");
+      } else {
+        MediaStream? currentStream = state.remoteRenderer?.srcObject;
+        if (currentStream != null) {
+          currentStream.addTrack(event.track);
+          state.remoteRenderer?.srcObject = currentStream;
+          state = state.copyWith(duration: "00:00   ");
+        }
       }
     };
   }
@@ -365,7 +420,7 @@ class CallStateMachine extends StateNotifier<CallState> with WidgetsBindingObser
   Future<bool> _enableBackgroundMode() async {
     if (defaultTargetPlatform == TargetPlatform.iOS || kIsWeb) return true;
     final androidConfig = FlutterBackgroundAndroidConfig(
-      notificationTitle: "Joyminis Call",
+      notificationTitle: "Lucky IM Call",
       notificationText: "Call in progress...",
       notificationImportance: AndroidNotificationImportance.normal,
       notificationIcon: const AndroidResource(name: 'ic_launcher', defType: 'mipmap'),
@@ -388,7 +443,6 @@ class CallStateMachine extends StateNotifier<CallState> with WidgetsBindingObser
     }
   }
 
-  // --- UI 控制辅助方法 ---
   void toggleMute() {
     if (_localStream != null && _localStream!.getAudioTracks().isNotEmpty) {
       bool enabled = !_localStream!.getAudioTracks()[0].enabled;
@@ -416,6 +470,11 @@ class CallStateMachine extends StateNotifier<CallState> with WidgetsBindingObser
 
   void updateFloatOffset(Offset newOffset) {
     state = state.copyWith(floatOffset: newOffset);
+  }
+
+  // 终极核武器：修改 SDP 字符串，强行禁用硬件 H264，回退到极其稳定的 VP8 软解！
+  String _forceVP8(String sdp) {
+    return sdp.replaceAll('H264/90000', 'DISABLED-H264/90000');
   }
 
   @override

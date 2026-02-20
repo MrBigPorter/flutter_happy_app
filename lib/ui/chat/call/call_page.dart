@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import '../../../utils/overlay_manager.dart';
+import '../../modal/base/nav_hub.dart';
 import '../core/call_manager/call_state_machine.dart';
 import '../models/call_state_model.dart';
 import '../widgets/call_action_button.dart';
@@ -35,15 +36,18 @@ class CallPage extends ConsumerStatefulWidget {
 
 class _CallPageState extends ConsumerState<CallPage> {
 
+  bool _hasPopped = false;
+
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_){
+    WidgetsBinding.instance.addPostFrameCallback((_) {
       // 换成了 stateMachine
       final stateMachine = ref.read(callStateMachineProvider.notifier);
       final currentStatus = ref.read(callStateMachineProvider).status;
 
-      if (currentStatus == CallStatus.idle || currentStatus == CallStatus.ended) {
+      if (currentStatus == CallStatus.idle ||
+          currentStatus == CallStatus.ended) {
         stateMachine.startCall(widget.targetId, isVideo: widget.isVideo);
       }
     });
@@ -57,14 +61,15 @@ class _CallPageState extends ConsumerState<CallPage> {
     final bool isConnected = state.status == CallStatus.connected;
     final bool showVideoUI = widget.isVideo && !state.isCameraOff;
 
+
+
     ref.listen(callStateMachineProvider, (prev, next) {
-      if (next.status == CallStatus.ended) {
-        if(Navigator.canPop(context)){
-          Navigator.pop(context);
+      if (next.status == CallStatus.ended && !_hasPopped) {
+        _hasPopped = true;
+        debugPrint("👋 [CallPage] 监听到挂断，准备安全退出...");
+        if (context.mounted && Navigator.of(context, rootNavigator: true).canPop()) {
+          Navigator.of(context, rootNavigator: true).pop();
         }
-        Future.microtask(() {
-          ref.invalidate(callStateMachineProvider);
-        });
       }
     });
 
@@ -98,25 +103,32 @@ class _CallPageState extends ConsumerState<CallPage> {
                 feedback: _buildLocalWindow(state, isDragging: true),
                 childWhenDragging: Container(),
                 onDraggableCanceled: (Velocity velocity, Offset offset) {
-                  stateMachine.updateFloatOffset(Offset(
-                    offset.dx.clamp(0.0, 1.sw - 100.w),
-                    offset.dy.clamp(0.0, 1.sh - 150.h),
-                  ));
+                  stateMachine.updateFloatOffset(
+                    Offset(
+                      offset.dx.clamp(0.0, 1.sw - 100.w),
+                      offset.dy.clamp(0.0, 1.sh - 150.h),
+                    ),
+                  );
                 },
                 child: _buildLocalWindow(state),
               ),
             ),
           Positioned(
-            left: 0, right: 0, bottom: 40.h,
-            child: SafeArea(
-              child: _buildActionButtons(state, stateMachine),
-            ),
+            left: 0,
+            right: 0,
+            bottom: 40.h,
+            child: SafeArea(child: _buildActionButtons(state, stateMachine)),
           ),
           Positioned(
-            left: 16.w, top: 48.h,
+            left: 16.w,
+            top: 48.h,
             child: GestureDetector(
               onTap: () => _minimizeToOverlay(state, stateMachine),
-              child: Icon(Icons.keyboard_arrow_down, color: Colors.white, size: 32.r),
+              child: Icon(
+                Icons.keyboard_arrow_down,
+                color: Colors.white,
+                size: 32.r,
+              ),
             ),
           ),
         ],
@@ -144,7 +156,8 @@ class _CallPageState extends ConsumerState<CallPage> {
       widget: Stack(
         children: [
           Positioned(
-            top: 100.h, right: 16.w,
+            top: 100.h,
+            right: 16.w,
             child: _buildOverlayContent(state),
           ),
         ],

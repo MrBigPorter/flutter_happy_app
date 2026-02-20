@@ -12,6 +12,7 @@ class CallState {
   final String? targetId;
   final String? targetName;
   final String? targetAvatar;
+  final String? remoteSdp; // [新增] 存储远端发来的 Offer 或 Answer SDP
 
   // --- 3. 硬件控制状态 ---
   final bool isMuted;
@@ -31,6 +32,7 @@ class CallState {
     this.targetId,
     this.targetName,
     this.targetAvatar,
+    this.remoteSdp,
     this.isMuted = false,
     this.isSpeakerOn = false,
     this.isCameraOff = false,
@@ -56,6 +58,7 @@ class CallState {
     String? targetId,
     String? targetName,
     String? targetAvatar,
+      String? remoteSdp,
     bool? isMuted,
     bool? isSpeakerOn,
     bool? isCameraOff,
@@ -71,6 +74,7 @@ class CallState {
       targetId: targetId ?? this.targetId,
       targetName: targetName ?? this.targetName,
       targetAvatar: targetAvatar ?? this.targetAvatar,
+      remoteSdp: remoteSdp ?? this.remoteSdp,
       isMuted: isMuted ?? this.isMuted,
       isSpeakerOn: isSpeakerOn ?? this.isSpeakerOn,
       isCameraOff: isCameraOff ?? this.isCameraOff,

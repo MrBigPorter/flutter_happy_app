@@ -1,5 +1,6 @@
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_app/core/services/fcm/fcm_payload.dart';
+import 'package:flutter_app/ui/chat/core/call_manager/call_dispatcher.dart';
 
 import 'fcm_ui_factory.dart';
 import 'handlers/chat_handler.dart';
@@ -29,7 +30,16 @@ class FcmDispatcher {
         _processedMessageIds.clear();
       }
     }
-    // 2. 将原始 Map 转化为强类型契约对象
+
+    // 🟢 终极修复：在顶层截获！只要是音视频信令，绝不走普通推送逻辑，直接交给总调度器！
+    final String typeStr = message.data['type']?.toString() ?? '';
+    if (typeStr == 'call_invite' || typeStr == 'call_end' || typeStr == 'call_accept' || typeStr == 'call_ice') {
+      print("[FCM Dispatcher] 收到音视频信令 ($typeStr)，紧急移交 CallDispatcher 处理！");
+      CallDispatcher.instance.dispatch(message.data);
+      return; // 🔪 核心护盾：移交后立刻 return，绝对不让它往下走！
+    }
+
+    // 2. 将原始 Map 转化为强类型契约对象 (普通聊天、系统通知等)
     final payload = FcmPayload.fromMap(
       message.data,
       notificationTitle: message.notification?.title,
@@ -49,21 +59,17 @@ class FcmDispatcher {
   void _handleInteraction(FcmPayload payload) {
     if (!payload.hasValidAction) return;
 
-    //  新增拦截：电话的接听行为是由 CallKit 原生回调控制的，这里直接 return 即可
-    if (payload.type == FcmType.callInvite) {
-      return;
-    }
-
     print("[FCM Dispatcher] 执行跳转逻辑: ${payload.type}");
     // 架构点：根据类型寻找执行肌肉
     switch (payload.type) {
       case FcmType.groupDetail:
         _groupHandler.handle(payload);
         break;
-        case FcmType.chat:
-         _chatHandler.handle(payload);
+      case FcmType.chat:
+        _chatHandler.handle(payload);
+        break;
       case FcmType.system:
-        // _systemHandler.handle(payload);
+      // _systemHandler.handle(payload);
         break;
       default:
         print("[FCM] 未定义的执行逻辑");
@@ -72,13 +78,6 @@ class FcmDispatcher {
 
   // 内部逻辑：处理前台弹窗
   void _handleForeground(FcmPayload payload) {
-
-    //  新增拦截：前台收到电话推送，不弹 Toast！(交由 Socket 和 CallKit 自己处理)
-    if (payload.type == FcmType.callInvite) {
-      print("[FCM Dispatcher] 拦截 call_invite 前台推送");
-      return;
-    }
-
     print("[FCM Dispatcher] 执行前台展示逻辑: ${payload.title}");
 
     FcmUiFactory.showNotification(

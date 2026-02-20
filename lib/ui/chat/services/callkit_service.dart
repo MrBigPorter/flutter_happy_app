@@ -1,5 +1,4 @@
 import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_callkit_incoming/entities/android_params.dart';
 import 'package:flutter_callkit_incoming/entities/call_event.dart';
@@ -8,43 +7,100 @@ import 'package:flutter_callkit_incoming/entities/ios_params.dart';
 import 'package:flutter_callkit_incoming/entities/notification_params.dart';
 import 'package:flutter_callkit_incoming/flutter_callkit_incoming.dart';
 
-StreamSubscription? _callKitSub; // 增加一个全局变量保存监听器
+class CallKitActionEvent {
+  final String action;
+  final Map<String, dynamic>? data;
+
+  CallKitActionEvent(this.action, this.data);
+}
 
 class CallKitService {
   static final CallKitService instance = CallKitService._();
+
   CallKitService._();
 
-  //  新增：清理所有的幽灵来电
-  Future<void> clearAllCalls() async {
-    debugPrint("[CallKit] Clearing all ghost calls...");
-    try {
-      // 加入 try-catch，防止插件崩溃带崩全场
-      await FlutterCallkitIncoming.endAllCalls();
-    } catch (e) {
-      debugPrint("[CallKit] endAllCalls 静默报错: $e");
-    }
+  StreamSubscription? _callKitSub;
+
+  // 🟢 核心改动 1：将 List 改为 Map，使用 String 作为身份证 (Key) 来存储监听器
+  // 这样同名的监听器在每次页面刷新时，会自动覆盖旧的“丧尸”函数。
+  final Map<String, Function(CallKitActionEvent)> _handlers = {};
+
+  /// 订阅系统通话行为
+  // 🟢 核心改动 2：增加 subscriberId 参数，实行“实名制”注册
+  void onAction(String subscriberId, Function(CallKitActionEvent) handler) {
+    // 🟢 核心改动 3：直接通过 Key 赋值覆盖旧函数。不需要再用 contains 检查了！
+    _handlers[subscriberId] = handler;
+
+    if (_callKitSub != null) return;
+
+    _callKitSub = FlutterCallkitIncoming.onEvent.listen((event) {
+      if (event == null) return;
+
+      CallKitActionEvent? actionEvent;
+      switch (event.event) {
+        case Event.actionCallAccept:
+          actionEvent = CallKitActionEvent('answerCall', event.body);
+          break;
+        case Event.actionCallDecline:
+        case Event.actionCallTimeout:
+        case Event.actionCallEnded:
+          actionEvent = CallKitActionEvent('endCall', event.body);
+          break;
+        case Event.actionCallToggleMute:
+          actionEvent = CallKitActionEvent('setMuted', event.body);
+          break;
+        default:
+          break;
+      }
+
+      if (actionEvent != null) {
+        // 🟢 核心改动 4：取出 Map 中所有的 values (即当前存活的最新函数) 进行广播
+        final List<Function(CallKitActionEvent)> targets = _handlers.values
+            .toList();
+        for (var h in targets) {
+          try {
+            h(actionEvent);
+          } catch (e) {
+            debugPrint("❌ [CallKitService] Handler 执行失败: $e");
+          }
+        }
+      }
+    });
   }
 
-  /// 1. 唤起系统级来电界面
-  Future<void> showIncomingCall({
-    required String uuid,       // 会话 ID (SessionId)
-    required String name,       // 对方名字
-    required String avatar,     // 对方头像
-    required bool isVideo,      // 是否视频
-    Map<String, dynamic>? extra, //  新增：接收额外数据
-  }) async {
-    //  核心防御：防止重复弹窗和重叠按钮
-    try {
-      final activeCalls = await FlutterCallkitIncoming.activeCalls();
-      if (activeCalls is List && activeCalls.isNotEmpty) {
-        debugPrint("️ [CallKit] System is already showing a call! Ignoring duplicate invite.");
-        return; // 直接拦截，防止重叠！
-      }
-    } catch (e) {
-      // 如果插件底层报 "content is null" 或其他错，直接无视，当作当前没有通话处理
-      debugPrint(" [CallKit] Failed to check active calls, proceeding anyway. Error: $e");
-    }
+  // 【新增】：提供一个清空监听器的方法，用于 App 登出或重置
+  void disposeHandlers() {
+    _handlers.clear();
+  }
 
+  /// 兼容旧代码的 initListener
+  void initListener({
+    required Function(String uuid) onAccept,
+    required Function(String uuid) onDecline,
+  }) {
+    // 🟢 核心改动 5：给老代码分配一个固定的身份证 'legacy_init'
+    onAction('legacy_init', (event) {
+      final String uuid = event.data?['id']?.toString() ?? '';
+      if (event.action == 'answerCall')
+        onAccept(uuid);
+      else if (event.action == 'endCall')
+        onDecline(uuid);
+    });
+  }
+
+  Future<void> clearAllCalls() async {
+    try {
+      await FlutterCallkitIncoming.endAllCalls();
+    } catch (_) {}
+  }
+
+  Future<void> showIncomingCall({
+    required String uuid,
+    required String name,
+    required String avatar,
+    required bool isVideo,
+    Map<String, dynamic>? extra,
+  }) async {
     final params = CallKitParams(
       id: uuid,
       nameCaller: name,
@@ -52,91 +108,31 @@ class CallKitService {
       avatar: avatar,
       handle: isVideo ? 'Video Call' : 'Voice Call',
       type: isVideo ? 1 : 0,
-      duration: 30000, // 30秒无人接听自动挂断
-      textAccept: 'Accept',
-      textDecline: 'Decline',
-      extra: extra ?? {}, //  核心：把发送者资料塞进系统参数
-
-      //  核心修复 2：确保外层也有开启屏幕的权限
-      missedCallNotification: const NotificationParams(
-        showNotification: true,
-        isShowCallback: true,
-      ),
-
-      // Android 设置
+      duration: 30000,
+      extra: extra ?? {},
       android: AndroidParams(
-        isCustomNotification: true,
+        // 🔪 核心护盾 1：必须改成 false！绝对不要用自定义通知，使用系统默认的 VoIP 原生界面，杜绝底层渲染崩溃！
+        isCustomNotification: false,
         isShowLogo: false,
-        ringtonePath: 'system_ringtone_default',
-        backgroundColor: '#000000',
-        actionColor: '#4CAF50',
+        // 🔪 核心护盾 2：强制要求锁屏显示
         isShowFullLockedScreen: true,
         isImportant: true,
-        // 【核心修复】补全这两行，否则安卓 12+ 必崩
-        incomingCallNotificationChannelName: "Incoming Call",
-        missedCallNotificationChannelName: "Missed Call",
+        // 🔪 核心护盾 3：强行改名字！这会强迫安卓系统废弃掉旧的低优先级通道，重新建立一个最高优先级的“来电专属通道”！
+        incomingCallNotificationChannelName: "Lucky Incoming Call V2",
+        missedCallNotificationChannelName: "Lucky Missed Call V2",
+        // 给个兜底颜色，防止透明度引发的黑屏
+        backgroundColor: '#0955fa',
+        actionColor: '#4CAF50',
       ),
-
-      // iOS 设置 (为以后做准备)
       ios: const IOSParams(
-        iconName: 'CallKitLogo',
         handleType: 'generic',
         supportsVideo: true,
-        maximumCallGroups: 1,
-        maximumCallsPerCallGroup: 1,
-        audioSessionMode: 'videoChat',
         audioSessionActive: true,
-        audioSessionPreferredSampleRate: 44100.0,
-        audioSessionPreferredIOBufferDuration: 0.005,
-        supportsDTMF: true,
-        supportsHolding: true,
-        supportsGrouping: false,
-        supportsUngrouping: false,
-        ringtonePath: 'system_ringtone_default',
       ),
     );
-
     await FlutterCallkitIncoming.showCallkitIncoming(params);
   }
 
-  /// 2. 主动结束通话 (例如对方挂断了，我们要把系统界面关掉)
-  Future<void> endCall(String uuid) async {
-    await FlutterCallkitIncoming.endCall(uuid);
-  }
-
-  /// 3. 全局监听用户操作 (接听/挂断)
-  void initListener({
-    required Function(String uuid) onAccept,
-    required Function(String uuid) onDecline,
-  }) {
-
-    //  核心修复：防止重复注册监听器
-    _callKitSub?.cancel();
-
-    _callKitSub = FlutterCallkitIncoming.onEvent.listen((event) {
-      if (event == null) return;
-
-      switch (event.event) {
-        case Event.actionCallAccept:
-          debugPrint(" CallKit: 用户点击接听");
-          onAccept(event.body['id']);
-          break;
-
-        case Event.actionCallDecline:
-          debugPrint(" CallKit: 用户点击挂断");
-          onDecline(event.body['id']);
-          break;
-
-        case Event.actionCallTimeout: //  加上超时处理
-        case Event.actionCallEnded:
-        // 这里的 Ended 可能是用户挂断，也可能是系统清理
-        // 通常不需要额外处理，或者也可以映射为 Decline
-          onDecline(event.body['id']);
-          break;
-
-        default:
-          break;
-      }
-    });
-  }
+  Future<void> endCall(String uuid) async =>
+      await FlutterCallkitIncoming.endCall(uuid);
 }

@@ -1,85 +1,159 @@
 part of 'global_handler.dart';
 
 extension GlobalHandlerSocketExtension on _GlobalHandlerState {
-
-  // 初始化 CallKit 监听 (处理系统来电界面的接听/挂断点击)
+  // 【核心修改点 1】：重构 CallKit 监听逻辑，适配新的 onAction 接口
   void _initCallKitListener() {
-    CallKitService.instance.initListener(
-      // A. 用户点了系统界面的【接听】
-      onAccept: (sessionId) async {
-        debugPrint(" [CallKit] 用户点击接听，开始捞取系统资料... sessionId: $sessionId");
+    // 🟢 核心改动 1：加上第一个参数 'GlobalHandler' 作为唯一身份标识
+    CallKitService.instance.onAction('GlobalHandler', (event) async {
 
-        final List<dynamic>? calls = await FlutterCallkitIncoming.activeCalls();
-        Map<String, dynamic> metadata = {};
+      // 🟢 核心改动 2：防丧尸护盾！页面被安卓销毁时直接拦截，防止报 ref disposed 错误
+      if (!mounted) {
+        debugPrint("🛡️ [TRACE-UI] 检测到页面已销毁，拦截丧尸回调！");
+        return;
+      }
 
-        if (calls != null && calls.isNotEmpty) {
-          final call = calls.firstWhere((c) => c['id'] == sessionId, orElse: () => null);
-          if (call != null && call['extra'] != null) {
-            metadata = (call['extra'] as Map).cast<String, dynamic>();
-            debugPrint(" [CallKit] 成功找回资料隧道数据: $metadata");
+      final String sessionId = event.data?['id']?.toString() ?? '';
+
+      switch (event.action) {
+        case 'answerCall':
+          debugPrint("📍 [TRACE-1] CallKit 触发 answerCall! sessionId: $sessionId");
+
+          if (_isAcceptingCall) return;
+          _isAcceptingCall = true;
+
+          try {
+            Map<String, dynamic> metadata = {};
+            if (event.data?['extra'] != null) {
+              metadata = (event.data!['extra'] as Map).cast<String, dynamic>();
+            }
+
+            final stateMachine = ref.read(callStateMachineProvider.notifier);
+            final callState = ref.read(callStateMachineProvider);
+
+            // 🛡️ 核心护盾：只有当状态机里【真的没有 SDP】时，才允许用 metadata 恢复
+            // 绝对禁止在 Ringing 状态下覆盖已有的完整 SDP！
+            if (callState.remoteSdp == null || callState.remoteSdp!.isEmpty) {
+
+              // 🟢 终极修复：优先从内存保险箱中取 SDP，完美绕过原生层的截断！
+              final cachedInvite = CallDispatcher.instance.currentInvite;
+              if (cachedInvite != null && cachedInvite.sessionId == sessionId) {
+                debugPrint("📍 [TRACE-UI] 从内存保险箱完美恢复信令数据！SDP 完好无损！");
+                stateMachine.onIncomingInvite(cachedInvite);
+              } else if (metadata.isNotEmpty) {
+                debugPrint("📍 [TRACE-UI] 尝试从 CallKit 元数据恢复...");
+                stateMachine.onIncomingInvite(CallEvent.fromMap(metadata));
+              }
+
+            }
+
+            debugPrint("📍 [TRACE-4] 统一指挥状态机去执行 WebRTC 接听...");
+            stateMachine.acceptCall();
+
+            // 执行 UI 跳转逻辑
+            final String realTargetId = metadata['senderId']?.toString() ?? callState.targetId ?? "unknown";
+            final String realTargetName = metadata['senderName']?.toString() ?? callState.targetName ?? "User";
+            final bool isVideoCall = (metadata['mediaType'] != null) ? metadata['mediaType'] == 'video' : callState.isVideoMode;
+            final String? realAvatar = metadata['senderAvatar']?.toString();
+
+            // 🟢 终极修复 1：轮询等待 Flutter 引擎和 Navigator 准备就绪 (最长等待 5 秒)
+            int retryCount = 0;
+            Timer.periodic(const Duration(milliseconds: 500), (timer) {
+              retryCount++;
+              final navigator = NavHub.key.currentState;
+
+              if (navigator != null) {
+                timer.cancel(); // 拿到句柄，立刻停止轮询
+                debugPrint("📍 [TRACE-UI] NavHub 存活 (耗时: ${retryCount * 0.5}s)，压入 CallPage...");
+                navigator.push(
+                  MaterialPageRoute(
+                    builder: (_) => CallPage(
+                      targetId: realTargetId,
+                      targetName: realTargetName,
+                      isVideo: isVideoCall,
+                      targetAvatar: realAvatar,
+                    ),
+                  ),
+                );
+              } else if (retryCount >= 10) {
+                // 如果 5 秒后还没起来，说明被系统彻底物理死锁了
+                timer.cancel();
+                debugPrint("❌ [TRACE-ERR] 致命错误：等了 5 秒 NavHub 还是空！");
+                // 此时建议给个兜底的 Toast 提示
+              }
+            });
+
+          } catch (e) {
+            debugPrint("📍 [TRACE-ERR] 接听流程崩溃: $e");
+          } finally {
+            Future.delayed(const Duration(seconds: 3), () => _isAcceptingCall = false);
           }
-        }
+          break;
 
-        if (NavHub.key.currentState?.mounted ?? false) {
+      // B. 用户点了系统界面的【挂断/拒绝】
+        case 'endCall':
+          debugPrint("📍 [TRACE-CallKit] 收到系统挂断指令");
+          if (_isDecliningCall) return;
+          _isDecliningCall = true;
+
           final stateMachine = ref.read(callStateMachineProvider.notifier);
-          final callState = ref.read(callStateMachineProvider);
+          final currentState = ref.read(callStateMachineProvider);
 
-          if (metadata.isNotEmpty && callState.status == CallStatus.idle) {
-            stateMachine.onIncomingInvite(CallEvent.fromMap(metadata));
+          // 如果状态机正在通话且 Session 一致，执行标准挂断
+          if (currentState.status != CallStatus.idle && currentState.sessionId == sessionId) {
+            stateMachine.hangUp(emitEvent: true);
+          } else {
+            // 否则，仅仅是通知服务器本端已拒绝
+            if (event.data?['extra'] != null) {
+              final metadata = (event.data!['extra'] as Map).cast<String, dynamic>();
+              final targetId = metadata['senderId']?.toString();
+              if (targetId != null) {
+                ref.read(socketServiceProvider).socket?.emit(SocketEvents.callEnd, {
+                  'sessionId': sessionId,
+                  'targetId': targetId,
+                  'reason': 'decline'
+                });
+              }
+            }
+            stateMachine.hangUp(emitEvent: false);
           }
+          Future.delayed(const Duration(seconds: 3), () => _isDecliningCall = false);
+          break;
 
-          stateMachine.acceptCall();
-
-          //  核心修复：优先从 metadata 拿真实的 isVideo 状态，如果为空再退回到 state
-          final String realTargetId = metadata['senderId']?.toString() ?? callState.targetId ?? "unknown";
-          final String realTargetName = metadata['senderName']?.toString() ?? callState.targetName ?? "User";
-          final bool isVideoCall = (metadata['mediaType'] != null)
-              ? metadata['mediaType'] == 'video'
-              : callState.isVideoMode;
-
-          NavHub.key.currentState?.pushReplacement(
-            MaterialPageRoute(
-              builder: (_) => CallPage(
-                targetId: realTargetId,
-                targetName: realTargetName,
-                isVideo: isVideoCall, //  使用准确的变量
-              ),
-            ),
-          );
-        }
-      },
-
-      // B. 用户点了系统界面的【挂断】
-      onDecline: (sessionId) {
-        debugPrint(" [CallKit] User declined call");
-        //  核心替换 2：交给状态机去物理清场
-        ref.read(callStateMachineProvider.notifier).hangUp();
-      },
-    );
+      // C. 处理其他可能的动作（如静音）
+        case 'setMuted':
+          ref.read(callStateMachineProvider.notifier).toggleMute();
+          break;
+      }
+    });
   }
 
   void _subscribeToSocket(SocketService service) {
     _cachedSocketService = service;
     _cancelSocketSubscriptions();
+    // 【核心修改点 2】：确保初始化监听
     _initCallKitListener();
 
-    // 1. 监听来电信令 (SocketEvents.callInvite)
     service.socket?.on(SocketEvents.callInvite, (data) async {
       if (!mounted) return;
-      debugPrint(' [GlobalHandler] 收到 Socket 呼叫信令，交由 Dispatcher 审查...');
-      // 没有任何废话，直接扔给海关安检口！
-      await CallDispatcher.instance.dispatch(data);
+      if (data is Map) data['type'] = SocketEvents.callInvite;
+      await CallDispatcher.instance.dispatch(
+        data,
+        onNotify: (event) {
+          ref.read(callStateMachineProvider.notifier).onIncomingInvite(event);
+        },
+      );
     });
 
-    // 2. 监听对方挂断 (SocketEvents.callEnd)
     service.socket?.on(SocketEvents.callEnd, (data) async {
       if (!mounted) return;
-      // 同样没有废话，扔给 Dispatcher 去物理拉黑和清场！
-      await CallDispatcher.instance.dispatch(data);
+      if (data is Map) data['type'] = SocketEvents.callEnd;
+      await CallDispatcher.instance.dispatch(
+        data,
+        onNotify: (event) {
+          ref.read(callStateMachineProvider.notifier).hangUp(emitEvent: false);
+        },
+      );
     });
-
-    debugPrint('🔌 [GlobalHandler] Socket Subscriptions Active');
-
 
     _contactApplySub = service.contactApplyStream.listen((data) {
       if (!mounted) return;

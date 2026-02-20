@@ -1,4 +1,6 @@
 // 将外部的字符串类型，映射为内部严格的枚举类型
+import 'package:flutter/cupertino.dart';
+
 import '../../../core/constants/socket_events.dart';
 
 enum CallEventType { invite, accept, end, ice, unknown }
@@ -41,17 +43,24 @@ class CallEvent {
     return CallEvent(
       sessionId: map['sessionId']?.toString() ?? '',
       type: _parseType(typeStr),
-      senderId: map['senderId']?.toString() ?? map['targetId']?.toString() ?? 'unknown',
+      senderId:
+          map['senderId']?.toString() ??
+          map['targetId']?.toString() ??
+          'unknown',
       senderName: map['senderName']?.toString() ?? 'Incoming Call',
-      senderAvatar: map['senderAvatar']?.toString() ?? 'https://via.placeholder.com/150',
+      senderAvatar:
+          map['senderAvatar']?.toString() ?? 'https://via.placeholder.com/150',
       isVideo: map['mediaType'] == 'video',
-      timestamp: int.tryParse(map['timestamp']?.toString() ?? '') ?? DateTime.now().millisecondsSinceEpoch,
+      timestamp:
+          int.tryParse(map['timestamp']?.toString() ?? '') ??
+          DateTime.now().millisecondsSinceEpoch,
       rawData: map,
     );
   }
 
   /// 结合你的 SocketEvents，将字符串转为内部安全枚举
   static CallEventType _parseType(String typeStr) {
+    debugPrint("🔍 [CallEvent] 正在解析信令类型: '$typeStr'"); // 加一行日志，以后抓虫一目了然
     switch (typeStr) {
       case SocketEvents.callInvite:
         return CallEventType.invite;
