@@ -1,14 +1,45 @@
-收到。这份 **Lucky IM Project Grand Master Log (v4.0 - v6.1.0)** 已被列为项目的“核心资产”并正式封档。
-
-我已完全理解并内化了你最新补充的**第八章：实时音视频与跨端融合**的所有细节，特别是关于 `ICE Candidate` 竞态防御、`9527_mima` 动态凭证安全体系、以及 WebRTC 资源销毁的“铁律”。
-
-以下是为您整理好的、包含最新 RTC 功能的**完整版封档日志**。我修复了最后几条架构铁律的编号冲突（原输入中有两个 16），并更新了标题版本号。您可以直接复制保存到项目的 `CHANGELOG.md` 或 Wiki 中。
 
 ---
 
-# 📜 Lucky IM Project **Grand Master Log** (v4.0 - v6.1.0)
+# 📜 Lucky IM Project **Grand Master Log** (v4.0 - v6.2.0)
 
-## 🎥 第八章：实时音视频与跨端融合 (The RTC Era) **[v6.1.0 - CURRENT]**
+## 🛡️ 第九章：VoIP 极限防御与全端互通 (The VoIP Defense Era) **[v6.2.0 - CURRENT]**
+
+*本章标志着 Lucky IM 彻底打穿了移动端碎片化的物理壁垒。我们在极端恶劣的系统环境（锁屏死锁、硬件残废、信令风暴、IPC 截断）下，成功建立了一套坚不可摧的工业级音视频抗打盾牌。*
+
+* **[Keep-Alive] 锁屏破壁与系统提权 (Lock-Screen Wakeup)**:
+* **机制**: 彻底重构了 Android 的弹窗唤醒逻辑。将 `AndroidManifest.xml` 的启动模式修正为 `launchMode="singleInstance"`，配合物理级权限（悬浮窗、允许后台活动），成功突破了国产安卓（华为/小米等）严苛的锁屏/后台封杀，实现 100% 亮屏弹窗。
+
+
+* **[Signal] 信令防抖与并发仲裁 (Signal Arbitrator)**:
+* **竞态防御**: 解决了 FCM（保活通道）与 Socket（极速通道）同时到达导致的“信令影分身”与 UI 暴击问题。
+* **实现**: 引入全局单例 `CallArbitrator`，基于 Session ID 建立 3.5 秒的全局防抖锁（Global Cooldown）。同一通电话绝对不接管第二次，成功拦截所有并发垃圾信令。
+
+
+* **[Hardware] 硬件预热死锁规避 (Hardware Warm-up Defense)**:
+* **修复坑点**: 攻克了华为/荣耀手机锁屏接听瞬间抢夺摄像头引发的 `CameraAccessException (-38)` 崩溃黑屏惨案。
+* **双端分治**: 实施时序平台分流。iOS 保持极速拉起；Android 端在 `acceptCall` 中强制引入 1000ms 延迟，等待屏幕唤醒与底层硬件通电解封后，再安全挂载摄像头。
+
+
+* **[Codec] 硬件编码降级与 SDP 伪装 (SDP Munging)**:
+* **修复坑点**: 攻克了国内老旧机型（华为）H.264 硬件视频编码器等级极低（Level 1 限制），导致发送 720P 画面时底层崩溃、疯狂报 `mapFormat: no mediaType information` 及绿屏/黑屏的问题。
+* **核武操作**: 实施底层的 **SDP 偷梁换柱** (`_forceVP8`)。截获 Offer/Answer，在发往网络前用 `replaceAll` 强行禁用 H.264，逼迫双端底层回退到极其稳定的 VP8 软件编码器；同时本地 `setLocalDescription` 喂入原味 SDP 以防本地引擎解析崩溃。
+
+
+* **[Memory] IPC 截断防御机制 (IPC Truncation Defense)**:
+* **修复坑点**: 攻克了“接通后 1 秒离奇自动挂断”的世纪大坑。安卓系统原生层在通过 `Intent Extras` 向 Flutter 传递呼叫数据时，会因数据过大而强制丢弃巨型 SDP 文本，导致状态机拿到空数据引发防御性挂断。
+* **实现**: 建立“内存级保险箱”。在信令刚到达 `CallDispatcher` 时，直接将完整的 `CallEvent` 存入 Dart 静态内存 (`currentInvite`)。用户接听时优先从内存提取 SDP，彻底绕开 Android 原生 IPC 通信的物理大小限制！
+
+
+* **[Render] 画板自愈机制 (Renderer Self-Healing)**:
+* **修复坑点**: 修复了主叫方（startCall）因忘记初始化 `RTCVideoRenderer` 导致有数据无画面的黑屏问题。
+* **实现**: 在 `_initLocalMedia` 获取摄像头时引入自愈护盾：检测到画板为 `null` 时当场执行 `initialize()`，确保任何时序下视频数据都有合法的渲染容器。
+
+
+
+---
+
+## 🎥 第八章：实时音视频与跨端融合 (The RTC Era) **[v6.1.0]**
 
 *本章标志着 Lucky IM 突破了“异步图文”的边界，进入了“实时同步”领域。我们攻克了 WebRTC 最复杂的信令竞态、平台差异与后台保活难题，实现了微信级的通话体验。*
 
@@ -177,7 +208,7 @@
 
 ---
 
-## 🛡️ 架构铁律 (The Iron Rules - v6.1.0)
+## 🛡️ 架构铁律 (The Iron Rules - v6.2.0)
 
 *这是项目的最高准则，任何代码提交不得违反。*
 
@@ -197,6 +228,9 @@
 14. **视觉兜底原则**: 图片加载必须使用 `Stack` 垫片，严禁白屏。
 15. **时间统一原则**: 所有逻辑判断必须使用 `ServerTimeHelper.now()`。
 16. **Web 环境隔离**: 非 `kIsWeb` 保护下，严禁调用 `dart:io`。
-17. **[NEW] 插件隔离原则**: 任何涉及原生能力的插件（如 flutter_background），必须使用 `defaultTargetPlatform` 或 `kIsWeb` 进行平台判定，严禁在不支持的平台上执行初始化代码。
-18. **[NEW] ICE 缓存原则**: WebRTC 信令处理中，严禁在 `SetRemoteDescription` 完成前直接添加 ICE Candidate，必须使用队列缓存机制，防止信令时序错乱导致黑屏。
-19. **[NEW] 资源释放原则**: 视频通话结束时，必须显式调用 `MediaStreamTrack.stop()` 并置空 `srcObject`，严禁仅依赖 Garbage Collection，防止摄像头/麦克风指示灯残留。
+17. **插件隔离原则**: 任何涉及原生能力的插件（如 flutter_background），必须使用 `defaultTargetPlatform` 或 `kIsWeb` 进行平台判定，严禁在不支持的平台上执行初始化代码。
+18. **ICE 缓存原则**: WebRTC 信令处理中，严禁在 `SetRemoteDescription` 完成前直接添加 ICE Candidate，必须使用队列缓存机制，防止信令时序错乱导致黑屏。
+19. **资源释放原则**: 视频通话结束时，必须显式调用 `MediaStreamTrack.stop()` 并置空 `srcObject`，严禁仅依赖 Garbage Collection，防止摄像头/麦克风指示灯残留。
+20. **[NEW] 跨进程大对象免疫原则 (IPC Payload Immunity)**: 严禁依赖移动端原生层（如 Intent Extras）传递超大文本（如 WebRTC SDP），必须在 Dart 内存层建立单例缓存（如 `CallDispatcher.currentInvite`）进行拦截与读取，防止系统级截断导致核心数据丢失。
+21. **[NEW] 硬件编码降级原则 (Codec Fallback)**: 面对国内深度定制安卓机（如华为/荣耀）底层的硬件编码器残废陷阱，必须实施 SDP 偷梁换柱（SDP Munging），将发送给远端的配置强制回退至 VP8 软解，但本地 `setLocalDescription` 必须喂入原味 SDP 以防本地引擎崩溃。
+22. **[NEW] 硬件预热规避原则 (Hardware Warm-up)**: 安卓端在锁屏被 CallKit 唤醒接听时，严禁同步瞬间抢夺摄像头（防 -38 驱动崩溃），必须给予 1 秒以上的硬件通电解封延迟，且 WebRTC 的 `createAnswer` 必须在摄像头成功获取画面之后执行。
