@@ -41,27 +41,30 @@ class CallDispatcher {
   }
 
   Future<bool> _handleInvite(CallEvent event) async {
+    final arbitrator = CallArbitrator.instance;
 
-    // ICE Restart 护盾：如果是底层网络重连信令，绕过一切弹窗和防抖，直接放行给状态机！
-    if (event.rawData['isRenegotiation'] == true) {
-      debugPrint(" [Dispatcher] 拦截到网络重连信令，免弹窗直接放行！");
+    // 提前获取该 Session 的历史状态
+    final isHandled = await arbitrator.isSessionHandled(event.sessionId);
+    final isEnded = await arbitrator.isSessionEnded(event.sessionId);
+
+    //  极速重连终极护盾：自主推理！
+    // 即使后端弄丢了 isRenegotiation 字段，只要这个电话接过 (isHandled) 且没挂断 (!isEnded)
+    // 毫无疑问，这就是底层网络切换带来的重连信令！直接放行给状态机！
+    if (event.rawData['isRenegotiation'] == true || (isHandled && !isEnded)) {
+      debugPrint(" [Dispatcher] 嗅探到同一 Session 的二次推流 (网络重连)，免弹窗直接放行！");
+      event.rawData['isRenegotiation'] = true; // 强制给它补齐标志，喂给状态机
       return true;
     }
 
-    final arbitrator = CallArbitrator.instance;
-
     if (await arbitrator.isGlobalCooldownActive()) return false;
-    if (await arbitrator.isSessionEnded(event.sessionId)) return false;
-    if (await arbitrator.isSessionHandled(event.sessionId)) return false;
+    if (isEnded) return false;
+    if (isHandled) return false;
 
     await arbitrator.markSessionAsHandled(event.sessionId);
-    // 新增：把 SDP 存入硬盘中转站，防止主进程丢失数据
     await arbitrator.cacheSdp(event.sessionId, event.rawData['sdp']?.toString() ?? '');
     await arbitrator.lockGlobalCooldown();
 
     debugPrint(" [Dispatcher] 安检通过，正式唤起 CallKit");
-
-    //  存入内存保险箱！
     currentInvite = event;
 
     await CallKitService.instance.showIncomingCall(

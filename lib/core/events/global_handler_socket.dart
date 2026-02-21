@@ -190,7 +190,13 @@ extension GlobalHandlerSocketExtension on _GlobalHandlerState {
       await CallDispatcher.instance.dispatch(
         data,
         onNotify: (event) {
-          ref.read(callStateMachineProvider.notifier).hangUp(emitEvent: false);
+          //  核心防误杀护盾 2：网络传来的挂断，也必须核对身份！
+          final currentSessionId = ref.read(callStateMachineProvider).sessionId;
+          if (currentSessionId == event.sessionId) {
+            ref.read(callStateMachineProvider.notifier).hangUp(emitEvent: false);
+          } else {
+            debugPrint(" [GlobalSocket] 收到旧电话 (${event.sessionId}) 的挂断信令，保护新通话 ($currentSessionId) 免遭误杀！");
+          }
         },
       );
     });

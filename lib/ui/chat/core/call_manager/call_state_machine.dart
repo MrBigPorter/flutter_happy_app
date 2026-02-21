@@ -26,6 +26,7 @@ final callStateMachineProvider =
 class CallStateMachine extends StateNotifier<CallState>
     with WidgetsBindingObserver {
   late final SignalingManager _signaling;
+  late final dynamic _socketService; // 【本次修改】：保存底层 Socket 引擎，用于监听物理断网
   final MediaManager _media = MediaManager();
   final WebRTCManager _webrtc = WebRTCManager();
 
@@ -39,6 +40,8 @@ class CallStateMachine extends StateNotifier<CallState>
   DateTime? _callStartTime;
 
   CallStateMachine(socketService) : super(CallState.initial()) {
+    // 【本次修改】：在这里把传进来的 socketService 存起来
+    _socketService = socketService;
     _signaling = SignalingManager(socketService);
     WidgetsBinding.instance.addObserver(this);
     _initSocketListeners();
@@ -47,21 +50,45 @@ class CallStateMachine extends StateNotifier<CallState>
 
   void _initCallKitListeners() {
     CallKitService.instance.onAction('StateMachine', (event) {
+      // 获取系统传回来的真实 ID
+      final incomingSessionId = event.data?['id']?.toString();
+
       if (event.action == 'answerCall' &&
           !_isAccepting &&
-          state.status != CallStatus.connected)
+          state.status != CallStatus.connected) {
         acceptCall();
+      }
+
       if (event.action == 'endCall' &&
           !_isHangingUp &&
-          state.status != CallStatus.idle)
-        hangUp(emitEvent: true);
+          state.status != CallStatus.idle) {
+        // 核心防误杀护盾 1：必须确认系统挂断的是“当前的电话”！
+        // 坚决防止旧电话的延迟信号，把新电话给错杀了！
+        if (incomingSessionId == state.sessionId) {
+          hangUp(emitEvent: true);
+        }
+      }
+
       if (event.action == 'setMuted') toggleMute();
     });
   }
 
   // ================= 核心流程：拨打 =================
   Future<void> startCall(String targetId, {bool isVideo = true}) async {
-    if (state.status != CallStatus.idle || !mounted) return;
+    //  护盾 1：严防竞态崩溃！如果上一个电话的硬件还在异步清理中，坚决拦截新拨号！
+    if (_isHangingUp) {
+      debugPrint("⏳ [StateMachine] 正在清理上一个通话底层硬件，请稍后重试拨打...");
+      return;
+    }
+
+    //  护盾 2：物理复位！如果因为网络抖动导致状态机卡在 ended 或其他非 idle 状态，强行清空！
+    if (state.status != CallStatus.idle) {
+      debugPrint(" [StateMachine] 拨号前发现状态机遗留异常 (${state.status})，强行复位！");
+      _resetStateFlags();
+      state = CallState.initial();
+    }
+
+    if (!mounted) return;
     final sessionId = const Uuid().v4();
 
     try {
@@ -106,36 +133,16 @@ class CallStateMachine extends StateNotifier<CallState>
         );
       }
     } catch (e) {
-      debugPrint(" [StateMachine] 拨号失败: $e");
+      debugPrint("❌ [StateMachine] 拨号严重失败: $e");
       hangUp(emitEvent: false);
     }
   }
 
   void onIncomingInvite(CallEvent event) async {
-    // 1. 处理 ICE 重连逻辑 (保持不变)
-    if (event.rawData['isRenegotiation'] == true) {
-      if (state.sessionId == event.sessionId &&
-          state.status == CallStatus.connected) {
-        try {
-          await _webrtc.setRemoteDescription(event.rawData['sdp'], 'offer');
-          final tweakedSdp = await _webrtc.createAnswerAndSetLocal();
-          _signaling.emitAccept(
-            sessionId: state.sessionId!,
-            targetId: state.targetId!,
-            sdp: tweakedSdp,
-            isRenegotiation: true,
-          );
-        } catch (e) {
-          debugPrint(" [ICE Restart] 接收方协商失败: $e");
-        }
-      }
-      return;
-    }
 
-    //  核心修复：如果当前是 ended 或者是另一个 sessionId 的老电话，立即强制重置状态
+    // 如果当前是 ended 或者是另一个 sessionId 的老电话，立即强制重置状态
     if (state.status == CallStatus.ended ||
-        (state.status != CallStatus.idle &&
-            state.sessionId != event.sessionId)) {
+        (state.status != CallStatus.idle && state.sessionId != event.sessionId)) {
       debugPrint("[StateMachine] 检测到新来电，正在物理强制清理旧 Session: ${state.sessionId}");
       _resetStateFlags();
       state = CallState.initial(); // 强制归位，允许新来电进入
@@ -349,46 +356,6 @@ class CallStateMachine extends StateNotifier<CallState>
       state = state.copyWith(duration: "00:00  ");
     };
 
-    _webrtc.onTrack = (event) {
-      if (!mounted) return;
-      debugPrint(" [WebRTC] 收到远端轨道！类型: ${event.track.kind}");
-      if (event.streams.isNotEmpty) {
-        final stream = event.streams[0];
-        //  防撞车锁：优先使用 onTrack，同样严禁重复挂载！
-        state.remoteRenderer?.srcObject = stream;
-        state = state.copyWith(duration: "00:00  ");
-
-        //  Web 端物理外挂
-        if (kIsWeb) {
-          Future.delayed(const Duration(milliseconds: 300), () {
-            if (mounted) {
-              //  先置空，再赋值
-              state.remoteRenderer?.srcObject = null;
-              state.remoteRenderer?.srcObject = stream;
-            }
-          });
-        }
-      } else {
-        MediaStream? currentStream = state.remoteRenderer?.srcObject;
-        if (currentStream != null) {
-          currentStream.addTrack(event.track);
-          //  非常关键：即使是手机端，也必须先置空再赋值，否则遇到网络卡顿也容易黑屏
-          state.remoteRenderer?.srcObject = null;
-          state.remoteRenderer?.srcObject = currentStream;
-        }
-      }
-      state = state.copyWith(duration: "00:00  ");
-
-      //  Web 端外挂
-      if (kIsWeb) {
-        Future.delayed(const Duration(milliseconds: 300), () {
-          if (mounted && event.streams.isNotEmpty) {
-            state.remoteRenderer?.srcObject = event.streams[0];
-          }
-        });
-      }
-    };
-
     _webrtc.onIceConnectionState = (iceState) {
       if (iceState == RTCIceConnectionState.RTCIceConnectionStateFailed ||
           iceState == RTCIceConnectionState.RTCIceConnectionStateDisconnected) {
@@ -398,7 +365,8 @@ class CallStateMachine extends StateNotifier<CallState>
                   RTCIceConnectionState.RTCIceConnectionStateDisconnected ||
               _webrtc.peerConnection?.iceConnectionState ==
                   RTCIceConnectionState.RTCIceConnectionStateFailed) {
-            if (_isCaller) _triggerIceRestart();
+            // 【本次修改】：去掉了 if(_isCaller) 的限制。谁断网谁就立刻发重连！
+            _triggerIceRestart();
           }
         });
         Timer(const Duration(seconds: 30), () {
@@ -420,60 +388,90 @@ class CallStateMachine extends StateNotifier<CallState>
   }
 
   Future<void> _triggerIceRestart() async {
-    if (!_isCaller ||
-        state.status != CallStatus.connected ||
+    //  极强防抖：如果正在重连，或者状态不是 connected，坚决拒绝！
+    if (state.status != CallStatus.connected ||
         _webrtc.peerConnection == null ||
-        _isRestartingIce)
+        _isRestartingIce) {
       return;
+    }
+
     _isRestartingIce = true;
+    debugPrint(" [ICE Restart] 正在执行无缝网络重连，生成新 IP 简历...");
+
     try {
       final tweakedSdp = await _webrtc.createOfferAndSetLocal(iceRestart: true);
-      _signaling.emitInvite(
+      //  核心改变：用 emitAccept 带着 isRenegotiation 去做纯粹的“重协商”，千万别用 emitInvite 伪装拨号了！
+      _signaling.emitAccept(
         sessionId: state.sessionId!,
         targetId: state.targetId!,
         sdp: tweakedSdp,
-        isVideo: state.isVideoMode,
         isRenegotiation: true,
       );
-    } catch (_) {
+    } catch (e) {
+      debugPrint(" [ICE Restart] 生成新简历失败: $e");
     } finally {
-      Future.delayed(
-        const Duration(seconds: 10),
-        () => _isRestartingIce = false,
-      );
+      //  给重连雷达加上 5 秒的冷却期，防止 Socket 频繁抖动引发死循环
+      Future.delayed(const Duration(seconds: 5), () {
+        if (mounted) _isRestartingIce = false;
+      });
     }
   }
 
   void _initSocketListeners() {
+    //  毫秒级网络切换雷达（加上了 !_isRestartingIce 防抖限制）
+    _socketService.socket?.on('connect', (_) {
+      if (mounted && state.status == CallStatus.connected && !_isRestartingIce) {
+        debugPrint(" [StateMachine] 嗅探到物理网络切换 (Socket 极速重连)，立即触发 ICE Restart!");
+        _triggerIceRestart();
+      }
+    });
+
     _signaling.listenEvents(
       onAccept: (data) async {
         if (data['sessionId'] != state.sessionId ||
             state.status == CallStatus.ended ||
             _isHangingUp)
           return;
-        if (_webrtc.peerConnection?.signalingState ==
-            RTCSignalingState.RTCSignalingStateStable)
-          return;
+
+        //  纯粹的重协商分支（网络切换时走这里）
+        if (data['isRenegotiation'] == true) {
+          debugPrint(" [ICE Restart] 收到对方的新网络简历，开始更新底座...");
+          try {
+            await _webrtc.setRemoteDescription(data['sdp'], 'offer');
+            final tweakedSdp = await _webrtc.createAnswerAndSetLocal();
+            // 把我的新简历回传过去
+            _signaling.emitAccept(
+              sessionId: state.sessionId!,
+              targetId: state.targetId!,
+              sdp: tweakedSdp,
+              isRenegotiation: true,
+            );
+          } catch (e) {
+            debugPrint(" [ICE Restart] 协商失败: $e");
+          }
+          return; // 重协商结束，坚决退出，不能往下走去重置 UI 状态！
+        }
+
+        // ================== 下面是正常的首次接听逻辑 ==================
+        if (_webrtc.peerConnection?.signalingState == RTCSignalingState.RTCSignalingStateStable) return;
+
         try {
           await _webrtc.setRemoteDescription(data['sdp'], 'answer');
-          // 延迟 100ms 冲刷，彻底解决 Web 端的 ICE InvalidState 崩溃
           Future.delayed(const Duration(milliseconds: 100), () {
             if (mounted) _webrtc.flushIceCandidateQueue();
           });
-
-          if (data['isRenegotiation'] == true) return;
 
           state = state.copyWith(
             status: CallStatus.connected,
             remoteSdp: data['sdp'],
           );
-          // 补丁 2：主叫方收到接听后，给沉睡了的 Web 解码器一脚“物理重启”！
+
           if (kIsWeb) {
             Future.delayed(const Duration(milliseconds: 300), () {
               if (mounted && state.remoteRenderer?.srcObject != null) {
                 final stream = state.remoteRenderer!.srcObject;
-                state.remoteRenderer!.srcObject = null; // 先拔掉
-                state.remoteRenderer!.srcObject = stream; // 重新插上，强制唤醒浏览器！
+                state.remoteRenderer!.srcObject = null;
+                state.remoteRenderer!.srcObject = stream;
               }
             });
           }
