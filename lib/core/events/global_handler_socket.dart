@@ -8,7 +8,7 @@ extension GlobalHandlerSocketExtension on _GlobalHandlerState {
 
       //  核心改动 2：防丧尸护盾！页面被安卓销毁时直接拦截，防止报 ref disposed 错误
       if (!mounted) {
-        debugPrint("🛡️ [TRACE-UI] 检测到页面已销毁，拦截丧尸回调！");
+        debugPrint("[TRACE-UI] 检测到页面已销毁，拦截丧尸回调！");
         return;
       }
 
@@ -16,6 +16,17 @@ extension GlobalHandlerSocketExtension on _GlobalHandlerState {
 
       switch (event.action) {
         case 'answerCall':
+
+          debugPrint("📍 [TRACE-1] CallKit 触发 answerCall! sessionId: $sessionId");
+
+          //  核心护盾：拦截安卓系统的“诈尸 Intent”
+          // 如果这个电话之前已经挂断/结束过了，绝对不允许再次接听！
+          final isAlreadyEnded = await CallArbitrator.instance.isSessionEnded(sessionId);
+          if (isAlreadyEnded) {
+            debugPrint(" [TRACE-UI] 该 Session 已死亡，拦截安卓 Intent 诈尸接听！");
+            return;
+          }
+
           debugPrint("📍 [TRACE-1] CallKit 触发 answerCall! sessionId: $sessionId");
 
           if (_isAcceptingCall) return;
@@ -30,20 +41,18 @@ extension GlobalHandlerSocketExtension on _GlobalHandlerState {
             final stateMachine = ref.read(callStateMachineProvider.notifier);
             final callState = ref.read(callStateMachineProvider);
 
-            // 🛡️ 核心护盾：只有当状态机里【真的没有 SDP】时，才允许用 metadata 恢复
+            // 核心护盾：只有当状态机里【真的没有 SDP】时，才允许用 metadata 恢复
             // 绝对禁止在 Ringing 状态下覆盖已有的完整 SDP！
             if (callState.remoteSdp == null || callState.remoteSdp!.isEmpty) {
+              //  终极修复：不再只靠内存，优先从硬盘取回完整的 SDP
+              final savedSdp = await CallArbitrator.instance.getCachedSdp(sessionId);
 
-              //  终极修复：优先从内存保险箱中取 SDP，完美绕过原生层的截断！
-              final cachedInvite = CallDispatcher.instance.currentInvite;
-              if (cachedInvite != null && cachedInvite.sessionId == sessionId) {
-                debugPrint("📍 [TRACE-UI] 从内存保险箱完美恢复信令数据！SDP 完好无损！");
-                stateMachine.onIncomingInvite(cachedInvite);
+              if (savedSdp != null && savedSdp.isNotEmpty) {
+                debugPrint("📍 [TRACE-UI] 跨进程取回 SDP 成功！数据完整！");
+                stateMachine.onIncomingInvite(CallEvent.fromMap({...metadata, 'sdp': savedSdp}));
               } else if (metadata.isNotEmpty) {
-                debugPrint("📍 [TRACE-UI] 尝试从 CallKit 元数据恢复...");
                 stateMachine.onIncomingInvite(CallEvent.fromMap(metadata));
               }
-
             }
 
             debugPrint("📍 [TRACE-4] 统一指挥状态机去执行 WebRTC 接听...");
@@ -77,7 +86,7 @@ extension GlobalHandlerSocketExtension on _GlobalHandlerState {
               } else if (retryCount >= 10) {
                 // 如果 5 秒后还没起来，说明被系统彻底物理死锁了
                 timer.cancel();
-                debugPrint("❌ [TRACE-ERR] 致命错误：等了 5 秒 NavHub 还是空！");
+                debugPrint(" [TRACE-ERR] 致命错误：等了 5 秒 NavHub 还是空！");
                 // 此时建议给个兜底的 Toast 提示
               }
             });
@@ -89,20 +98,30 @@ extension GlobalHandlerSocketExtension on _GlobalHandlerState {
           }
           break;
 
-      // B. 用户点了系统界面的【挂断/拒绝】
         case 'endCall':
-          debugPrint("📍 [TRACE-CallKit] 收到系统挂断指令");
-          if (_isDecliningCall) return;
-          _isDecliningCall = true;
+        // 1. 检查死亡名单，如果是诈尸指令直接踢掉
+          final isAlreadyEnded = await CallArbitrator.instance.isSessionEnded(sessionId);
+          if (isAlreadyEnded) return;
+
+          debugPrint("📍 [TRACE-CallKit] 收到系统侧挂断反馈: $sessionId");
 
           final stateMachine = ref.read(callStateMachineProvider.notifier);
           final currentState = ref.read(callStateMachineProvider);
 
-          // 如果状态机正在通话且 Session 一致，执行标准挂断
+          //  核心防误杀护盾：如果状态机正在忙别的电话（打进或打出），绝对不准挂断当前电话！
+          if (currentState.status != CallStatus.idle && currentState.sessionId != sessionId) {
+            debugPrint(" [TRACE-UI] 该挂断指令属于旧电话 ($sessionId)，当前正在处理新电话，拦截误杀！");
+            return;
+          }
+
+          if (_isDecliningCall) return;
+          _isDecliningCall = true;
+
+          // 只有当状态机是空闲，或者 Session 完全一致时，才执行清理
           if (currentState.status != CallStatus.idle && currentState.sessionId == sessionId) {
             stateMachine.hangUp(emitEvent: true);
           } else {
-            // 否则，仅仅是通知服务器本端已拒绝
+            // 仅仅是通知服务器本端已拒绝
             if (event.data?['extra'] != null) {
               final metadata = (event.data!['extra'] as Map).cast<String, dynamic>();
               final targetId = metadata['senderId']?.toString();
@@ -114,8 +133,10 @@ extension GlobalHandlerSocketExtension on _GlobalHandlerState {
                 });
               }
             }
+            // 确保不会杀错人
             stateMachine.hangUp(emitEvent: false);
           }
+
           Future.delayed(const Duration(seconds: 3), () => _isDecliningCall = false);
           break;
 
@@ -136,10 +157,29 @@ extension GlobalHandlerSocketExtension on _GlobalHandlerState {
     service.socket?.on(SocketEvents.callInvite, (data) async {
       if (!mounted) return;
       if (data is Map) data['type'] = SocketEvents.callInvite;
+
+      final currentStatus = ref.read(callStateMachineProvider).status;
+
       await CallDispatcher.instance.dispatch(
         data,
         onNotify: (event) {
           ref.read(callStateMachineProvider.notifier).onIncomingInvite(event);
+          //  核心防御 2：严禁重复弹窗！
+          // 只有当页面目前是空闲状态，才允许向栈顶压入 UI，杜绝 Web DOM 节点渲染崩溃
+          if (kIsWeb && currentStatus == CallStatus.idle) {
+            debugPrint(" [Web] 触发网页端自带来电 UI 跳转...");
+            final navigator = NavHub.key.currentState;
+            navigator?.push(
+              MaterialPageRoute(
+                builder: (_) => CallPage(
+                  targetId: event.senderId, // 从 event 里提取呼叫方信息
+                  targetName: event.senderName,
+                  targetAvatar: event.senderAvatar,
+                  isVideo: event.isVideo,
+                ),
+              ),
+            );
+          }
         },
       );
     });

@@ -13,6 +13,19 @@ class CallArbitrator {
   static const String _kGlobalLockTime = 'arb_global_cooldown_time';
   static const String _kEndedPrefix = 'arb_ended_';
   static const String _kHandledPrefix = 'arb_handled_';
+  static const String _kSdpCachePrefix = 'arb_sdp_';
+
+  ///  跨进程保存 SDP (存入硬盘，全进程可见)
+  Future<void> cacheSdp(String sessionId, String sdp) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('$_kSdpCachePrefix$sessionId', sdp);
+  }
+
+  ///  跨进程读取 SDP
+  Future<String?> getCachedSdp(String sessionId) async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('$_kSdpCachePrefix$sessionId');
+  }
 
   /// 检查系统是否处于“冷却期” (默认 3500 毫秒)
   Future<bool> isGlobalCooldownActive() async {

@@ -44,7 +44,7 @@ class GlobalChatHandler {
     debugPrint(" [GlobalHandler] Global message listener started...");
 
     // Listen to the Socket message stream
-    _msgSub = _socketService!.chatMessageStream.listen((data) async {
+    _msgSub = _socketService.chatMessageStream.listen((data) async {
       try {
         // 1. Prepare the box (Context)
         // Note: Using the ChatPipelineContext defined earlier

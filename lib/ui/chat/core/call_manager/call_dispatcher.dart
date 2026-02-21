@@ -2,7 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_app/ui/chat/core/call_manager/storage/call_arbitrator.dart';
 
 import '../../models/call_event.dart';
-import '../../services/callkit_service.dart';
+import 'callkit_service.dart';
 
 class CallDispatcher {
   CallDispatcher._();
@@ -36,11 +36,18 @@ class CallDispatcher {
           break;
       }
     } catch (e) {
-      debugPrint("❌ [Dispatcher] 分发异常: $e");
+      debugPrint(" [Dispatcher] 分发异常: $e");
     }
   }
 
   Future<bool> _handleInvite(CallEvent event) async {
+
+    // ICE Restart 护盾：如果是底层网络重连信令，绕过一切弹窗和防抖，直接放行给状态机！
+    if (event.rawData['isRenegotiation'] == true) {
+      debugPrint(" [Dispatcher] 拦截到网络重连信令，免弹窗直接放行！");
+      return true;
+    }
+
     final arbitrator = CallArbitrator.instance;
 
     if (await arbitrator.isGlobalCooldownActive()) return false;
@@ -48,6 +55,8 @@ class CallDispatcher {
     if (await arbitrator.isSessionHandled(event.sessionId)) return false;
 
     await arbitrator.markSessionAsHandled(event.sessionId);
+    // 新增：把 SDP 存入硬盘中转站，防止主进程丢失数据
+    await arbitrator.cacheSdp(event.sessionId, event.rawData['sdp']?.toString() ?? '');
     await arbitrator.lockGlobalCooldown();
 
     debugPrint(" [Dispatcher] 安检通过，正式唤起 CallKit");
