@@ -48,13 +48,33 @@ class WebRTCManager {
     peerConnection?.onTrack = (event) => onTrack?.call(event);
   }
 
-  //  生成原味 Offer 喂给自己，返回带护盾的魔改 SDP
   Future<String> createOfferAndSetLocal({bool iceRestart = false}) async {
-    final offer = await peerConnection!.createOffer(
-      iceRestart ? {'iceRestart': true} : {},
-    );
-    await peerConnection!.setLocalDescription(offer);
-    return _forceVP8(offer.sdp!);
+    if (peerConnection == null) throw Exception("PeerConnection is null");
+
+    // 🟢 终极杀手锏：必须用这种 'mandatory' 和 'optional' 数组的古老格式，
+    // Android 底层的 MediaConstraints 才能真正识别 IceRestart 指令！
+    final Map<String, dynamic> constraints = {
+      'mandatory': {
+        'OfferToReceiveAudio': true,
+        'OfferToReceiveVideo': true,
+      },
+      'optional': [
+        // 注意：必须是大写的 'IceRestart'，并且包在数组里！
+        if (iceRestart) {'IceRestart': true},
+      ],
+    };
+
+    try {
+      debugPrint("🛠️ [WebRTCManager] 正在生成 Offer，是否重启 ICE: $iceRestart");
+
+      RTCSessionDescription offer = await peerConnection!.createOffer(constraints);
+      await peerConnection!.setLocalDescription(offer);
+
+      return offer.sdp!;
+    } catch (e) {
+      debugPrint("❌ [WebRTCManager] 生成 Offer 失败: $e");
+      rethrow;
+    }
   }
 
   //  生成原味 Answer 喂给自己，返回带护盾的魔改 SDP
