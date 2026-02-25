@@ -6,23 +6,26 @@ import 'package:flutter/material.dart';
 class MediaManager {
   MediaStream? localStream;
 
+  //  护盾状态：记住当前是视频还是语音，方便拔掉耳机时恢复
+  bool _isVideoMode = true;
+
   //  激活音频焦点与防打断护盾
   Future<void> configureAudioSession(
-    bool isVideo,
-    bool Function() getIsMuted,
-  ) async {
+      bool isVideo,
+      bool Function() getIsMuted,
+      ) async {
     final session = await AudioSession.instance;
     await session.configure(
       AudioSessionConfiguration(
         avAudioSessionCategory: AVAudioSessionCategory.playAndRecord,
         avAudioSessionCategoryOptions:
-            AVAudioSessionCategoryOptions.allowBluetooth |
-            (isVideo
-                ? AVAudioSessionCategoryOptions.defaultToSpeaker
-                : AVAudioSessionCategoryOptions.none),
+        AVAudioSessionCategoryOptions.allowBluetooth |
+        (isVideo
+            ? AVAudioSessionCategoryOptions.defaultToSpeaker
+            : AVAudioSessionCategoryOptions.none),
         avAudioSessionMode: AVAudioSessionMode.voiceChat,
         avAudioSessionRouteSharingPolicy:
-            AVAudioSessionRouteSharingPolicy.defaultPolicy,
+        AVAudioSessionRouteSharingPolicy.defaultPolicy,
         avAudioSessionSetActiveOptions: AVAudioSessionSetActiveOptions.none,
         androidAudioAttributes: const AndroidAudioAttributes(
           contentType: AndroidAudioContentType.speech,
@@ -37,10 +40,10 @@ class MediaManager {
     // 监听系统级打断（如普通电话呼入）
     session.interruptionEventStream.listen((event) {
       if (event.begin) {
-        debugPrint("️ [MediaManager] 音频焦点被抢占，执行被动闭麦");
+        debugPrint("☎️ [MediaManager] 音频焦点被抢占，执行被动闭麦");
         _setMicrophoneEnabled(false);
       } else {
-        debugPrint(" [MediaManager] 音频焦点恢复");
+        debugPrint("✅ [MediaManager] 音频焦点恢复");
         _setMicrophoneEnabled(!getIsMuted());
       }
     });
@@ -54,15 +57,21 @@ class MediaManager {
 
   //  抓取摄像头和麦克风
   Future<void> initLocalMedia(
-    bool isVideo,
-    RTCVideoRenderer localRen,
-    RTCVideoRenderer remoteRen,
-  ) async {
-    //  kIsWeb 物理隔离护盾
+      bool isVideo,
+      RTCVideoRenderer localRen,
+      RTCVideoRenderer remoteRen,
+      ) async {
+    _isVideoMode = isVideo; // 记录初始模式
+
+    //  硬件热插拔雷达：时刻监听蓝牙/有线耳机的物理插拔！
     if (!kIsWeb) {
-      try {
-        await Helper.setSpeakerphoneOn(isVideo);
-      } catch (_) {}
+      navigator.mediaDevices.ondevicechange = (event) {
+        debugPrint("🔌 [MediaManager] 嗅探到音频外设物理插拔!");
+        _autoRouteAudio();
+      };
+
+      // 启动时先做一次环境侦测，决定声音从哪出
+      await _autoRouteAudio();
     }
 
     final mediaConstraints = {
@@ -77,6 +86,40 @@ class MediaManager {
     if (remoteRen.textureId == null) await remoteRen.initialize();
 
     localRen.srcObject = localStream;
+  }
+
+  //  智能音频路由大脑：根据外设情况，动态剥夺/赋予扬声器权力
+  Future<void> _autoRouteAudio() async {
+    if (kIsWeb) return;
+    try {
+      final devices = await navigator.mediaDevices.enumerateDevices();
+      bool hasExternalDevice = false;
+
+      // 遍历底层网卡，寻找有没有戴上蓝牙或插了线
+      for (var device in devices) {
+        if (device.kind == 'audiooutput' || device.kind == 'audioinput') {
+          final label = device.label.toLowerCase();
+          if (label.contains('bluetooth') ||
+              label.contains('headset') ||
+              label.contains('wired')) {
+            hasExternalDevice = true;
+            break;
+          }
+        }
+      }
+
+      if (hasExternalDevice) {
+        debugPrint("🎧 [MediaManager] 检测到外设接入，强行关闭扬声器独裁，声音交还给耳机");
+        // 核心密码：设为 false，WebRTC 就会自动把声音走 SCO 蓝牙通道
+        await Helper.setSpeakerphoneOn(false);
+      } else {
+        debugPrint("📱 [MediaManager] 无外设接入，恢复默认路由 (视频:外放, 语音:听筒)");
+        // 拔下耳机，恢复原来的规矩
+        await Helper.setSpeakerphoneOn(_isVideoMode);
+      }
+    } catch (e) {
+      debugPrint("❌ [MediaManager] 自动路由失败: $e");
+    }
   }
 
   void toggleMute(bool isMuted) {
@@ -110,6 +153,10 @@ class MediaManager {
   }
 
   Future<void> dispose() async {
+    //  拔除监听雷达，防止内存泄漏
+    if (!kIsWeb) {
+      navigator.mediaDevices.ondevicechange = null;
+    }
     localStream?.getTracks().forEach((track) => track.stop());
     await localStream?.dispose();
     localStream = null;
