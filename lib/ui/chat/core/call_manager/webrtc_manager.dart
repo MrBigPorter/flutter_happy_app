@@ -51,7 +51,7 @@ class WebRTCManager {
   Future<String> createOfferAndSetLocal({bool iceRestart = false}) async {
     if (peerConnection == null) throw Exception("PeerConnection is null");
 
-    // 🟢 终极杀手锏：必须用这种 'mandatory' 和 'optional' 数组的古老格式，
+    //  终极杀手锏：必须用这种 'mandatory' 和 'optional' 数组的古老格式，
     // Android 底层的 MediaConstraints 才能真正识别 IceRestart 指令！
     final Map<String, dynamic> constraints = {
       'mandatory': {
@@ -72,7 +72,7 @@ class WebRTCManager {
 
       return offer.sdp!;
     } catch (e) {
-      debugPrint("❌ [WebRTCManager] 生成 Offer 失败: $e");
+      debugPrint(" [WebRTCManager] 生成 Offer 失败: $e");
       rethrow;
     }
   }

@@ -109,7 +109,7 @@ class MediaManager {
       }
 
       if (hasExternalDevice) {
-        debugPrint("🎧 [MediaManager] 检测到外设接入，强行关闭扬声器独裁，声音交还给耳机");
+        debugPrint(" [MediaManager] 检测到外设接入，强行关闭扬声器独裁，声音交还给耳机");
         // 核心密码：设为 false，WebRTC 就会自动把声音走 SCO 蓝牙通道
         await Helper.setSpeakerphoneOn(false);
       } else {
@@ -118,7 +118,7 @@ class MediaManager {
         await Helper.setSpeakerphoneOn(_isVideoMode);
       }
     } catch (e) {
-      debugPrint("❌ [MediaManager] 自动路由失败: $e");
+      debugPrint("[MediaManager] 自动路由失败: $e");
     }
   }
 

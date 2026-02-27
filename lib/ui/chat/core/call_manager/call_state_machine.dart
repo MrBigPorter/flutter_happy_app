@@ -72,7 +72,7 @@ class CallStateMachine extends StateNotifier<CallState>
   // ================= 核心流程：拨打 =================
   Future<void> startCall(String targetId, {bool isVideo = true}) async {
     if (_isHangingUp) {
-      debugPrint("⏳ [StateMachine] 正在清理上一个通话底层硬件，请稍后重试拨打...");
+      debugPrint(" [StateMachine] 正在清理上一个通话底层硬件，请稍后重试拨打...");
       return;
     }
 
@@ -123,18 +123,18 @@ class CallStateMachine extends StateNotifier<CallState>
         );
       }
     } catch (e) {
-      debugPrint("❌ [StateMachine] 拨号严重失败: $e");
+      debugPrint(" [StateMachine] 拨号严重失败: $e");
       hangUp(emitEvent: false);
     }
   }
 
   void onIncomingInvite(CallEvent event) async {
-    // 🟢 终极护盾：拦截被后端或 FCM 强行篡改成 invite 的重连信令！
+    //  终极护盾：拦截被后端或 FCM 强行篡改成 invite 的重连信令！
     // 只要是当前 Session 的，且带 isRenegotiation 标志，绝对不能当成普通来电扔掉！
     if (event.rawData['isRenegotiation'] == true &&
         state.sessionId == event.sessionId &&
         state.status == CallStatus.connected) {
-      debugPrint("🤝 [ICE Restart] 在 Invite 推送通道拦截到重协商信令...");
+      debugPrint(" [ICE Restart] 在 Invite 推送通道拦截到重协商信令...");
       try {
         await _webrtc.setRemoteDescription(event.rawData['sdp'], 'offer');
 
@@ -148,16 +148,16 @@ class CallStateMachine extends StateNotifier<CallState>
           sdp: answer.sdp!,
           isRenegotiation: true,
         );
-        debugPrint("✅ [ICE Restart] 被叫方已成功回复 Answer！");
+        debugPrint(" [ICE Restart] 被叫方已成功回复 Answer！");
 
-        // 🟢 极其关键：冲刷候选者队列，把新网络 IP 灌入底层！
+        //  极其关键：冲刷候选者队列，把新网络 IP 灌入底层！
         Future.delayed(const Duration(milliseconds: 100), () {
           if (mounted) _webrtc.flushIceCandidateQueue();
         });
       } catch (e) {
-        debugPrint("❌ [ICE Restart] 协商失败: $e");
+        debugPrint(" [ICE Restart] 协商失败: $e");
       }
-      return; // 🟢 处理完重连直接退出，严禁往下走！
+      return; //  处理完重连直接退出，严禁往下走！
     }
 
     // ================= 以下是正常新来电逻辑 =================
@@ -323,7 +323,7 @@ class CallStateMachine extends StateNotifier<CallState>
     _webrtc.onIceCandidate = (candidate) {
       if (!mounted || state.targetId == null) return;
 
-      debugPrint("🧊 [ICE Candidate] 发现新路线: ${candidate.candidate}");
+      debugPrint("[ICE Candidate] 发现新路线: ${candidate.candidate}");
 
       _signaling.emitIce(
         sessionId: state.sessionId!,
@@ -375,8 +375,8 @@ class CallStateMachine extends StateNotifier<CallState>
     };
 
     _webrtc.onIceConnectionState = (iceState) {
-      // 🟢 极其重要的探针：监控底层 WebRTC 的真实物理连通性！
-      debugPrint("🌐 [WebRTC-ICE] 底层物理通道状态变更为: ${iceState.toString()}");
+      //  极其重要的探针：监控底层 WebRTC 的真实物理连通性！
+      debugPrint(" [WebRTC-ICE] 底层物理通道状态变更为: ${iceState.toString()}");
 
       if (iceState == RTCIceConnectionState.RTCIceConnectionStateFailed ||
           iceState == RTCIceConnectionState.RTCIceConnectionStateDisconnected) {
@@ -409,15 +409,15 @@ class CallStateMachine extends StateNotifier<CallState>
       return;
     }
 
-    // 🟢 终极防空转护盾：如果 Socket 还没连上（说明物理网络还没彻底准备好），
+    //  终极防空转护盾：如果 Socket 还没连上（说明物理网络还没彻底准备好），
     // 坚决不能此时生成 Offer！否则会收集到无网状态下的废弃 IP！
     if (_socketService.socket?.connected != true) {
-      debugPrint("⏳ [ICE Restart] 物理网络尚未就绪，拒绝收集空 IP，等待 Socket 连通...");
+      debugPrint(" [ICE Restart] 物理网络尚未就绪，拒绝收集空 IP，等待 Socket 连通...");
       return;
     }
 
     _isRestartingIce = true;
-    debugPrint("🔄 [ICE Restart] 正在执行无缝网络重连，生成新 IP 简历...");
+    debugPrint(" [ICE Restart] 正在执行无缝网络重连，生成新 IP 简历...");
 
     try {
       final tweakedSdp = await _webrtc.createOfferAndSetLocal(iceRestart: true);
@@ -428,7 +428,7 @@ class CallStateMachine extends StateNotifier<CallState>
         isRenegotiation: true,
       );
     } catch (e) {
-      debugPrint("❌ [ICE Restart] 生成新简历失败: $e");
+      debugPrint(" [ICE Restart] 生成新简历失败: $e");
     } finally {
       Future.delayed(const Duration(seconds: 15), () {
         if (mounted) _isRestartingIce = false;
@@ -437,18 +437,18 @@ class CallStateMachine extends StateNotifier<CallState>
   }
 
   void _initSocketListeners() {
-    // 🟢 终极救命补丁：只要 Socket 断开，立刻强行砸碎 15 秒重连防抖锁！
+    //  终极救命补丁：只要 Socket 断开，立刻强行砸碎 15 秒重连防抖锁！
     // 防止旧网络发出的“废弃 Offer”锁死新网络的重连通道！
     _socketService.socket?.on('disconnect', (_) {
       if (mounted) {
-        debugPrint("💔 [Socket] 物理断线！立刻解除防抖锁，等待新网络就绪...");
+        debugPrint(" [Socket] 物理断线！立刻解除防抖锁，等待新网络就绪...");
         _isRestartingIce = false;
       }
     });
     // 毫秒级网络切换雷达
     _socketService.socket?.on('connect', (_) {
       if (mounted && state.status == CallStatus.connected && !_isRestartingIce) {
-        debugPrint("🔌 [StateMachine] 嗅探到新网络连通，延迟 2 秒等待网卡彻底初始化...");
+        debugPrint(" [StateMachine] 嗅探到新网络连通，延迟 2 秒等待网卡彻底初始化...");
         Future.delayed(const Duration(seconds: 2), () {
           if (mounted && state.status == CallStatus.connected && !_isRestartingIce) {
             _triggerIceRestart();
@@ -464,14 +464,14 @@ class CallStateMachine extends StateNotifier<CallState>
             _isHangingUp)
           return;
 
-        // 🟢 终极修复：精确区分主叫与被叫的 SDP 处理方式，彻底告别 have-local-offer 崩溃！
+        //  终极修复：精确区分主叫与被叫的 SDP 处理方式，彻底告别 have-local-offer 崩溃！
         if (data['isRenegotiation'] == true) {
-          debugPrint("🤝 [ICE Restart] 收到对方的重协商信令...");
+          debugPrint(" [ICE Restart] 收到对方的重协商信令...");
           try {
             if (_isCaller) {
               // 我是主叫：我发出了 Offer，现在收到了对方的 Answer！
               await _webrtc.setRemoteDescription(data['sdp'], 'answer');
-              debugPrint("✅ [ICE Restart] 主叫方成功应用 Answer，底层隧道重建完毕！");
+              debugPrint(" [ICE Restart] 主叫方成功应用 Answer，底层隧道重建完毕！");
             } else {
               // 我是被叫：我收到了主叫发来的 Offer！
               await _webrtc.setRemoteDescription(data['sdp'], 'offer');
@@ -486,10 +486,10 @@ class CallStateMachine extends StateNotifier<CallState>
                 sdp: answer.sdp!,
                 isRenegotiation: true,
               );
-              debugPrint("✅ [ICE Restart] 被叫方已成功回复 Answer！");
+              debugPrint(" [ICE Restart] 被叫方已成功回复 Answer！");
             }
           } catch (e) {
-            debugPrint("❌ [ICE Restart] 协商失败: $e");
+            debugPrint(" [ICE Restart] 协商失败: $e");
           }
           return; // 重协商完毕，退出！
         }
