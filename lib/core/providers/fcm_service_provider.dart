@@ -46,7 +46,7 @@ final fcmInitProvider = FutureProvider<void>((ref) async {
       print(" [FCM] 上传 Token 到后端: ${dto.toJson()}");
       await Api.fcmNotificationDeviceRegisterApi(dto);
     } catch (e) {
-      print("❌ [FCM] 上传失败: $e");
+      print(" [FCM] 上传失败: $e");
     }
   }
 
@@ -57,12 +57,12 @@ final fcmInitProvider = FutureProvider<void>((ref) async {
 
   // C. 打印结果 (实际项目中这里可以做更多事，比如注册到后端)
   if (token != null) {
-    print("✅ [FCM] 初始化成功，Token: $token");
+    print(" [FCM] 初始化成功，Token: $token");
     uploadTokenToBackend(token);
   }
 
   fcmService.onTokenRefresh.listen((newToken) async {
-    print("🔄 [FCM] Token 刷新: $newToken");
+    print(" [FCM] Token 刷新: $newToken");
     // 刷新后也上传到后端
     await uploadTokenToBackend(newToken);
   });
