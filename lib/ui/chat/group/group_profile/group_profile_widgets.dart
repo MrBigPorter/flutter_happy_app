@@ -1,7 +1,7 @@
 part of 'group_profile_page.dart';
 
 // ======================================================
-// 区域 1: 成员网格 (已优化排序)
+// Section 1: Member Grid (Optimized Sorting)
 // ======================================================
 class _MemberGrid extends ConsumerWidget {
   final ConversationDetail detail;
@@ -16,9 +16,8 @@ class _MemberGrid extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // 1. 执行排序逻辑 (UI层展示优化)
-    // 权重: 群主(3) > 管理员(2) > 普通成员(1)
-    // [NEW] 3. 排序逻辑：直接使用传入的 this.members
+    // 1. Sorting logic for UI display
+    // Weights: Owner (3) > Admin (2) > Member (1)
     final sortedMembers = [...members];
     sortedMembers.sort((a, b) {
       int getScore(ChatMember m) {
@@ -29,6 +28,7 @@ class _MemberGrid extends ConsumerWidget {
       return getScore(b) - getScore(a);
     });
 
+    // Invitation button visibility logic
     final bool showAddBtn = true;
     final itemCount = sortedMembers.length + (showAddBtn ? 1 : 0);
 
@@ -45,12 +45,12 @@ class _MemberGrid extends ConsumerWidget {
         ),
         itemCount: itemCount,
         itemBuilder: (context, index) {
-          // A. 邀请按钮 (始终在最后)
+          // A. Invitation Button (Always at the end of the list)
           if (showAddBtn && index == sortedMembers.length) {
             return _AddButton(detail: detail);
           }
 
-          // B. 成员头像
+          // B. Member Avatar Item
           final member = sortedMembers[index];
           final isMe = member.userId == myUserId;
 
@@ -68,14 +68,14 @@ class _MemberGrid extends ConsumerWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // 头像 Stack
+                // Avatar Stack with Role Badges and Mute Status
                 SizedBox(
                   width: 48.r,
                   height: 48.r,
                   child: Stack(
                     clipBehavior: Clip.none,
                     children: [
-                      // 头像本体
+                      // Base Avatar
                       Container(
                         width: 48.r,
                         height: 48.r,
@@ -84,33 +84,33 @@ class _MemberGrid extends ConsumerWidget {
                           color: context.borderPrimary,
                           image: member.avatar != null
                               ? DecorationImage(
-                                  image: CachedNetworkImageProvider(
-                                    UrlResolver.resolveImage(
-                                      context,
-                                      member.avatar!,
-                                      logicalWidth: 48,
-                                    ),
-                                  ),
-                                  fit: BoxFit.cover,
-                                )
+                            image: CachedNetworkImageProvider(
+                              UrlResolver.resolveImage(
+                                context,
+                                member.avatar!,
+                                logicalWidth: 48,
+                              ),
+                            ),
+                            fit: BoxFit.cover,
+                          )
                               : null,
                         ),
                         alignment: Alignment.center,
                         child: member.avatar == null
                             ? Text(
-                                member.nickname.isNotEmpty
-                                    ? member.nickname[0].toUpperCase()
-                                    : "?",
-                                style: TextStyle(
-                                  color: context.textSecondary700,
-                                  fontSize: 18.sp,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              )
+                          member.nickname.isNotEmpty
+                              ? member.nickname[0].toUpperCase()
+                              : "?",
+                          style: TextStyle(
+                            color: context.textSecondary700,
+                            fontSize: 18.sp,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        )
                             : null,
                       ),
 
-                      // 禁言遮罩
+                      // Mute Overlay
                       if (member.isMuted)
                         Positioned.fill(
                           child: Container(
@@ -126,7 +126,7 @@ class _MemberGrid extends ConsumerWidget {
                           ),
                         ),
 
-                      // 身份角标
+                      // Role Badges (Owner/Admin)
                       if (member.isOwner)
                         Positioned(
                           right: -4,
@@ -149,7 +149,7 @@ class _MemberGrid extends ConsumerWidget {
                   ),
                 ),
                 SizedBox(height: 6.h),
-                // 昵称
+                // Nickname display with conditional styling
                 Text(
                   isMe ? "You" : member.nickname,
                   maxLines: 1,
@@ -159,8 +159,8 @@ class _MemberGrid extends ConsumerWidget {
                     color: member.isMuted
                         ? context.utilityError200
                         : (member.isManagement
-                              ? context.textPrimary900
-                              : context.textSecondary700),
+                        ? context.textPrimary900
+                        : context.textSecondary700),
                     fontWeight: member.isManagement
                         ? FontWeight.w600
                         : FontWeight.normal,
@@ -176,7 +176,7 @@ class _MemberGrid extends ConsumerWidget {
 }
 
 // ======================================================
-// 区域 2: 菜单部分 (增加头像和审批开关)
+// Section 2: Menu Section (Info Editing and Admin Switches)
 // ======================================================
 class _MenuSection extends ConsumerWidget {
   final ConversationDetail detail;
@@ -192,15 +192,14 @@ class _MenuSection extends ConsumerWidget {
 
     return Column(
       children: [
-        // 1. 核心管理入口 (仅管理员可见)
-        // =================================================
+        // 1. Management Entrances (Admin only)
         if (canEdit) ...[
           Container(
             margin: EdgeInsets.only(bottom: 12.h),
             color: context.bgPrimary,
             child: Column(
               children: [
-                // [NEW] 入群申请入口
+                // Join Requests with unread badge
                 Consumer(
                   builder: (context, ref, _) {
                     return _MenuItem(
@@ -208,28 +207,27 @@ class _MenuSection extends ConsumerWidget {
                       showArrow: true,
                       trailing: detail.pendingRequestCount > 0
                           ? Container(
-                              padding: EdgeInsets.symmetric(
-                                horizontal: 8.w,
-                                vertical: 2.h,
-                              ),
-                              decoration: BoxDecoration(
-                                color: context.utilityError200, // 红色
-                                borderRadius: BorderRadius.circular(10.r),
-                              ),
-                              child: Text(
-                                detail.pendingRequestCount > 99
-                                    ? '99+'
-                                    : '${detail.pendingRequestCount}',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 12.sp,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            )
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 8.w,
+                          vertical: 2.h,
+                        ),
+                        decoration: BoxDecoration(
+                          color: context.utilityError200,
+                          borderRadius: BorderRadius.circular(10.r),
+                        ),
+                        child: Text(
+                          detail.pendingRequestCount > 99
+                              ? '99+'
+                              : '${detail.pendingRequestCount}',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 12.sp,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      )
                           : null,
                       onTap: () {
-                        // 跳转到申请列表页 (路由稍后注册)
                         context.push('/chat/group/requests/${detail.id}');
                       },
                     );
@@ -239,53 +237,51 @@ class _MenuSection extends ConsumerWidget {
             ),
           ),
         ],
-        // 1. 群头像 (新增)
+
+        // 2. Group Metadata Management
         _MenuItem(
           label: "Group Avatar",
           showArrow: canEdit,
-          // 如果有头像，显示图片；否则显示文字提示
           trailing: detail.avatar != null
               ? ClipRRect(
-                  borderRadius: BorderRadius.circular(4.r),
-                  child: CachedNetworkImage(
-                    imageUrl: UrlResolver.resolveImage(
-                      context,
-                      detail.avatar!,
-                      logicalWidth: 40,
-                    ),
-                    width: 32.r,
-                    height: 32.r,
-                    fit: BoxFit.cover,
-                    placeholder: (_, __) => Container(color: Colors.grey[200]),
-                  ),
-                )
+            borderRadius: BorderRadius.circular(4.r),
+            child: CachedNetworkImage(
+              imageUrl: UrlResolver.resolveImage(
+                context,
+                detail.avatar!,
+                logicalWidth: 40,
+              ),
+              width: 32.r,
+              height: 32.r,
+              fit: BoxFit.cover,
+              placeholder: (_, __) => Container(color: Colors.grey[200]),
+            ),
+          )
               : Text(
-                  "Tap to set",
-                  style: TextStyle(color: context.textBrandPrimary900),
-                ), // 引导设置
+            "Tap to set",
+            style: TextStyle(color: context.textBrandPrimary900),
+          ),
           onTap: canEdit
               ? () => _GroupProfileLogic.handleAvatarTap(context, ref, detail)
               : null,
         ),
 
-        // 2. 群名称
         _MenuItem(
           label: "Group Name",
           value: detail.name,
           showArrow: canEdit,
           onTap: canEdit
               ? () => _GroupProfileLogic.showEditDialog(
-                  context,
-                  "Group Name",
-                  detail.name,
-                  (val) {
-                    notifier.updateInfo(name: val);
-                  },
-                )
+            context,
+            "Group Name",
+            detail.name,
+                (val) {
+              notifier.updateInfo(name: val);
+            },
+          )
               : null,
         ),
 
-        // 3. 群公告
         _MenuItem(
           label: "Announcement",
           value: detail.announcement?.isNotEmpty == true
@@ -294,33 +290,30 @@ class _MenuSection extends ConsumerWidget {
           showArrow: canEdit,
           onTap: canEdit
               ? () => _GroupProfileLogic.showEditDialog(
-                  context,
-                  "Announcement",
-                  detail.announcement ?? "",
-                  (val) {
-                    notifier.updateInfo(announcement: val);
-                  },
-                )
+            context,
+            "Announcement",
+            detail.announcement ?? "",
+                (val) {
+              notifier.updateInfo(announcement: val);
+            },
+          )
               : null,
         ),
 
-        // 4. 群 ID (只读)
         _MenuItem(
           label: "Group ID",
           value: detail.id.substring(0, 8).toUpperCase(),
           showArrow: false,
           onTap: () {
-            // 可选：点击复制 ID
             Clipboard.setData(ClipboardData(text: detail.id));
             RadixToast.info("Group ID copied");
           },
         ),
-        // [NEW] 5. 群二维码
+
         _MenuItem(
           label: "Group QR Code",
           trailing: Icon(Icons.qr_code, size: 20.r, color: context.textSecondary700),
           onTap: () {
-            // 直接跳转页面
             Navigator.push(
               context,
               MaterialPageRoute(
@@ -336,13 +329,13 @@ class _MenuSection extends ConsumerWidget {
 
         SizedBox(height: 12.h),
 
-        // 5. 管理开关区域
+        // 3. Administrative Toggle Controls
         if (canEdit)
           Container(
             color: context.bgPrimary,
             child: Column(
               children: [
-                // 入群审批开关 (新增)
+                // Toggle for join approval requirements
                 SwitchListTile(
                   title: Text(
                     "Join Need Approval",
@@ -354,12 +347,11 @@ class _MenuSection extends ConsumerWidget {
                     notifier.updateInfo(joinNeedApproval: val);
                   },
                 ),
-                // 分割线
                 Padding(
                   padding: EdgeInsets.symmetric(horizontal: 16.w),
                   child: Divider(height: 1, color: context.borderPrimary),
                 ),
-                // 全员禁言开关
+                // Toggle for muting all regular members
                 SwitchListTile(
                   title: Text(
                     "Mute All Members",
@@ -380,9 +372,8 @@ class _MenuSection extends ConsumerWidget {
 }
 
 // ======================================================
-// 区域 3: 底部按钮 (保持不变)
+// Section 3: Bottom Action Buttons
 // ======================================================
-
 class _FooterButtons extends ConsumerWidget {
   final ConversationDetail detail;
   final String myUserId;
@@ -391,44 +382,34 @@ class _FooterButtons extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // 1. 判断当前用户是否已经在群里
     final me = detail.members.findMember(myUserId);
     final isMember = me != null;
     final isOwner = me?.isOwner ?? false;
-
-    //  核心判断：是否处于 "审核中" 状态
     final isPending = detail.applicationStatus == 'PENDING';
 
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 16.w),
       child: Column(
         children: [
-          // =================================================
-          // A. 陌生人视角：显示 "加入" 或 "申请"
-          // =================================================
+          // Public View: Join or Apply buttons
           if (!isMember) ...[
             if (isPending)
-              // 状态 1: 已申请，等待审核 (灰色不可点)
               Button(
                 width: double.infinity,
                 variant: ButtonVariant.secondary,
-                // 使用次级颜色 (灰色)
                 disabled: true,
-                // 禁用点击
                 trailing: Icon(
                   Icons.hourglass_top,
                   size: 16.r,
-                  color: context.textSecondary700, // 灰色图标
+                  color: context.textSecondary700,
                 ),
                 onPressed: () {},
-                // 空操作
                 child: Text(
                   "Application Pending",
-                  style: TextStyle(color: context.textSecondary700), // 灰色文字
+                  style: TextStyle(color: context.textSecondary700),
                 ),
               )
             else
-              // 状态 2: 未申请 (显示 Join 或 Apply)
               Button(
                 width: double.infinity,
                 variant: ButtonVariant.primary,
@@ -442,30 +423,23 @@ class _FooterButtons extends ConsumerWidget {
               ),
           ],
 
-          // =================================================
-          // B. 成员视角：显示 "发消息" 和 "退群"
-          // =================================================
+          // Member View: Send Message and Leave/Disband buttons
           if (isMember) ...[
-            // 1. 发消息按钮
             Button(
               width: double.infinity,
               variant: ButtonVariant.primary,
               onPressed: () {
-                // 跳转到聊天页
                 appRouter.push('/chat/room/${detail.id}');
               },
-              child: Text(
+              child: const Text(
                 "Send Message",
                 style: TextStyle(color: Colors.white),
               ),
             ),
             SizedBox(height: 12.h),
-
-            // 2. 危险操作 (退群/解散)
             Button(
               width: double.infinity,
-              variant: ButtonVariant.error, // 红色按钮
-              // 只有非群主，或者群主决定解散时才显示
+              variant: ButtonVariant.error,
               onPressed: () {
                 _GroupProfileLogic.handleLeaveOrDisband(
                   context,
@@ -487,7 +461,7 @@ class _FooterButtons extends ConsumerWidget {
 }
 
 // ======================================================
-// 辅助小组件 (保持不变)
+// Supporting Sub-widgets
 // ======================================================
 
 class _AddButton extends StatelessWidget {
@@ -554,15 +528,15 @@ class _RoleBadge extends StatelessWidget {
 
 class _MenuItem extends StatelessWidget {
   final String label;
-  final String? value; // 变为可选
-  final Widget? trailing; // 新增：右侧自定义组件
+  final String? value;
+  final Widget? trailing;
   final VoidCallback? onTap;
   final bool showArrow;
 
   const _MenuItem({
     required this.label,
     this.value,
-    this.trailing, // 新增
+    this.trailing,
     this.onTap,
     this.showArrow = true,
   });
@@ -584,8 +558,7 @@ class _MenuItem extends StatelessWidget {
             Expanded(
               child: Align(
                 alignment: Alignment.centerRight,
-                child:
-                    trailing ?? // 优先显示自定义组件
+                child: trailing ??
                     Text(
                       value ?? "",
                       textAlign: TextAlign.right,
@@ -628,7 +601,7 @@ class _GroupSkeleton extends StatelessWidget {
             physics: const NeverScrollableScrollPhysics(),
             gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 5,
-              mainAxisSpacing: 12.h, // 保持与 _MemberGrid 一致
+              mainAxisSpacing: 12.h,
               crossAxisSpacing: 12.w,
             ),
             itemCount: 10,
@@ -651,7 +624,7 @@ class _GroupSkeleton extends StatelessWidget {
 }
 
 // ======================================================
-// 组件 A: 陌生人视角的头部 (大头像 + ID)
+// Component: Public Profile Header (Strangers Only)
 // ======================================================
 class _PublicGroupHeader extends StatelessWidget {
   final ConversationDetail detail;
@@ -666,7 +639,6 @@ class _PublicGroupHeader extends StatelessWidget {
       padding: EdgeInsets.symmetric(vertical: 32.h, horizontal: 20.w),
       child: Column(
         children: [
-          // 大头像
           Container(
             width: 80.r,
             height: 80.r,
@@ -675,31 +647,30 @@ class _PublicGroupHeader extends StatelessWidget {
               color: context.bgSecondary,
               image: detail.avatar != null
                   ? DecorationImage(
-                      image: CachedNetworkImageProvider(
-                        UrlResolver.resolveImage(
-                          context,
-                          detail.avatar!,
-                          logicalWidth: 80,
-                        ),
-                      ),
-                      fit: BoxFit.cover,
-                    )
+                image: CachedNetworkImageProvider(
+                  UrlResolver.resolveImage(
+                    context,
+                    detail.avatar!,
+                    logicalWidth: 80,
+                  ),
+                ),
+                fit: BoxFit.cover,
+              )
                   : null,
             ),
             alignment: Alignment.center,
             child: detail.avatar == null
                 ? Text(
-                    detail.name.isNotEmpty ? detail.name[0].toUpperCase() : "?",
-                    style: TextStyle(
-                      fontSize: 32.sp,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.grey[400],
-                    ),
-                  )
+              detail.name.isNotEmpty ? detail.name[0].toUpperCase() : "?",
+              style: TextStyle(
+                fontSize: 32.sp,
+                fontWeight: FontWeight.bold,
+                color: Colors.grey[400],
+              ),
+            )
                 : null,
           ),
           SizedBox(height: 16.h),
-          // 群名
           Text(
             detail.name,
             textAlign: TextAlign.center,
@@ -710,7 +681,6 @@ class _PublicGroupHeader extends StatelessWidget {
             ),
           ),
           SizedBox(height: 8.h),
-          // ID 和 人数
           Text(
             "ID: ${detail.id.substring(0, 8).toUpperCase()}  |  ${detail.memberCount} Members",
             style: TextStyle(fontSize: 14.sp, color: context.textSecondary700),
@@ -722,7 +692,7 @@ class _PublicGroupHeader extends StatelessWidget {
 }
 
 // ======================================================
-// 组件 B: 公告卡片 (用于陌生人视角)
+// Component: Announcement Card (Strangers Only)
 // ======================================================
 class _AnnouncementCard extends StatelessWidget {
   final ConversationDetail detail;

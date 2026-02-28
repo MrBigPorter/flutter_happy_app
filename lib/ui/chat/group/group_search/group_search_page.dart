@@ -12,7 +12,7 @@ import 'package:flutter_app/ui/chat/providers/group_search_provider.dart';
 
 import 'package:flutter_app/app/routes/app_router.dart';
 
-// 引入逻辑分片
+// Logic layer split
 part 'group_search_logic.dart';
 
 class GroupSearchPage extends ConsumerStatefulWidget {
@@ -25,7 +25,7 @@ class GroupSearchPage extends ConsumerStatefulWidget {
 class _GroupSearchPageState extends ConsumerState<GroupSearchPage> {
   final _controller = TextEditingController();
 
-  // UI 状态：是否触发过搜索（用于控制初始提示文案的显示）
+  // UI State: Tracks if a search has been executed to control initial placeholder visibility
   bool _hasSearched = false;
 
   @override
@@ -36,7 +36,7 @@ class _GroupSearchPageState extends ConsumerState<GroupSearchPage> {
 
   @override
   Widget build(BuildContext context) {
-    // 监听 Provider 数据状态
+    // Watch search provider state
     final searchState = ref.watch(groupSearchControllerProvider);
 
     return Scaffold(
@@ -57,7 +57,7 @@ class _GroupSearchPageState extends ConsumerState<GroupSearchPage> {
       body: Column(
         children: [
           // =================================================
-          // 1. 顶部搜索框区域
+          // 1. Top Search Header Area
           // =================================================
           Container(
             padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
@@ -68,7 +68,7 @@ class _GroupSearchPageState extends ConsumerState<GroupSearchPage> {
                   controller: _controller,
                   autofocus: true,
                   textInputAction: TextInputAction.search,
-                  // 转发给 Logic 处理
+                  // Delegate search execution to Logic layer
                   onSubmitted: (_) => _GroupSearchLogic.handleSearch(
                     context: context,
                     ref: ref,
@@ -94,7 +94,7 @@ class _GroupSearchPageState extends ConsumerState<GroupSearchPage> {
                         return _controller.text.isNotEmpty
                             ? IconButton(
                           icon: Icon(Icons.clear, color: Colors.grey, size: 18.r),
-                          // 转发给 Logic 处理
+                          // Delegate clear action to Logic layer
                           onPressed: () => _GroupSearchLogic.handleClear(_controller),
                         )
                             : const SizedBox();
@@ -106,7 +106,7 @@ class _GroupSearchPageState extends ConsumerState<GroupSearchPage> {
                 Button(
                   width: double.infinity,
                   loading: searchState.isLoading,
-                  // 转发给 Logic 处理
+                  // Delegate search execution to Logic layer
                   onPressed: () => _GroupSearchLogic.handleSearch(
                     context: context,
                     ref: ref,
@@ -122,14 +122,14 @@ class _GroupSearchPageState extends ConsumerState<GroupSearchPage> {
           Divider(height: 1, color: context.bgSecondary),
 
           // =================================================
-          // 2. 结果展示区域
+          // 2. Results Display Area
           // =================================================
           Expanded(
             child: searchState.when(
-              // Loading 由 Button 显示，这里留白
+              // Loading state is handled by the Button widget; keeping background clean here
               loading: () => const SizedBox(),
 
-              // 错误状态
+              // Error handling view
               error: (err, stack) => Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -141,9 +141,9 @@ class _GroupSearchPageState extends ConsumerState<GroupSearchPage> {
                 ),
               ),
 
-              // 数据展示
+              // Data rendering logic
               data: (results) {
-                // A. 初始状态 (未搜索)
+                // Scenario A: Initial state (No search performed yet)
                 if (!_hasSearched && results.isEmpty) {
                   return Center(
                     child: Column(
@@ -158,7 +158,7 @@ class _GroupSearchPageState extends ConsumerState<GroupSearchPage> {
                   );
                 }
 
-                // B. 无结果
+                // Scenario B: No results found after search
                 if (results.isEmpty) {
                   return Center(
                     child: Column(
@@ -173,7 +173,7 @@ class _GroupSearchPageState extends ConsumerState<GroupSearchPage> {
                   );
                 }
 
-                // C. 结果列表
+                // Scenario C: Display search results list
                 return ListView.separated(
                   padding: EdgeInsets.symmetric(vertical: 12.h),
                   itemCount: results.length,
@@ -197,7 +197,7 @@ class _GroupSearchPageState extends ConsumerState<GroupSearchPage> {
 }
 
 // =================================================================
-// Sub-Widgets (保留在 UI 文件中，因为它们属于 View 层)
+// Sub-Widgets (Kept in UI file for direct View-layer accessibility)
 // =================================================================
 
 class _GroupResultItem extends StatelessWidget {
@@ -214,7 +214,7 @@ class _GroupResultItem extends StatelessWidget {
         padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 12.h),
         child: Row(
           children: [
-            // 头像
+            // Group Avatar
             ClipRRect(
               borderRadius: BorderRadius.circular(8.r),
               child: CachedNetworkImage(
@@ -237,7 +237,7 @@ class _GroupResultItem extends StatelessWidget {
               ),
             ),
             SizedBox(width: 12.w),
-            // 信息
+            // Group Information
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -261,7 +261,7 @@ class _GroupResultItem extends StatelessWidget {
                 ],
               ),
             ),
-            // 状态
+            // Status Indicator
             if (group.isMember)
               Container(
                 padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),

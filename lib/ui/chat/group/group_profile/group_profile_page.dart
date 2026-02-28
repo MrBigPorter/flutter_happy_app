@@ -29,7 +29,6 @@ import '../group_qr_page.dart';
 part 'group_profile_widgets.dart';
 part 'group_profile_logic.dart';
 
-// 改为 ConsumerStatefulWidget 以维持搜索状态
 class GroupProfilePage extends ConsumerStatefulWidget {
   final String conversationId;
 
@@ -40,7 +39,7 @@ class GroupProfilePage extends ConsumerStatefulWidget {
 }
 
 class _GroupProfilePageState extends ConsumerState<GroupProfilePage> {
-  // [修改 2] 搜索状态
+  // Local search state management for filtering members
   String _searchKeyword = "";
   final TextEditingController _searchController = TextEditingController();
 
@@ -52,6 +51,7 @@ class _GroupProfilePageState extends ConsumerState<GroupProfilePage> {
 
   @override
   Widget build(BuildContext context) {
+    // Watch group details provider
     final asyncDetail = ref.watch(chatGroupProvider(widget.conversationId));
     final myUserId = ref.watch(userProvider.select((s) => s?.id)) ?? '';
 
@@ -67,13 +67,13 @@ class _GroupProfilePageState extends ConsumerState<GroupProfilePage> {
         error: (err, stack) => Center(child: Text("Error: $err")),
         data: (detail) {
           if (detail.type != ConversationType.group) {
-            return const Center(child: Text("This is not a group."));
+            return const Center(child: Text("Invalid conversation type."));
           }
 
           final me = detail.members.findMember(myUserId);
           final isMember = me != null;
 
-          // [修改 3] 执行本地过滤逻辑
+          // Local filtering logic: filter member list based on search keyword
           final displayMembers = _searchKeyword.isEmpty
               ? detail.members
               : detail.members.where((m) => m.nickname
@@ -85,17 +85,17 @@ class _GroupProfilePageState extends ConsumerState<GroupProfilePage> {
             child: Column(
               children: [
                 // =================================================
-                // 1. 顶部区域：根据身份区分
+                // 1. Top Section: Conditional UI based on Membership
                 // =================================================
                 if (isMember)
-                // 成员：看九宫格 (带搜索框)
+                // Member view: Grid layout with search capability
                   Container(
                     color: context.bgPrimary,
                     padding: EdgeInsets.only(top: 16.h, bottom: 20.h),
                     child: Column(
                       children: [
-                        // [新增] 搜索框
-                        if (detail.memberCount > 5) // 人少的时候没必要显示搜索框
+                        // Search bar: only visible when member count exceeds threshold
+                        if (detail.memberCount > 5)
                           Padding(
                             padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
                             child: TextField(
@@ -119,7 +119,7 @@ class _GroupProfilePageState extends ConsumerState<GroupProfilePage> {
 
                         SizedBox(height: 12.h),
 
-                        // [修改 4] 传入过滤后的 displayMembers
+                        // Pass filtered list to the grid widget
                         _MemberGrid(
                           detail: detail,
                           myUserId: myUserId,
@@ -129,13 +129,13 @@ class _GroupProfilePageState extends ConsumerState<GroupProfilePage> {
                     ),
                   )
                 else
-                // 陌生人：看大头像名片
+                // Stranger view: Public profile card layout
                   _PublicGroupHeader(detail: detail),
 
                 SizedBox(height: 12.h),
 
                 // =================================================
-                // 2. 内容/设置区域
+                // 2. Settings / Content Section
                 // =================================================
                 if (isMember) ...[
                   _MenuSection(detail: detail, myUserId: myUserId),
@@ -146,7 +146,7 @@ class _GroupProfilePageState extends ConsumerState<GroupProfilePage> {
                 ],
 
                 // =================================================
-                // 3. 底部按钮
+                // 3. Bottom Action Buttons
                 // =================================================
                 _FooterButtons(detail: detail, myUserId: myUserId),
 

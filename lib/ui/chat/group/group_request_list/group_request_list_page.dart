@@ -19,13 +19,14 @@ class GroupRequestListPage extends ConsumerStatefulWidget {
 }
 
 class _GroupRequestListPageState extends ConsumerState<GroupRequestListPage> {
-  // 记录正在操作的 Item ID，实现局部 Loading
+  // Track specific item IDs currently being processed to show local loading states
   final Set<String> _processingIds = {};
 
+  /// Handles the accept or reject action for a join request
   Future<void> _handleRequest(String requestId, bool isAccept) async {
     setState(() => _processingIds.add(requestId));
 
-    // 调用 Controller 处理
+    // Delegate the operation to the controller
     final success = await ref
         .read(groupJoinControllerProvider.notifier)
         .handleRequest(
@@ -46,9 +47,8 @@ class _GroupRequestListPageState extends ConsumerState<GroupRequestListPage> {
 
   @override
   Widget build(BuildContext context) {
-    // 监听 Provider
+    // Watch the requests provider for data updates
     final asyncList = ref.watch(groupJoinRequestsProvider(widget.groupId));
-    print("GroupRequestListPage: rebuild with state = ${asyncList.value.toString()}");
 
     return Scaffold(
       backgroundColor: context.bgSecondary,
@@ -88,6 +88,7 @@ class _GroupRequestListPageState extends ConsumerState<GroupRequestListPage> {
     );
   }
 
+  /// Displayed when there are no pending join requests
   Widget _buildEmptyState(BuildContext context) {
     return Center(
       child: Column(
@@ -106,7 +107,6 @@ class _GroupRequestListPageState extends ConsumerState<GroupRequestListPage> {
 }
 
 class _RequestCard extends StatelessWidget {
-  // 1. 【修改】类型改为 GroupJoinRequestItem
   final GroupJoinRequestItem request;
   final bool isProcessing;
   final Function(bool) onHandle;
@@ -119,10 +119,10 @@ class _RequestCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // 2. 【修改】使用 Enum 判断状态
+    // Determine if the request is still awaiting a decision
     final isPending = request.status == GroupRequestStatus.pending;
 
-    // 3. 【修改】字段名改为 createTime (int)
+    // Convert milliseconds timestamp to a readable DateTime object
     final dateStr = DateTime.fromMillisecondsSinceEpoch(request.createdAt);
 
     return Container(
@@ -141,14 +141,13 @@ class _RequestCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Top Row: Avatar + Name + Time
+          // Top Row: Applicant Profile Info
           Row(
             children: [
-              // Avatar
+              // Avatar with network caching and resolution optimization
               ClipRRect(
                 borderRadius: BorderRadius.circular(20.r),
                 child: CachedNetworkImage(
-                  // applicant 现在是非空的，可以直接用
                   imageUrl: UrlResolver.resolveImage(
                       context, request.applicant.avatar,
                       logicalWidth: 40),
@@ -161,7 +160,7 @@ class _RequestCard extends StatelessWidget {
                 ),
               ),
               SizedBox(width: 12.w),
-              // Name & Time
+              // Name and Submission Time
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -175,7 +174,6 @@ class _RequestCard extends StatelessWidget {
                       ),
                     ),
                     SizedBox(height: 2.h),
-                    // 时间显示
                     Text(
                       "${dateStr.month}/${dateStr.day} ${dateStr.hour}:${dateStr.minute.toString().padLeft(2, '0')}",
                       style: TextStyle(
@@ -191,7 +189,7 @@ class _RequestCard extends StatelessWidget {
 
           SizedBox(height: 12.h),
 
-          // Middle: Reason Box
+          // Middle: Application Reason Box
           Container(
             width: double.infinity,
             padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
@@ -224,7 +222,7 @@ class _RequestCard extends StatelessWidget {
 
           SizedBox(height: 16.h),
 
-          // Bottom: Action Buttons
+          // Bottom: Conditional Action Buttons or Status Label
           isPending
               ? _buildPendingActions(context)
               : _buildHandledStatus(context),
@@ -233,7 +231,7 @@ class _RequestCard extends StatelessWidget {
     );
   }
 
-  // 状态：待处理 (显示按钮)
+  /// Renders Accept/Reject buttons or a loading indicator during processing
   Widget _buildPendingActions(BuildContext context) {
     if (isProcessing) {
       return Center(
@@ -249,7 +247,7 @@ class _RequestCard extends StatelessWidget {
       children: [
         Expanded(
           child: OutlinedButton(
-            onPressed: () => onHandle(false), // Reject
+            onPressed: () => onHandle(false),
             style: OutlinedButton.styleFrom(
               padding: EdgeInsets.symmetric(vertical: 10.h),
               side: BorderSide(color: Colors.grey[300]!),
@@ -265,7 +263,7 @@ class _RequestCard extends StatelessWidget {
         SizedBox(width: 12.w),
         Expanded(
           child: ElevatedButton(
-            onPressed: () => onHandle(true), // Accept
+            onPressed: () => onHandle(true),
             style: ElevatedButton.styleFrom(
               backgroundColor: context.textBrandPrimary900,
               padding: EdgeInsets.symmetric(vertical: 10.h),
@@ -282,9 +280,8 @@ class _RequestCard extends StatelessWidget {
     );
   }
 
-  // 状态：已处理 (显示结果)
+  /// Renders a static status indicator for requests that have already been handled
   Widget _buildHandledStatus(BuildContext context) {
-    // 4. 【修改】使用 Enum 判断
     final isAccepted = request.status == GroupRequestStatus.accepted;
     return Container(
       width: double.infinity,

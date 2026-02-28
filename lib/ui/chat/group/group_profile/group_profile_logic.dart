@@ -3,33 +3,33 @@ part of 'group_profile_page.dart';
 class _GroupProfileLogic {
 
   // ======================================================
-  // 1. 头像修改逻辑
+  // 1. Avatar Modification Logic
   // ======================================================
   static Future<void> handleAvatarTap(
       BuildContext context, WidgetRef ref, ConversationDetail detail) async {
 
     final picker = ImagePicker();
-    // 1. 选择图片
+    // 1. Pick image from gallery with optimized quality
     final XFile? image = await picker.pickImage(source: ImageSource.gallery, imageQuality: 70);
 
     if (image == null) return;
 
-    // 2. 显示上传 Loading
+    // 2. Show upload progress indicator
     RadixToast.showLoading(
         message: "Uploading avatar..."
     );
 
     try {
-      // 3. 上传图片 (使用全局上传服务)
+      // 3. Upload file using the global upload service
       String url = await GlobalUploadService().uploadFile(
           file: XFile(image.path),
           module: UploadModule.chat,
           onProgress: (percent) {
-            // 可选：更新进度条
+            // Optional: Implement progress bar update logic here
           }
       );
 
-      // 4. 调用 Notifier 更新群信息
+      // 4. Invoke Notifier to update group metadata on the backend
       final notifier = ref.read(chatGroupProvider(detail.id).notifier);
       await notifier.updateInfo(avatar: url);
 
@@ -37,14 +37,14 @@ class _GroupProfileLogic {
 
     } catch (e) {
       RadixToast.error("Failed to update avatar");
-      debugPrint("Avatar update error: $e");
+      debugPrint("[GroupProfileLogic] Avatar update error: $e");
     } finally {
       RadixToast.hide();
     }
   }
 
   // ======================================================
-  // 2. 成员管理菜单 (处理点击成员)
+  // 2. Member Management Menu (Member Tap Handling)
   // ======================================================
   static void handleMemberTap(
       BuildContext context,
@@ -54,59 +54,56 @@ class _GroupProfileLogic {
       String myUserId,
       ) {
 
-    // 内部通用跳转方法：携带预览数据，实现秒开效果
+    // Internal navigation helper: uses preview data for immediate UI rendering
     void jumpToProfile() {
       final previewUser = ChatUser(
         id: target.userId,
         nickname: target.nickname,
         avatar: target.avatar,
-        phone: null, // 预览数据暂无电话
-        status: RelationshipStatus.stranger, // 默认陌生人，进入详情页后会自动刷新状态
+        phone: null,
+        status: RelationshipStatus.stranger, // Default status, refreshes inside the detail page
       );
-      
 
       appRouter.push(
           '/contact/profile/${target.userId}',
-          extra: previewUser // 关键：传递 extra 实现 Hero 动画
+          extra: previewUser // Pass extra data to support Hero animations
       );
     }
 
-    // A. 点击自己 -> 跳转个人资料
+    // A. Tap on Self -> Navigate to personal profile
     if (target.userId == myUserId) {
-      // 这里的路径取决于你是否区分“我的资料页”和“联系人资料页”
-      // 如果是用同一个页面，直接调用 jumpToProfile 即可
       jumpToProfile();
       return;
     }
 
     final me = detail.members.findMember(myUserId);
-    // B. 数据异常兜底
+    // B. Safety fallback for missing member data
     if (me == null) {
       jumpToProfile();
       return;
     }
 
-    // C. 权限检查：如果我不能管理他（我是成员，或者是同级管理员），则直接查看资料
+    // C. Permission Check: If current user lacks management rights, default to view-only mode
     if (!me.canManage(target)) {
       jumpToProfile();
       return;
     }
 
-    // D. 我有权限管理他 -> 弹出管理菜单
+    // D. User has management rights -> Display management bottom sheet
     final notifier = ref.read(chatGroupProvider(detail.id).notifier);
     final isMeOwner = me.isOwner;
 
     showModalBottomSheet(
       context: context,
       backgroundColor: context.bgPrimary,
-      isScrollControlled: true, // 允许弹窗高度自适应
+      isScrollControlled: true,
       shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(16.r))),
       builder: (ctx) => SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // 顶部拖拽条
+            // Top drag handle bar
             Center(
               child: Container(
                 margin: EdgeInsets.only(top: 8.h, bottom: 8.h),
@@ -119,7 +116,7 @@ class _GroupProfileLogic {
               ),
             ),
 
-            // 标题栏 (显示被操作人信息)
+            // Header Section: Target Member Info
             Padding(
               padding: EdgeInsets.symmetric(vertical: 12.h),
               child: Column(
@@ -138,17 +135,17 @@ class _GroupProfileLogic {
             ),
             Divider(height: 1, color: context.borderPrimary),
 
-            // 选项 1: 查看资料 (新增跳转入口)
+            // Option 1: View Profile
             ListTile(
               leading: Icon(Icons.person_outline, color: context.textPrimary900),
               title: Text("View Profile", style: TextStyle(color: context.textPrimary900)),
               onTap: () {
-                Navigator.pop(ctx); // 先关弹窗
-                jumpToProfile();    // 再跳转
+                Navigator.pop(ctx);
+                jumpToProfile();
               },
             ),
 
-            // 选项 2: 禁言/解禁
+            // Option 2: Mute/Unmute Management
             ListTile(
               leading: Icon(
                   target.isMuted ? Icons.mic : Icons.mic_off_outlined,
@@ -160,16 +157,16 @@ class _GroupProfileLogic {
               onTap: () {
                 Navigator.pop(ctx);
                 if (target.isMuted) {
-                  notifier.muteMember(target.userId, 0); // 0 = 解禁
+                  notifier.muteMember(target.userId, 0); // 0 = Unmute
                   RadixToast.success("Member unmuted");
                 } else {
-                  notifier.muteMember(target.userId, 600); // 600秒 = 10分钟
+                  notifier.muteMember(target.userId, 600); // 600 seconds = 10 minutes
                   RadixToast.warning("Member muted for 10 min");
                 }
               },
             ),
 
-            // 选项 3: 升降管理员 (仅群主可见)
+            // Option 3: Admin Privilege Management (Owner Only)
             if (isMeOwner)
               ListTile(
                 leading: const Icon(Icons.security_outlined, color: Colors.blue),
@@ -184,10 +181,9 @@ class _GroupProfileLogic {
                 },
               ),
 
-            // 分割线 (将危险操作隔开)
             Divider(height: 1, color: context.borderPrimary),
 
-            // 选项 4: 踢人 (危险操作)
+            // Option 4: Removal (Destructive Action)
             ListTile(
               leading: Icon(Icons.remove_circle_outline,
                   color: context.utilityError200),
@@ -223,7 +219,7 @@ class _GroupProfileLogic {
   }
 
   // ======================================================
-  // 3. 编辑弹窗 (修改群名/公告)
+  // 3. Edit Dialog (Group Name / Announcement)
   // ======================================================
   static void showEditDialog(BuildContext context, String title,
       String initialValue, Function(String) onConfirm) {
@@ -270,14 +266,14 @@ class _GroupProfileLogic {
           close();
           RadixToast.success("$title updated");
         } else {
-          close(); // 没改动直接关闭
+          close();
         }
       },
     );
   }
 
   // ======================================================
-  // 4. 退群/解散处理
+  // 4. Leave / Disband Workflow
   // ======================================================
   static void handleLeaveOrDisband(BuildContext context, WidgetRef ref,
       ConversationDetail detail, bool isOwner) {
@@ -305,7 +301,6 @@ class _GroupProfileLogic {
       onConfirm: (close) async {
         close();
 
-        // 显示 Loading
         RadixToast.showLoading(message: isDisband ? "Disbanding..." : "Leaving...");
 
         try {
@@ -316,7 +311,7 @@ class _GroupProfileLogic {
 
           if (success && context.mounted) {
             RadixToast.success(isDisband ? "Group disbanded" : "Left group");
-            // 退回会话列表页
+            // Return to conversation list upon successful exit
             context.go('/conversations');
           } else {
             RadixToast.error("Operation failed");
@@ -327,22 +322,21 @@ class _GroupProfileLogic {
         }
       },
     );
-
   }
 
   // ======================================================
-  // [新增] 5. 处理入群申请点击
+  // 5. Join Application Management
   // ======================================================
   static void handleJoinTap(
       BuildContext context, WidgetRef ref, ConversationDetail detail) {
 
-    // 情况 A: 不需要审批 -> 直接调用加入接口
+    // Scenario A: Approval not required -> Execute direct join
     if (!detail.joinNeedApproval) {
       _doJoinDirectly(context, ref, detail.id);
       return;
     }
 
-    // 情况 B: 需要审批 -> 弹出对话框输入理由
+    // Scenario B: Approval required -> Prompt for verification reason
     final controller = TextEditingController();
     RadixModal.show(
       title: "Apply to Join",
@@ -378,32 +372,30 @@ class _GroupProfileLogic {
       confirmText: "Send",
       onConfirm: (close) async {
         final reason = controller.text.trim();
-        close(); // 先关闭弹窗
+        close();
         await _doApplyWithReason(context, ref, detail.id, reason);
       },
     );
   }
 
-  // 私有方法：直接加入
+  /// Private helper for direct group entry
   static Future<void> _doJoinDirectly(
       BuildContext context, WidgetRef ref, String groupId) async {
-      // 复用 GroupJoinController 的 apply 方法，reason 传空即可
-      // 后端逻辑：如果 joinNeedApproval=false，apply 接口会自动把人加进去并返回 ACCEPTED
-      RadixToast.showLoading(message: "Sending application...");
-      try{
-        final res = await ref.read(groupJoinControllerProvider.notifier)
-            .apply(groupId, "");
-        if (res?.status == 'ACCEPTED') { // 1 = ACCEPTED
-          RadixToast.success("Joined successfully");
-          // 刷新页面状态，或者直接跳转聊天
-          ref.invalidate(chatGroupProvider(groupId));
-        }
-      }catch(e){
-        RadixToast.hide();
+    RadixToast.showLoading(message: "Sending application...");
+    try{
+      final res = await ref.read(groupJoinControllerProvider.notifier)
+          .apply(groupId, "");
+      if (res?.status == 'ACCEPTED') {
+        RadixToast.success("Joined successfully");
+        // Invalidate provider to refresh page state and UI visibility
+        ref.invalidate(chatGroupProvider(groupId));
       }
+    }catch(e){
+      RadixToast.hide();
+    }
   }
 
-  // 私有方法：提交申请
+  /// Private helper for submitting application with a reason
   static Future<void> _doApplyWithReason(
       BuildContext context, WidgetRef ref, String groupId, String reason) async {
     RadixToast.showLoading(message: "Sending application...");
@@ -413,7 +405,7 @@ class _GroupProfileLogic {
 
       if (res != null) {
         RadixToast.success("Application sent");
-        // 这里可以禁用按钮，或者显示 "Pending" 状态
+        // Refresh detail to reflect pending status in UI
         ref.invalidate(chatGroupProvider(groupId));
       }
     } catch (e) {

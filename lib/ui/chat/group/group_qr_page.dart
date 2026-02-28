@@ -33,7 +33,7 @@ class GroupQrPage extends StatefulWidget {
 class _GroupQrPageState extends State<GroupQrPage> {
   final GlobalKey _qrRepaintKey = GlobalKey();
 
-  /// 截图核心逻辑
+  /// Core logic for capturing the widget as a PNG image
   Future<Uint8List?> _capturePng() async {
     try {
       RenderRepaintBoundary? boundary = _qrRepaintKey.currentContext
@@ -41,15 +41,15 @@ class _GroupQrPageState extends State<GroupQrPage> {
 
       if (boundary == null) return null;
 
-      // Web 端像素倍率设低一点，防止 Canvas 内存溢出
+      // Lower pixel ratio on Web to prevent Canvas memory overflow
       final ratio = kIsWeb ? 1.5 : 3.0;
 
       ui.Image image = await boundary.toImage(pixelRatio: ratio);
       ByteData? byteData = await image.toByteData(format: ui.ImageByteFormat.png);
       return byteData?.buffer.asUint8List();
     } catch (e) {
-      debugPrint("Capture error: $e");
-      // Web 端常见错误：Tainted canvas (图片跨域)
+      debugPrint("[GroupQrPage] Capture error: $e");
+      // Handle Web-specific CORS "Tainted canvas" errors
       if (kIsWeb && e.toString().contains("Tainted")) {
         RadixToast.error("Security Error: Image CORS issue");
       }
@@ -57,6 +57,7 @@ class _GroupQrPageState extends State<GroupQrPage> {
     }
   }
 
+  /// Handles the process of saving the QR code to the device local storage
   Future<void> _handleSave() async {
     RadixToast.showLoading(message: "Saving...");
     try {
@@ -78,6 +79,7 @@ class _GroupQrPageState extends State<GroupQrPage> {
     }
   }
 
+  /// Handles the process of sharing the generated QR code image
   Future<void> _handleShare() async {
     RadixToast.showLoading(message: "Preparing...");
     try {
@@ -106,8 +108,7 @@ class _GroupQrPageState extends State<GroupQrPage> {
         ? UrlResolver.resolveImage(context, widget.groupAvatar!)
         : null;
 
-    // Web 端如果图片没有配置 CORS，截图会报错，所以 Web 端暂时隐藏中间 Logo
-    // 或者你可以换成本地的 App Logo
+    // Hide central logo on Web if CORS is not configured to avoid "Tainted canvas" capture errors
     final showLogo = avatarUrl != null && !kIsWeb;
 
     return BaseScaffold(
@@ -117,7 +118,7 @@ class _GroupQrPageState extends State<GroupQrPage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // 截图区域
+            // Screenshot capture area
             RepaintBoundary(
               key: _qrRepaintKey,
               child: Container(
@@ -133,7 +134,7 @@ class _GroupQrPageState extends State<GroupQrPage> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // 头部信息
+                    // Header Info Section
                     Row(
                       children: [
                         Container(
@@ -162,29 +163,28 @@ class _GroupQrPageState extends State<GroupQrPage> {
                     ),
                     SizedBox(height: 24.h),
 
-                    // [核心优化] 使用 Stack 分层渲染，不再阻塞二维码生成
+                    // Layered rendering optimization to avoid blocking QR generation
                     SizedBox(
                       width: 220.w,
                       height: 220.w,
                       child: Stack(
                         alignment: Alignment.center,
                         children: [
-                          // 1. 底层：纯二维码 (秒开)
+                          // Bottom Layer: Pure QR code (Instant rendering)
                           QrImageView(
                             data: qrData,
                             version: QrVersions.auto,
                             size: 220.w,
                             backgroundColor: Colors.white,
-                            // 注意：这里不要传 embeddedImage 了
                             errorStateBuilder: (cxt, err) => Center(child: Text("Error")),
                           ),
 
-                          // 2. 顶层：Logo (异步加载，带白边)
+                          // Top Layer: Logo (Asynchronous loading with white border)
                           if (showLogo)
                             Container(
                               width: 48.w,
                               height: 48.w,
-                              padding: EdgeInsets.all(3.w), // 白边
+                              padding: EdgeInsets.all(3.w),
                               decoration: BoxDecoration(
                                 color: Colors.white,
                                 borderRadius: BorderRadius.circular(8.r),
@@ -212,7 +212,7 @@ class _GroupQrPageState extends State<GroupQrPage> {
 
             SizedBox(height: 40.h),
 
-            // 底部按钮
+            // Bottom Action Buttons
             Padding(
               padding: EdgeInsets.symmetric(horizontal: 40.w),
               child: Row(

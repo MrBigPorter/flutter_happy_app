@@ -31,6 +31,7 @@ class _GroupMemberSelectPageState extends ConsumerState<GroupMemberSelectPage> {
   String _searchKeyword = "";
   final TextEditingController _searchController = TextEditingController();
 
+  // Flag to check if we are inviting to an existing group or creating a new one
   bool get isInviteMode => widget.existingGroupId != null;
 
   @override
@@ -45,7 +46,7 @@ class _GroupMemberSelectPageState extends ConsumerState<GroupMemberSelectPage> {
   Widget build(BuildContext context) {
     final contactState = ref.watch(contactListProvider);
 
-    // 状态监听保持不变
+    // Monitor loading state based on current operation mode
     final bool isLoading = isInviteMode
         ? ref.watch(chatGroupProvider(widget.existingGroupId!)).isLoading
         : ref.watch(groupCreateControllerProvider).isLoading;
@@ -56,13 +57,14 @@ class _GroupMemberSelectPageState extends ConsumerState<GroupMemberSelectPage> {
       body: Column(
         children: [
           _buildSearchBar(context),
+          // Show selected members horizontal list if any
           if (_selectedIds.isNotEmpty) _buildSelectedList(context, contactState),
           Expanded(
             child: contactState.when(
               loading: () => _buildSkeletonList(context),
               error: (err, _) => Center(child: Text("Load failed: $err")),
               data: (friends) {
-                // 客户端搜索过滤
+                // Client-side filtering for nickname
                 final filtered = friends.where((f) =>
                     f.nickname.toLowerCase().contains(_searchKeyword.toLowerCase())).toList();
 
@@ -80,7 +82,7 @@ class _GroupMemberSelectPageState extends ConsumerState<GroupMemberSelectPage> {
     );
   }
 
-  // --- 模块化 UI 组件 ---
+  // --- Modular UI Components ---
 
   PreferredSizeWidget _buildAppBar(BuildContext context, bool isLoading) {
     return AppBar(
@@ -132,6 +134,7 @@ class _GroupMemberSelectPageState extends ConsumerState<GroupMemberSelectPage> {
     );
   }
 
+  /// Builds horizontal list of selected avatars for quick review/removal
   Widget _buildSelectedList(BuildContext context, AsyncValue<List<dynamic>> contactState) {
     return contactState.maybeWhen(
       data: (friends) {
@@ -175,6 +178,7 @@ class _GroupMemberSelectPageState extends ConsumerState<GroupMemberSelectPage> {
     );
   }
 
+  /// Individual member row with selection state
   Widget _buildMemberItem(BuildContext context, dynamic user) {
     final isSelected = _selectedIds.contains(user.id);
     return InkWell(
@@ -188,7 +192,7 @@ class _GroupMemberSelectPageState extends ConsumerState<GroupMemberSelectPage> {
         padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 10.h),
         child: Row(
           children: [
-            // 自定义勾选框
+            // Custom circular checkbox indicating selection state
             Container(
               width: 22.r, height: 22.r,
               decoration: BoxDecoration(
@@ -225,7 +229,7 @@ class _GroupMemberSelectPageState extends ConsumerState<GroupMemberSelectPage> {
     );
   }
 
-  // --- 业务逻辑保持不变 ---
+  // --- Business Logic ---
 
   void _handleDoneAction() {
     if (isInviteMode) _executeInvite();
@@ -257,6 +261,7 @@ class _GroupMemberSelectPageState extends ConsumerState<GroupMemberSelectPage> {
     }
   }
 
+  /// Prompt for group name before finalizing group creation
   void _showGroupNameDialog() {
     final TextEditingController nameController = TextEditingController();
     RadixModal.show(
@@ -285,6 +290,7 @@ class _GroupMemberSelectPageState extends ConsumerState<GroupMemberSelectPage> {
     );
   }
 
+  /// Loading state visualization using skeleton widgets
   Widget _buildSkeletonList(BuildContext context) {
     return ListView.builder(
       itemCount: 10,
