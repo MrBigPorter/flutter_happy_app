@@ -12,19 +12,20 @@ class ImageMsgBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // 列表页显示的宽度
+    // Fixed width for the image bubble in the chat list
     const double bubbleWidth = 240;
     final Map<String, dynamic> meta = message.meta ?? {};
-    //  2. 计算宽高比：防止图片加载前高度为 0 导致列表抖动
+
+    // Calculate aspect ratio: prevents list jumping by reserving space before image loads
     final double w = (meta['w'] ?? meta['width'] ?? 1.0).toDouble();
     final double h = (meta['h'] ?? meta['height'] ?? 1.0).toDouble();
-    final double aspectRatio = (w / h).clamp(0.5, 2.0); // 限制比例，防止长图太长
+    final double aspectRatio = (w / h).clamp(0.5, 2.0); // Clamping ratio to avoid excessively long images
 
     final timeStr = DateFormat('HH:mm').format(
       DateTime.fromMillisecondsSinceEpoch(message.createdAt),
     );
 
-    // 逻辑：优先用 localPath，但如果 AppImage 发现文件不在了，它会自动处理
+    // Logic: Prioritize localPath; AppImage handles fallbacks automatically if the file is missing
     final source = message.localPath ?? message.content;
 
     return GestureDetector(
@@ -40,24 +41,24 @@ class ImageMsgBubble extends StatelessWidget {
           borderRadius: BorderRadius.circular(12),
           child: Stack(
             children: [
-              // 图片显示
+              // Image Display
               Hero(
                 tag: 'img_${message.id}',
                 child: AppCachedImage(
                   source,
-                  width: bubbleWidth, //  4. 显式传宽，配合 Preloader
-                  height: bubbleWidth / aspectRatio, // 显式传高
+                  width: bubbleWidth, // Explicit width for the Preloader
+                  height: bubbleWidth / aspectRatio, // Explicit height
                   fit: BoxFit.cover,
 
-                  //  传这些是为了防闪烁和占位
+                  // Passing metadata to prevent flickering and provide placeholders
                   previewBytes: message.previewBytes,
                   metadata: meta,
 
-                  enablePreview: false, // 点击由外层接管
+                  enablePreview: false, // Preview is handled manually by the outer GestureDetector
                 ),
               ),
 
-              // 发送中 Loading
+              // Sending state: Loading overlay
               if (message.status == MessageStatus.sending)
                 Positioned.fill(
                   child: Container(
@@ -68,7 +69,7 @@ class ImageMsgBubble extends StatelessWidget {
                   ),
                 ),
 
-              // 失败图标
+              // Failure state: Error icon overlay
               if (message.status == MessageStatus.failed)
                 Positioned.fill(
                   child: Container(
@@ -79,7 +80,7 @@ class ImageMsgBubble extends StatelessWidget {
                   ),
                 ),
 
-              // 时间
+              // Timestamp tag (Bottom right)
               Positioned(
                 right: 6, bottom: 6,
                 child: Container(
@@ -102,7 +103,7 @@ class ImageMsgBubble extends StatelessWidget {
   }
 
   void _openPreview(BuildContext context, String source) {
-    // 计算远程 URL 备用（万一本地路径坏了，预览页也能加载）
+    // Resolve remote URL as fallback in case the local path is inaccessible during preview
     final remoteUrl = UrlResolver.resolveImage(context, message.content);
 
     Navigator.push(
@@ -112,9 +113,9 @@ class ImageMsgBubble extends StatelessWidget {
         barrierColor: Colors.black,
         pageBuilder: (_, __, ___) => PhotoPreviewPage(
           heroTag: 'img_${message.id}',
-          imageSource: source, // 这里传列表当前的 source，保证 Hero 动画连贯
-          cachedThumbnailUrl: remoteUrl, // 告诉预览页真正的远程地址
-          previewBytes: message.previewBytes, // 传内存小图，用于大图加载前的模糊过渡
+          imageSource: source, // Pass current source to ensure Hero animation continuity
+          cachedThumbnailUrl: remoteUrl, // Provide the actual remote address to the preview page
+          previewBytes: message.previewBytes, // Pass in-memory small image for blurred transition
           metadata: message.meta,
         ),
       ),

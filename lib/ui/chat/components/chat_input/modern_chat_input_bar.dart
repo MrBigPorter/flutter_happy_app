@@ -12,9 +12,10 @@ class ModernChatInputBar extends StatefulWidget {
   final Function(XFile) onSendImage;
   final Function(XFile) onSendVideo;
   final Function(String, int) onSendVoice;
-  //  新增回调：告诉父组件状态变了
-  final VoidCallback onAddPressed; // 点了加号
-  final VoidCallback onTextFieldTap; // 点了输入框
+
+  // Callback to notify parent component of state changes
+  final VoidCallback onAddPressed; // Triggered when the "+" button is pressed
+  final VoidCallback onTextFieldTap; // Triggered when the input field is tapped
 
 
   const ModernChatInputBar({
@@ -73,74 +74,74 @@ class _ModernChatInputBarState extends State<ModernChatInputBar> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: BoxDecoration(
-        color: context.bgPrimary,
-        border: Border(top: BorderSide(color: Colors.grey.withOpacity(0.1))),
-      ),
-      child: SafeArea(
-        top: false,
-        bottom: true,
-        child: Padding(
-          padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 8.h),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              // === 左侧按钮区 (精简版) ===
-              AnimatedOpacity(
-                duration: const Duration(milliseconds: 200),
-                opacity: _isRecording ? 0.0 : 1.0,
-                child: Row(
-                  children: [
-                    // 1. 语音/键盘切换
-                    _buildActionBtn(
-                      _isVoiceMode ? Icons.keyboard : Icons.voice_chat_outlined, // 换了个更现代的图标
-                      onTap: () {
-                        setState(() {
-                          _isVoiceMode = !_isVoiceMode;
-                          // 切到语音时收起键盘
-                          if (_isVoiceMode) FocusScope.of(context).unfocus();
-                        });
-                      },
-                    ),
-
-                    // 2. 全能菜单入口 (+)
-                    // 这里删掉了原来的 camera/image/video 按钮，统一收纳
-                    _buildActionBtn(
-                      Icons.add_circle_outline, // 空心圆加号
-                      onTap: widget.onAddPressed, //  核心：点击加号，通知父组件展开面板
-                    ),
-                  ],
-                ),
-              ),
-
-              SizedBox(width: 4.w),
-
-              // === 中间输入区 ===
-              Expanded(
-                child: _isVoiceMode
-                    ? VoiceRecordButton(
-                  conversationId: widget.conversationId,
-                  onRecordingChange: (recording) {
-                    setState(() => _isRecording = recording);
-                  },
-                  onVoiceSent: widget.onSendVoice,
-                )
-                    : _buildTextField(),
-              ),
-
-              SizedBox(width: 8.w),
-
-              // === 右侧发送区 ===
-              AnimatedSwitcher(
-                duration: const Duration(milliseconds: 200),
-                child: _isRecording
-                    ? const SizedBox.shrink()
-                    : _buildRightButton(),
-              ),
-            ],
-          ),
+        decoration: BoxDecoration(
+          color: context.bgPrimary,
+          border: Border(top: BorderSide(color: Colors.grey.withOpacity(0.1))),
         ),
-      )
+        child: SafeArea(
+          top: false,
+          bottom: true,
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 8.h),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                // === Left Action Area (Streamlined) ===
+                AnimatedOpacity(
+                  duration: const Duration(milliseconds: 200),
+                  opacity: _isRecording ? 0.0 : 1.0,
+                  child: Row(
+                    children: [
+                      // 1. Voice/Keyboard Toggle
+                      _buildActionBtn(
+                        _isVoiceMode ? Icons.keyboard : Icons.voice_chat_outlined,
+                        onTap: () {
+                          setState(() {
+                            _isVoiceMode = !_isVoiceMode;
+                            // Dismiss keyboard when switching to voice mode
+                            if (_isVoiceMode) FocusScope.of(context).unfocus();
+                          });
+                        },
+                      ),
+
+                      // 2. All-in-one Menu Entrance (+)
+                      // Replaced individual camera/image/video buttons with a unified panel
+                      _buildActionBtn(
+                        Icons.add_circle_outline,
+                        onTap: widget.onAddPressed, // Notify parent to expand action panel
+                      ),
+                    ],
+                  ),
+                ),
+
+                SizedBox(width: 4.w),
+
+                // === Middle Input Area ===
+                Expanded(
+                  child: _isVoiceMode
+                      ? VoiceRecordButton(
+                    conversationId: widget.conversationId,
+                    onRecordingChange: (recording) {
+                      setState(() => _isRecording = recording);
+                    },
+                    onVoiceSent: widget.onSendVoice,
+                  )
+                      : _buildTextField(),
+                ),
+
+                SizedBox(width: 8.w),
+
+                // === Right Action Area ===
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 200),
+                  child: _isRecording
+                      ? const SizedBox.shrink()
+                      : _buildRightButton(),
+                ),
+              ],
+            ),
+          ),
+        )
     );
   }
 
@@ -148,13 +149,13 @@ class _ModernChatInputBarState extends State<ModernChatInputBar> {
     return Container(
       constraints: const BoxConstraints(maxHeight: 100),
       decoration: BoxDecoration(
-        color: context.bgSecondary, // 输入框白底
+        color: context.bgSecondary,
         borderRadius: BorderRadius.circular(20),
       ),
       child: TextField(
         controller: _controller,
-        onTap: widget.onTextFieldTap, //  核心：点击输入框时，通知父组件收起面板
-        maxLines: null, // 自动增高
+        onTap: widget.onTextFieldTap, // Notify parent to collapse external panels
+        maxLines: null, // Auto-expanding height
         textCapitalization: TextCapitalization.sentences,
         style: TextStyle(color: context.textPrimary900, fontSize: 16.sp),
         cursorColor: context.textBrandPrimary900,
@@ -173,12 +174,12 @@ class _ModernChatInputBarState extends State<ModernChatInputBar> {
   }
 
   Widget _buildActionBtn(IconData icon, {VoidCallback? onTap}) {
-    final color = context.textPrimary900; // 使用主文字色，更沉稳
+    final color = context.textPrimary900;
     return Container(
-      margin: EdgeInsets.only(right: 4.w), // 稍微拉开点间距
+      margin: EdgeInsets.only(right: 4.w),
       child: IconButton(
         onPressed: onTap ?? () {},
-        icon: Icon(icon, color: color, size: 28.sp), // 图标稍微调大
+        icon: Icon(icon, color: color, size: 28.sp),
         padding: EdgeInsets.all(4.w),
         constraints: const BoxConstraints(),
         style: const ButtonStyle(

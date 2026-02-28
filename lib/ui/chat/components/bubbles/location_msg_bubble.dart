@@ -1,5 +1,6 @@
+import 'dart:async';
 import 'dart:io';
-import 'dart:typed_data'; //  引入这个用于 Uint8List
+import 'dart:typed_data';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:dio/dio.dart';
@@ -11,15 +12,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:intl/intl.dart';
 
-import 'package:flutter_app/core/api/http_client.dart'; // 确保引入 Http 类
+import 'package:flutter_app/core/api/http_client.dart';
 import 'package:flutter_app/ui/chat/models/chat_ui_model.dart';
 import 'package:flutter_app/utils/media/url_resolver.dart';
 import 'package:flutter_app/ui/chat/services/media/map_launcher_service.dart';
 
 import '../../../../core/store/auth/auth_provider.dart';
 
-//  1. 改动：从 ConsumerWidget 改为 ConsumerStatefulWidget
-// 只有有状态组件才能缓存 Future，防止 build 循环重绘
 class LocationMsgBubble extends ConsumerStatefulWidget {
   final ChatUiModel message;
 
@@ -29,28 +28,27 @@ class LocationMsgBubble extends ConsumerStatefulWidget {
   ConsumerState<LocationMsgBubble> createState() => _LocationMsgBubbleState();
 }
 
-//  2. 改动：混入 AutomaticKeepAliveClientMixin
-// 这能保证列表滚动出屏幕外再滚回来时，图片不会重新加载，进一步节省流量
+// AutomaticKeepAliveClientMixin ensures the map snapshot is preserved when
+// scrolling out of view, reducing redundant network requests.
 class _LocationMsgBubbleState extends ConsumerState<LocationMsgBubble> with AutomaticKeepAliveClientMixin {
 
-  //  3. 新增：定义一个变量来缓存 Web 端的请求任务
-  // 一旦赋值，除非组件销毁，否则不会再次执行网络请求
+  // Cache the Future for Web platform requests to prevent re-fetching during widget rebuilds.
   Future<Uint8List?>? _mapSnapshotFuture;
 
   @override
-  bool get wantKeepAlive => true; // 保持状态不被回收
+  bool get wantKeepAlive => true;
 
-  ///  Web 端获取图片二进制数据的辅助方法 (移到了 State 内部)
+  /// Helper method for fetching raw image bytes on Web platform.
   Future<Uint8List?> _webFetchMapImage(String url, String token) async {
     if (token.isEmpty) return null;
     try {
-      // 使用 rawDio (跳过全局拦截器，防止它去解析 JSON)
+      // Use rawDio to skip global interceptors and handle binary response type directly.
       final response = await Http.rawDio.get(
         url,
         options: Options(
-          responseType: ResponseType.bytes, // 告诉它我要二进制
+          responseType: ResponseType.bytes,
           headers: {
-            "Authorization": "Bearer $token", // 手动带 Token
+            "Authorization": "Bearer $token",
           },
         ),
       );
@@ -59,16 +57,15 @@ class _LocationMsgBubbleState extends ConsumerState<LocationMsgBubble> with Auto
         return Uint8List.fromList(response.data);
       }
     } catch (e) {
-      debugPrint("Web Map Load Error: $e");
+      debugPrint("[LocationBubble] Web Map Load Error: $e");
     }
     return null;
   }
 
   @override
   Widget build(BuildContext context) {
-    super.build(context); //  KeepAlive 必须调用
+    super.build(context);
 
-    // 监听 Token
     final String? token = ref.watch(authProvider.select((s) => s.accessToken));
 
     final double? lat = widget.message.latitude;
@@ -76,8 +73,7 @@ class _LocationMsgBubbleState extends ConsumerState<LocationMsgBubble> with Auto
     final String address = widget.message.address ?? "Unknown Address";
     final String? title = widget.message.locationTitle;
 
-    //  4. 关键逻辑：懒加载初始化 Future
-    // 条件：是Web端 + 还没请求过(_mapSnapshotFuture为空) + 有经纬度 + 有Token
+    // Lazy-load initialization for Web map snapshot.
     if (kIsWeb &&
         _mapSnapshotFuture == null &&
         lat != null &&
@@ -85,7 +81,6 @@ class _LocationMsgBubbleState extends ConsumerState<LocationMsgBubble> with Auto
         token != null &&
         token.isNotEmpty) {
       final String mapUrl = UrlResolver.getStaticMapUrl(lat, lng);
-      // 将请求赋给变量，下次 build 时直接用这个变量，不会再次发起请求
       _mapSnapshotFuture = _webFetchMapImage(mapUrl, token);
     }
 
@@ -109,10 +104,10 @@ class _LocationMsgBubbleState extends ConsumerState<LocationMsgBubble> with Auto
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              // 地图预览
+              // Map Preview Section
               _buildMapPreview(context, lat, lng, bubbleWidth, token ?? ""),
 
-              // 地址信息
+              // Address and Title Information
               Padding(
                 padding: EdgeInsets.fromLTRB(10.w, 8.h, 10.w, 4.h),
                 child: Column(
@@ -154,7 +149,7 @@ class _LocationMsgBubbleState extends ConsumerState<LocationMsgBubble> with Auto
     );
   }
 
-  /// 构建地图预览
+  /// Builds the map snapshot preview area.
   Widget _buildMapPreview(
       BuildContext context,
       double? lat,
@@ -164,7 +159,7 @@ class _LocationMsgBubbleState extends ConsumerState<LocationMsgBubble> with Auto
       ) {
     final double imageHeight = 120.h;
 
-    // 状态 1: 数据缺失
+    // State 1: Incomplete location data
     if (lat == null || lng == null) {
       return _buildPlaceholder(
         width,
@@ -173,17 +168,15 @@ class _LocationMsgBubbleState extends ConsumerState<LocationMsgBubble> with Auto
       );
     }
 
-    // 状态 2: Web 端逻辑
+    // State 2: Web platform specific rendering
     if (kIsWeb) {
-      //  5. 改动：FutureBuilder 使用缓存的 _mapSnapshotFuture
-      // 这里的 future 不再是函数调用，而是一个固定的变量
       return ClipRRect(
         borderRadius: BorderRadius.vertical(top: Radius.circular(11.r)),
         child: SizedBox(
           width: width,
           height: imageHeight,
           child: FutureBuilder<Uint8List?>(
-            future: _mapSnapshotFuture, //  正确用法
+            future: _mapSnapshotFuture,
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return Container(
@@ -195,10 +188,9 @@ class _LocationMsgBubbleState extends ConsumerState<LocationMsgBubble> with Auto
                 return Image.memory(
                   snapshot.data!,
                   fit: BoxFit.cover,
-                  gaplessPlayback: true, // 防止重新加载时闪烁
+                  gaplessPlayback: true,
                 );
               }
-              // 加载失败或无数据
               return _buildPlaceholder(width, height: imageHeight, icon: Icons.map_outlined);
             },
           ),
@@ -206,10 +198,10 @@ class _LocationMsgBubbleState extends ConsumerState<LocationMsgBubble> with Auto
       );
     }
 
-    // 状态 3: Native 端逻辑 (保持不变)
-    final String? localPath = widget.message.resolvedThumbPath; // 注意用了 widget.message
+    // State 3: Native platform logic with local caching
+    final String? localPath = widget.message.resolvedThumbPath;
 
-    // 优先检查本地文件
+    // Prioritize local file existence for faster rendering and offline support
     if (localPath != null &&
         localPath.isNotEmpty &&
         !localPath.startsWith('http')) {
@@ -231,7 +223,7 @@ class _LocationMsgBubbleState extends ConsumerState<LocationMsgBubble> with Auto
       }
     }
 
-    // Token 缺失检查
+    // Security check for missing authorization token
     if (token.isEmpty) {
       return _buildPlaceholder(
         width,
@@ -240,7 +232,7 @@ class _LocationMsgBubbleState extends ConsumerState<LocationMsgBubble> with Auto
       );
     }
 
-    // 正常网络请求 (Native)
+    // Standard remote map snapshot request for Native
     final String mapUrl = UrlResolver.getStaticMapUrl(lat, lng);
     return ClipRRect(
       borderRadius: BorderRadius.vertical(top: Radius.circular(11.r)),

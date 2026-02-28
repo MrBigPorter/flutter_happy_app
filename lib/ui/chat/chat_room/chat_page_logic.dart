@@ -8,13 +8,15 @@ mixin ChatPageLogic on ConsumerState<ChatPage> {
     scrollController.dispose();
   }
 
-  // --- 交互逻辑 ---
+  // --- Interaction Logic ---
+
   void togglePanel() {
     if (isPanelOpen) {
       setState(() => isPanelOpen = false);
       FocusScope.of(context).requestFocus();
     } else {
       FocusScope.of(context).unfocus();
+      // Brief delay to ensure the keyboard is dismissed before expanding the panel
       Future.delayed(const Duration(milliseconds: 100), () {
         if (mounted) setState(() => isPanelOpen = true);
       });
@@ -28,6 +30,7 @@ mixin ChatPageLogic on ConsumerState<ChatPage> {
   }
 
   Future<bool> onWillPop() async {
+    // Intercept back button if the action panel is open
     if (isPanelOpen) {
       setState(() => isPanelOpen = false);
       return false;
@@ -35,7 +38,8 @@ mixin ChatPageLogic on ConsumerState<ChatPage> {
     return true;
   }
 
-  // --- 权限检查 ---
+  // --- Permission Checks ---
+
   ({bool canSend, String reason}) checkPermission(
       ConversationDetail? detail,
       bool isGroup,
@@ -58,18 +62,18 @@ mixin ChatPageLogic on ConsumerState<ChatPage> {
   }
 
   // ======================================================
-  //  [核心新增] 消息长按菜单与转发逻辑
+  // Message Actions: Long Press Menu & Forwarding
   // ======================================================
 
   void onMessageLongPress(BuildContext context, ChatUiModel message) {
-    HapticFeedback.mediumImpact(); // 震动反馈
+    HapticFeedback.mediumImpact(); // Haptic feedback for tactile response
 
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
       builder: (ctx) => ChatActionSheet(
         actions: [
-          // 1. 转发
+          // 1. Forward Message
           ActionItem(
             label: "Forward",
             icon: Icons.forward,
@@ -79,7 +83,7 @@ mixin ChatPageLogic on ConsumerState<ChatPage> {
             },
           ),
 
-          // 2. 复制 (仅文本)
+          // 2. Copy (Text messages only)
           if (message.type == MessageType.text)
             ActionItem(
               label: "Copy",
@@ -91,7 +95,7 @@ mixin ChatPageLogic on ConsumerState<ChatPage> {
               },
             ),
 
-          // 3. 撤回 (2分钟内 & 是自己)
+          // 3. Recall (Allowed for own messages within 2-minute window)
           if (message.isMe && message.canRecall)
             ActionItem(
               label: "Recall",
@@ -103,7 +107,7 @@ mixin ChatPageLogic on ConsumerState<ChatPage> {
               },
             ),
 
-          // 4. 删除 (本地)
+          // 4. Delete (Local deletion)
           ActionItem(
             label: "Delete",
             icon: Icons.delete_outline,
@@ -118,9 +122,9 @@ mixin ChatPageLogic on ConsumerState<ChatPage> {
     );
   }
 
-  // 转发处理流程
+  // Forwarding workflow: Select target -> Confirm -> Execute
   void _handleForward(ChatUiModel message) async {
-    // 1. 跳转通用选人页面
+    // 1. Navigate to contact/group selector
     final targets = await context.push<List<SelectionEntity>>(
       '/contact/selector',
       extra: ContactSelectionArgs(
@@ -131,14 +135,13 @@ mixin ChatPageLogic on ConsumerState<ChatPage> {
     );
 
     if (targets == null || targets.isEmpty) return;
-    // 改动 1: 拼接所有人的名字用于展示
+
+    // Format target names for the confirmation dialog
     final names = targets.map((t) => t.name).join(", ");
     final displayName = names.length > 30 ? "${names.substring(0, 30)}..." : names;
     final countText = targets.length > 1 ? "(${targets.length})" : "";
 
-    final target = targets.first;
-
-    // 2. 二次确认弹窗
+    // 2. Secondary confirmation modal
     if (!mounted) return;
     RadixModal.show(
       title: "Confirm Forward",
@@ -149,7 +152,6 @@ mixin ChatPageLogic on ConsumerState<ChatPage> {
           children: [
             Text("Forward message to:", style: TextStyle(color: Colors.grey[600])),
             SizedBox(height: 8.h),
-            // 显示多人名字
             Text(
               "$displayName $countText",
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16.sp),
@@ -164,7 +166,7 @@ mixin ChatPageLogic on ConsumerState<ChatPage> {
       onConfirm: (close) async {
         close();
 
-        // 3. 调用 Service 发送
+        // 3. Execute forwarding via Action Service
         try {
           RadixToast.showLoading(message: "Sending...");
 
@@ -181,7 +183,8 @@ mixin ChatPageLogic on ConsumerState<ChatPage> {
     );
   }
 
-  // --- 发送逻辑 (保持不变) ---
+  // --- Sending Logic ---
+
   void handleSendText(String text) {
     ref.read(chatActionServiceProvider(widget.conversationId)).sendText(text);
   }
@@ -233,7 +236,7 @@ mixin ChatPageLogic on ConsumerState<ChatPage> {
         );
       }
     } catch (e) {
-      debugPrint("Location error: $e");
+      debugPrint("[ChatPageLogic] Location error: $e");
     }
   }
 
@@ -241,7 +244,7 @@ mixin ChatPageLogic on ConsumerState<ChatPage> {
     RadixModal.show(
         title: 'Announcement',
         confirmText: 'Got it',
-        builder: (ctx,close) => SingleChildScrollView(
+        builder: (ctx, close) => SingleChildScrollView(
           child: Text(text, style: TextStyle(fontSize: 15.sp, height: 1.5)),
         )
     );

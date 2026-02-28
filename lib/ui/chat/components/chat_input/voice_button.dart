@@ -8,7 +8,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-// 移除对 controller 的直接依赖，改为回调
 import '../../services/voice/voice_recorder_service.dart';
 import 'recording_overlay.dart';
 
@@ -16,14 +15,14 @@ class VoiceRecordButton extends ConsumerStatefulWidget {
   final String conversationId;
   final ValueChanged<bool>? onRecordingChange;
 
-  //  新增：发送回调，将文件路径和时长交还给父组件
+  // Callback to return the recorded file path and duration to the parent component
   final Function(String path, int duration)? onVoiceSent;
 
   const VoiceRecordButton({
     super.key,
     required this.conversationId,
     this.onRecordingChange,
-    this.onVoiceSent, // 接收回调
+    this.onVoiceSent,
   });
 
   @override
@@ -56,7 +55,7 @@ class _VoiceRecordButtonState extends ConsumerState<VoiceRecordButton> {
   }
 
   // ===========================================================================
-  //  Action Logic
+  // Action Logic
   // ===========================================================================
 
   Future<void> _startRecording() async {
@@ -64,7 +63,7 @@ class _VoiceRecordButtonState extends ConsumerState<VoiceRecordButton> {
     if (!hasPermission) return;
 
     if (!kIsWeb && !_isPressing) {
-      debugPrint(" User released too fast, abort recording start.");
+      debugPrint("[VoiceButton] User released too fast, aborting recording start.");
       return;
     }
 
@@ -89,7 +88,7 @@ class _VoiceRecordButtonState extends ConsumerState<VoiceRecordButton> {
       await VoiceRecorderService().start();
       if (!kIsWeb) HapticFeedback.mediumImpact();
     } catch (e) {
-      debugPrint("❌ Start Record Failed: $e");
+      debugPrint("[VoiceButton] Start recording failed: $e");
       _stopRecording(forceDiscard: true);
     }
   }
@@ -112,20 +111,20 @@ class _VoiceRecordButtonState extends ConsumerState<VoiceRecordButton> {
       path = path.replaceFirst('file://', '');
     }
 
-    // 校验：强行取消 / 在取消区域 / 路径为空 / 时长太短
+    // Validation: Forced discard / In cancel area / Empty path / Duration too short
     if (forceDiscard || _isCancelArea || path == null || (duration ?? 0) < 1) {
-      debugPrint(" Recording discarded. (Cancel=$_isCancelArea, Duration=$duration)");
+      debugPrint("[VoiceButton] Recording discarded. (Cancel=$_isCancelArea, Duration=$duration)");
       return;
     }
 
-    //  核心修改：通过回调将结果传给父组件 (ModernChatInputBar)
+    // Forward the result to the parent component (e.g., ModernChatInputBar) via callback
     if (mounted && widget.onVoiceSent != null) {
       widget.onVoiceSent!(path, duration ?? 0);
     }
   }
 
   // ===========================================================================
-  //  Overlay Logic (保持不变)
+  // Overlay Logic
   // ===========================================================================
 
   void _showOverlay() {
@@ -149,7 +148,7 @@ class _VoiceRecordButtonState extends ConsumerState<VoiceRecordButton> {
   }
 
   // ===========================================================================
-  //  UI Build (保持不变)
+  // UI Build
   // ===========================================================================
 
   @override
@@ -164,7 +163,7 @@ class _VoiceRecordButtonState extends ConsumerState<VoiceRecordButton> {
       onLongPressMoveUpdate: kIsWeb
           ? null
           : (details) {
-        // 上滑 50 像素触发取消
+        // Trigger cancel if dragged upwards by 50 pixels
         final offset = details.localPosition.dy;
         final isCancel = offset < -50;
         if (_isCancelArea != isCancel) {

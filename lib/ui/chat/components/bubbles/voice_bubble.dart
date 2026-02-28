@@ -6,9 +6,9 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:just_audio/just_audio.dart';
 import '../../services/voice/audio_player_manager.dart';
 
-// CHANGED: 引入统一路径判断工具
+// Unified path utility for platform-specific path checking
 import 'package:flutter_app/utils/media/media_path.dart';
-//  CHANGED: 用现有 UrlResolver 把 uploads/ 相对 key 转成可播放的远端 URL
+// URL resolver to convert relative keys into playable remote URLs
 import 'package:flutter_app/utils/media/url_resolver.dart';
 
 class VoiceBubble extends StatefulWidget {
@@ -24,7 +24,7 @@ class VoiceBubble extends StatefulWidget {
 class _VoiceBubbleState extends State<VoiceBubble> {
   final _playerManager = AudioPlayerManager();
 
-  // 存储波形高度
+  // Stores random heights for the static waveform visualization
   late List<double> _waveformHeights;
   final int _barCount = 12;
 
@@ -35,16 +35,15 @@ class _VoiceBubbleState extends State<VoiceBubble> {
   }
 
   void _generateStaticWaveform() {
-    // 保持确定性随机，保证同一个消息的波形永远长得一样
+    // Seed random with message ID hash to ensure consistent waveform for the same message
     final random = Random(widget.message.id.hashCode);
     _waveformHeights = List.generate(_barCount, (_) {
       return 0.3 + (random.nextDouble() * 0.7);
     });
   }
 
-  //  CHANGED: 统一“音频源”选择与归一化（本地优先、远端补全域名）
+  // Resolves and normalizes the audio source (Local priority -> Remote fallback)
   String _pickAudioSource() {
-    // 1) 候选顺序：resolvedPath > localPath > content
     final candidates = <String?>[
       widget.message.resolvedPath,
       widget.message.localPath,
@@ -57,25 +56,23 @@ class _VoiceBubbleState extends State<VoiceBubble> {
 
       final t = MediaPath.classify(raw);
 
-      // 本地：直接用
+      // Local or file URI: Use directly
       if (t == MediaPathType.localAbs || t == MediaPathType.fileUri) {
         return raw;
       }
 
-      // blob：直接用（web 可能出现）
+      // Web Blob: Use directly (common in Web platforms)
       if (t == MediaPathType.blob) {
         return raw;
       }
 
-      // 远端：http / uploads / relative → 归一化成可播放 URL
+      // Remote: HTTP or relative path handled via UrlResolver
       if (t == MediaPathType.http) return raw;
 
       if (t == MediaPathType.uploads || t == MediaPathType.relative) {
-        // 语音通常不需要走 cdn-cgi/image，直接 resolveFile（走资源域名）
+        // Resolve file key into a full resource domain URL
         return UrlResolver.resolveFile(raw);
       }
-
-      // unknown：继续下一个
     }
 
     return '';
@@ -86,20 +83,19 @@ class _VoiceBubbleState extends State<VoiceBubble> {
     final double minWidth = 140.w;
     final double maxWidth = 0.65.sw;
     final int dbDuration = widget.message.duration ?? 0;
-    // 动态计算气泡宽度
+
+    // Dynamically calculate bubble width based on duration
     final double bubbleWidth = (minWidth + (dbDuration * 5.w)).clamp(minWidth, maxWidth);
 
-    //  CHANGED: 使用统一工具选择播放源
     final String audioSource = _pickAudioSource();
 
-    // --- 样式配置 ---
+    // --- Styling Configuration ---
     final Color bubbleBgColor = widget.isMe ? const Color(0xFF0084FF) : const Color(0xFFE4E6EB);
     final Color activeBarColor = widget.isMe ? Colors.white : Colors.black87;
     final Color inactiveBarColor = widget.isMe ? Colors.white.withOpacity(0.4) : Colors.grey[400]!;
     final Color iconColor = widget.isMe ? Colors.white : Colors.black;
 
-    //  性能优化：RepaintBoundary
-    // 播放时波形图会高频刷新，必须隔离，防止带动整个 ChatList 重绘
+    // RepaintBoundary isolates high-frequency waveform updates during playback
     return RepaintBoundary(
       child: StreamBuilder<PlayerState>(
         stream: _playerManager.playerStateStream,
@@ -109,14 +105,13 @@ class _VoiceBubbleState extends State<VoiceBubble> {
           final bool isPlaying = playerState?.playing ?? false;
           final bool isSelected = _playerManager.currentPlayingId == widget.message.id;
 
-          // Loading 状态：选中了当前 ID，且处于缓冲或加载中
+          // Loading state: Selected ID is currently buffering or loading
           final bool isLoading = isSelected &&
               (processingState == ProcessingState.loading || processingState == ProcessingState.buffering);
 
           return InkWell(
             onTap: () async {
               if (audioSource.isNotEmpty) {
-                // 播放操作是交互行为，允许异步 (IO)
                 await _playerManager.play(widget.message.id, audioSource);
               }
             },
@@ -130,7 +125,7 @@ class _VoiceBubbleState extends State<VoiceBubble> {
               ),
               child: Row(
                 children: [
-                  // === 左侧：播放按钮 ===
+                  // === Left: Playback Button ===
                   Container(
                     width: 28.w,
                     height: 28.w,
@@ -154,7 +149,7 @@ class _VoiceBubbleState extends State<VoiceBubble> {
 
                   SizedBox(width: 10.w),
 
-                  // === 中间：波形进度条 ===
+                  // === Middle: Waveform Progress Indicator ===
                   Expanded(
                     child: StreamBuilder<Duration?>(
                       stream: _playerManager.durationStream,
@@ -197,7 +192,7 @@ class _VoiceBubbleState extends State<VoiceBubble> {
 
                   SizedBox(width: 8.w),
 
-                  // === 右侧：时长文字 ===
+                  // === Right: Duration Label ===
                   Text(
                     _formatDuration(dbDuration),
                     style: TextStyle(

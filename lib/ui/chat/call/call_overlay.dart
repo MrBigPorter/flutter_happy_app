@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -7,7 +8,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import '../../../utils/overlay_manager.dart';
 import '../core/call_manager/call_state_machine.dart';
 import '../models/call_state_model.dart';
-// 引入新的状态机
+
 class CallOverlay extends ConsumerStatefulWidget {
   final bool isVideo;
   final String? targetAvatar;
@@ -27,14 +28,14 @@ class CallOverlay extends ConsumerStatefulWidget {
 class _CallOverlayState extends ConsumerState<CallOverlay> {
   @override
   Widget build(BuildContext context) {
-    // 1. 监听状态变化 (用于自动关闭)
+    // 1. Listen for state changes to trigger self-destruction when the call ends
     ref.listen(callStateMachineProvider, (previous, next) {
       if (next.status == CallStatus.ended) {
-        OverlayManager.instance.hide(); // 关掉自己
+        OverlayManager.instance.hide();
       }
     });
 
-    // 2. 核心：在这里监听状态！
+    // 2. Watch the call state machine for UI updates
     final state = ref.watch(callStateMachineProvider);
 
     final duration = state.duration;
@@ -55,7 +56,11 @@ class _CallOverlayState extends ConsumerState<CallOverlay> {
             borderRadius: BorderRadius.circular(12.r),
             border: Border.all(color: Colors.white24, width: 1),
             boxShadow: const [
-              BoxShadow(color: Colors.black45, blurRadius: 10, offset: Offset(0, 4)),
+              BoxShadow(
+                color: Colors.black45,
+                blurRadius: 10,
+                offset: Offset(0, 4),
+              ),
             ],
           ),
           child: ClipRRect(
@@ -69,12 +74,17 @@ class _CallOverlayState extends ConsumerState<CallOverlay> {
     );
   }
 
+  /// Build content for video call mode (Mini-Player)
   Widget _buildVideoContent(RTCVideoRenderer? renderer, String duration) {
     if (renderer != null && renderer.textureId != null) {
       return Stack(
         fit: StackFit.expand,
         children: [
-          RTCVideoView(renderer, objectFit: RTCVideoViewObjectFit.RTCVideoViewObjectFitCover, mirror: false),
+          RTCVideoView(
+            renderer,
+            objectFit: RTCVideoViewObjectFit.RTCVideoViewObjectFitCover,
+            mirror: false,
+          ),
           Positioned(
             bottom: 0, left: 0, right: 0,
             child: Container(
@@ -83,7 +93,11 @@ class _CallOverlayState extends ConsumerState<CallOverlay> {
               child: Text(
                 duration,
                 textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.white, fontSize: 10.sp, fontWeight: FontWeight.w500),
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 10.sp,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
             ),
           )
@@ -91,6 +105,7 @@ class _CallOverlayState extends ConsumerState<CallOverlay> {
       );
     }
 
+    // Fallback to avatar if video renderer is unavailable
     return Stack(
       fit: StackFit.expand,
       children: [
@@ -101,7 +116,10 @@ class _CallOverlayState extends ConsumerState<CallOverlay> {
             errorWidget: (context, url, error) => Container(color: Colors.grey[800]),
           )
         else
-          Container(color: Colors.grey[800], child: const Icon(Icons.person, color: Colors.white)),
+          Container(
+            color: Colors.grey[800],
+            child: const Icon(Icons.person, color: Colors.white),
+          ),
 
         Positioned(
           bottom: 10, left: 0, right: 0,
@@ -115,9 +133,10 @@ class _CallOverlayState extends ConsumerState<CallOverlay> {
     );
   }
 
+  /// Build content for audio call mode
   Widget _buildAudioContent(String duration) {
     return Container(
-      color: const Color(0xFF4CD964),
+      color: const Color(0xFF4CD964), // iOS-style green for active calls
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
@@ -125,10 +144,18 @@ class _CallOverlayState extends ConsumerState<CallOverlay> {
           SizedBox(height: 8.h),
           Text(
             duration,
-            style: TextStyle(color: Colors.white, fontSize: 14.sp, fontWeight: FontWeight.bold, fontFeatures: const [FontFeature.tabularFigures()]),
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 14.sp,
+              fontWeight: FontWeight.bold,
+              fontFeatures: const [FontFeature.tabularFigures()],
+            ),
           ),
           SizedBox(height: 4.h),
-          Text("Tap to return", style: TextStyle(color: Colors.white70, fontSize: 8.sp)),
+          Text(
+            "Tap to return",
+            style: TextStyle(color: Colors.white70, fontSize: 8.sp),
+          ),
         ],
       ),
     );

@@ -1,6 +1,6 @@
 part of 'chat_page.dart';
 
-// --- 组件：公告栏 ---
+// --- Component: Announcement Bar ---
 class ChatAnnouncementBar extends StatelessWidget {
   final String text;
   final VoidCallback? onTap;
@@ -55,22 +55,21 @@ class ChatAnnouncementBar extends StatelessWidget {
   }
 }
 
-// --- 组件：AppBar 构建方法 ---
-// 注意：这是 top-level 函数，因为它是 part of chat_page.dart，所以可以访问 import
+// --- Helper: AppBar Construction Method ---
 PreferredSizeWidget _buildAppBar(
-  BuildContext context,
-  ConversationDetail? detail,
-  bool isGroup,
+    BuildContext context,
+    ConversationDetail? detail,
+    bool isGroup,
     WidgetRef ref,
-) {
-
-  // 1. 获取当前用户 ID
+    ) {
+  // 1. Retrieve current user ID
   final myUserId = ref.read(userProvider)?.id;
-  //2. 直接调用 Model 的方法获取 TargetId
-  // 即使 detail 为 null，不会崩
+
+  // 2. Fetch TargetId directly using the Model method
+  // Safe to call even if detail is null
   final targetUserId = detail?.getTargetId(myUserId);
 
-  // 3. 标题和头像
+  // 3. Title and Avatar configuration
   final displayName = detail?.getDisplayName(myUserId) ?? "Chat";
   final displayAvatar = detail?.getDisplayAvatar(myUserId);
 
@@ -88,7 +87,7 @@ PreferredSizeWidget _buildAppBar(
         size: 22.sp,
       ),
       onPressed: () =>
-          context.canPop() ? context.pop() : context.go('/conversations'),
+      context.canPop() ? context.pop() : context.go('/conversations'),
     ),
     title: Row(
       children: [
@@ -97,12 +96,12 @@ PreferredSizeWidget _buildAppBar(
           backgroundColor: Colors.grey[200],
           backgroundImage: detail?.avatar != null
               ? CachedNetworkImageProvider(
-                  UrlResolver.resolveImage(
-                    context,
-                    displayAvatar,
-                    logicalWidth: 36,
-                  ),
-                )
+            UrlResolver.resolveImage(
+              context,
+              displayAvatar,
+              logicalWidth: 36,
+            ),
+          )
               : null,
           child: detail?.avatar == null
               ? Icon(Icons.person, color: context.textSecondary700, size: 20.sp)
@@ -128,20 +127,19 @@ PreferredSizeWidget _buildAppBar(
       ],
     ),
     actions: [
-      //  1. 视频通话按钮
+      // 1. Video Call Button
       IconButton(
         icon: Icon(Icons.videocam, color: context.textPrimary900, size: 24.sp),
         onPressed: () {
-          // 逻辑变得非常简单清晰
           if (isGroup) {
-            // 提示不支持群聊
+            // Group video calls currently not supported
             return;
           }
           if (targetUserId == null) {
-            // 提示找不到人
+            // Target user not found
             return;
           }
-          // 解析完整头像 URL (防止相对路径导致 CallPage 图片加载失败)
+          // Resolve full avatar URL to ensure CallPage renders correctly
           final avatarUrl = detail?.avatar != null
               ? UrlResolver.resolveImage(context, displayAvatar)
               : null;
@@ -150,41 +148,42 @@ PreferredSizeWidget _buildAppBar(
             context,
             MaterialPageRoute(
               builder: (context) => CallPage(
-                targetId:targetUserId,
+                targetId: targetUserId,
                 targetName: displayName,
                 targetAvatar: avatarUrl,
-                isVideo: true, // 开启摄像头
+                isVideo: true, // Enable camera
               ),
             ),
           );
         },
       ),
 
-      // 📞 2. 语音通话按钮 (可选，如果只想测视频可以先不加)
+      // 2. Voice Call Button
       IconButton(
         icon: Icon(
           Icons.call,
           color: context.textPrimary900,
-          size: 22.sp, // 稍微调小一点点视觉平衡
+          size: 22.sp,
         ),
         onPressed: () {
-          final avatarUrl = detail?.avatar != null
-              ? UrlResolver.resolveImage(context, detail!.avatar!)
-              : null;
+          if (isGroup) return;
+          if (targetUserId == null) return;
 
           Navigator.push(
             context,
             MaterialPageRoute(
               builder: (context) => CallPage(
-                targetId: targetUserId ?? "",
+                targetId: targetUserId,
                 targetName: displayName,
                 targetAvatar: displayAvatar,
-                isVideo: false, // 关闭摄像头，纯语音模式
+                isVideo: false, // Voice-only mode
               ),
             ),
           );
         },
       ),
+
+      // 3. More Actions (Profile/Settings)
       IconButton(
         icon: Icon(
           Icons.more_horiz,
@@ -206,7 +205,7 @@ PreferredSizeWidget _buildAppBar(
   );
 }
 
-// --- 组件：底部 Loading ---
+// --- Component: Bottom Loading Indicator ---
 Widget _buildLoadingIndicator(BuildContext context, bool hasMore) {
   if (hasMore) {
     return Container(

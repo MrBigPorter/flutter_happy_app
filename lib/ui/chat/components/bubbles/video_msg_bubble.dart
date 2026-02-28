@@ -9,7 +9,7 @@ import 'package:flutter_app/ui/chat/video_player_page.dart';
 import 'package:flutter_app/ui/img/app_image.dart';
 import 'package:flutter_app/utils/asset/asset_manager.dart';
 
-// 全局互斥锁
+// Global mutual exclusion lock for video playback
 final ValueNotifier<String?> _playingMsgId = ValueNotifier(null);
 
 class VideoMsgBubble extends StatefulWidget {
@@ -44,6 +44,7 @@ class _VideoMsgBubbleState extends State<VideoMsgBubble> {
     super.dispose();
   }
 
+  // Handle global play state changes to ensure only one video plays at a time
   void _onGlobalPlayChanged() {
     if (_playingMsgId.value != widget.message.id) {
       if (_controller != null) {
@@ -61,34 +62,34 @@ class _VideoMsgBubbleState extends State<VideoMsgBubble> {
     _isLoading = false;
   }
 
-  // 优化 1：利用 AssetManager 极简解析路径
+  // Resolve the playable source URL, prioritizing local assets
   Future<String> _resolvePlayableUrl() async {
     final String? local = widget.message.localPath;
 
     if (kDebugMode) {
-      debugPrint(" [Video Debug] ID: ${widget.message.id} | RawLocal: $local");
+      debugPrint("[VideoDebug] ID: ${widget.message.id} | RawLocal: $local");
     }
 
-    // 1. 检查 AssetManager 是否认为本地文件有效（同步检查）
+    // 1. Check if the local file is valid via AssetManager
     if (AssetManager.existsSync(local)) {
       final String fullPath = AssetManager.getRuntimePath(local);
-      debugPrint("   [Video] 命中本地文件: $fullPath");
+      debugPrint("[Video] Local file hit: $fullPath");
       return fullPath;
     }
 
-    // 2. 如果是 Web 端的 Blob (虽然 AssetManager 也会处理，但这里显式处理下逻辑更清晰)
+    // 2. Handle Web Blob URLs explicitly
     if (kIsWeb && local != null && local.startsWith('blob:')) {
-      debugPrint("    [Video] 命中 Web Blob: $local");
+      debugPrint("[Video] Web Blob hit: $local");
       return local;
     }
 
-    // 3. 兜底：走网络
+    // 3. Fallback to remote network URL
     final String remoteUrl = UrlResolver.resolveVideo(widget.message.content);
-    debugPrint("    [Video] 本地缺失或无效，走网络: $remoteUrl");
+    debugPrint("[Video] Local missing or invalid, falling back to network: $remoteUrl");
     return remoteUrl;
   }
 
-  // 优化 2：播放逻辑同步化（因为路径解析变快了）
+  // Toggle playback state and initialize controller if necessary
   Future<void> _togglePlay() async {
     if (_isPlaying && _controller != null) {
       _controller!.pause();
@@ -114,7 +115,7 @@ class _VideoMsgBubbleState extends State<VideoMsgBubble> {
 
       _playingMsgId.value = widget.message.id;
 
-      // 判断是网络还是本地（AssetManager 统一了路径格式，判断变得很简单）
+      // Determine controller type based on URL scheme
       if (kIsWeb || url.startsWith('http') || url.startsWith('blob:')) {
         _controller = VideoPlayerController.networkUrl(Uri.parse(url));
       } else {
@@ -122,23 +123,21 @@ class _VideoMsgBubbleState extends State<VideoMsgBubble> {
       }
 
       await _controller!.initialize();
-      // ... 监听和播放逻辑保持不变 ...
       await _controller!.play();
       if (mounted) setState(() { _isPlaying = true; _isLoading = false; });
 
     } catch (e) {
-      debugPrint("❌ Video init failed: $e");
+      debugPrint("[Video] Initialization failed: $e");
       _disposeController();
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
-
+  // Transition to full-screen video player page
   Future<void> _openFullScreen() async {
     _controller?.pause();
     if (mounted) setState(() => _isPlaying = false);
 
-    //  全屏也需要异步解析路径
     final url = await _resolvePlayableUrl();
     if (url.isEmpty || !mounted) return;
 
@@ -186,7 +185,7 @@ class _VideoMsgBubbleState extends State<VideoMsgBubble> {
           child: Stack(
             alignment: Alignment.center,
             children: [
-              // 1. 封面图
+              // 1. Thumbnail/Cover Layer
               if (!showVideo)
                 Positioned.fill(
                   child: AppCachedImage(
@@ -200,7 +199,7 @@ class _VideoMsgBubbleState extends State<VideoMsgBubble> {
                   ),
                 ),
 
-              // 2. 视频层 (Cover)
+              // 2. Video Player Layer (Fitted to cover)
               if (showVideo)
                 Positioned.fill(
                   child: FittedBox(
@@ -213,7 +212,7 @@ class _VideoMsgBubbleState extends State<VideoMsgBubble> {
                   ),
                 ),
 
-              // 3. UI 状态
+              // 3. UI Status Overlays (Loading or Play Button)
               if (_isLoading)
                 const Center(child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
               else if (!_isPlaying)
@@ -226,7 +225,7 @@ class _VideoMsgBubbleState extends State<VideoMsgBubble> {
                   child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 32),
                 ),
 
-              // 4. 时长
+              // 4. Video Duration Label
               if (!_isPlaying && widget.message.duration != null)
                 Positioned(
                   bottom: 8,
@@ -244,7 +243,7 @@ class _VideoMsgBubbleState extends State<VideoMsgBubble> {
                   ),
                 ),
 
-              // 5. 发送状态
+              // 5. Delivery Status Overlay
               if (widget.message.status == MessageStatus.sending)
                 Positioned.fill(
                   child: Container(
