@@ -7,24 +7,22 @@ import 'package:flutter/foundation.dart';
 import 'dart:io';
 
 class VoiceRecorderService {
-  // 单例模式
+  // Singleton Pattern
   static final VoiceRecorderService _instance = VoiceRecorderService._internal();
-  // 录音对象
   factory VoiceRecorderService() => _instance;
-  // 私有构造函数
   VoiceRecorderService._internal();
 
-  // 开始录音，返回录音文件路径
   final _audioRecorder = AudioRecorder();
 
-  // 暴露振幅流，供 UI 实现“跳动动画”
+  /// Exposes the amplitude stream to implement real-time visualization (jumping animations) in the UI.
   Stream<Amplitude> get amplitudeStream => _audioRecorder.onAmplitudeChanged(const Duration(milliseconds: 100));
 
-  // 获取权限
+  /// Verifies if the application has the necessary microphone permissions.
   Future<bool> hasPermission() async {
     return await _audioRecorder.hasPermission();
   }
 
+  /// Starts the recording process and returns the local file path.
   Future<String?> start() async {
     if(!await hasPermission()) {
       return null;
@@ -32,7 +30,7 @@ class VoiceRecorderService {
 
     String path;
     if(kIsWeb) {
-      // Web 端 record 插件会自动处理为 blob
+      // On Web, the 'record' plugin automatically handles the output as a Blob URL.
       path = '';
     } else {
       final appDir = await getApplicationDocumentsDirectory();
@@ -40,28 +38,29 @@ class VoiceRecorderService {
       if (!await folder.exists()) {
         await folder.create(recursive: true);
       }
-      // 生成唯一文件名
+      // Generate a unique filename using UUID to prevent overwriting.
       path = p.join(folder.path, '${const Uuid().v4()}.m4a');
     }
-    // 核心：Web 端通常不需要 Config 指定 Encoder，它会自动选择浏览器支持的
+
+    // Architectural Note: AAC-LC is chosen for high compatibility across mobile and web players.
     const config = RecordConfig(encoder: AudioEncoder.aacLc);
-    // 返回录音文件路径
-    await _audioRecorder.start(config,path: path);
+
+    await _audioRecorder.start(config, path: path);
     return path;
   }
 
-  // 停止录音，返回录音文件路径
-   Future<(String?, int?)> stop(DateTime startTime) async {
+  /// Stops the recording and returns both the file path and the calculated duration.
+  Future<(String?, int?)> stop(DateTime startTime) async {
     final path = await _audioRecorder.stop();
     if (path == null) {
       return (null, null);
     }
     final duration = DateTime.now().difference(startTime).inSeconds;
     return (path, duration);
-   }
+  }
 
-   void dispose() {
+  /// Releases the recording resources.
+  void dispose() {
     _audioRecorder.dispose();
-   }
-
+  }
 }

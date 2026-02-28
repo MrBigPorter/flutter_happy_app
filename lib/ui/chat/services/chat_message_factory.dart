@@ -1,6 +1,5 @@
 import 'dart:typed_data';
 import 'package:uuid/uuid.dart';
-
 import 'package:flutter_app/ui/chat/models/chat_ui_model.dart';
 
 class ChatMessageFactory {
@@ -8,10 +7,12 @@ class ChatMessageFactory {
   final Uuid _uuid;
 
   ChatMessageFactory({required this.conversationId, Uuid? uuid})
-    : _uuid = uuid ?? const Uuid();
+      : _uuid = uuid ?? const Uuid();
 
+  /// Returns current timestamp in milliseconds
   int _now() => DateTime.now().millisecondsSinceEpoch;
 
+  /// Internal base builder for constructing unified message models
   ChatUiModel base({
     required String content,
     required MessageType type,
@@ -35,8 +36,10 @@ class ChatMessageFactory {
     );
   }
 
+  /// Creates a standard text message entity
   ChatUiModel text(String text) => base(content: text, type: MessageType.text);
 
+  /// Creates an image message with local asset tracking and preview support
   ChatUiModel image({
     required String localPath,
     Uint8List? previewBytes,
@@ -49,6 +52,7 @@ class ChatMessageFactory {
     meta: meta,
   );
 
+  /// Creates a video message entity containing path and thumbnail data
   ChatUiModel video({
     required String localPath,
     Uint8List? previewBytes,
@@ -61,6 +65,7 @@ class ChatMessageFactory {
     meta: meta,
   );
 
+  /// Creates a voice/audio message with duration metadata
   ChatUiModel voice({
     required String localPath,
     required int duration,
@@ -73,6 +78,7 @@ class ChatMessageFactory {
     meta: {if (meta != null) ...meta, 'duration': duration},
   );
 
+  /// Creates a generic file message with detailed file metadata
   ChatUiModel file({
     required String localPath,
     required String fileName,
@@ -91,6 +97,7 @@ class ChatMessageFactory {
     },
   );
 
+  /// Creates a location message entity with coordinate and address mapping
   ChatUiModel location({
     required double latitude,
     required double longitude,

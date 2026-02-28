@@ -27,10 +27,6 @@ import 'chat_message_factory.dart';
 import 'compression/image_compression_service.dart';
 import 'media/web_video_thumbnail_service.dart';
 
-// ===========================================================================
-// ChatActionService
-// ===========================================================================
-
 class ChatActionService {
   final String conversationId;
   final Ref _ref;
@@ -40,7 +36,7 @@ class ChatActionService {
 
   MessageRepository get repo => _ref.read(messageRepositoryProvider);
 
-  // 静态缓存路径
+  /// Static session cache to maintain local file paths for the duration of the app session
   static final Map<String, String> _sessionPathCache = {};
 
   static String? getPathFromCache(String msgId) {
@@ -59,41 +55,45 @@ class ChatActionService {
   }
 
   // ===========================================================================
-  // 🔥 核心管道执行器
+  // Core Pipeline Executor
   // ===========================================================================
+
+  /// Orchestrates the execution of multiple processing steps for a message.
   Future<void> _runPipeline(PipelineContext ctx, List<PipelineStep> steps) async {
     try {
-      // 1. 初始存库 (带本地路径和封面)
+      // 1. Initial persistence: Store local path and preview bytes immediately to avoid UI flicker
       await repo.saveOrUpdate(ctx.initialMsg);
 
-      // 2. 更新列表快照
+      // 2. Update conversation list snapshot
       _updateConversationSnapshot(
         ctx.initialMsg.content,
         ctx.initialMsg.createdAt,
       );
 
-      // 3. 执行步骤
+      // 3. Sequential execution of pipeline steps
       for (final step in steps) {
         await step.execute(ctx, this);
       }
-      debugPrint("✅ Pipeline Success: ${ctx.initialMsg.id}");
+      debugPrint("Pipeline Success: ${ctx.initialMsg.id}");
     } catch (e, st) {
-      debugPrint("❌ Pipeline Crashed: $e");
+      debugPrint("Pipeline Crashed: $e");
       final failedMsg = ctx.initialMsg.copyWith(status: MessageStatus.failed);
       await repo.saveOrUpdate(failedMsg);
 
       final errStr = e.toString();
+      // Halt retries for fatal integrity errors
       if (errStr.contains("Fatal") ||
-          errStr.contains("文件丢失") ||
-          errStr.contains("同步中止")) {
+          errStr.contains("File missing") ||
+          errStr.contains("Sync aborted")) {
         return;
       }
+      // Trigger offline queue for transient network failures
       OfflineQueueManager().startFlush();
     }
   }
 
   // ===========================================================================
-  // 发送入口
+  // Message Transmission Entries
   // ===========================================================================
 
   Future<void> sendText(String text) async {
@@ -108,7 +108,7 @@ class ChatActionService {
     try {
       quickPreview = await ImageCompressionService.getTinyThumbnail(processedFile);
     } catch (e) {
-      debugPrint("预览图生成失败: $e");
+      debugPrint("Preview generation failed: $e");
     }
 
     final msg = _msg.image(
@@ -122,7 +122,7 @@ class ChatActionService {
 
     _sessionPathCache[msg.id] = processedFile.path;
 
-    // 立即存库，防止闪烁
+    // Immediate save to prevent UI lag
     await repo.saveOrUpdate(msg);
 
     final ctx = PipelineContext(msg)..sourceFile = processedFile;
@@ -132,7 +132,7 @@ class ChatActionService {
   Future<void> sendVideo(XFile file) async {
     XFile fileToUse = file;
 
-    // 1. Web 平台：强制生成 Blob URL
+    // Web Platform Implementation: Enforce Blob URL generation
     if (kIsWeb) {
       bool invalidPath = file.path.isEmpty || !file.path.startsWith('blob:');
       if (invalidPath) {
@@ -141,7 +141,7 @@ class ChatActionService {
           final blobUrl = WebBlobUrl.fromBytes(bytes, mime: 'video/mp4');
           fileToUse = XFile(blobUrl, name: file.name, bytes: bytes);
         } catch (e) {
-          debugPrint("Web video blob gen failed: $e");
+          debugPrint("Web video blob generation failed: $e");
         }
       }
     }
@@ -152,7 +152,7 @@ class ChatActionService {
     int? h;
     XFile? webThumbFile;
 
-    // 2. 🔥🔥🔥 封面生成 (加强版) 🔥🔥🔥
+    // Enhanced Thumbnail Generation Logic
     if (kIsWeb) {
       try {
         final videoBytes = await fileToUse.readAsBytes();
@@ -170,7 +170,7 @@ class ChatActionService {
             name: 'thumb_${DateTime.now().millisecondsSinceEpoch}.jpg',
             mimeType: 'image/jpeg',
           );
-          // 顺便算 BlurHash
+          // Calculate BlurHash for placeholder rendering
           final blur = await ThumbBlurHashService.build(thumbJpeg);
           if (blur != null) {
             blurHash = blur.blurHash;
@@ -179,15 +179,13 @@ class ChatActionService {
           }
         }
       } catch (e) {
-        debugPrint("Web video thumb failed: $e");
+        debugPrint("Web video thumbnail generation failed: $e");
       }
     } else {
-      // Mobile 端：双重保险获取封面
+      // Mobile Implementation: Dual-layer thumbnail retrieval
       try {
-        // A计划：直接获取 Bytes
         quickPreview = await VideoCompress.getByteThumbnail(fileToUse.path, quality: 30);
 
-        // B计划：如果 A 失败，尝试生成文件再读取
         if (quickPreview == null || quickPreview.isEmpty) {
           final File thumbFile = await VideoCompress.getFileThumbnail(fileToUse.path, quality: 30);
           if (await thumbFile.exists()) {
@@ -195,16 +193,15 @@ class ChatActionService {
           }
         }
       } catch (e) {
-        debugPrint("Video preview failed: $e");
+        debugPrint("Video preview generation failed: $e");
       }
     }
 
-    // 3. 创建消息 (带上 previewBytes)
     final msg = _msg.video(
       localPath: fileToUse.path,
-      previewBytes: quickPreview, // 👈 只要这里不为空，界面就不会闪
+      previewBytes: quickPreview,
       meta: {
-        if (blurHash != null && blurHash!.isNotEmpty) 'blurHash': blurHash,
+        if (blurHash != null && blurHash.isNotEmpty) 'blurHash': blurHash,
         if (w != null) 'w': w,
         if (h != null) 'h': h,
       },
@@ -212,7 +209,6 @@ class ChatActionService {
 
     _sessionPathCache[msg.id] = fileToUse.path;
 
-    // 立即存库
     await repo.saveOrUpdate(msg);
 
     final ctx = PipelineContext(msg)
@@ -301,6 +297,7 @@ class ChatActionService {
     await _runPipeline(PipelineContext(msg), [SyncStep()]);
   }
 
+  /// Re-triggers the pipeline for a failed message
   Future<void> resend(String msgId) async {
     final target = await repo.get(msgId);
     if (target == null) return;
@@ -322,31 +319,24 @@ class ChatActionService {
     } catch (_) {}
   }
 
-  //  [新增] 转发消息
+  /// Forwards an existing message to one or multiple target conversations.
   Future<void> forwardMessage(String originalMessageId, List<String> targetIds) async {
     try {
-      // 1. 调用 API
       await Api.messageForwardApi(
         originalMessageId: originalMessageId,
         targetConversationIds: targetIds,
       );
 
-      // 2. 成功后的处理
-      // 转发通常是发给"别人"的，所以不需要更新"当前"会话的消息列表
-      // 除非你是转发给自己 (targetConversationId == conversationId)
+      // Invalidate specific view models if the current conversation is one of the targets
       if (targetIds.contains(conversationId)) {
-        // 刷新一下当前会话
         _ref.invalidate(chatViewModelProvider(conversationId));
       }
-
     } catch (e) {
-      // 抛出异常供 Logic 层捕获并弹 Toast
       rethrow;
     }
   }
 }
 
-// Provider
 final chatActionServiceProvider = Provider.family.autoDispose<ChatActionService, String>((ref, conversationId) {
   return ChatActionService(conversationId, ref, GlobalUploadService());
 });

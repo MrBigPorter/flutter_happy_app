@@ -6,22 +6,22 @@ import '../../models/chat_ui_model.dart';
 import '../chat_action_service.dart';
 
 class VideoPlaybackService {
-  // 单例模式
+  // Singleton Pattern
   static final VideoPlaybackService _instance = VideoPlaybackService._internal();
   factory VideoPlaybackService() => _instance;
   VideoPlaybackService._internal();
 
   VideoPlayerController? _activeController;
 
-  ///  核心重构：异步获取可播放源
-  /// 支持从 Asset ID、内存缓存以及网络 URL 中进行三级解析
+  /// Core Refactoring: Asynchronous resolution of playable sources.
+  /// Supports tiered resolution from Memory Cache, Asset IDs, and Network URLs.
   Future<String> getPlayableSource(ChatUiModel message) async {
-    // A. 优先查内存缓存 (秒开原片，为了发送瞬间的极致体验)
+    // Tier A: Prioritize memory cache for instant playback during the sending phase.
     final cachePath = ChatActionService.getPathFromCache(message.id);
     if (cachePath != null && File(cachePath).existsSync()) return cachePath;
 
-    // B. 解析本地 Asset ID
-    // 无论 iOS 沙盒路径如何变化，通过相对文件名 ID 永远能找回物理文件
+    // Tier B: Resolve Local Asset ID.
+    // Facilitates persistent file access regardless of iOS sandbox path shifts.
     if (!kIsWeb && message.localPath != null) {
       final String? absPath = await AssetManager.getFullPath(message.localPath!, message.type);
       if (absPath != null && File(absPath).existsSync()) {
@@ -29,21 +29,19 @@ class VideoPlaybackService {
       }
     }
 
-    // C. 兜底使用网络 URL (content)
+    // Tier C: Fallback to Network URL (content).
     if (message.content.startsWith('http')) {
       return message.content;
     }
 
-    return ""; // 无效路径
+    return ""; // Invalid path
   }
 
-  /// 2. 统一创建控制器
+  /// Unified Controller Creation.
   VideoPlayerController createController(String source) {
     if (source.startsWith('http') || source.startsWith('blob:')) {
-      // 这告诉服务器："我支持分片，请不要一次性把 500MB 全给我"
-      // 配合你的 Nginx 206，这将实现：
-      // 1. 打开视频只下载前 1MB (秒开)
-      // 2. 拖动进度条时，只下载对应片段
+      // Configures Range headers to support HTTP 206 Partial Content (Nginx optimization).
+      // Enables instant start by only downloading initial segments and partial seeking.
       return VideoPlayerController.networkUrl(
         Uri.parse(source),
         httpHeaders: const {'Range': 'bytes=0-'},
@@ -53,7 +51,7 @@ class VideoPlaybackService {
     }
   }
 
-  /// 3. 请求独占播放 (自动暂停当前正在播放的其他视频)
+  /// Requests Exclusive Playback: Automatically pauses any other active video streams.
   void requestPlay(VideoPlayerController newController) {
     if (_activeController != null &&
         _activeController != newController &&
@@ -63,6 +61,7 @@ class VideoPlaybackService {
     _activeController = newController;
   }
 
+  /// Stops all active playback instances.
   void stopAll() {
     _activeController?.pause();
     _activeController = null;

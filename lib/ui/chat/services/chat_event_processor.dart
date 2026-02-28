@@ -11,7 +11,7 @@ import '../../chat/providers/conversation_provider.dart';
 import '../../chat/providers/chat_group_provider.dart';
 import '../models/conversation.dart';
 
-// 全局 Provider，App 启动时就要 watch 它
+/// Global Provider initialized at App startup to process background chat signals
 final chatEventProcessorProvider = Provider<ChatEventProcessor>((ref) {
   return ChatEventProcessor(ref);
 });
@@ -23,91 +23,92 @@ class ChatEventProcessor {
     _startListening();
   }
 
+  /// Establishes the primary subscription to the group event stream
   void _startListening() {
     final socketService = ref.read(socketServiceProvider);
 
-    // 监听群组事件流
     socketService.groupEventStream.listen((event) async {
       debugPrint(
-        " [Processor] 收到原始事件: ${event.type} | GroupID: ${event.groupId}",
+        "[ChatEventProcessor] Raw event received: ${event.type} | GroupID: ${event.groupId}",
       );
       await _handleGlobalEvent(event);
     });
   }
 
+  /// Global dispatcher: Handles data persistence, UI state updates, and navigation logic
   Future<void> _handleGlobalEvent(SocketGroupEvent event) async {
     final myId = ref.read(userProvider)?.id;
     final groupId = event.groupId;
 
-    //  [Refactor] 使用强类型 Payload，不再手动解析 Map
+    // Use strongly-typed payload to avoid manual map parsing
     final payload = event.payload;
-    // ========================================================
-    // 2. 数据层处理 (Data Layer) - 改数据库
-    // ========================================================
     final repo = ref.read(messageRepositoryProvider);
 
     if (myId == null) return;
 
-    // 场景：我被别人邀请进了一个新群，本地还没有这个群的数据
+    // Scenario: User invited to a new group (local database currently lacks this record)
     if (event.type == SocketEvents.conversationAdded) {
       try {
-        // 1. 调 API 拉取完整详情 (包含 Info + Members)
+        // 1. Fetch comprehensive group details (Metadata + Members)
         final detail = await Api.chatDetailApi(groupId);
 
-        // 2. 存本地数据库 (MessageRepository)
-        // 注意：repo.saveGroupDetail 内部最好能同时 ensureConversation
+        // 2. Persist to local database (MessageRepository)
         await repo.saveGroupDetail(detail);
-        // 3. 刷新会话列表 (ConversationProvider)
+
+        // 3. Refresh conversation list to show the new entry
         ref.read(conversationListProvider.notifier).refresh();
       } catch (e) {
-        debugPrint(" [Processor] 预加载新群数据失败，后续操作可能不完整: $e");
+        debugPrint("[ChatEventProcessor] Pre-loading new group data failed: $e");
       }
       return;
     }
 
     // ========================================================
-    // 1. 极速响应层 (Optimistic UI) - 通知 Provider
+    // 1. Optimistic UI Layer (Immediate State Notification)
     // ========================================================
-    // 列表页会立即更新 Title/Avatar，或者移除被踢的群
+
+    // Notify the conversation list to update titles/avatars or remove items immediately
     ref.read(conversationListProvider.notifier).handleSocketEvent(event);
 
-    // 聊天页输入框会立即变灰，详情页成员列表会立即变化
+    // Update group-specific states (e.g., muting status, member count)
     ref.read(chatGroupProvider(groupId).notifier).handleSocketEvent(event);
 
+    // ========================================================
+    // 2. Data Persistence Layer (Local DB Synchronicity)
+    // ========================================================
+
     switch (event.type) {
-      // --- 毁灭性事件：删除会话 ---
+    // --- Destructive Events: Cleanup local records ---
       case SocketEvents.groupDisbanded:
-        // 群没了，直接删库
         await repo.deleteConversation(groupId);
-        ref.read(conversationListProvider.notifier).refresh(); // 刷新列表移除该项
+        ref.read(conversationListProvider.notifier).refresh();
         break;
+
       case SocketEvents.memberKicked:
       case SocketEvents.memberLeft:
         if (payload.targetId == myId) {
-          // 我被踢了/我退了 -> 删本地会话
+          // Self was kicked or left: purge local conversation records
           await repo.deleteConversation(groupId);
           ref.read(conversationListProvider.notifier).refresh();
         } else {
-          // 别人走了 -> 优化：直接在本地数据库移除该成员，不拉接口
+          // Other member left: perform atomic removal without full API re-fetch
           if (payload.targetId != null) {
             await repo.removeMemberFromGroup(groupId, payload.targetId!);
           }
         }
         break;
 
-      // --- 信息变更事件：更新会话 ---
+    // --- Metadata Updates: Syncing conversation attributes ---
       case SocketEvents.groupInfoUpdated:
-        //  使用 payload.updates 取值
         await repo.updateConversationInfo(
           groupId,
           name: payload.updates['name'],
           avatar: payload.updates['avatar'],
           announcement: payload.updates['announcement'],
         );
-        // 更新群详情缓存
         break;
 
-      // --- 权限/成员变更事件 ---
+    // --- Permission & Membership State Shifts ---
       case SocketEvents.memberMuted:
         if (payload.targetId != null && payload.mutedUntil != null) {
           await repo.updateMemberMuted(
@@ -117,8 +118,9 @@ class ChatEventProcessor {
           );
         }
         break;
+
       case SocketEvents.ownerTransferred:
-        //  优化：群主转让 (稍微复杂点，旧群主变Admin/Member，新群主变Owner)
+      // Strategic: Atomic transfer of ownership (Old owner -> Admin/Member; New owner -> Owner)
         if (payload.operatorId != null && payload.targetId != null) {
           await repo.transferOwner(
             groupId,
@@ -126,83 +128,70 @@ class ChatEventProcessor {
             newOwnerId: payload.targetId!,
           );
         } else {
-          // 如果 payload 数据不够，才兜底拉接口
+          // Fallback to full sync if payload data is insufficient
           _scheduleDetailSync(groupId);
         }
         break;
+
       case SocketEvents.memberRoleUpdated:
         if (payload.targetId != null && payload.newRole != null) {
           await repo.updateMemberRole(
             groupId,
             payload.targetId!,
-            payload.newRole!, // 这里需要确保类型匹配 (String 转 Enum)
+            payload.newRole!,
           );
         }
         break;
-        break;
+
       case SocketEvents.memberJoined:
-        //  优化：如果 payload 里有 member 完整信息，直接插库
+      // Optimization: Insert member directly if payload is complete; avoid thundering herd on API
         if (payload.member != null) {
           await repo.addMemberToGroup(groupId, payload.member!);
         } else {
-          // 只有 payload 数据残缺时，才迫不得已拉接口
-          // 或者可以做一个防抖 (Debounce)，防止短时间大量进人狂拉接口
           _scheduleDetailSync(groupId);
         }
         break;
-      // --- [v6.0 新增] 入群审批系统 ---
+
+    // --- Group Application System (Membership Approval) ---
       case SocketEvents.groupApplyNew:
-        // 管理员收到申请 -> 刷新“申请列表” Provider
-        // invalidate 会导致下次读取该 provider 时重新执行 build (拉取 API)
+      // Trigger invalidation to force re-fetch of joining requests
         ref.invalidate(groupJoinRequestsProvider(groupId));
         ref.read(chatGroupProvider(groupId).notifier).handleNewJoinRequest();
         break;
 
       case SocketEvents.groupApplyResult:
-        //  [Fix] 直接从 payload 读取 approved，不再查 updates
         if (payload.approved == true) {
-          // 实际上后端会同时发 conversationAdded，这里做双重保险
           ref.read(conversationListProvider.notifier).refresh();
           ref.invalidate(chatGroupProvider(groupId));
         }
         break;
 
       case SocketEvents.groupRequestHandled:
-        // 其他管理员处理了 -> 刷新“申请列表” Provider 同步按钮状态
+      // Sync button states if another administrator handled the request
         ref.invalidate(groupJoinRequestsProvider(groupId));
         break;
     }
 
     // ========================================================
-    // 3. UI 交互层 (Interaction Layer) - 弹窗、跳转
+    // 3. Interaction Layer (Navigation & Side Effects)
     // ========================================================
-    //  传入 payload.targetId 辅助判断
+
     _handleNavigationSideEffects(event, myId, payload.targetId);
   }
 
-  // 防抖同步：避免 1秒内进 10 个人请求 10 次接口
-  // 简单的实现方式，也可以用 rxdart 的 debounce
+  /// Evaluates complex state changes for eventual consistency
   void _scheduleDetailSync(String groupId) {
-    // 这里可以加一个简单的标识位或时间戳判断
-    // 如果你正在聊天页内，其实 ChatGroupNotifier 已经更新了 UI。
-    // 这里主要是为了保证本地数据库的数据最终一致性。
-
-    // 策略：如果当前用户正在查看该群，且事件可能导致本地数据不一致，
-    // 则延迟 2 秒拉取一次，或者不拉取（依赖用户下次进来的自动刷新）。
-
-    debugPrint(" [Processor] 检测到复杂变更，建议稍后同步详情: $groupId");
-    // 如果你非常想保证数据绝对正确，可以保留这个调用，但建议加限制：
-    // await _updateGroupDetailCache(groupId);
+    // Scheduled for eventual consistency: used for high-frequency entry/exit scenarios
+    debugPrint("[ChatEventProcessor] Complex change detected; recommending deferred sync for: $groupId");
   }
 
-  /// 处理导航副作用 (强制退出等)
+  /// Manages navigation side effects (e.g., forced exit from a disbanded room)
   void _handleNavigationSideEffects(
-    SocketGroupEvent event,
-    String myId,
-    String? targetId,
-  ) {
-    final String location = appRouter.routeInformationProvider.value.uri
-        .toString();
+      SocketGroupEvent event,
+      String myId,
+      String? targetId,
+      ) {
+    final String location = appRouter.routeInformationProvider.value.uri.toString();
     final bool isViewingThisGroup = location.contains(event.groupId!);
 
     if (!isViewingThisGroup) return;
@@ -213,18 +202,20 @@ class ChatEventProcessor {
     switch (event.type) {
       case SocketEvents.memberKicked:
       case SocketEvents.groupDisbanded:
+      // Redirect to conversation list if current room is no longer accessible
         appRouter.go('/conversations');
         break;
     }
   }
 
+  /// Force-syncs group detail cache from the remote server
   Future<void> _updateGroupDetailCache(String groupId) async {
     try {
       final repo = ref.read(messageRepositoryProvider);
       final detail = await Api.chatDetailApi(groupId);
       await repo.saveGroupDetail(detail);
     } catch (e) {
-      debugPrint("Sync group detail failed: $e");
+      debugPrint("[ChatEventProcessor] Sync group detail failed: $e");
     }
   }
 }

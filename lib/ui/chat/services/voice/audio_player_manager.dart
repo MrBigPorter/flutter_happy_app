@@ -1,9 +1,8 @@
-
 import 'package:flutter/foundation.dart';
 import 'package:just_audio/just_audio.dart';
 
 class AudioPlayerManager {
-  // 单例模式保持不变
+  // Singleton Pattern
   static final AudioPlayerManager _instance = AudioPlayerManager._internal();
   factory AudioPlayerManager() => _instance;
   AudioPlayerManager._internal();
@@ -19,7 +18,7 @@ class AudioPlayerManager {
 
   Future<void> play(String id, String urlOrPath) async {
     try {
-      // 1. 处理相同消息的播放/暂停/重播逻辑
+      // 1. Handles Play/Pause/Replay logic for the same message ID
       if(_currentPlayingId == id && _player.playing) {
         final bool isRunning = _player.playing && _player.processingState != ProcessingState.completed;
         if(isRunning){
@@ -33,30 +32,31 @@ class AudioPlayerManager {
         return;
       }
 
-      // 2. 准备播放新资源
+      // 2. Prepare for new resource playback
       _currentPlayingId = id;
       await _player.stop();
 
-      //  核心修复：路径清洗逻辑
-      // 某些 iOS 路径可能带有 file:// 协议头，需要去掉才能通过 setFilePath 正常加载
+      // Architectural Fix: Path Sanitization Logic
+      // Certain iOS paths may include the 'file://' protocol prefix,
+      // which must be stripped for setFilePath to load successfully.
       String cleanSource = urlOrPath;
       if (!kIsWeb && cleanSource.startsWith('file://')) {
         cleanSource = cleanSource.replaceFirst('file://', '');
       }
 
-      // 3. 根据协议类型分发加载任务
+      // 3. Dispatch loading task based on protocol type
       if(cleanSource.startsWith('http') || cleanSource.startsWith('blob:') || kIsWeb) {
-        // 网络资源或 Web 端 Blob 资源
+        // Remote network resources or Web-specific Blob resources
         await _player.setUrl(cleanSource);
       } else {
-        // 本地物理路径
-        // 此时 cleanSource 必须是动态拼接后的绝对路径
+        // Local physical file paths
+        // Note: cleanSource must be an absolute path at this stage.
         await _player.setFilePath(cleanSource);
       }
 
       await _player.play();
     } catch(e) {
-      debugPrint("Audio playback error: $e"); // 使用 debugPrint 代替 print
+      debugPrint("Audio playback error: $e");
       _currentPlayingId = null;
     }
   }

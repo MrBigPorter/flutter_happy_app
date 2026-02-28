@@ -7,7 +7,8 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class MapLauncherService {
-
+  /// Opens the map application for a specific coordinate.
+  /// Handles Web-specific URL redirection and Native-specific app selection.
   static Future<void> openMap(
       BuildContext context, {
         required double lat,
@@ -16,18 +17,16 @@ class MapLauncherService {
         String? address,
       }) async {
     try {
-
-      //  Web 端特供逻辑：直接跳转网页版 Google Maps
+      // --- Web Specific Implementation: Redirect to Google Maps Web ---
       if(kIsWeb){
-        // 构建 Google Maps 网页版查询链接
-        // api=1: 启用 API 模式
-        // query: 经纬度，格式为 lat,lng
+        // Constructs the Google Maps search URL with latitude and longitude.
         final Uri googleMapUrl = Uri.parse(
             'https://www.google.com/maps/search/?api=1&query=$lat,$lng'
         );
-        // 使用浏览器打开链接
+
+        // Launch via the browser application.
         if(await canLaunchUrl(googleMapUrl)){
-          await launchUrl(googleMapUrl,mode:  LaunchMode.externalApplication);
+          await launchUrl(googleMapUrl, mode: LaunchMode.externalApplication);
         } else {
           if(!context.mounted) return;
           RadixToast.info("Could not launch map URL.");
@@ -35,7 +34,7 @@ class MapLauncherService {
         return;
       }
 
-      // android / iOS 端逻辑：使用 MapLauncher 调用本地地图应用
+      // --- Native Implementation (Android/iOS): Invoke installed map apps ---
       final availableMaps = await MapLauncher.installedMaps;
 
       if (!context.mounted) return;
@@ -47,6 +46,7 @@ class MapLauncherService {
         return;
       }
 
+      // Present a BottomSheet for the user to choose their preferred map application.
       showModalBottomSheet(
         context: context,
         backgroundColor: context.bgPrimary,
@@ -81,7 +81,7 @@ class MapLauncherService {
                         description: address,
                       );
                     },
-                    //  核心修改：不再解析 SVG，而是用安全的本地映射
+                    // Visual Optimization: Uses safe local icon mapping instead of SVG parsing.
                     leading: _buildMapIconByMapType(map.mapType),
                     title: Text(
                       map.mapName,
@@ -106,29 +106,28 @@ class MapLauncherService {
         },
       );
     } catch (e) {
-      debugPrint("Launch map error: $e");
+      debugPrint("[MapLauncherService] Launch error: $e");
     }
   }
 
-  ///  根据地图类型手动返回漂亮的图标
+  /// Generates a standardized UI icon based on the specific MapType.
   static Widget _buildMapIconByMapType(MapType type) {
-    // 定义一个默认大小
     final double size = 32.w;
 
     IconData iconData;
     Color color;
 
-    // 根据不同地图给不同的颜色和图标
+    // Assign branding colors and icons based on the map provider type.
     switch (type) {
       case MapType.google:
         iconData = Icons.location_on;
-        color = Colors.red; // Google 地图经典红
+        color = Colors.red;
         break;
       case MapType.apple:
         iconData = Icons.map;
-        color = Colors.green; // Apple 地图经典绿
+        color = Colors.green;
         break;
-      case MapType.amap: // 高德
+      case MapType.amap:
         iconData = Icons.navigation;
         color = Colors.blue;
         break;
@@ -149,7 +148,7 @@ class MapLauncherService {
       width: size,
       height: size,
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1), // 浅色背景
+        color: color.withOpacity(0.1),
         borderRadius: BorderRadius.circular(8.r),
       ),
       child: Icon(

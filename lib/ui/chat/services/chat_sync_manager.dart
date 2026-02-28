@@ -7,7 +7,7 @@ import 'package:flutter_app/ui/chat/services/database/local_database_service.dar
 
 import '../models/conversation.dart';
 
-// 专用的 loading 状态 provider
+/// Dedicated provider for tracking pagination loading states per conversation
 final chatLoadingMoreProvider = StateProvider.family<bool, String>((ref, id) => false);
 
 class ChatSyncManager {
@@ -21,12 +21,14 @@ class ChatSyncManager {
 
   ChatSyncManager(this.conversationId, this._ref, this._currentUserId);
 
+  /// Returns true if there are more historical messages to fetch from the server
   bool get hasMore => _nextCursor != null;
 
-  /// 下拉刷新
+  /// Pull-to-refresh logic: Fetches the latest message page and updates the read status
   Future<void> refresh(Function() onReadMark) async {
     try {
-      onReadMark(); // 刷新时顺便标记已读
+      // Trigger read receipt marking during refresh
+      onReadMark();
 
       final response = await Api.chatMessagesApi(
           MessageHistoryRequest(conversationId: conversationId, pageSize: 20)
@@ -35,6 +37,7 @@ class ChatSyncManager {
       _maxReadSeqId = response.partnerLastReadSeqId;
       _nextCursor = response.nextCursor;
 
+      // Map DTOs to UI models and apply local read status based on the partner's waterline
       final uiMsgs = _applyReadStatusLocally(_mapToUiModels(response.list), _maxReadSeqId);
       await LocalDatabaseService().saveMessages(uiMsgs);
     } catch (e) {
@@ -42,7 +45,7 @@ class ChatSyncManager {
     }
   }
 
-  /// 加载更多
+  /// Pagination: Fetches older messages based on the current nextCursor
   Future<void> loadMore() async {
     if (_nextCursor == null || _isLoadingMore) return;
 
@@ -68,10 +71,13 @@ class ChatSyncManager {
     }
   }
 
+  /// Transforms raw API DTOs into structured ChatUiModels
   List<ChatUiModel> _mapToUiModels(List<dynamic> list) {
     return list.map((dto) => ChatUiModelMapper.fromApiModel(dto, conversationId, _currentUserId)).toList();
   }
 
+  /// Optimistically applies the 'read' status to local messages
+  /// if their sequence ID is below the partner's last read waterline.
   List<ChatUiModel> _applyReadStatusLocally(List<ChatUiModel> list, int waterLine) {
     return list.map((msg) {
       if (msg.isMe &&
