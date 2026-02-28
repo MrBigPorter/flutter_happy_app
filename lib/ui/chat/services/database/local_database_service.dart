@@ -21,6 +21,7 @@ class LocalDatabaseService {
 
   static Database? _db;
   static String? _currentUserId;
+  // Restore: Keep the original initialization
   static Completer<Database> _dbCompleter = Completer<Database>();
 
   // Stores
@@ -38,7 +39,7 @@ class LocalDatabaseService {
     return _dbCompleter.future;
   }
 
-  // 初始化
+  /// Initialize database for a specific user
   static Future<void> init(String userId) async {
     if (_db != null && _currentUserId == userId) {
       if (!_dbCompleter.isCompleted) _dbCompleter.complete(_db);
@@ -56,7 +57,7 @@ class LocalDatabaseService {
     try {
       if (kIsWeb) {
         _db = await databaseFactoryWeb.openDatabase(dbName);
-        //  关键修复：Web 端启动时，清理死掉的 Blob 路径
+        // Web fix: Clear dead blob paths on startup
         await _clearDeadBlobs();
       } else {
         final appDir = await getApplicationDocumentsDirectory();
@@ -64,7 +65,7 @@ class LocalDatabaseService {
         final dbPath = join(appDir.path, dbName);
         _db = await databaseFactoryIo.openDatabase(dbPath);
       }
-      if (!_dbCompleter.isCompleted) _dbCompleter.complete(_db);
+      if (!_dbCompleter.isCompleted) _dbCompleter.complete(_db!);
     } catch (e) {
       if (!_dbCompleter.isCompleted) _dbCompleter.completeError(e);
       debugPrint("DB Init failed: $e");
@@ -80,36 +81,33 @@ class LocalDatabaseService {
     }
   }
 
-  // Web 刷新修复逻辑：清理失效的 Blob 
+  /// Web refresh logic: Clean up invalid blob URLs
   Future<void> _clearDeadBlobs() async {
     if (!kIsWeb || _db == null) return;
     try {
-      // 查找所有以 blob: 开头的 localPath
       final finder = Finder(
         filter: Filter.matches('localPath', '^blob:'),
       );
       final records = await _messageStore.find(_db!, finder: finder);
 
       if (records.isNotEmpty) {
-        debugPrint(" [Web Clean] Found ${records.length} dead blobs. Cleaning...");
+        debugPrint("[Web Clean] Found ${records.length} dead blobs. Cleaning...");
         await _db!.transaction((txn) async {
           for (var record in records) {
-            // 将 localPath 置空，这样 UI 就会自动去读 content (远程 URL)
             await _messageStore.record(record.key).update(txn, {
               'localPath': null,
               'resolvedPath': null,
-              // previewBytes 保留，作为加载远程图时的缩略图
             });
           }
         });
       }
     } catch (e) {
-      debugPrint("🧹 [Web Clean] Failed: $e");
+      debugPrint("[Web Clean] Failed: $e");
     }
   }
 
   // ========================================================================
-  //  核心防守逻辑：Socket 消息入口 (死保本地路径)
+  // Core Defense Logic: Socket Message Entry (Resource Path Protection)
   // ========================================================================
   Future<void> handleIncomingMessage(ChatUiModel msg) async {
     final db = await database;
@@ -121,12 +119,12 @@ class LocalDatabaseService {
       final record = _messageStore.record(msgId);
       final snapshot = await record.getSnapshot(txn);
 
-      // 如果本地已经有记录，执行防守策略
+      // Execute defense strategy if record exists
       final dataToSave = _mergeMessageData(snapshot?.value, msg.toJson());
 
       await record.put(txn, dataToSave);
 
-      // 更新会话列表
+      // Update conversation list
       final convKey = msg.conversationId;
       final convRecord = _conversationStore.record(convKey);
       final convSnap = await convRecord.getSnapshot(txn);
@@ -151,21 +149,21 @@ class LocalDatabaseService {
     _syncGlobalBadge();
   }
 
-  /// 获取单条会话  （状态自愈)
-  Future<Conversation?> getConversation(String id) async{
+  /// Get single conversation (Self-healing state)
+  Future<Conversation?> getConversation(String id) async {
     final db = await database;
     final snapshot = await _conversationStore.record(id).getSnapshot(db);
-    return snapshot !=null ? Conversation.fromJson(snapshot.value) : null;
+    return snapshot != null ? Conversation.fromJson(snapshot.value) : null;
   }
 
-  /// 获取单条消息
+  /// Get single message
   Future<ChatUiModel?> getMessageById(String msgId) async {
     final db = await database;
     final snapshot = await _messageStore.record(msgId).getSnapshot(db);
     return snapshot != null ? ChatUiModel.fromJson(snapshot.value) : null;
   }
 
-  /// 获取所有发送中或失败的消息
+  /// Get all pending or failed messages
   Future<List<ChatUiModel>> getPendingMessages() async {
     final db = await database;
     final finder = Finder(
@@ -179,7 +177,7 @@ class LocalDatabaseService {
     return snapshots.map((e) => ChatUiModel.fromJson(e.value)).toList();
   }
 
-  /// 批量保存会话列表
+  /// Save conversation list in batch
   Future<void> saveConversations(List<Conversation> list) async {
     if (list.isEmpty) return;
     final db = await database;
@@ -190,7 +188,7 @@ class LocalDatabaseService {
     });
   }
 
-  /// 获取会话的最大 seqId
+  /// Get max seqId for a conversation
   Future<int?> getMaxSeqId(String conversationId) async {
     final db = await database;
     final s = await _messageStore.find(
@@ -207,7 +205,7 @@ class LocalDatabaseService {
     return s.isNotEmpty ? ChatUiModel.fromJson(s.first.value).seqId : null;
   }
 
-  /// 清除未读数
+  /// Clear unread count
   Future<void> clearUnreadCount(String conversationId) async {
     final db = await database;
     await db.transaction((txn) async {
@@ -217,27 +215,26 @@ class LocalDatabaseService {
     });
   }
 
-
-  /// 更新消息状态
+  /// Update message status
   Future<void> updateMessageStatus(String msgId, MessageStatus newStatus) async {
     await _messageStore.record(msgId).update(await database, {
       'status': newStatus.name,
     });
   }
 
-  /// 删除单条消息
+  /// Delete single message
   Future<void> deleteMessage(String msgId) async {
     await _messageStore.record(msgId).delete(await database);
   }
 
-  // 事务支持
+  /// Transaction support
   Future<T> runTransaction<T>(Future<T> Function(DatabaseClient txn) action) async {
     final db = await database;
     return db.transaction(action);
   }
 
   // ========================================================================
-  // 🔍 搜索与联系人功能
+  // Search and Contact functionality
   // ========================================================================
 
   Future<void> saveContacts(List<ChatUser> users) async {
@@ -305,7 +302,7 @@ class LocalDatabaseService {
   }
 
   // ========================================================================
-  // 📚 消息读取与预热
+  // Message reading and Warming
   // ========================================================================
 
   Future<List<ChatUiModel>> getHistoryMessages({
@@ -338,24 +335,19 @@ class LocalDatabaseService {
   }
 
   // ========================================================================
-  // 🛠️ 基础 DAO 支持 (Patch, Update, Save)
+  // Basic DAO Support (Patch, Update, Save)
   // ========================================================================
 
   Future<void> saveMessage(ChatUiModel msg) async {
     final db = await database;
 
     await db.transaction((txn) async {
-      // 1. 先查旧数据 (Snapshot)
       final record = _messageStore.record(msg.id);
       final snapshot = await record.getSnapshot(txn);
-
-
       final dataToSave = _mergeMessageData(snapshot?.value, msg.toJson());
 
-      // 4. 保存合并后的数据
       await record.put(txn, dataToSave);
 
-      // 5. 更新会话列表最后一条消息
       await _conversationStore.record(msg.conversationId).update(txn, {
         'lastMsgContent': _getPreviewContent(msg),
         'lastMsgTime': msg.createdAt,
@@ -364,8 +356,6 @@ class LocalDatabaseService {
     });
   }
 
-  // 批量保存 (ChatViewModel 用)
-// 批量保存 (ChatViewModel 用)
   Future<void> saveMessages(List<ChatUiModel> msgs) async {
     if (msgs.isEmpty) return;
     final db = await database;
@@ -391,7 +381,6 @@ class LocalDatabaseService {
     });
   }
 
-  // 别名方法
   Future<void> updateMessage(String id, Map<String, dynamic> updates) async =>
       patchFields(id, updates);
 
@@ -423,16 +412,16 @@ class LocalDatabaseService {
   }
 
   // ========================================================================
-  // 📦 其他辅助方法
+  // Miscellaneous helpers
   // ========================================================================
 
   String _getPreviewContent(ChatUiModel msg) {
     switch (msg.type) {
-      case MessageType.image: return '[图片]';
-      case MessageType.video: return '[视频]';
-      case MessageType.audio: return '[语音]';
-      case MessageType.file: return '[文件]';
-      case MessageType.location: return '[位置]';
+      case MessageType.image: return '[Image]';
+      case MessageType.video: return '[Video]';
+      case MessageType.audio: return '[Audio]';
+      case MessageType.file: return '[File]';
+      case MessageType.location: return '[Location]';
       default: return msg.content;
     }
   }
@@ -465,16 +454,15 @@ class LocalDatabaseService {
     return json != null ? ConversationDetail.fromJson(json) : null;
   }
 
-  /// 删除指定会话 (用于解散群、被踢)
+  /// Delete specified conversation
   Future<void> deleteConversation(String id) async {
     final db = await database;
     await _conversationStore.record(id).delete(db);
   }
 
-  /// 更新会话字段 (用于改名、改头像)
+  /// Update conversation fields
   Future<void> updateConversation(String id, Map<String, dynamic> updates) async {
     final db = await database;
-    // 使用 update 只更新指定字段，不覆盖整个对象
     await _conversationStore.record(id).update(db, updates);
   }
 
@@ -497,14 +485,13 @@ class LocalDatabaseService {
     });
   }
 
-  //  [全局核心] 统一处理新旧数据合并
+  /// Global Core: Unified handling of old and new data merging
   Map<String, dynamic> _mergeMessageData(Map<String, dynamic>? oldData, Map<String, dynamic> newData) {
     if (oldData == null) return newData;
 
-    // 以新数据（通常是服务器数据）为基准
     final merged = Map<String, dynamic>.from(newData);
 
-    //  关键防守：如果新数据没路径（服务器不返），强行找回本地资产
+    // Defense: If new data lacks path, reclaim local assets
     final String? oldLocal = oldData['localPath']?.toString();
     if ((merged['localPath'] == null || merged['localPath'].toString().isEmpty) &&
         (oldLocal != null && oldLocal.isNotEmpty && !oldLocal.startsWith('http'))) {
@@ -512,12 +499,12 @@ class LocalDatabaseService {
       merged['resolvedPath'] = oldData['resolvedPath'];
     }
 
-    //  关键防守：保护封面图和二进制数据
+    // Defense: Protect thumbnail and binary data
     if (merged['previewBytes'] == null && oldData['previewBytes'] != null) {
       merged['previewBytes'] = oldData['previewBytes'];
     }
 
-    // 关键防守：Meta 信息深度合并 (防止服务器返回的部分 meta 覆盖了本地解析的宽高)
+    // Defense: Deep merge Meta information
     final oldMeta = oldData['meta'] as Map<String, dynamic>? ?? {};
     final newMeta = merged['meta'] as Map<String, dynamic>? ?? {};
     merged['meta'] = {...oldMeta, ...newMeta};

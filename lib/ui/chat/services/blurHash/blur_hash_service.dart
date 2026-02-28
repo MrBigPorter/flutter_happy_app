@@ -1,9 +1,9 @@
 import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
-import 'package:image/image.dart' as img; // 确保 pubspec.yaml 引用了 image 库
-import 'package:blurhash/blurhash.dart' as bh; // 确保引用了 flutter_blurhash 或 blurhash_dart
+import 'package:image/image.dart' as img;
+import 'package:blurhash/blurhash.dart' as bh;
 
-/// 封装处理结果：thumbBytes 将作为 previewBytes 存入 Sembast 数据库
+/// Encapsulated processing result: [thumbBytes] will be persisted in the Sembast DB as [previewBytes].
 class ThumbBlurResult {
   final Uint8List thumbBytes;
   final int thumbW;
@@ -21,11 +21,13 @@ class ThumbBlurResult {
 }
 
 class ThumbBlurHashService {
-  ///  核心入口：子线程解码，主线程通道编码
+  /// Core Entry Point: Decodes in background (Isolate) and encodes via platform channels.
+  /// [thumbWidth]: Low-res dimension for local database storage (100px is optimal).
+  /// [blurSize]: Dimensions for BlurHash calculation (32x32 provides sufficient entropy).
   static Future<ThumbBlurResult?> build(
       Uint8List originalFileBytes, {
-        int thumbWidth = 100, // 仅做本地 DB 占位，100px 足够
-        int blurSize = 32,    // BlurHash 计算用的尺寸，32x32 足够
+        int thumbWidth = 100,
+        int blurSize = 32,
         int compX = 4,
         int compY = 3,
       }) async {
@@ -37,28 +39,26 @@ class ThumbBlurHashService {
       'blurSize': blurSize,
     };
 
-    // 1. 图像缩放处理
-    // Web 端不支持 Isolate (compute)，直接在当前线程运行；App 端走子线程避免卡顿
+    // 1. Image Scaling & Processing
+    // Web: Runs in main thread; Mobile: Offloaded to Isolate to prevent UI jank.
     final Map<String, dynamic>? out = kIsWeb
         ? _worker(payload)
         : await compute(_worker, payload);
 
     if (out == null) return null;
 
-    // 2. 主线程处理 BlurHash 编码
+    // 2. Main Thread: BlurHash Encoding
     String blurHash = "";
 
     try {
-      //  核心修正：直接移除了 (!kIsWeb) 判断
-      // 现在的 blurhash 库通常支持 Web（纯 Dart 实现），且输入图片非常小，不会阻塞 UI
+      // Direct processing of BlurHash (Supported on Web via pure Dart implementations).
+      // Input images are extremely small, ensuring non-blocking UI performance.
       final Uint8List blurInputPng = out['blurInputPng'] as Uint8List;
 
-      // 注意：这里假设 bh.BlurHash.encode 能接受 PNG 字节流
-      // 如果你的库只接受原始 RGBA，可能需要调整 _worker 输出，但根据你之前的代码，Mobile 能跑通说明接口是对的
       final String? hash = await bh.BlurHash.encode(blurInputPng, compX, compY);
       blurHash = hash ?? "";
     } catch (e) {
-      debugPrint("️ [ThumbBlurHashService] BlurHash 生成失败: $e");
+      debugPrint("[ThumbBlurHashService] BlurHash generation failed: $e");
     }
 
     return ThumbBlurResult(
@@ -70,22 +70,22 @@ class ThumbBlurHashService {
     );
   }
 
-  /// 图像处理单元（运行在 Isolate 或 Web Worker 模拟环境）
+  /// Atomic Image Processing Unit (Executes in Isolate or Web environment).
   @pragma('vm:entry-point')
   static Map<String, dynamic>? _worker(Map<String, dynamic> input) {
     try {
       final bytes = input['fileBytes'] as Uint8List;
 
-      // 使用 image 库解码
+      // Decode using the Image library
       final raw = img.decodeImage(bytes);
       if (raw == null) return null;
 
-      // 1) 生成用于 DB 存储的小图 (PNG 格式最通用，用于 previewBytes)
+      // Step 1: Generate a small PNG for local DB storage (previewBytes placeholder)
       final thumbImg = img.copyResize(raw, width: input['thumbWidth'] as int);
       final thumbBytes = img.encodePng(thumbImg);
 
-      // 2) 生成用于 BlurHash 输入的超小图 (32x32)
-      // BlurHash 对细节不敏感，缩得越小计算越快，生成的 Hash 越短
+      // Step 2: Generate an ultra-small image (32x32) as input for the BlurHash algorithm.
+      // BlurHash is detail-agnostic; smaller inputs yield faster computation and shorter strings.
       final blurImg = img.copyResize(raw, width: input['blurSize'] as int, height: input['blurSize'] as int);
       final blurInputPng = img.encodePng(blurImg);
 
@@ -96,8 +96,7 @@ class ThumbBlurHashService {
         'blurInputPng': blurInputPng,
       };
     } catch (e) {
-      // 子线程里 print 可能看不要，但在 Web 端能看到
-      if (kDebugMode) print("Worker Error: $e");
+      if (kDebugMode) print("[ThumbBlurHashService] Worker internal error: $e");
       return null;
     }
   }
