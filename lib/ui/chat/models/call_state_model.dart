@@ -4,24 +4,24 @@ import 'package:flutter_webrtc/flutter_webrtc.dart';
 enum CallStatus { idle, dialing, ringing, connected, ended }
 
 class CallState {
-  // --- 1. 核心状态 ---
+  // --- 1. Core Lifecycle Status ---
   final CallStatus status;
 
-  // --- 2. 业务元数据 (Metadata) [新增] ---
+  // --- 2. Business Metadata ---
   final String? sessionId;
   final String? targetId;
   final String? targetName;
   final String? targetAvatar;
-  final String? remoteSdp; // [新增] 存储远端发来的 Offer 或 Answer SDP
+  final String? remoteSdp; // Stores the remote Offer or Answer SDP string
 
-  // --- 3. 硬件控制状态 ---
+  // --- 3. Hardware & Media Control State ---
   final bool isMuted;
   final bool isSpeakerOn;
   final bool isCameraOff;
   final bool isVideoMode;
-  final String duration; // "00:00"
+  final String duration; // Formatted time string, e.g., "00:00"
 
-  // --- 4. 渲染与 UI ---
+  // --- 4. Rendering & UI Overlay State ---
   final RTCVideoRenderer? localRenderer;
   final RTCVideoRenderer? remoteRenderer;
   final Offset floatOffset;
@@ -43,22 +43,22 @@ class CallState {
     this.floatOffset = const Offset(20, 100),
   });
 
-  /// 架构防御点：一键恢复初始状态（挂断时调用，保证没有任何脏数据残留）
+  /// Architectural Defense: Reset to initial state.
+  /// Called during hangup to ensure no stale data remains in the state machine.
   factory CallState.initial() {
     return const CallState(
       status: CallStatus.idle,
-      // 所有元数据自然变为 null
     );
   }
 
-  // 复制方法 (用于 Riverpod 更新状态)
+  // Immutable copy method for Riverpod state updates
   CallState copyWith({
     CallStatus? status,
     String? sessionId,
     String? targetId,
     String? targetName,
     String? targetAvatar,
-      String? remoteSdp,
+    String? remoteSdp,
     bool? isMuted,
     bool? isSpeakerOn,
     bool? isCameraOff,

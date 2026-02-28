@@ -1,18 +1,18 @@
-// 1. 选择模式
 import 'package:flutter_app/app/routes/extra_codec.dart';
 
+// 1. Selection Interaction Mode
 enum SelectionMode { single, multiple }
 
-// 2. 实体类型 (为了统一 User 和 Group)
+// 2. Entity Category (Unified for Users and Groups)
 enum EntityType { user, group }
 
-// 3. 统一实体对象 (列表里的一行数据)
+// 3. Unified Selection Object (Represents a single row in the selection list)
 class SelectionEntity {
   final String id;
   final String name;
   final String? avatar;
   final EntityType type;
-  final String? desc; // 副标题，比如 "群组" 或 "ID: xxx"
+  final String? desc; // Subtitle, e.g., "Group" or "ID: 12345"
 
   SelectionEntity({
     required this.id,
@@ -22,24 +22,26 @@ class SelectionEntity {
     this.desc,
   });
 
-  // 方便判等
+  /// Equality Overrides:
+  /// Ensures that two entities are treated as identical if their IDs match,
+  /// facilitating set operations and UI selection states.
   @override
   bool operator ==(Object other) =>
-      identical(this, other) || //1.如果是同一个内存对象，直接由真 (性能优化)
-          other is SelectionEntity && // 2. 对方必须也是 SelectionEntity 类型
+      identical(this, other) ||
+          other is SelectionEntity &&
               runtimeType == other.runtimeType &&
-              id == other.id; //核心：只要 ID 一样，我就认为你们是同一个东西！
+              id == other.id;
 
   @override
   int get hashCode => id.hashCode;
 }
 
-
-class ContactSelectionArgs extends BaseRouteArgs{
-  final String title;           // 页面标题 (如 "Forward To", "Add Members")
-  final SelectionMode mode;     // 选择模式 (单选 single / 多选 multi)
-  final List<String> excludeIds;// 需要排除的人 (比如拉人进群时，不能选已经在群里的人)
-  final String? confirmText;    // 多选模式下，右上角确定按钮的文字 (如 "Send", "Invite")
+/// Route arguments for the Contact Selection page
+class ContactSelectionArgs extends BaseRouteArgs {
+  final String title;           // Page title (e.g., "Forward To", "Add Members")
+  final SelectionMode mode;     // Interaction mode (Single vs Multiple selection)
+  final List<String> excludeIds;// IDs to filter out (e.g., members already in a group)
+  final String? confirmText;    // Custom label for the action button (e.g., "Send", "Invite")
 
   ContactSelectionArgs({
     this.title = "Select Contact",
@@ -48,21 +50,21 @@ class ContactSelectionArgs extends BaseRouteArgs{
     this.confirmText,
   });
 
-  //转为Map
+  /// Serialization logic for routing and deep linking
   Map<String, dynamic> toJson() => {
-        'title': title,
-        'mode': mode.name,
-        'excludeIds': excludeIds,
-        'confirmText': confirmText,
+    'title': title,
+    'mode': mode.name,
+    'excludeIds': excludeIds,
+    'confirmText': confirmText,
   };
 
-  // 从Map创建实例
+  /// Deserialization factory for cross-page argument passing
   factory ContactSelectionArgs.fromJson(Map<String, dynamic> json) => ContactSelectionArgs(
-        title: json['title'] ?? "Select Contact",
-       mode: json['mode'] == SelectionMode.multiple.name
+    title: json['title'] ?? "Select Contact",
+    mode: json['mode'] == SelectionMode.multiple.name
         ? SelectionMode.multiple
         : SelectionMode.single,
-        excludeIds: List<String>.from(json['excludeIds'] ?? []),
-        confirmText: json['confirmText'],
-      );
+    excludeIds: List<String>.from(json['excludeIds'] ?? []),
+    confirmText: json['confirmText'],
+  );
 }

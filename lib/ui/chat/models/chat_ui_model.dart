@@ -1,5 +1,4 @@
 import 'dart:typed_data';
-
 import 'package:equatable/equatable.dart';
 export 'chat_ui_model_ext.dart';
 export 'chat_ui_model_mapper.dart';
@@ -17,30 +16,30 @@ enum MessageType {
   system(99, label:'[System]');
 
   final int value;
-  final  String label;
+  final String label;
 
   const MessageType(this.value, {required this.label});
 
   static MessageType fromValue(int value) => MessageType.values.firstWhere(
-    (e) => e.value == value,
+        (e) => e.value == value,
     orElse: () => MessageType.text,
   );
 
-  /// 2. 核心逻辑：获取列表页预览文案
-  /// [content] : 消息原始内容
-  /// [isRecalled] : 消息状态是否已撤回 (这是一个独立的状态，优先级最高)
+  /// Generates the preview text for the conversation list.
+  /// [content]: The raw message content.
+  /// [isRecalled]: High-priority flag indicating the message has been recalled.
   String getPreviewText(String content, {bool isRecalled = false}) {
-    // 优先级 Top 1: 只要标记了 isRecalled，或者是撤回类型，直接返回撤回提示
+    // Priority 1: If marked as recalled or type is recalled, return standard recalled text.
     if (isRecalled || this == MessageType.recalled) {
       return '[Message Recalled]';
     }
 
-    // 优先级 Top 2: 文本和系统消息，直接显示原始内容
+    // Priority 2: For text or system messages, return the raw content.
     if (this == MessageType.text || this == MessageType.system) {
       return content;
     }
 
-    // 优先级 Top 3: 其他多媒体类型，显示固定 Label
+    // Priority 3: For multimedia types, return the predefined label.
     return label;
   }
 }
@@ -57,7 +56,7 @@ class ChatUiModel extends Equatable {
   final String? senderName;
   final String conversationId;
 
-  // 物理资源与内存状态
+  // Physical resource paths and memory-resident states
   final String? resolvedPath;
   final String? resolvedThumbPath;
   final Uint8List? previewBytes;
@@ -96,10 +95,11 @@ class ChatUiModel extends Equatable {
     previewBytes,
     meta,
     seqId,
-    // 把所有参与 UI 显示的字段都写在这里
+    isRecalled,
   ];
 
-  // --- 持久化逻辑 (逻辑保持不变) ---
+  // --- Persistence Logic ---
+
   Map<String, dynamic> toJson() => {
     'id': id,
     'seqId': seqId,
@@ -124,12 +124,12 @@ class ChatUiModel extends Equatable {
       seqId: json['seqId'] as int?,
       content: json['content'] as String,
       type: MessageType.values.firstWhere(
-        (e) => e.name == json['type'],
+            (e) => e.name == json['type'],
         orElse: () => MessageType.text,
       ),
       isMe: json['isMe'] as bool,
       status: MessageStatus.values.firstWhere(
-        (e) => e.name == json['status'],
+            (e) => e.name == json['status'],
         orElse: () => MessageStatus.pending,
       ),
       createdAt: json['createdAt'] as int,
@@ -146,35 +146,38 @@ class ChatUiModel extends Equatable {
     );
   }
 
+  /// Merges server-side message data with local state.
+  /// Prioritizes local physical resources (localPath, previewBytes) over null server values.
   ChatUiModel merge(ChatUiModel serverMsg) {
     return copyWith(
-      // 1. 状态：信服务器的 (比如从 sending 变成了 success)
+      // 1. Status: Trust the server (e.g., transition from 'sending' to 'success')
       status: serverMsg.status == MessageStatus.success ? MessageStatus.success : status,
 
-      // 2. 重点：服务器没有 localPath，但我有，绝对不能丢！
+      // 2. Resource Protection: Servers do not provide localPaths; preserve local ones.
       localPath: (serverMsg.localPath != null && serverMsg.localPath!.isNotEmpty)
           ? serverMsg.localPath
           : localPath,
 
-      // 3. 预览图同理，服务器通常不给 bytes，保留本地的
+      // 3. In-memory data: Servers rarely provide byte arrays; retain local placeholders.
       previewBytes: (serverMsg.previewBytes != null && serverMsg.previewBytes!.isNotEmpty)
           ? serverMsg.previewBytes
           : previewBytes,
 
       isRecalled: serverMsg.isRecalled,
 
-      // 4. 其他字段，服务器准没错，直接覆盖
+      // 4. Overwrite other fields with authoritative server data
       seqId: serverMsg.seqId ?? seqId,
       content: serverMsg.content.isNotEmpty ? serverMsg.content : content,
-      // 如果 serverMsg.meta 是空的，不要覆盖本地已有的 meta (比如宽高等信息)
+
+      // Prevent overwriting existing metadata (dimensions, etc.) if server provides an empty map
       meta: (serverMsg.meta == null || serverMsg.meta!.isEmpty) ? meta : serverMsg.meta,
 
-      // 必须更新的时间戳等
       createdAt: serverMsg.createdAt > 0 ? serverMsg.createdAt : createdAt,
     );
   }
 
-  // --- CopyWith (保持不变) ---
+  // --- CopyWith ---
+
   ChatUiModel copyWith({
     String? id,
     int? seqId,
@@ -215,15 +218,16 @@ class ChatUiModel extends Equatable {
     );
   }
 
+  /// Recall Permission Logic:
+  /// 1. Only messages with 'read' or 'success' status can be recalled.
+  /// 2. Must be within a 2-minute time window from creation.
   bool get canRecall {
-    // 1. 只有发送成功的消息才能撤回 (发送中/失败的通常是直接删除)
-     if (status != MessageStatus.read && status != MessageStatus.success) return false;
+    if (status != MessageStatus.read && status != MessageStatus.success) return false;
 
-    // 2. 核心规则：发送时间在 2 分钟以内
     final sendTime = DateTime.fromMillisecondsSinceEpoch(createdAt);
     final now = DateTime.now();
     final diff = now.difference(sendTime);
 
-    return diff.inMinutes < 2; // 2分钟限制
+    return diff.inMinutes < 2;
   }
 }
