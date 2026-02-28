@@ -5,6 +5,7 @@ import 'package:flutter_app/common.dart';
 class WebRTCManager {
   RTCPeerConnection? peerConnection;
   final List<RTCIceCandidate> _iceCandidateQueue = [];
+  bool _isRemoteDescriptionSet = false;
 
   Map<String, dynamic> iceServers = {
     'iceServers': [
@@ -88,10 +89,12 @@ class WebRTCManager {
     await peerConnection?.setRemoteDescription(
       RTCSessionDescription(sdp, type),
     );
+    _isRemoteDescriptionSet = true;
   }
 
   void addIceCandidate(RTCIceCandidate candidate) {
-    if (peerConnection == null || peerConnection?.getRemoteDescription() == null) {
+    //  3. 核心修复：绝对不能用 getRemoteDescription() 去比对！用咱们的物理锁！
+    if (peerConnection == null || !_isRemoteDescriptionSet) {
       _iceCandidateQueue.add(candidate);
       return;
     }
@@ -109,11 +112,15 @@ class WebRTCManager {
   }
 
   void flushIceCandidateQueue() {
-    if (_iceCandidateQueue.isEmpty ||
-        peerConnection?.getRemoteDescription() == null)
+    //  修改点 1：用物理锁拦截，确保隧道畅通前不硬塞数据！
+    if (_iceCandidateQueue.isEmpty || !_isRemoteDescriptionSet) {
       return;
+    }
     for (var candidate in _iceCandidateQueue) {
-      peerConnection?.addCandidate(candidate);
+      //  顺手加个异步防爆盾，防止脏数据引发底层崩溃
+      peerConnection?.addCandidate(candidate).catchError((e){
+        debugPrint(" [WebRTC] 冲刷队列添加 ICE 失败: $e");
+      });
     }
     _iceCandidateQueue.clear();
   }
@@ -134,6 +141,9 @@ class WebRTCManager {
     onIceCandidate = null;
     onAddStream = null;
     onTrack = null;
+
+    //  修改点 2：挂断时，必须把物理锁重置！！否则下一通电话直接假死！
+    _isRemoteDescriptionSet = false;
 
     await peerConnection?.close();
     await peerConnection?.dispose();

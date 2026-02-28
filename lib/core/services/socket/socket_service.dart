@@ -167,6 +167,9 @@ class SocketService extends _SocketBase
   TokenRefreshCallback? _tokenRefresher;
   bool _isInitializing = false;
 
+  //  新增：自己维护当前已连接的 Token 账本
+  String? _currentToken;
+
   Future<void> init({
     required String token,
     TokenRefreshCallback? onTokenRefresh,
@@ -180,11 +183,17 @@ class SocketService extends _SocketBase
       final validToken = await _ensureValidToken(token);
       if (validToken == null) return;
 
-      if (_socket != null && _socket!.connected) {
-        if (_socket!.io.options?['query']?['token'] == validToken) return;
+      //  核心修复：直接查自己的账本！安全、高效、绝对不会类型报错！
+      if (_socket != null && _socket!.connected && _currentToken == validToken) {
+        debugPrint(" [Socket] Token 未变且已连接，忽略重复 Init");
+        return;
       }
 
       disconnect();
+
+      // 更新账本
+      _currentToken = validToken;
+
       _socket = IO.io(
         '${AppConfig.apiBaseUrl}/events',
         IO.OptionBuilder()
@@ -240,6 +249,7 @@ class SocketService extends _SocketBase
 
   void disconnect() {
     _socket?.dispose();
+    _currentToken = null; //  记得彻底断开时撕毁账本
     _socket = null;
   }
 }

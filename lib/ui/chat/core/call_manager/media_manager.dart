@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:audio_session/audio_session.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
@@ -5,45 +6,44 @@ import 'package:flutter/material.dart';
 
 class MediaManager {
   MediaStream? localStream;
+  void Function(bool isSpeakerOn)? onSpeakerStateChanged;
 
-  //  护盾状态：记住当前是视频还是语音，方便拔掉耳机时恢复
   bool _isVideoMode = true;
+  bool _isCurrentlySpeakerOn = false;
+  bool _expectedSpeakerState = true;
+  bool _isUserManualToggling = false;
+  //  1. 新增：记录最后一次物理插拔的时间
+  DateTime? _lastDeviceChangeTime;
 
-  //  激活音频焦点与防打断护盾
+  Timer? _debounceTimer;
+
+  //  2. 新增：判断是否刚刚发生过插拔（2秒内）
+  bool get isDeviceJustChanged {
+    if (_lastDeviceChangeTime == null) return false;
+    return DateTime.now().difference(_lastDeviceChangeTime!).inSeconds < 2;
+  }
+
   Future<void> configureAudioSession(
       bool isVideo,
       bool Function() getIsMuted,
       ) async {
     final session = await AudioSession.instance;
     await session.configure(
+      // 🎯 核心修复：必须带有 iOS 的蓝牙和扬声器权限参数，否则 iOS 听不到声音！
       AudioSessionConfiguration(
         avAudioSessionCategory: AVAudioSessionCategory.playAndRecord,
-        avAudioSessionCategoryOptions:
-        AVAudioSessionCategoryOptions.allowBluetooth |
-        (isVideo
-            ? AVAudioSessionCategoryOptions.defaultToSpeaker
-            : AVAudioSessionCategoryOptions.none),
+        avAudioSessionCategoryOptions: AVAudioSessionCategoryOptions.allowBluetooth |
+        (isVideo ? AVAudioSessionCategoryOptions.defaultToSpeaker : AVAudioSessionCategoryOptions.none),
         avAudioSessionMode: AVAudioSessionMode.voiceChat,
-        avAudioSessionRouteSharingPolicy:
-        AVAudioSessionRouteSharingPolicy.defaultPolicy,
-        avAudioSessionSetActiveOptions: AVAudioSessionSetActiveOptions.none,
-        androidAudioAttributes: const AndroidAudioAttributes(
-          contentType: AndroidAudioContentType.speech,
-          flags: AndroidAudioFlags.none,
-          usage: AndroidAudioUsage.voiceCommunication,
-        ),
         androidAudioFocusGainType: AndroidAudioFocusGainType.gain,
         androidWillPauseWhenDucked: true,
       ),
     );
 
-    // 监听系统级打断（如普通电话呼入）
     session.interruptionEventStream.listen((event) {
       if (event.begin) {
-        debugPrint("☎️ [MediaManager] 音频焦点被抢占，执行被动闭麦");
         _setMicrophoneEnabled(false);
       } else {
-        debugPrint("✅ [MediaManager] 音频焦点恢复");
         _setMicrophoneEnabled(!getIsMuted());
       }
     });
@@ -55,24 +55,13 @@ class MediaManager {
     }
   }
 
-  //  抓取摄像头和麦克风
   Future<void> initLocalMedia(
       bool isVideo,
       RTCVideoRenderer localRen,
       RTCVideoRenderer remoteRen,
       ) async {
-    _isVideoMode = isVideo; // 记录初始模式
-
-    //  硬件热插拔雷达：时刻监听蓝牙/有线耳机的物理插拔！
-    if (!kIsWeb) {
-      navigator.mediaDevices.ondevicechange = (event) {
-        debugPrint("🔌 [MediaManager] 嗅探到音频外设物理插拔!");
-        _autoRouteAudio();
-      };
-
-      // 启动时先做一次环境侦测，决定声音从哪出
-      await _autoRouteAudio();
-    }
+    _isVideoMode = isVideo;
+    _expectedSpeakerState = isVideo;
 
     final mediaConstraints = {
       'audio': true,
@@ -81,21 +70,37 @@ class MediaManager {
 
     localStream = await navigator.mediaDevices.getUserMedia(mediaConstraints);
 
-    // 护盾：确保画板一定被初始化
     if (localRen.textureId == null) await localRen.initialize();
     if (remoteRen.textureId == null) await remoteRen.initialize();
 
     localRen.srcObject = localStream;
+
+    if (!kIsWeb) {
+      navigator.mediaDevices.ondevicechange = (event) {
+        if (_isUserManualToggling) return;
+        //  3. 记录物理插拔的确切时间！
+        _lastDeviceChangeTime = DateTime.now();
+
+        debugPrint(" [MediaManager] 嗅探到物理插拔，启动防抖...");
+        _debounceTimer?.cancel();
+        _debounceTimer = Timer(const Duration(milliseconds: 500), () {
+          _autoRouteAudio();
+        });
+      };
+
+      Future.delayed(const Duration(milliseconds: 500), () {
+        _autoRouteAudio();
+      });
+    }
   }
 
-  //  智能音频路由大脑：根据外设情况，动态剥夺/赋予扬声器权力
   Future<void> _autoRouteAudio() async {
-    if (kIsWeb) return;
+    if (kIsWeb || _isUserManualToggling) return;
+
     try {
       final devices = await navigator.mediaDevices.enumerateDevices();
       bool hasExternalDevice = false;
 
-      // 遍历底层网卡，寻找有没有戴上蓝牙或插了线
       for (var device in devices) {
         if (device.kind == 'audiooutput' || device.kind == 'audioinput') {
           final label = device.label.toLowerCase();
@@ -109,13 +114,21 @@ class MediaManager {
       }
 
       if (hasExternalDevice) {
-        debugPrint(" [MediaManager] 检测到外设接入，强行关闭扬声器独裁，声音交还给耳机");
-        // 核心密码：设为 false，WebRTC 就会自动把声音走 SCO 蓝牙通道
-        await Helper.setSpeakerphoneOn(false);
+        if (_isCurrentlySpeakerOn) {
+          debugPrint("🎧 [MediaManager] 检测到外设接入，平滑切换至耳机");
+          await Helper.setSpeakerphoneOn(false);
+          _isCurrentlySpeakerOn = false;
+          onSpeakerStateChanged?.call(false);
+        }
       } else {
-        debugPrint("📱 [MediaManager] 无外设接入，恢复默认路由 (视频:外放, 语音:听筒)");
-        // 拔下耳机，恢复原来的规矩
-        await Helper.setSpeakerphoneOn(_isVideoMode);
+        if (_isCurrentlySpeakerOn != _expectedSpeakerState) {
+          debugPrint("📱 [MediaManager] 无外设，纠正路由 (当前: $_isCurrentlySpeakerOn, 期望: $_expectedSpeakerState)");
+          await Helper.setSpeakerphoneOn(_expectedSpeakerState);
+          _isCurrentlySpeakerOn = _expectedSpeakerState;
+          onSpeakerStateChanged?.call(_expectedSpeakerState);
+        } else {
+          debugPrint("[MediaManager] 路由状态已达预期，拒绝重复下发指令");
+        }
       }
     } catch (e) {
       debugPrint("[MediaManager] 自动路由失败: $e");
@@ -135,25 +148,38 @@ class MediaManager {
   Future<void> toggleSpeaker(bool isSpeakerOn) async {
     if (kIsWeb) return;
     try {
+      _isUserManualToggling = true;
+      _debounceTimer?.cancel();
+
       await Helper.setSpeakerphoneOn(isSpeakerOn);
-    } catch (_) {}
+      _isCurrentlySpeakerOn = isSpeakerOn;
+      _expectedSpeakerState = isSpeakerOn;
+      onSpeakerStateChanged?.call(isSpeakerOn);
+    } catch (_) {
+    } finally {
+      Future.delayed(const Duration(milliseconds: 1500), () {
+        _isUserManualToggling = false;
+      });
+    }
   }
 
   void handleAppLifecycleState(AppLifecycleState appState, bool isCameraOff) {
     if (localStream == null) return;
-    final videoTracks = localStream!.getVideoTracks();
-    if (videoTracks.isEmpty) return;
 
-    if (appState == AppLifecycleState.paused ||
-        appState == AppLifecycleState.hidden) {
-      videoTracks[0].enabled = false;
+    if (appState == AppLifecycleState.paused || appState == AppLifecycleState.hidden) {
+      final videoTracks = localStream!.getVideoTracks();
+      if (videoTracks.isNotEmpty) videoTracks[0].enabled = false;
+
     } else if (appState == AppLifecycleState.resumed) {
-      if (!isCameraOff) videoTracks[0].enabled = true;
+      final videoTracks = localStream!.getVideoTracks();
+      if (videoTracks.isNotEmpty && !isCameraOff) {
+        videoTracks[0].enabled = true;
+      }
     }
   }
 
   Future<void> dispose() async {
-    //  拔除监听雷达，防止内存泄漏
+    _debounceTimer?.cancel();
     if (!kIsWeb) {
       navigator.mediaDevices.ondevicechange = null;
     }
