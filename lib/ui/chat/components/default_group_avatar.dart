@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'dart:math';
 
 class DefaultGroupAvatar extends StatelessWidget {
-  final int count; // 成员数量
-  final double size; // 控件大小
+  final int count; // Number of group members
+  final double size; // Widget dimensions
 
   const DefaultGroupAvatar({
     super.key,
@@ -17,11 +17,11 @@ class DefaultGroupAvatar extends StatelessWidget {
       width: size,
       height: size,
       decoration: BoxDecoration(
-        color: const Color(0xFFF2F2F7), // 仿 iOS 浅灰背景
-        borderRadius: BorderRadius.circular(size * 0.12), // 随尺寸变化的圆角
+        color: const Color(0xFFF2F2F7), // Light gray background (iOS style)
+        borderRadius: BorderRadius.circular(size * 0.12), // Dynamic corner radius
       ),
       child: CustomPaint(
-        // 限制最多画 9 个格子，多了画不下
+        // Limit drawing to 9 slots max as per space constraints
         painter: _NineGridPainter(min(count, 9)),
       ),
     );
@@ -37,23 +37,23 @@ class _NineGridPainter extends CustomPainter {
     if (count <= 0) return;
 
     final paint = Paint()
-      ..color = const Color(0xFFD1D1D6) // 占位格子的颜色 (深一点的灰)
+      ..color = const Color(0xFFD1D1D6) // Placeholder grid color (Darker gray)
       ..style = PaintingStyle.fill;
 
-    // === 布局逻辑 (必须与 GroupAvatarService 里的合成逻辑保持一致) ===
+    // === Layout Logic (Must match the synthesis logic in GroupAvatarService) ===
 
-    // 1. 计算列数
+    // 1. Determine column count
     int columns = 1;
     if (count >= 2 && count <= 4) columns = 2;
     if (count >= 5) columns = 3;
 
-    // 2. 计算间隙和格子大小
-    // 设 gap 为总宽度的 4%
+    // 2. Calculate gap and cell dimensions
+    // Set gap as 4% of total width
     final double gap = size.width * 0.04;
-    // 公式: (总宽 - (列数+1)*间隙) / 列数
+    // Formula: (Total Width - (Columns + 1) * Gap) / Columns
     final double cellSize = (size.width - (columns + 1) * gap) / columns;
 
-    // 3. 循环绘制
+    // 3. Iterative rendering
     for (int i = 0; i < count; i++) {
       int row = i ~/ columns;
       int col = i % columns;
@@ -61,15 +61,15 @@ class _NineGridPainter extends CustomPainter {
       double x = gap + col * (cellSize + gap);
       double y = gap + row * (cellSize + gap);
 
-      //  特殊处理：如果是 3 张图，第一张图应该居中
+      // Special handling: For a 3-item layout, the first item is centered
       if (count == 3 && i == 0) {
         x = (size.width - cellSize) / 2;
       }
 
-      // 绘制圆角矩形
+      // Draw rounded rectangle for each cell
       final rect = RRect.fromRectAndRadius(
         Rect.fromLTWH(x, y, cellSize, cellSize),
-        Radius.circular(2), // 小格子的圆角
+        const Radius.circular(2), // Corner radius for individual cells
       );
       canvas.drawRRect(rect, paint);
     }

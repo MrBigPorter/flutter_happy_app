@@ -47,7 +47,7 @@ class CallStateMachine extends StateNotifier<CallState>
     _media.onSpeakerStateChanged = (bool isSpeakerOn) {
       if (!mounted) return;
       state = state.copyWith(isSpeakerOn: isSpeakerOn);
-      debugPrint("📢 [StateMcachine] 收到底层硬件路由变更通知，UI 状态已同步为外放: $isSpeakerOn");
+      debugPrint("[StateMachine] Received hardware route change notification, UI state synchronized to speaker: $isSpeakerOn");
     };
 
     _initSocketListeners();
@@ -65,14 +65,14 @@ class CallStateMachine extends StateNotifier<CallState>
       }
 
       if (event.action == 'endCall') {
-        // ️ 终极防误杀护盾启动！
-        // 如果当前是通话中，并且刚好检测到 AirPods 刚被放回（2秒内有硬件变动）
+        // Shield against accidental disconnects
+        // Intercept iOS system hang-up commands triggered by hardware changes (e.g., putting AirPods back)
         if (state.status == CallStatus.connected && _media.isDeviceJustChanged) {
-          debugPrint(" [StateMachine] 检测到 AirPods 刚放回，精准拦截 iOS 系统的误挂断指令！");
-          return; //  直接拦截，绝不执行下面的 hangUp！
+          debugPrint("[StateMachine] AirPods/Hardware change detected, intercepting accidental iOS system hang-up command");
+          return;
         }
 
-        // 正常的挂断逻辑（比如你按了红色的挂断按钮，或者对方挂断）
+        // Standard hang-up logic (manual button press or remote hang-up)
         if (!_isHangingUp && state.status != CallStatus.idle) {
           if (incomingSessionId == state.sessionId) {
             hangUp(emitEvent: true);
@@ -84,15 +84,15 @@ class CallStateMachine extends StateNotifier<CallState>
     });
   }
 
-  // ================= 核心流程：拨打 =================
+  // ================= Core Process: Outgoing Call =================
   Future<void> startCall(String targetId, {bool isVideo = true}) async {
     if (_isHangingUp) {
-      debugPrint(" [StateMachine] 正在清理上一个通话底层硬件，请稍后重试拨打...");
+      debugPrint("[StateMachine] Cleaning up hardware from previous call, please try again later");
       return;
     }
 
     if (state.status != CallStatus.idle) {
-      debugPrint(" [StateMachine] 拨号前发现状态机遗留异常 (${state.status})，强行复位！");
+      debugPrint("[StateMachine] Residual state detected before dialing (${state.status}), forcing reset");
       _resetStateFlags();
       state = CallState.initial();
     }
@@ -118,8 +118,8 @@ class CallStateMachine extends StateNotifier<CallState>
       _bindWebRTCEvents();
       await _webrtc.createConnection(_media.localStream);
 
-      // 🎯 核心修复 1：必须在生成 SDP 之前，先把 targetId 记入账本！
-      // 否则 WebRTC 引擎拿到网络 IP 后，发现没有 targetId，会把 IP 丢弃！
+      // Core Fix: Record targetId and state before generating SDP
+      // Prevents WebRTC engine from discarding ICE candidates due to missing target metadata
       if (mounted) {
         state = state.copyWith(
           status: CallStatus.dialing,
@@ -132,7 +132,6 @@ class CallStateMachine extends StateNotifier<CallState>
         );
       }
 
-      // 记完账，再生成 SDP（此时会瞬间触发 onIceCandidate）
       final tweakedSdp = await _webrtc.createOfferAndSetLocal();
       _signaling.emitInvite(
         sessionId: sessionId,
@@ -142,7 +141,7 @@ class CallStateMachine extends StateNotifier<CallState>
       );
 
     } catch (e) {
-      debugPrint("❌ [StateMachine] 拨号严重失败: $e");
+      debugPrint("[StateMachine] Dialing failed significantly: $e");
       hangUp(emitEvent: false);
     }
   }
@@ -151,7 +150,7 @@ class CallStateMachine extends StateNotifier<CallState>
     if (event.rawData['isRenegotiation'] == true &&
         state.sessionId == event.sessionId &&
         state.status == CallStatus.connected) {
-      debugPrint("🔄 [ICE Restart] 在 Invite 推送通道拦截到重协商信令...");
+      debugPrint("[ICE Restart] Intercepted renegotiation signal on Invite channel");
       try {
         await _webrtc.setRemoteDescription(event.rawData['sdp'], 'offer');
 
@@ -164,20 +163,20 @@ class CallStateMachine extends StateNotifier<CallState>
           sdp: answer.sdp!,
           isRenegotiation: true,
         );
-        debugPrint("✅ [ICE Restart] 被叫方已成功回复 Answer！");
+        debugPrint("[ICE Restart] Callee successfully responded with Answer");
 
         Future.delayed(const Duration(milliseconds: 100), () {
           if (mounted) _webrtc.flushIceCandidateQueue();
         });
       } catch (e) {
-        debugPrint("❌ [ICE Restart] 协商失败: $e");
+        debugPrint("[ICE Restart] Negotiation failed: $e");
       }
       return;
     }
 
     if (state.status == CallStatus.ended ||
         (state.status != CallStatus.idle && state.sessionId != event.sessionId)) {
-      debugPrint("🧹 [StateMachine] 检测到新来电，正在物理强制清理旧 Session: ${state.sessionId}");
+      debugPrint("[StateMachine] New incoming call detected, forcing cleanup of old session: ${state.sessionId}");
       _resetStateFlags();
       state = CallState.initial();
     }
@@ -270,7 +269,7 @@ class CallStateMachine extends StateNotifier<CallState>
     }
   }
 
-  // ================= 核心流程：挂断 =================
+  // ================= Core Process: Hang Up =================
   void hangUp({bool emitEvent = true}) async {
     if (_isHangingUp ||
         state.status == CallStatus.idle ||
@@ -280,7 +279,7 @@ class CallStateMachine extends StateNotifier<CallState>
 
     _isHangingUp = true;
 
-    // 🎯 核心修复 2：在 state 被清空前，死死攥住当前的 sessionId！
+    // Core Fix: Capture current sessionId before state is cleared
     final currentSessionId = state.sessionId;
 
     _resetStateFlags();
@@ -296,7 +295,7 @@ class CallStateMachine extends StateNotifier<CallState>
       await CallArbitrator.instance.lockGlobalCooldown();
     }
 
-    // 🎯 核心修复 3：物理强制清理 CallKit，并且必须用 await 等待！
+    // Core Fix: Physical cleanup of CallKit must be awaited
     try {
       if (!kIsWeb &&
           defaultTargetPlatform == TargetPlatform.android &&
@@ -305,14 +304,13 @@ class CallStateMachine extends StateNotifier<CallState>
       }
       OverlayManager.instance.hide();
 
-      debugPrint("🛑 [StateMachine] 准备拔管 CallKit... Session: $currentSessionId");
+      debugPrint("[StateMachine] Preparing to disconnect CallKit... Session: $currentSessionId");
       if (currentSessionId != null && currentSessionId.isNotEmpty) {
         await CallKitService.instance.endCall(currentSessionId);
       }
-      //await CallKitService.instance.clearAllCalls();
-      debugPrint("✅ [StateMachine] CallKit 系统界面已被彻底击杀！");
+      debugPrint("[StateMachine] CallKit system UI terminated");
     } catch (e) {
-      debugPrint("❌ [StateMachine] CallKit 清理失败: $e");
+      debugPrint("[StateMachine] CallKit cleanup failed: $e");
     }
 
     final oldLocal = state.localRenderer;
@@ -343,7 +341,7 @@ class CallStateMachine extends StateNotifier<CallState>
   void _bindWebRTCEvents() {
     _webrtc.onIceCandidate = (candidate) {
       if (!mounted || state.targetId == null) return;
-      debugPrint("📡 [ICE Candidate] 发现新路线: ${candidate.candidate}");
+      debugPrint("[ICE Candidate] Found new route: ${candidate.candidate}");
       _signaling.emitIce(
         sessionId: state.sessionId!,
         targetId: state.targetId!,
@@ -353,14 +351,14 @@ class CallStateMachine extends StateNotifier<CallState>
 
     _webrtc.onAddStream = (stream) {
       if (!mounted) return;
-      debugPrint("📺 [WebRTC] 收到远端媒体流！轨数量: ${stream.getTracks().length}");
+      debugPrint("[WebRTC] Received remote stream. Track count: ${stream.getTracks().length}");
       state.remoteRenderer?.srcObject = stream;
       state = state.copyWith(duration: "00:00 ");
     };
 
     _webrtc.onTrack = (event) {
       if (!mounted) return;
-      debugPrint("🎞️ [WebRTC] 收到远端轨道！类型: ${event.track.kind}");
+      debugPrint("[WebRTC] Received remote track. Type: ${event.track.kind}");
 
       if (event.streams.isNotEmpty) {
         state.remoteRenderer?.srcObject = event.streams[0];
@@ -375,7 +373,7 @@ class CallStateMachine extends StateNotifier<CallState>
     };
 
     _webrtc.onIceConnectionState = (iceState) {
-      debugPrint("🔌 [WebRTC-ICE] 底层物理通道状态变更为: ${iceState.toString()}");
+      debugPrint("[WebRTC-ICE] Physical channel state changed to: ${iceState.toString()}");
 
       if (iceState == RTCIceConnectionState.RTCIceConnectionStateFailed ||
           iceState == RTCIceConnectionState.RTCIceConnectionStateDisconnected) {
@@ -410,7 +408,7 @@ class CallStateMachine extends StateNotifier<CallState>
     if (_socketService.socket?.connected != true) return;
 
     _isRestartingIce = true;
-    debugPrint("🔄 [ICE Restart] 正在执行无缝网络重连...");
+    debugPrint("[ICE Restart] Performing seamless network reconnection...");
 
     try {
       final tweakedSdp = await _webrtc.createOfferAndSetLocal(iceRestart: true);
@@ -421,7 +419,7 @@ class CallStateMachine extends StateNotifier<CallState>
         isRenegotiation: true,
       );
     } catch (e) {
-      debugPrint("❌ [ICE Restart] 重连失败: $e");
+      debugPrint("[ICE Restart] Reconnection failed: $e");
     } finally {
       Future.delayed(const Duration(seconds: 15), () {
         if (mounted) _isRestartingIce = false;

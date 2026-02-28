@@ -1,16 +1,17 @@
 part of 'contact_list_page.dart';
 
-/// 抽离出的联系人页面逻辑层
+/// Contact list logic layer extracted as a mixin
 mixin ContactListLogic on ConsumerState<ContactListPage> {
 
-  // 1. 数据处理逻辑：将原始模型转换为带索引的实体
+  // 1. Data processing logic: Convert raw models to indexed entities for the UI
   List<ContactEntity> processData(List<ChatUser> contacts) {
     List<ContactEntity> list = contacts.map((e) {
       if (e.nickname.isEmpty) {
         return ContactEntity(user: e, tagIndex: "#");
       }
 
-      // 这里如果联系人极多，可以考虑在持久化时预存 tag，避免实时计算
+      // If the contact list is extremely large, consider pre-calculating and persisting
+      // the tag in the database to avoid real-time computation overhead.
       String pinyin = PinyinHelper.getPinyinE(e.nickname);
       String tag = pinyin.substring(0, 1).toUpperCase();
       if (!RegExp("[A-Z]").hasMatch(tag)) tag = "#";
@@ -23,26 +24,27 @@ mixin ContactListLogic on ConsumerState<ContactListPage> {
     return list;
   }
 
-  // 2. 交互逻辑：下拉刷新
+  // 2. Interaction logic: Pull-to-refresh
   Future<void> handleRefresh() async {
     try {
-      // 调用 Repository 同步最新数据到本地数据库
+      // Invoke Repository to sync the latest data to the local database
       await ref.read(contactRepositoryProvider).syncContacts();
-      // 成功后失效 Provider 触发重新加载
+      // Invalidate the provider to trigger a UI reload after a successful sync
       ref.invalidate(contactListProvider);
     } catch (e) {
-      debugPrint("Refresh contacts failed: $e");
+      debugPrint("[ContactListLogic] Refresh contacts failed: $e");
     }
   }
 
-  // 3. 路由跳转
+  // 3. Navigation logic
   void navigateToProfile(ChatUser user) {
-    //  这里的关键：push 的时候把 user 对象作为 extra 传过去
+    // Pass the user object as an 'extra' parameter during navigation
     appRouter.push(
       '/contact/profile/${user.id}',
       extra: user,
     );
   }
+
   void navigateToLocalSearch() {
     appRouter.push('/contact/local-search');
   }
@@ -55,14 +57,19 @@ mixin ContactListLogic on ConsumerState<ContactListPage> {
     appRouter.push('/contact/new-friends');
   }
 
-  // 4. 错误状态处理
+  // 4. Error state handling
   Widget _buildErrorState(Object err) {
     return Center(
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
         children: [
           SizedBox(height: 100.h),
-          Center(child: Text("Load Error: $err", style: const TextStyle(color: Colors.red))),
+          Center(
+            child: Text(
+              "Load Error: $err",
+              style: const TextStyle(color: Colors.red),
+            ),
+          ),
           const SizedBox(height: 16),
           TextButton(
             onPressed: () => ref.invalidate(contactListProvider),

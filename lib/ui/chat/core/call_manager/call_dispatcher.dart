@@ -8,7 +8,8 @@ class CallDispatcher {
   CallDispatcher._();
   static final CallDispatcher instance = CallDispatcher._();
 
-  //  终极护盾：在内存中死死抱住最新信令，防止安卓原生层把超大 SDP 文本丢弃
+  // Ultimate Shield: Hold the latest invite signal in memory
+  // to prevent Android native layer from discarding large SDP text strings.
   CallEvent? currentInvite;
 
   Future<void> dispatch(
@@ -36,23 +37,23 @@ class CallDispatcher {
           break;
       }
     } catch (e) {
-      debugPrint(" [Dispatcher] 分发异常: $e");
+      debugPrint("[Dispatcher] Dispatch error: $e");
     }
   }
 
   Future<bool> _handleInvite(CallEvent event) async {
     final arbitrator = CallArbitrator.instance;
 
-    // 提前获取该 Session 的历史状态
+    // Pre-fetch historical status for this session
     final isHandled = await arbitrator.isSessionHandled(event.sessionId);
     final isEnded = await arbitrator.isSessionEnded(event.sessionId);
 
-    //  极速重连终极护盾：自主推理！
-    // 即使后端弄丢了 isRenegotiation 字段，只要这个电话接过 (isHandled) 且没挂断 (!isEnded)
-    // 毫无疑问，这就是底层网络切换带来的重连信令！直接放行给状态机！
+    // Fast Reconnection Shield: Autonomous Inference!
+    // Even if the backend loses the isRenegotiation field, if this call has been handled
+    // and hasn't ended, it's undoubtedly a reconnection signal from a network switch.
     if (event.rawData['isRenegotiation'] == true || (isHandled && !isEnded)) {
-      debugPrint(" [Dispatcher] 嗅探到同一 Session 的二次推流 (网络重连)，免弹窗直接放行！");
-      event.rawData['isRenegotiation'] = true; // 强制给它补齐标志，喂给状态机
+      debugPrint("[Dispatcher] Secondary stream detected for same session (Network Reconnection), bypassing popup.");
+      event.rawData['isRenegotiation'] = true; // Force-patch the flag for the state machine
       return true;
     }
 
@@ -64,7 +65,7 @@ class CallDispatcher {
     await arbitrator.cacheSdp(event.sessionId, event.rawData['sdp']?.toString() ?? '');
     await arbitrator.lockGlobalCooldown();
 
-    debugPrint(" [Dispatcher] 安检通过，正式唤起 CallKit");
+    debugPrint("[Dispatcher] Security check passed, formally invoking CallKit");
     currentInvite = event;
 
     await CallKitService.instance.showIncomingCall(
@@ -79,7 +80,7 @@ class CallDispatcher {
 
   Future<void> _handleEnd(CallEvent event) async {
     final arbitrator = CallArbitrator.instance;
-    debugPrint(" [Dispatcher] 收到挂断指令，开始物理大清场 (Session: ${event.sessionId})");
+    debugPrint("[Dispatcher] Termination command received, starting physical cleanup (Session: ${event.sessionId})");
     await arbitrator.markSessionAsEnded(event.sessionId);
     CallKitService.instance.endCall(event.sessionId);
   }

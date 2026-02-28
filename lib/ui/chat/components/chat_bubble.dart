@@ -18,7 +18,7 @@ class ChatBubble extends ConsumerWidget {
   final bool showReadStatus;
   final bool isGroup;
 
-  //  [核心改动] 新增回调：将长按事件抛给父组件处理
+  // Callback to bubble up long press events to the parent container
   final Function(ChatUiModel)? onLongPress;
 
   const ChatBubble({
@@ -27,12 +27,12 @@ class ChatBubble extends ConsumerWidget {
     this.onRetry,
     this.showReadStatus = false,
     this.isGroup = false,
-    this.onLongPress, // 构造函数接收
+    this.onLongPress,
   });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // 1. 系统消息或撤回消息：显示居中灰条
+    // 1. Handle system messages or recalled messages with a centered gray tip
     if (message.isRecalled || message.type == MessageType.system) {
       return _buildCenteredSystemTip();
     }
@@ -45,7 +45,7 @@ class ChatBubble extends ConsumerWidget {
         mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 对方头像
+          // Remote participant's avatar
           if (!isMe) ...[
             _buildAvatar(message.senderAvatar),
             SizedBox(width: 8.w),
@@ -55,7 +55,7 @@ class ChatBubble extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
               children: [
-                // 群聊中显示对方昵称
+                // Display sender nickname in group chats
                 if (!isMe && isGroup && message.senderName != null)
                   Padding(
                     padding: EdgeInsets.only(bottom: 4.h, left: 4.w),
@@ -65,17 +65,17 @@ class ChatBubble extends ConsumerWidget {
                     ),
                   ),
 
-                // 消息主体行
+                // Main message row body
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    // 发送状态图标 (Loading/Fail)
+                    // Delivery status prefix (Loading/Failed)
                     if (isMe) _buildStatusPrefix(),
 
                     Flexible(
                       child: GestureDetector(
-                        //  [核心改动] 不再自己处理，而是调用回调
+                        // Forward long press events to the injected handler
                         onLongPress: () => onLongPress?.call(message),
                         child: _buildContentFactory(context),
                       ),
@@ -83,7 +83,7 @@ class ChatBubble extends ConsumerWidget {
                   ],
                 ),
 
-                // 已读标识 (仅自己)
+                // Read receipt indicator (Self only)
                 if (isMe && showReadStatus)
                   Padding(
                     padding: EdgeInsets.only(top: 2.h, right: 2.w),
@@ -100,7 +100,7 @@ class ChatBubble extends ConsumerWidget {
             ),
           ),
 
-          // 我的头像
+          // Current user's avatar
           if (isMe) ...[
             SizedBox(width: 8.w),
             _buildAvatar(message.senderAvatar),
@@ -110,7 +110,7 @@ class ChatBubble extends ConsumerWidget {
     );
   }
 
-  /// 构建居中系统提示
+  /// Render centered system notifications or recall alerts
   Widget _buildCenteredSystemTip() {
     String tipText;
     if (message.isRecalled) {
@@ -136,7 +136,7 @@ class ChatBubble extends ConsumerWidget {
     );
   }
 
-  /// 工厂方法：根据类型渲染具体气泡
+  /// Factory method: Render specific bubble UI based on message type
   Widget _buildContentFactory(BuildContext context) {
     switch (message.type) {
       case MessageType.image: return ImageMsgBubble(message: message);
@@ -150,7 +150,7 @@ class ChatBubble extends ConsumerWidget {
     }
   }
 
-  /// 头像渲染
+  /// Avatar rendering with fallback icon
   Widget _buildAvatar(String? url) {
     if (url == null || url.isEmpty) {
       return Container(
@@ -175,7 +175,7 @@ class ChatBubble extends ConsumerWidget {
     );
   }
 
-  /// 状态图标前缀
+  /// Status icon prefix for outgoing messages
   Widget _buildStatusPrefix() {
     if (message.status == MessageStatus.pending) {
       return Padding(
@@ -184,7 +184,7 @@ class ChatBubble extends ConsumerWidget {
       );
     }
     if (message.status == MessageStatus.sending) {
-      // 图片视频自带 Loading 遮罩，不需要外面的转圈
+      // Media messages handle their own internal loading states
       if (message.type == MessageType.image || message.type == MessageType.video) return const SizedBox.shrink();
       return Padding(
         padding: EdgeInsets.only(right: 8.w, bottom: 4.h),

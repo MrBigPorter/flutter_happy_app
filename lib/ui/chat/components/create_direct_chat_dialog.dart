@@ -26,7 +26,8 @@ class _CreateDirectChatDialogState extends ConsumerState<CreateDirectChatDialog>
 
   @override
   void dispose() {
-    _idCtl.dispose(); // ✅ 释放
+    // Release controller resources
+    _idCtl.dispose();
     super.dispose();
   }
 
@@ -86,16 +87,18 @@ class _CreateDirectChatDialogState extends ConsumerState<CreateDirectChatDialog>
 
     if (res != null && mounted) {
 
-      //  [优化核心] 手动抢跑：私聊也需要瞬间上屏
-      // 私聊的头像通常就是对方的头像，API 返回的 res (CreateDirectChatResponse) 里
-      // 最好能带上对方的 avatar/name。如果后端没带，暂时先给 null，让 Socket 慢慢补。
-      // 假设 res.conversationId 是准确的。
+      // Optimization Core: Manual pre-insertion for immediate UI feedback.
+      // Direct chats should appear instantly in the list.
+      // Ideally, the API response (CreateDirectChatResponse) should include the
+      // target user's avatar and name. If missing, temporary placeholders are used
+      // until synchronized via Socket.
+      // Assumption: res.conversationId is accurate.
 
       final newConv = Conversation(
         id: res.conversationId,
         type: ConversationType.direct,
-        name: "User $targetId", // 最好让 API 返回 name，否则暂时用 ID 占位
-        avatar: null, // API 返回对方头像
+        name: "User $targetId", // Use ID as placeholder if name is not returned by API
+        avatar: null, // To be populated by API or Socket update
         lastMsgContent: "New chat",
         lastMsgTime: DateTime.now().millisecondsSinceEpoch,
         unreadCount: 0,
@@ -104,7 +107,7 @@ class _CreateDirectChatDialogState extends ConsumerState<CreateDirectChatDialog>
         isMuted: false,
       );
 
-      // 强行插入列表
+      // Force insertion into the conversation list
       ref.read(conversationListProvider.notifier).addConversation(newConv);
 
       Navigator.pop(context);

@@ -15,7 +15,7 @@ import 'package:lpinyin/lpinyin.dart';
 import '../core/repositories/contact_repository.dart';
 import '../models/conversation.dart';
 
-// 声明逻辑层文件
+// Declare the logic layer mixin file
 part 'contact_list_logic.dart';
 
 class ContactEntity extends ISuspensionBean {
@@ -34,7 +34,7 @@ class ContactListPage extends ConsumerStatefulWidget {
   ConsumerState<ContactListPage> createState() => _ContactListPageState();
 }
 
-//  混入逻辑层 Mixin
+// Mixing in the logic layer
 class _ContactListPageState extends ConsumerState<ContactListPage> with ContactListLogic {
   @override
   Widget build(BuildContext context) {
@@ -42,8 +42,8 @@ class _ContactListPageState extends ConsumerState<ContactListPage> with ContactL
     final asyncRequests = ref.watch(friendRequestListProvider);
     final int requestCount = asyncRequests.valueOrNull?.length ?? 0;
 
-    //  激进优化：手动提取当前 Provider 的最新可用数据（哪怕它正在 Loading）
-    // 这能解决 ref.watch 在初始化瞬间可能丢失 value 的边缘情况
+    // Aggressive optimization: Manually extract the latest available data from the Provider
+    // to handle edge cases where the value might be lost during initial loading moments.
     final List<ChatUser>? currentData = asyncContacts.valueOrNull ??
         ref.read(contactListProvider).asData?.value;
 
@@ -53,14 +53,14 @@ class _ContactListPageState extends ConsumerState<ContactListPage> with ContactL
       body: RefreshIndicator(
         color: context.utilityBrand500,
         backgroundColor: context.bgPrimary,
-        onRefresh: handleRefresh, // 调用逻辑层方法
+        onRefresh: handleRefresh, // Invoke logic layer method
         child: Container(
           color: context.bgSecondary,
           width: double.infinity,
           height: double.infinity,
           child: asyncContacts.when(
             skipLoadingOnRefresh: true,
-            // 缓存优先拦截：如果有预热数据，即使在加载中也直接显示内容
+            // Cache-first: Display content if warmed-up data exists, even during loading
             loading: () => asyncContacts.hasValue
                 ? _buildMainContent(asyncContacts.value!, requestCount)
                 : _buildSkeleton(),
@@ -72,7 +72,7 @@ class _ContactListPageState extends ConsumerState<ContactListPage> with ContactL
     );
   }
 
-  // --- UI 子模块 (只负责展现) ---
+  // --- UI Sub-modules (Presentation Only) ---
 
   Widget _buildMainContent(List<ChatUser> contacts, int requestCount) {
     if (contacts.isEmpty) {
@@ -82,7 +82,7 @@ class _ContactListPageState extends ConsumerState<ContactListPage> with ContactL
       );
     }
 
-    // 调用逻辑层的数据处理方法
+    // Process data using logic layer method
     final List<ContactEntity> contactModels = processData(contacts);
     final List<String> indexData = SuspensionUtil.getTagIndexList(contactModels);
 
@@ -109,7 +109,7 @@ class _ContactListPageState extends ConsumerState<ContactListPage> with ContactL
               selectItemDecoration: BoxDecoration(shape: BoxShape.circle, color: context.utilityBrand500),
               textStyle: TextStyle(fontSize: 10.sp, color: context.textSecondary700),
             ),
-             indexHintBuilder: (context, tag) => _buildIndexHint(tag),
+            indexHintBuilder: (context, tag) => _buildIndexHint(tag),
           ),
         ),
       ],

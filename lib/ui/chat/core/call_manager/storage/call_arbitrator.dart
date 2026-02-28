@@ -1,33 +1,34 @@
 import 'package:flutter/cupertino.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// 跨进程信令仲裁中心 (Process Arbitrator)
-/// 职责：利用 SharedPreferences 作为物理共享锁，解决主线程和 FCM 后台线程的竞态冲突
+/// Process Arbitrator
+/// Responsibility: Uses SharedPreferences as a physical shared lock to resolve
+/// race conditions between the main UI thread and FCM background threads.
 
 class CallArbitrator {
-  // 单例模式，全局唯一
+  // Singleton pattern for global access
   CallArbitrator._();
   static final CallArbitrator instance = CallArbitrator._();
 
-  // 统一管理 Key 前缀，防止污染其他本地数据
+  // Standardized key prefixes to avoid polluting other local data
   static const String _kGlobalLockTime = 'arb_global_cooldown_time';
   static const String _kEndedPrefix = 'arb_ended_';
   static const String _kHandledPrefix = 'arb_handled_';
   static const String _kSdpCachePrefix = 'arb_sdp_';
 
-  ///  跨进程保存 SDP (存入硬盘，全进程可见)
+  /// Cross-process SDP caching (Persisted to disk, visible to all processes)
   Future<void> cacheSdp(String sessionId, String sdp) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('$_kSdpCachePrefix$sessionId', sdp);
   }
 
-  ///  跨进程读取 SDP
+  /// Cross-process SDP retrieval
   Future<String?> getCachedSdp(String sessionId) async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString('$_kSdpCachePrefix$sessionId');
   }
 
-  /// 检查系统是否处于“冷却期” (默认 3500 毫秒)
+  /// Check if the system is currently in a "cooldown period" (default 3500ms)
   Future<bool> isGlobalCooldownActive() async {
     final prefs = await SharedPreferences.getInstance();
     final int lockTime = prefs.getInt(_kGlobalLockTime) ?? 0;
@@ -35,66 +36,65 @@ class CallArbitrator {
 
     final bool isCoolingDown = (now - lockTime) < 3500;
     if (isCoolingDown) {
-      debugPrint(" [Arbitrator] 全局防抖锁生效！丢弃当前密集信令");
+      debugPrint("[Arbitrator] Global debounce lock active! Discarding dense signaling");
     }
     return isCoolingDown;
   }
 
-  /// 激活全局防抖锁 (接收到合法 Invite 或点击挂断时调用)
+  /// Activate the global debounce lock (Called on valid Invite or hang-up)
   Future<void> lockGlobalCooldown() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt(_kGlobalLockTime, DateTime.now().millisecondsSinceEpoch);
-    debugPrint(" [Arbitrator] 全局防抖锁已开启 (3.5秒)");
+    debugPrint("[Arbitrator] Global debounce lock enabled (3.5s)");
   }
 
   /// ----------------------------------------------------------------
-  /// ️ 第二把锁：死亡名单锁 (Death Lock)
-  /// 作用：主线程挂断后，彻底物理拉黑该 Session，拦截延迟到达的 FCM
+  /// Second Lock: Death Lock
+  /// Purpose: Physically blacklists a session after hang-up to intercept delayed FCM signals.
   /// ----------------------------------------------------------------
 
-  /// 标记一个 Session 已彻底终结
+  /// Mark a session as permanently terminated
   Future<void> markSessionAsEnded(String sessionId) async {
     if (sessionId.isEmpty) return;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('$_kEndedPrefix$sessionId', true);
-    debugPrint(" [Arbitrator] Session $sessionId 已打上死亡标记");
+    debugPrint("[Arbitrator] Session $sessionId marked as dead");
   }
 
-  /// 检查该 Session 是否在死亡名单中
+  /// Check if a session is in the death blacklist
   Future<bool> isSessionEnded(String sessionId) async {
     if (sessionId.isEmpty) return false;
     final prefs = await SharedPreferences.getInstance();
     final bool isEnded = prefs.getBool('$_kEndedPrefix$sessionId') == true;
 
     if (isEnded) {
-      debugPrint("[Arbitrator] 死亡名单锁生效！拦截诈尸信令: $sessionId");
+      debugPrint("[Arbitrator] Death lock active! Intercepting ghost signal: $sessionId");
     }
     return isEnded;
   }
 
   /// ----------------------------------------------------------------
-  ///  第三把锁：业务认领锁 (Claim Lock)
-  /// 作用：对于同一个 Session 的来电，谁先拿到（Socket 或 FCM），谁就占坑
+  /// Third Lock: Claim Lock
+  /// Purpose: Ensures only the first process to receive a session signal (Socket or FCM) takes control.
   /// ----------------------------------------------------------------
 
-  /// 声明当前进程已接管该 Session
+  /// Declare that the current process has taken over the session
   Future<void> markSessionAsHandled(String sessionId) async {
     if (sessionId.isEmpty) return;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('$_kHandledPrefix$sessionId', true);
-    debugPrint(" [Arbitrator] Session $sessionId 已被当前进程认领");
+    debugPrint("[Arbitrator] Session $sessionId claimed by current process");
   }
 
-  /// 检查该 Session 是否已被其他进程抢先处理
+  /// Check if the session has already been handled by another process
   Future<bool> isSessionHandled(String sessionId) async {
     if (sessionId.isEmpty) return false;
     final prefs = await SharedPreferences.getInstance();
     final bool isHandled = prefs.getBool('$_kHandledPrefix$sessionId') == true;
 
     if (isHandled) {
-      debugPrint(" [Arbitrator] 认领锁生效！该信令已被其他线程接管，本线程退出");
+      debugPrint("[Arbitrator] Claim lock active! Signaling already handled by another thread, exiting");
     }
     return isHandled;
   }
-
 }

@@ -5,26 +5,26 @@ import 'package:flutter_app/utils/media/url_resolver.dart';
 import 'package:path/path.dart';
 
 class GroupAvatar extends StatelessWidget {
-  /// 后端合成后的完整 URL
+  /// Full URL after backend synthesis
   final String? avatarUrl;
 
-  /// 头像尺寸
+  /// Avatar dimensions
   final double size;
 
   const GroupAvatar({
     super.key,
     this.avatarUrl,
-    this.size = 50, // 默认大小
+    this.size = 50, // Default size
   });
 
   @override
   Widget build(BuildContext context) {
-    // 1. 准备一个轻量级的默认占位组件
-    // 不再调用复杂的 DefaultGroupAvatar，直接给一个简单的背景+图标
+    // 1. Prepare a lightweight default placeholder component
+    // Instead of calling the complex DefaultGroupAvatar, a simple background with an icon is used
     final placeholder = Container(
       width: size,
       height: size,
-      color: context.bgSecondary, // 使用主题次级背景色
+      color: context.bgSecondary, // Using secondary background color from context
       child: Icon(
         Icons.groups_rounded,
         size: size * 0.5,
@@ -36,7 +36,7 @@ class GroupAvatar extends StatelessWidget {
       width: size,
       height: size,
       child: ClipRRect(
-        // 保持圆角风格一致 (15% 比例)
+        // Maintain consistent corner radius style (15% ratio)
         borderRadius: BorderRadius.circular(size * 0.15),
         child: _buildAvatarImage(context, placeholder),
       ),
@@ -44,16 +44,16 @@ class GroupAvatar extends StatelessWidget {
   }
 
   Widget _buildAvatarImage(BuildContext context, Widget placeholder) {
-    // 如果 URL 为空，直接展示占位图
+    // If URL is null or empty, display the placeholder directly
     if (avatarUrl == null || avatarUrl!.isEmpty) {
       return placeholder;
     }
 
-    // 使用 CachedNetworkImage
+    // Utilize CachedNetworkImage for optimized loading and caching
     return CachedNetworkImage(
       imageUrl: UrlResolver.resolveImage(context, avatarUrl, logicalWidth: 48),
       fit: BoxFit.cover,
-      // 加载中、失败、或为空时，统一使用简单的占位图
+      // Uniform placeholder for loading, failure, or empty states
       placeholder: (context, url) => placeholder,
       errorWidget: (context, url, error) => placeholder,
       fadeInDuration: const Duration(milliseconds: 300),

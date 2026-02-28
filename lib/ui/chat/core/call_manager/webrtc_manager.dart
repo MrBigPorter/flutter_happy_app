@@ -5,6 +5,8 @@ import 'package:flutter_app/common.dart';
 class WebRTCManager {
   RTCPeerConnection? peerConnection;
   final List<RTCIceCandidate> _iceCandidateQueue = [];
+
+  // Internal flag to track if the remote session description is successfully set
   bool _isRemoteDescriptionSet = false;
 
   Map<String, dynamic> iceServers = {
@@ -14,12 +16,13 @@ class WebRTCManager {
     ],
   };
 
-  // 引擎向外输出的事件钩子
+  // Event hooks exported by the engine
   void Function(RTCIceConnectionState)? onIceConnectionState;
   void Function(RTCIceCandidate)? onIceCandidate;
   void Function(MediaStream)? onAddStream;
   void Function(RTCTrackEvent)? onTrack;
 
+  // Fetch updated ICE server configurations from the API
   Future<void> ensureIceServersReady() async {
     try {
       final result = await Api.chatIceServers();
@@ -33,6 +36,7 @@ class WebRTCManager {
     } catch (_) {}
   }
 
+  // Create a new PeerConnection and attach local tracks
   Future<void> createConnection(MediaStream? localStream) async {
     await ensureIceServersReady();
     peerConnection = await createPeerConnection(iceServers);
@@ -49,42 +53,42 @@ class WebRTCManager {
     peerConnection?.onTrack = (event) => onTrack?.call(event);
   }
 
+  // Generate an Offer and set it as the local description
   Future<String> createOfferAndSetLocal({bool iceRestart = false}) async {
     if (peerConnection == null) throw Exception("PeerConnection is null");
 
-    //  终极杀手锏：必须用这种 'mandatory' 和 'optional' 数组的古老格式，
-    // Android 底层的 MediaConstraints 才能真正识别 IceRestart 指令！
+    // Using legacy mandatory/optional format for Android MediaConstraints compatibility with IceRestart
     final Map<String, dynamic> constraints = {
       'mandatory': {
         'OfferToReceiveAudio': true,
         'OfferToReceiveVideo': true,
       },
       'optional': [
-        // 注意：必须是大写的 'IceRestart'，并且包在数组里！
         if (iceRestart) {'IceRestart': true},
       ],
     };
 
     try {
-      debugPrint("🛠️ [WebRTCManager] 正在生成 Offer，是否重启 ICE: $iceRestart");
+      debugPrint("[WebRTCManager] Generating Offer, ICE Restart: $iceRestart");
 
       RTCSessionDescription offer = await peerConnection!.createOffer(constraints);
       await peerConnection!.setLocalDescription(offer);
 
       return offer.sdp!;
     } catch (e) {
-      debugPrint(" [WebRTCManager] 生成 Offer 失败: $e");
+      debugPrint("[WebRTCManager] Failed to generate Offer: $e");
       rethrow;
     }
   }
 
-  //  生成原味 Answer 喂给自己，返回带护盾的魔改 SDP
+  // Generate an Answer and set it as local description, returning the SDP
   Future<String> createAnswerAndSetLocal() async {
     final answer = await peerConnection!.createAnswer();
     await peerConnection!.setLocalDescription(answer);
     return _forceVP8(answer.sdp!);
   }
 
+  // Set the remote session description and update the internal flag
   Future<void> setRemoteDescription(String sdp, String type) async {
     await peerConnection?.setRemoteDescription(
       RTCSessionDescription(sdp, type),
@@ -92,57 +96,57 @@ class WebRTCManager {
     _isRemoteDescriptionSet = true;
   }
 
+  // Add ICE candidates, queuing them if the remote description isn't set yet
   void addIceCandidate(RTCIceCandidate candidate) {
-    //  3. 核心修复：绝对不能用 getRemoteDescription() 去比对！用咱们的物理锁！
+    // Core Fix: Use the internal flag instead of getRemoteDescription() to avoid sync issues
     if (peerConnection == null || !_isRemoteDescriptionSet) {
       _iceCandidateQueue.add(candidate);
       return;
     }
 
-    // 2. 如果到了，尝试添加。在 Web 端必须使用 try-catch + catchError 双重护盾拦截异步崩溃！
     try {
       peerConnection!.addCandidate(candidate).catchError((e) {
-        debugPrint(" [WebRTC] 异步添加 ICE 失败，放回队列等待重试: $e");
+        debugPrint("[WebRTC] Async add ICE candidate failed, queuing for retry: $e");
         _iceCandidateQueue.add(candidate);
       });
     } catch (e) {
-      debugPrint("️ [WebRTC] 同步添加 ICE 失败，放回队列: $e");
+      debugPrint("[WebRTC] Sync add ICE candidate failed, queuing: $e");
       _iceCandidateQueue.add(candidate);
     }
   }
 
+  // Apply all queued ICE candidates once the connection is ready
   void flushIceCandidateQueue() {
-    //  修改点 1：用物理锁拦截，确保隧道畅通前不硬塞数据！
+    // Intercept with internal flag to ensure tunnel is ready before pushing candidates
     if (_iceCandidateQueue.isEmpty || !_isRemoteDescriptionSet) {
       return;
     }
     for (var candidate in _iceCandidateQueue) {
-      //  顺手加个异步防爆盾，防止脏数据引发底层崩溃
       peerConnection?.addCandidate(candidate).catchError((e){
-        debugPrint(" [WebRTC] 冲刷队列添加 ICE 失败: $e");
+        debugPrint("[WebRTC] Failed to flush ICE candidate from queue: $e");
       });
     }
     _iceCandidateQueue.clear();
   }
 
-  //  硬件编码降级护盾
+  // Hardware encoding downgrade shield
   String _forceVP8(String sdp) {
-    //  Web 浏览器和 iOS 的硬件解码能力极强，强行抹除 H264 反而会导致浏览器黑屏！
-    // 如果是 Web 或者是 iOS，直接原封不动返回 SDP
+    // Keep original SDP for Web and iOS as they have strong hardware H264 support
     if (kIsWeb || defaultTargetPlatform == TargetPlatform.iOS) {
       return sdp;
     }
-    // 只有安卓才会执行降级
+    // Downgrade H264 only for Android devices to ensure compatibility
     return sdp.replaceAll('H264/90000', 'DISABLED-H264/90000');
   }
 
+  // Clean up resources and reset flags
   Future<void> dispose() async {
     onIceConnectionState = null;
     onIceCandidate = null;
     onAddStream = null;
     onTrack = null;
 
-    //  修改点 2：挂断时，必须把物理锁重置！！否则下一通电话直接假死！
+    // Reset internal flag to prevent state leakage in subsequent calls
     _isRemoteDescriptionSet = false;
 
     await peerConnection?.close();

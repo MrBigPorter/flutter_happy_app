@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_app/common.dart';
-import 'package:flutter_app/components/skeleton.dart'; // 务必导入 Skeleton 组件
+import 'package:flutter_app/components/skeleton.dart'; // Ensure Skeleton component is imported
 import 'package:flutter_app/ui/button/button.dart';
 import 'package:flutter_app/ui/chat/providers/conversation_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -20,20 +20,20 @@ class _UserSearchDialogState extends ConsumerState<UserSearchDialog> {
 
   @override
   Widget build(BuildContext context) {
-    // 监听搜索结果状态
+    // Watch search results state
     final searchState = ref.watch(userSearchProvider(_keyword));
 
     return AlertDialog(
       title: Text("Add Friend", style: TextStyle(fontSize: 20.sp, fontWeight: FontWeight.bold)),
       backgroundColor: context.bgPrimary,
-      surfaceTintColor: Colors.transparent, // 去除 Material 3 的默认色调
-      contentPadding: EdgeInsets.all(20.w), // 调整内边距让布局更舒服
+      surfaceTintColor: Colors.transparent, // Remove default Material 3 tint
+      contentPadding: EdgeInsets.all(20.w), // Adjust padding for a cleaner layout
       content: SizedBox(
         width: 360.w,
         height: 400.h,
         child: Column(
           children: [
-            // 搜索框
+            // Search Input Field
             TextField(
               controller: _searchCtl,
               decoration: InputDecoration(
@@ -52,20 +52,20 @@ class _UserSearchDialogState extends ConsumerState<UserSearchDialog> {
               onSubmitted: (v) => setState(() => _keyword = v),
             ),
 
-            SizedBox(height: 16.h), // 搜索框和列表的间距
+            SizedBox(height: 16.h), // Spacing between search bar and list
 
-            // 列表区域
+            // Results Area
             Expanded(
               child: searchState.when(
-                // 1. 加载中：显示骨架屏
+                // 1. Loading: Display skeleton screen
                 loading: () => _buildSkeletonList(context),
 
-                // 2. 出错
+                // 2. Error handling
                 error: (e, _) => Center(
                   child: Text("Search failed", style: TextStyle(color: context.textSecondary700)),
                 ),
 
-                // 3. 数据展示
+                // 3. Data rendering
                 data: (users) {
                   if (users.isEmpty) {
                     return Center(
@@ -81,11 +81,11 @@ class _UserSearchDialogState extends ConsumerState<UserSearchDialog> {
                     separatorBuilder: (_, __) => SizedBox(height: 12.h),
                     itemBuilder: (ctx, i) {
                       final user = users[i];
-                      // 监听添加好友按钮的状态（loading）
+                      // Watch the state of the "Add Friend" action (loading state)
                       final addActionState = ref.watch(addFriendControllerProvider(user.id));
 
                       return ListTile(
-                        contentPadding: EdgeInsets.zero, // 清除默认边距，完全自定义
+                        contentPadding: EdgeInsets.zero, // Fully custom layout
                         leading: CircleAvatar(
                           radius: 20.r,
                           backgroundImage: user.avatar != null ? NetworkImage(user.avatar!) : null,
@@ -110,7 +110,7 @@ class _UserSearchDialogState extends ConsumerState<UserSearchDialog> {
                                 .read(addFriendControllerProvider(user.id).notifier)
                                 .execute();
 
-                            // 成功后刷新会话列表 (如果有必要的话，或者刷新好友列表)
+                            // Refresh conversation list upon success
                             ref.invalidate(conversationListProvider);
 
                             if (success && mounted) {
@@ -131,35 +131,35 @@ class _UserSearchDialogState extends ConsumerState<UserSearchDialog> {
     );
   }
 
-  //  骨架屏构建方法
+  // Build skeleton screen for loading state
   Widget _buildSkeletonList(BuildContext context) {
     return ListView.separated(
-      itemCount: 6, // 默认显示 6 个占位
-      physics: const NeverScrollableScrollPhysics(), // 禁止滚动
+      itemCount: 6, // Show 6 placeholder items by default
+      physics: const NeverScrollableScrollPhysics(), // Disable scrolling during loading
       separatorBuilder: (_, __) => SizedBox(height: 12.h),
       itemBuilder: (context, index) {
         return Row(
           children: [
-            // 左侧头像骨架
+            // Left: Avatar skeleton
             Skeleton.react(
                 width: 40.r,
                 height: 40.r,
                 borderRadius: BorderRadius.circular(20.r)
             ),
             SizedBox(width: 16.w),
-            // 中间昵称骨架
+            // Center: Nickname and ID skeleton
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Skeleton.react(width: 120.w, height: 16.h),
                   SizedBox(height: 6.h),
-                  Skeleton.react(width: 80.w, height: 12.h), // 模拟 ID 或其他信息
+                  Skeleton.react(width: 80.w, height: 12.h), // Placeholder for secondary info
                 ],
               ),
             ),
             SizedBox(width: 16.w),
-            // 右侧按钮骨架
+            // Right: Button skeleton
             Skeleton.react(
                 width: 64.w,
                 height: 32.h,

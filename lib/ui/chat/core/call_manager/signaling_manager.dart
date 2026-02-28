@@ -7,6 +7,7 @@ class SignalingManager {
 
   SignalingManager(this._socketService);
 
+  /// Send an initial call invitation or renegotiation offer to a target user
   void emitInvite({
     required String sessionId,
     required String targetId,
@@ -23,6 +24,7 @@ class SignalingManager {
     });
   }
 
+  /// Accept an incoming call or respond to a renegotiation offer with an answer SDP
   void emitAccept({
     required String sessionId,
     required String targetId,
@@ -37,6 +39,7 @@ class SignalingManager {
     });
   }
 
+  /// Send ICE candidates to the remote peer to establish a P2P connection
   void emitIce({
     required String sessionId,
     required String targetId,
@@ -51,6 +54,7 @@ class SignalingManager {
     });
   }
 
+  /// Notify the remote peer and server that the call session has ended
   void emitEnd({
     required String sessionId,
     required String targetId,
@@ -63,6 +67,7 @@ class SignalingManager {
     });
   }
 
+  /// Register listeners for incoming socket events related to call signaling
   void listenEvents({
     required Function(dynamic) onAccept,
     required Function(dynamic) onIce,
@@ -73,6 +78,7 @@ class SignalingManager {
     _socketService.socket?.on(SocketEvents.callEnd, onEnd);
   }
 
+  /// Unregister signaling listeners to prevent memory leaks or redundant callbacks
   void dispose() {
     _socketService.socket?.off(SocketEvents.callAccept);
     _socketService.socket?.off(SocketEvents.callIce);

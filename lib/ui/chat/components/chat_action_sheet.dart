@@ -2,37 +2,37 @@ import 'package:flutter/material.dart';
 import 'package:flutter_app/common.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
-// 1. 定义布局模式
+// 1. Layout modes definition
 enum ActionSheetType { grid, list }
 
-// 2. 升级 ActionItem：增加 isDestructive
+// 2. Upgraded ActionItem with destructive operation support
 class ActionItem {
   final String label;
   final IconData icon;
   final VoidCallback onTap;
-  final bool isDestructive; // 新增：是否为破坏性操作(如删除)
+  final bool isDestructive; // Whether this is a destructive action (e.g., Delete)
 
   const ActionItem({
     required this.label,
     required this.icon,
     required this.onTap,
-    this.isDestructive = false, // 默认为 false
+    this.isDestructive = false, // Defaults to false
   });
 }
 
 class ChatActionSheet extends StatelessWidget {
   final List<ActionItem> actions;
-  final ActionSheetType type; // 新增：控制显示模式
+  final ActionSheetType type; // Controls the display mode
 
   const ChatActionSheet({
     super.key,
     required this.actions,
-    this.type = ActionSheetType.list, // 默认为列表模式(用于长按菜单)，输入框面板需手动传 grid
+    this.type = ActionSheetType.list, // Default is list (long-press menu), grid used for input panel
   });
 
   @override
   Widget build(BuildContext context) {
-    // 根据类型分发布局
+    // Dispatch layout based on type
     if (type == ActionSheetType.grid) {
       return _buildGridLayout(context);
     } else {
@@ -41,7 +41,7 @@ class ChatActionSheet extends StatelessWidget {
   }
 
   // =================================================
-  // 模式 A: 网格布局 (用于输入框 "+" 号面板)
+  // Mode A: Grid Layout (Used for input "+" panel)
   // =================================================
   Widget _buildGridLayout(BuildContext context) {
     return Container(
@@ -49,10 +49,10 @@ class ChatActionSheet extends StatelessWidget {
       decoration: BoxDecoration(
         color: context.bgPrimary,
       ),
-      // Grid 模式下通常高度固定或由外部约束
+      // Grid height is usually fixed or constrained by parent in this mode
       child: GridView.builder(
         physics: const NeverScrollableScrollPhysics(),
-        shrinkWrap: true, // 自适应高度
+        shrinkWrap: true, // Adaptive height
         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: 4,
           mainAxisSpacing: 20.h,
@@ -75,14 +75,18 @@ class ChatActionSheet extends StatelessWidget {
                     color: context.bgSecondary,
                     borderRadius: BorderRadius.circular(16.r),
                   ),
-                  child: Icon(item.icon, size: 28.sp, color: context.textBrandPrimary900),
+                  child: Icon(
+                    item.icon,
+                    size: 28.sp,
+                    color: context.textBrandPrimary900,
+                  ),
                 ),
                 SizedBox(height: 8.h),
                 Text(
                   item.label,
                   style: TextStyle(
                     fontSize: 12.sp,
-                    color: context.textPrimary900, // 修正颜色引用
+                    color: context.textPrimary900,
                   ),
                   textAlign: TextAlign.center,
                 ),
@@ -95,19 +99,21 @@ class ChatActionSheet extends StatelessWidget {
   }
 
   // =================================================
-  // 模式 B: 列表布局 (用于消息长按菜单)
+  // Mode B: List Layout (Used for message long-press menu)
   // =================================================
   Widget _buildListLayout(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
         color: context.bgPrimary,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16.r)), // 顶部圆角
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16.r)), // Rounded top corners
       ),
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).padding.bottom + 10.h),
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).padding.bottom + 10.h,
+      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // 顶部小横条
+          // Drag handle at the top
           Center(
             child: Container(
               margin: EdgeInsets.symmetric(vertical: 12.h),
@@ -119,14 +125,17 @@ class ChatActionSheet extends StatelessWidget {
               ),
             ),
           ),
-          // 列表项
+          // List items
           ...actions.map((item) => InkWell(
             onTap: item.onTap,
             child: Container(
               padding: EdgeInsets.symmetric(vertical: 16.h, horizontal: 24.w),
               decoration: BoxDecoration(
                 border: Border(
-                  bottom: BorderSide(color: context.borderPrimary, width: 0.5),
+                  bottom: BorderSide(
+                    color: context.borderPrimary,
+                    width: 0.5,
+                  ),
                 ),
               ),
               child: Row(
@@ -134,7 +143,7 @@ class ChatActionSheet extends StatelessWidget {
                   Icon(
                     item.icon,
                     color: item.isDestructive
-                        ? context.utilityError500 // 危险操作变红
+                        ? context.utilityError500 // Highlights dangerous actions in red
                         : context.textPrimary900,
                     size: 24.sp,
                   ),
@@ -153,7 +162,7 @@ class ChatActionSheet extends StatelessWidget {
               ),
             ),
           )),
-          // 取消按钮
+          // Spacing below the list
           SizedBox(height: 8.h),
         ],
       ),

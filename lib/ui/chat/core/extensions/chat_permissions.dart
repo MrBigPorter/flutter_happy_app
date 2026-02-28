@@ -1,7 +1,7 @@
 import '../../models/conversation.dart';
 
 extension ChatListExt on List<ChatMember> {
-  //  只有 List 才能做的事：根据 ID 找到成员对象
+  //  only list can have this method, not ChatMember itself, because we need to search through the list
   ChatMember? findMember(String userId) {
     try {
       return firstWhere((m) => m.userId == userId);

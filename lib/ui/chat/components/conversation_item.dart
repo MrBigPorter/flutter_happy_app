@@ -20,31 +20,31 @@ class ConversationItem extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // 1. 时间格式化
+    // 1. Time formatting
     final date = DateTime.fromMillisecondsSinceEpoch(item.lastMsgTime);
     final timeStr = "${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}";
 
-    // 2. 发送失败状态判断
+    // 2. Delivery failure status check
     final isSendFailed = item.lastMsgStatus == MessageStatus.failed;
 
     return ListTile(
       contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
 
       // ===========================
-      //  头像区域 (带红点)
+      // Avatar Area (With Badge)
       // ===========================
       leading: Stack(
         clipBehavior: Clip.none,
         children: [
-          //  修改点：不再监听 chatDetailProvider。
-          // 直接使用 item.avatar。memberCount 传固定值 1 或 0 即可，
-          // 因为现在主要靠后端合成的图片渲染。
+          // Implementation Note: Listener for chatDetailProvider removed.
+          // Directly using item.avatar. memberCount is passed as a constant 1 or 0
+          // as rendering now primarily relies on backend-synthesized images.
           GroupAvatar(
             avatarUrl: item.avatar,
             size: 48.r,
           ),
 
-          // 未读数红点
+          // Unread count badge
           if (item.unreadCount > 0)
             Positioned(
               right: -2,
@@ -74,7 +74,7 @@ class ConversationItem extends ConsumerWidget {
       ),
 
       // ===========================
-      //  内容区域
+      // Content Area
       // ===========================
       title: Text(
         item.name,
@@ -117,10 +117,10 @@ class ConversationItem extends ConsumerWidget {
       ),
 
       onTap: () {
-        // 清除本地未读状态
+        // Clear local unread status
         ref.read(conversationListProvider.notifier).clearUnread(item.id);
 
-        // 跳转聊天室
+        // Navigate to chat room
         context.push(
           '/chat/room/${item.id}?title=${Uri.encodeComponent(item.name)}',
         );

@@ -6,30 +6,34 @@ import 'package:flutter/material.dart';
 
 class MediaManager {
   MediaStream? localStream;
+
+  // Callback to notify UI when speaker state changes
   void Function(bool isSpeakerOn)? onSpeakerStateChanged;
 
+  // Internal state tracking
   bool _isVideoMode = true;
   bool _isCurrentlySpeakerOn = false;
   bool _expectedSpeakerState = true;
   bool _isUserManualToggling = false;
-  //  1. 新增：记录最后一次物理插拔的时间
+
+  // Timestamp for the last hardware device change (e.g., unplugging headphones)
   DateTime? _lastDeviceChangeTime;
 
   Timer? _debounceTimer;
 
-  //  2. 新增：判断是否刚刚发生过插拔（2秒内）
+  // Helper to check if a device change occurred within the last 2 seconds
   bool get isDeviceJustChanged {
     if (_lastDeviceChangeTime == null) return false;
     return DateTime.now().difference(_lastDeviceChangeTime!).inSeconds < 2;
   }
 
+  // Configure global audio session settings
   Future<void> configureAudioSession(
       bool isVideo,
       bool Function() getIsMuted,
       ) async {
     final session = await AudioSession.instance;
     await session.configure(
-      // 🎯 核心修复：必须带有 iOS 的蓝牙和扬声器权限参数，否则 iOS 听不到声音！
       AudioSessionConfiguration(
         avAudioSessionCategory: AVAudioSessionCategory.playAndRecord,
         avAudioSessionCategoryOptions: AVAudioSessionCategoryOptions.allowBluetooth |
@@ -40,10 +44,13 @@ class MediaManager {
       ),
     );
 
+    // Listen for system-level interruptions (e.g., incoming phone calls)
     session.interruptionEventStream.listen((event) {
       if (event.begin) {
+        debugPrint("[MediaManager] Audio focus preempted, performing passive mute");
         _setMicrophoneEnabled(false);
       } else {
+        debugPrint("[MediaManager] Audio focus restored");
         _setMicrophoneEnabled(!getIsMuted());
       }
     });
@@ -55,6 +62,7 @@ class MediaManager {
     }
   }
 
+  // Initialize local media streams (Camera/Mic)
   Future<void> initLocalMedia(
       bool isVideo,
       RTCVideoRenderer localRen,
@@ -70,30 +78,35 @@ class MediaManager {
 
     localStream = await navigator.mediaDevices.getUserMedia(mediaConstraints);
 
+    // Ensure renderers are initialized
     if (localRen.textureId == null) await localRen.initialize();
     if (remoteRen.textureId == null) await remoteRen.initialize();
 
     localRen.srcObject = localStream;
 
+    // Monitor physical hardware changes (Bluetooth/Wired headsets)
     if (!kIsWeb) {
       navigator.mediaDevices.ondevicechange = (event) {
         if (_isUserManualToggling) return;
-        //  3. 记录物理插拔的确切时间！
+
+        // Record timestamp of hardware change
         _lastDeviceChangeTime = DateTime.now();
 
-        debugPrint(" [MediaManager] 嗅探到物理插拔，启动防抖...");
+        debugPrint("[MediaManager] Audio peripheral change detected, starting debounce...");
         _debounceTimer?.cancel();
         _debounceTimer = Timer(const Duration(milliseconds: 500), () {
           _autoRouteAudio();
         });
       };
 
+      // Initial route check after startup stabilization
       Future.delayed(const Duration(milliseconds: 500), () {
         _autoRouteAudio();
       });
     }
   }
 
+  // Intelligent audio routing logic based on peripheral availability
   Future<void> _autoRouteAudio() async {
     if (kIsWeb || _isUserManualToggling) return;
 
@@ -101,6 +114,7 @@ class MediaManager {
       final devices = await navigator.mediaDevices.enumerateDevices();
       bool hasExternalDevice = false;
 
+      // Check for active external audio devices
       for (var device in devices) {
         if (device.kind == 'audiooutput' || device.kind == 'audioinput') {
           final label = device.label.toLowerCase();
@@ -114,24 +128,26 @@ class MediaManager {
       }
 
       if (hasExternalDevice) {
+        // If external device is connected, disable speakerphone
         if (_isCurrentlySpeakerOn) {
-          debugPrint("🎧 [MediaManager] 检测到外设接入，平滑切换至耳机");
+          debugPrint("[MediaManager] External device detected, switching audio to headset");
           await Helper.setSpeakerphoneOn(false);
           _isCurrentlySpeakerOn = false;
           onSpeakerStateChanged?.call(false);
         }
       } else {
+        // Restore to expected state if no external device is present
         if (_isCurrentlySpeakerOn != _expectedSpeakerState) {
-          debugPrint("📱 [MediaManager] 无外设，纠正路由 (当前: $_isCurrentlySpeakerOn, 期望: $_expectedSpeakerState)");
+          debugPrint("[MediaManager] No external device, correcting route (Current: $_isCurrentlySpeakerOn, Expected: $_expectedSpeakerState)");
           await Helper.setSpeakerphoneOn(_expectedSpeakerState);
           _isCurrentlySpeakerOn = _expectedSpeakerState;
           onSpeakerStateChanged?.call(_expectedSpeakerState);
         } else {
-          debugPrint("[MediaManager] 路由状态已达预期，拒绝重复下发指令");
+          debugPrint("[MediaManager] Route already matches expected state, skipping update");
         }
       }
     } catch (e) {
-      debugPrint("[MediaManager] 自动路由失败: $e");
+      debugPrint("[MediaManager] Auto routing failed: $e");
     }
   }
 
@@ -145,9 +161,11 @@ class MediaManager {
     }
   }
 
+  // Manually toggle speakerphone state
   Future<void> toggleSpeaker(bool isSpeakerOn) async {
     if (kIsWeb) return;
     try {
+      // Enable shield to prevent hardware feedback loops during transition
       _isUserManualToggling = true;
       _debounceTimer?.cancel();
 
@@ -157,12 +175,14 @@ class MediaManager {
       onSpeakerStateChanged?.call(isSpeakerOn);
     } catch (_) {
     } finally {
+      // Release shield after 1.5 seconds once hardware stabilizes
       Future.delayed(const Duration(milliseconds: 1500), () {
         _isUserManualToggling = false;
       });
     }
   }
 
+  // Manage media tracks based on App lifecycle (Background/Foreground)
   void handleAppLifecycleState(AppLifecycleState appState, bool isCameraOff) {
     if (localStream == null) return;
 

@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'package:flutter/foundation.dart'; 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_callkit_incoming/entities/android_params.dart';
 import 'package:flutter_callkit_incoming/entities/call_event.dart';
@@ -23,9 +23,9 @@ class CallKitService {
 
   final Map<String, Function(CallKitActionEvent)> _handlers = {};
 
-  /// 订阅系统通话行为
+  /// Subscribe to system call actions
   void onAction(String subscriberId, Function(CallKitActionEvent) handler) {
-    if (kIsWeb) return; //  物理隔离：Web 端没有系统按键，无需监听系统级回调
+    if (kIsWeb) return; // Physical isolation: Web has no system buttons, no listener needed
 
     _handlers[subscriberId] = handler;
 
@@ -57,7 +57,7 @@ class CallKitService {
           try {
             h(actionEvent);
           } catch (e) {
-            debugPrint(" [CallKitService] Handler 执行失败: $e");
+            debugPrint("[CallKitService] Handler execution failed: $e");
           }
         }
       }
@@ -68,12 +68,12 @@ class CallKitService {
     _handlers.clear();
   }
 
-  /// 兼容旧代码的 initListener
+  /// Compatibility for legacy initListener code
   void initListener({
     required Function(String uuid) onAccept,
     required Function(String uuid) onDecline,
   }) {
-    if (kIsWeb) return; //  物理隔离
+    if (kIsWeb) return; // Physical isolation
 
     onAction('legacy_init', (event) {
       final String uuid = event.data?['id']?.toString() ?? '';
@@ -85,7 +85,7 @@ class CallKitService {
   }
 
   Future<void> clearAllCalls() async {
-    if (kIsWeb) return; //  物理隔离
+    if (kIsWeb) return; // Physical isolation
     try {
       await FlutterCallkitIncoming.endAllCalls();
     } catch (_) {}
@@ -99,8 +99,8 @@ class CallKitService {
     Map<String, dynamic>? extra,
   }) async {
     if (kIsWeb) {
-      //  物理隔离：Web 端不调系统弹窗，直接靠 App 内部的 Socket 和状态机驱动 UI
-      debugPrint("🌐 [CallKitService] Web端拦截系统来电，直接交由 App 内 UI 处理");
+      // Physical isolation: Web bypasses system popups, driven by App internal UI
+      debugPrint("[CallKitService] Web intercepted system call, passing to App internal UI handler");
       return;
     }
 
@@ -133,7 +133,7 @@ class CallKitService {
   }
 
   Future<void> endCall(String uuid) async {
-    if (kIsWeb) return; //  物理隔离
+    if (kIsWeb) return; // Physical isolation
     await FlutterCallkitIncoming.endCall(uuid);
   }
 }
