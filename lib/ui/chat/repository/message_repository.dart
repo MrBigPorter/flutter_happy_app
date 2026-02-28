@@ -4,7 +4,7 @@ import '../models/chat_ui_model.dart';
 import '../models/conversation.dart';
 import '../services/database/local_database_service.dart';
 
-// Provider 定义
+/// Provider definition for global repository access
 final messageRepositoryProvider = Provider<MessageRepository>((ref) {
   return MessageRepository();
 });
@@ -13,47 +13,48 @@ class MessageRepository {
   final LocalDatabaseService _db = LocalDatabaseService();
 
   // ==========================================
-  //  基础查询 (Existing + Enhanced)
+  //  1. Basic Queries (Read Operations)
   // ==========================================
 
+  /// Retrieves a specific message by its unique identifier
   Future<ChatUiModel?> get(String id) async {
     return await _db.getMessageById(id);
   }
 
-  /// 获取会话的最大 seqId (用于增量同步断点)
+  /// Retrieves the maximum sequence ID of a conversation for incremental sync checkpoints
   Future<int> getMaxSeqId(String conversationId) async {
     return (await _db.getMaxSeqId(conversationId)) ?? 0;
   }
 
-  /// 获取会话详情 (用于 P0 自愈判断 unreadCount)
+  /// Retrieves conversation summary, primarily used for unread count self-healing
   Future<Conversation?> getConversation(String id) async {
     return await _db.getConversation(id);
   }
 
-  // [新增] 获取群详情缓存
+  /// Retrieves cached group-specific details
   Future<ConversationDetail?> getGroupDetail(String id) async {
     return await _db.getConversationDetail(id);
   }
 
-  // [新增] 保存群详情缓存
+  /// Persists group detail information into the local cache
   Future<void> saveGroupDetail(ConversationDetail detail) async {
     await _db.saveConversationDetail(detail);
   }
 
-  /// [删除会话] 用于解散群、被踢、退群
+  /// Deletes a conversation; typically used when leaving or disbanding a group
   Future<void> deleteConversation(String conversationId) async {
     await _db.deleteConversation(conversationId);
   }
 
-  /// [更新会话信息] 用于 Socket 推送群名/头像变更
+  /// Updates top-level conversation metadata.
+  /// Synchronizes both the list view (Conversation) and the detail view (ConversationDetail).
   Future<void> updateConversationInfo(
-    String conversationId, {
-    String? name,
-    String? avatar,
-    String? announcement, // 新增公告参数
-  }) async {
-    // 1. 更新会话列表 (Conversation Table)
-    // 列表通常只展示名字和头像，不展示公告
+      String conversationId, {
+        String? name,
+        String? avatar,
+        String? announcement,
+      }) async {
+    // 1. Update the Conversation table for list view display
     final Map<String, dynamic> listUpdates = {};
     if (name != null) listUpdates['name'] = name;
     if (avatar != null) listUpdates['avatar'] = avatar;
@@ -62,25 +63,28 @@ class MessageRepository {
       await _db.updateConversation(conversationId, listUpdates);
     }
 
-    // 2. 更新详情缓存 (ConversationDetail Table)
-    // 如果本地有缓存详情，也要同步更新，否则点进群设置会看到旧数据
+    // 2. Synchronize the detail cache to prevent stale data in group settings
     final detail = await _db.getConversationDetail(conversationId);
     if (detail != null) {
       final newDetail = detail.copyWith(
         name: name,
         avatar: avatar,
-        announcement: announcement, // 同步更新公告
+        announcement: announcement,
       );
       await _db.saveConversationDetail(newDetail);
     }
   }
 
-  /// 更新成员禁言状态
+  // ==========================================
+  //  2. Group Membership Management
+  // ==========================================
+
+  /// Updates the mute status of a specific member locally
   Future<void> updateMemberMuted(
-    String groupId,
-    String userId,
-    int? mutedUntil,
-  ) async {
+      String groupId,
+      String userId,
+      int? mutedUntil,
+      ) async {
     final detail = await _db.getConversationDetail(groupId);
     if (detail == null) return;
     final updatedMembers = detail.members.map((m) {
@@ -92,19 +96,18 @@ class MessageRepository {
     await _db.saveConversationDetail(detail.copyWith(members: updatedMembers));
   }
 
-  /// 更新成员角色
+  /// Updates the role of a group member (e.g., promoting to Admin)
   Future<void> updateMemberRole(
-    String groupId,
-    String userId,
-    String roleStr,
-  ) async {
+      String groupId,
+      String userId,
+      String roleStr,
+      ) async {
     final detail = await _db.getConversationDetail(groupId);
     if (detail == null) return;
 
-    // 转换 String 到 Enum
     final newRole = GroupRole.values.firstWhere(
-      (r) => r.name == roleStr,
-      orElse: () => GroupRole.member, // 默认角色
+          (r) => r.name == roleStr,
+      orElse: () => GroupRole.member,
     );
 
     final updatedMembers = detail.members.map((m) {
@@ -117,69 +120,65 @@ class MessageRepository {
     await _db.saveConversationDetail(detail.copyWith(members: updatedMembers));
   }
 
-  /// 转让群主
+  /// Handles group ownership transfer by updating both the member roles and the ownerId field
   Future<void> transferOwner(
-    String groupId, {
-    required String oldOwnerId,
-    required String newOwnerId,
-  }) async {
+      String groupId, {
+        required String oldOwnerId,
+        required String newOwnerId,
+      }) async {
     final detail = await _db.getConversationDetail(groupId);
     if (detail == null) return;
 
     final updatedMembers = detail.members.map((m) {
       if (m.userId == newOwnerId) {
-        return m.copyWith(role: GroupRole.owner); // 新王登基
+        return m.copyWith(role: GroupRole.owner);
       }
       if (m.userId == oldOwnerId) {
-        return m.copyWith(role: GroupRole.admin); // 旧王退位 (通常变为管理员或普通成员，看业务逻辑)
+        return m.copyWith(role: GroupRole.admin);
       }
       return m;
     }).toList();
 
-    // 同时更新 ConversationDetail 的 ownerId 字段
     await _db.saveConversationDetail(
       detail.copyWith(ownerId: newOwnerId, members: updatedMembers),
     );
   }
 
-  /// [新增] 从群组移除成员 (踢人/退群)
+  /// Removes a specific user from the local group cache (Kicked/Left)
   Future<void> removeMemberFromGroup(
-    String groupId,
-    String targetUserId,
-  ) async {
+      String groupId,
+      String targetUserId,
+      ) async {
     final detail = await _db.getConversationDetail(groupId);
     if (detail == null) return;
 
-    // 过滤掉目标用户
     final updatedMembers = detail.members
         .where((m) => m.userId != targetUserId)
         .toList();
 
-    // 如果人数变了，保存回去
     if (updatedMembers.length != detail.members.length) {
       final newDetail = detail.copyWith(members: updatedMembers);
       await _db.saveConversationDetail(newDetail);
     }
   }
 
-  /// [新增] 向群组添加成员 (进群)
+  /// Adds a new member to the group cache if they do not already exist
   Future<void> addMemberToGroup(String groupId, ChatMember member) async {
     final detail = await _db.getConversationDetail(groupId);
     if (detail == null) return;
 
-    // 防止重复添加
     final exists = detail.members.any((m) => m.userId == member.userId);
     if (exists) return;
 
-    // 添加新成员
     final updatedMembers = [...detail.members, member];
-
-    // 保存
-    final newDetail = detail.copyWith(members: updatedMembers);
-    await _db.saveConversationDetail(newDetail);
+    await _db.saveConversationDetail(detail.copyWith(members: updatedMembers));
   }
 
-  //  [新增] 分页拉取历史消息 (UI下拉刷新专用)
+  // ==========================================
+  //  3. Data Persistence & Fetching
+  // ==========================================
+
+  /// Paginated historical message retrieval for infinite scrolling/pull-to-refresh
   Future<List<ChatUiModel>> getHistory({
     required String conversationId,
     int offset = 0,
@@ -192,60 +191,50 @@ class MessageRepository {
     );
   }
 
-  //  [新增] 实时监听消息列表 (UI 聊天气泡自动上屏专用)
+  /// Reactive stream for real-time message list updates in the chat bubble view
   Stream<List<ChatUiModel>> watchMessages(String conversationId) {
     return _db.watchMessages(conversationId);
   }
 
-  //  [新增] 获取发送失败/发送中的消息 (App启动重发专用)
+  /// Retrieves messages in 'failed' or 'sending' states for retry mechanisms
   Future<List<ChatUiModel>> getPendingMessages() async {
     return await _db.getPendingMessages();
   }
 
-  // ==========================================
-  //  核心写入逻辑 (Existing - 保持原样)
-  // ==========================================
-
-  /// [场景 1：初始发送 / 同步入库]
+  /// Writes or updates a message with Merge Conflict Defense.
+  /// Preserves local resource paths (localPath, previewBytes) when syncing from server.
   Future<void> saveOrUpdate(ChatUiModel msg) async {
     final old = await _db.getMessageById(msg.id);
 
     if (old == null) {
-      // 1. 如果是全新的消息，直接存
       await _db.saveMessage(msg);
     } else {
-      // 2. 核心防御：合并旧数据
-      // 保留旧数据里的 localPath 和 previewBytes
       final merged = old.merge(msg);
       await _db.saveMessage(merged);
     }
   }
 
-  /// [批量入库] (用于同步下来的列表)
+  /// Batch persistence logic for initial sync or history loading
   Future<void> saveBatch(List<ChatUiModel> msgs) async {
-    // 保持你原有的安全循环逻辑
     for (var msg in msgs) {
       await saveOrUpdate(msg);
     }
   }
 
-  /// [场景 2：状态更新 / 上传完成 / 压缩完成]
-  /// 核心：增量更新 (Patch)
+  /// Incremental Field Patching (Update specific fields).
+  /// Built-in protection to prevent nullifying local binary assets during synchronization.
   Future<void> patchFields(String msgId, Map<String, dynamic> updates) async {
     if (updates.isEmpty) return;
 
-    //  1. 铁壁防御：绝对禁止把 previewBytes 设为 null
-    if (updates.containsKey('previewBytes') &&
-        updates['previewBytes'] == null) {
+    // Defense logic: Prevent accidental nullification of local binary resources
+    if (updates.containsKey('previewBytes') && updates['previewBytes'] == null) {
       updates.remove('previewBytes');
     }
-
-    //  2. 铁壁防御：绝对禁止把 localPath 设为 null
     if (updates.containsKey('localPath') && updates['localPath'] == null) {
       updates.remove('localPath');
     }
 
-    //  3. 深度合并 Meta
+    // Deep merge metadata to preserve existing fields (e.g., dimensions, blurhash)
     if (updates.containsKey('meta')) {
       final oldMsg = await _db.getMessageById(msgId);
       if (oldMsg != null) {
@@ -255,39 +244,35 @@ class MessageRepository {
       }
     }
 
-    // 调用数据库底层的 update
     await _db.updateMessage(msgId, updates);
   }
 
-  //  [新增] 快捷更新状态 (发送中 -> 成功/失败)
+  /// Fast status transition (e.g., Sending -> Success)
   Future<void> updateStatus(String msgId, MessageStatus status) async {
     await _db.updateMessageStatus(msgId, status);
   }
 
   // ==========================================
-  //  P0 核心业务：已读状态管理 (Existing)
+  //  4. Read State & Housekeeping
   // ==========================================
 
-  /// 静默标记已读 (只改本地库，不调 API)
-  /// 用于：冷启动自愈、进入房间时消除红点
+  /// Silent Read: Updates local database without triggering external API calls.
+  /// Used for cold-start self-healing or clearing red dots.
   Future<void> markAsReadLocally(String conversationId, int targetSeqId) async {
     await _db.markMessagesAsRead(conversationId, targetSeqId);
   }
 
+  /// Forcefully clears unread count for a conversation.
   Future<void> forceClearUnread(String conversationId) async {
     await _db.clearUnreadCount(conversationId);
   }
 
-  // ==========================================
-  //  用户操作 (新增 - New Features)
-  // ==========================================
-
-  //  [新增] 删除消息
+  /// Physically removes a message record from local storage.
   Future<void> delete(String msgId) async {
     await _db.deleteMessage(msgId);
   }
 
-  //  [新增] 撤回消息
+  /// Marks a message as recalled locally with a custom tip text.
   Future<void> recallMessage(String msgId, String tipText) async {
     await _db.doLocalRecall(msgId, tipText);
   }

@@ -26,7 +26,7 @@ class _ContactSelectionPageState extends ConsumerState<ContactSelectionPage>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
-  // 内部控制是否开启多选
+  /// Internal state to track if the UI is currently in multiple selection mode
   late bool _isMultiSelectMode;
 
   @override
@@ -34,23 +34,23 @@ class _ContactSelectionPageState extends ConsumerState<ContactSelectionPage>
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
 
-    // 初始状态：如果外部传进来就是多选(如拉群)，那就默认多选
-    // 如果外部传的是单选(如转发)，默认关闭多选，但允许用户手动开启
+    // Default to multiple selection if specified by arguments; otherwise start in single mode.
     _isMultiSelectMode = widget.args.mode == SelectionMode.multiple;
   }
 
-  // 切换模式逻辑
+  /// Toggles between single and multiple selection modes and clears state if needed.
   void _toggleMode() {
     setState(() {
       _isMultiSelectMode = !_isMultiSelectMode;
     });
 
-    // 如果切回单选，清空已选中的人
+    // Invalidate the selection provider when returning to single mode to prevent accidental bulk actions.
     if (!_isMultiSelectMode) {
       ref.invalidate(selectionStateProvider);
     }
   }
 
+  /// Finalizes the selection and returns the list of selected entities to the caller.
   void _onConfirm() {
     final selected = ref.read(selectionStateProvider);
     context.pop(selected.toList());
@@ -59,12 +59,13 @@ class _ContactSelectionPageState extends ConsumerState<ContactSelectionPage>
   @override
   Widget build(BuildContext context) {
     final selectedCount = ref.watch(selectionStateProvider).length;
-    // 判断是否允许切换：只有当原始意图是 Single 时，才显示 Select 按钮
+
+    // Only allow mode switching if the original intent was a single selection.
     final bool canSwitch = widget.args.mode == SelectionMode.single;
 
     return BaseScaffold(
       title: widget.args.title,
-      // 1. 顶部按钮 (Select / Cancel)
+      // 1. Navigation Actions (Switching Selection Logic)
       actions: [
         if (canSwitch)
           TextButton(
@@ -79,10 +80,10 @@ class _ContactSelectionPageState extends ConsumerState<ContactSelectionPage>
             ),
           ),
       ],
-      // 2. 使用 Stack 来模拟 FloatingActionButton
+      // 2. Main Content Body with Floating Confirmation Button overlay
       body: Stack(
         children: [
-          // 底层：Tab 和 列表
+          // Bottom Layer: Tabs and Entity Lists
           Column(
             children: [
               Container(
@@ -102,7 +103,6 @@ class _ContactSelectionPageState extends ConsumerState<ContactSelectionPage>
                 child: TabBarView(
                   controller: _tabController,
                   children: [
-                    // 把 _isMultiSelectMode 传下去
                     _RecentList(args: widget.args, isMultiSelectMode: _isMultiSelectMode),
                     _ContactList(args: widget.args, isMultiSelectMode: _isMultiSelectMode),
                   ],
@@ -111,11 +111,11 @@ class _ContactSelectionPageState extends ConsumerState<ContactSelectionPage>
             ],
           ),
 
-          // 上层：悬浮确认按钮 (仅多选模式且有人被选中时显示)
+          // Top Layer: Floating Confirmation Button (Visible only in multi-select mode)
           if (_isMultiSelectMode && selectedCount > 0)
             Positioned(
               right: 20.w,
-              bottom: 40.h + MediaQuery.of(context).padding.bottom, // 避开底部安全区
+              bottom: 40.h + MediaQuery.of(context).padding.bottom,
               child: FloatingActionButton.extended(
                 onPressed: _onConfirm,
                 backgroundColor: context.textBrandPrimary900,
@@ -134,9 +134,8 @@ class _ContactSelectionPageState extends ConsumerState<ContactSelectionPage>
 }
 
 // ----------------------------------------------------
-// Tab 1: 最近会话
+// Tab 1: Recent Conversations
 // ----------------------------------------------------
-// 将 ConsumerWidget 改为 ConsumerStatefulWidget
 class _RecentList extends ConsumerStatefulWidget {
   final ContactSelectionArgs args;
   final bool isMultiSelectMode;
@@ -151,21 +150,20 @@ class _RecentList extends ConsumerStatefulWidget {
   ConsumerState<_RecentList> createState() => _RecentListState();
 }
 
-// 混入 AutomaticKeepAliveClientMixin
 class _RecentListState extends ConsumerState<_RecentList> with AutomaticKeepAliveClientMixin {
-
-  //  核心：告诉 Flutter 保持活跃，不要销毁
+  /// Ensures the tab content is preserved during navigation between tabs.
   @override
   bool get wantKeepAlive => true;
 
   @override
   Widget build(BuildContext context) {
-    super.build(context); //  必须调用 super.build
+    super.build(context);
 
     final listAsync = ref.watch(conversationListProvider);
 
     return listAsync.when(
       data: (list) {
+        // Map conversation items to unified SelectionEntities
         final entities = list.map((c) => SelectionEntity(
           id: c.id,
           name: c.name,
@@ -180,14 +178,14 @@ class _RecentListState extends ConsumerState<_RecentList> with AutomaticKeepAliv
             isMultiSelectMode: widget.isMultiSelectMode
         );
       },
-      error: (_, __) => const Center(child: Text("Error loading chats")),
+      error: (err, _) => Center(child: Text("Load failed: $err")),
       loading: () => const Center(child: CircularProgressIndicator()),
     );
   }
 }
 
 // ----------------------------------------------------
-// Tab 2: 通讯录
+// Tab 2: Contact List
 // ----------------------------------------------------
 class _ContactList extends ConsumerStatefulWidget {
   final ContactSelectionArgs args;
@@ -204,13 +202,12 @@ class _ContactList extends ConsumerStatefulWidget {
 }
 
 class _ContactListState extends ConsumerState<_ContactList> with AutomaticKeepAliveClientMixin {
-
   @override
-  bool get wantKeepAlive => true; // 保持活跃
+  bool get wantKeepAlive => true;
 
   @override
   Widget build(BuildContext context) {
-    super.build(context); // 必须调用
+    super.build(context);
 
     final contactsAsync = ref.watch(contactListProvider);
 
@@ -230,14 +227,14 @@ class _ContactListState extends ConsumerState<_ContactList> with AutomaticKeepAl
             isMultiSelectMode: widget.isMultiSelectMode
         );
       },
-      error: (_, __) => const Center(child: Text("Error loading contacts")),
+      error: (err, _) => Center(child: Text("Load failed: $err")),
       loading: () => const Center(child: CircularProgressIndicator()),
     );
   }
 }
 
 // ----------------------------------------------------
-// 核心：复用的列表视图
+// Core: Reusable Selection List View
 // ----------------------------------------------------
 class _SelectionListView extends ConsumerWidget {
   final List<SelectionEntity> entities;
@@ -256,7 +253,7 @@ class _SelectionListView extends ConsumerWidget {
 
     return ListView.separated(
       itemCount: entities.length,
-      padding: EdgeInsets.only(bottom: 100.h), // 底部留白给悬浮按钮
+      padding: EdgeInsets.only(bottom: 100.h), // Extra padding to avoid occlusion by FAB
       separatorBuilder: (_, __) => Divider(height: 1, indent: 72.w, color: context.bgSecondary),
       itemBuilder: (context, index) {
         final item = entities[index];
@@ -264,29 +261,25 @@ class _SelectionListView extends ConsumerWidget {
 
         return ListTile(
           contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 4.h),
-          leading: Stack(
-            children: [
-              Container(
-                width: 48.r,
-                height: 48.r,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(24.r),
-                  color: context.bgSecondary,
-                  image: item.avatar != null
-                      ? DecorationImage(
-                    image: CachedNetworkImageProvider(
-                      UrlResolver.resolveImage(context, item.avatar!, logicalWidth: 48),
-                    ),
-                    fit: BoxFit.cover,
-                  ) : null,
+          leading: Container(
+            width: 48.r,
+            height: 48.r,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(24.r),
+              color: context.bgSecondary,
+              image: item.avatar != null
+                  ? DecorationImage(
+                image: CachedNetworkImageProvider(
+                  UrlResolver.resolveImage(context, item.avatar!, logicalWidth: 48),
                 ),
-                child: item.avatar == null
-                    ? Icon(
-                  item.type == EntityType.group ? Icons.groups : Icons.person,
-                  color: context.textSecondary700,
-                ) : null,
-              ),
-            ],
+                fit: BoxFit.cover,
+              ) : null,
+            ),
+            child: item.avatar == null
+                ? Icon(
+              item.type == EntityType.group ? Icons.groups : Icons.person,
+              color: context.textSecondary700,
+            ) : null,
           ),
           title: Text(
             item.name,
@@ -296,19 +289,16 @@ class _SelectionListView extends ConsumerWidget {
             item.desc ?? "",
             style: TextStyle(fontSize: 12.sp, color: context.textSecondary700),
           ),
-
-          //  根据 isMultiSelectMode 显示勾选框
+          // Conditional trailing checkbox based on current selection mode
           trailing: isMultiSelectMode
               ? _buildCheckbox(context, isSelected)
               : null,
-
           onTap: () {
-            //  根据 isMultiSelectMode 决定行为
             if (isMultiSelectMode) {
-              // 多选模式：切换状态，不返回
+              // Toggle state in multi-selection mode
               ref.read(selectionStateProvider.notifier).toggle(item, SelectionMode.multiple);
             } else {
-              // 单选模式：直接带数据返回
+              // Direct pop with result in single-selection mode
               context.pop([item]);
             }
           },
@@ -317,6 +307,7 @@ class _SelectionListView extends ConsumerWidget {
     );
   }
 
+  /// Builds a custom circular checkbox reflecting the selection status
   Widget _buildCheckbox(BuildContext context, bool isChecked) {
     return Container(
       width: 24.r,
