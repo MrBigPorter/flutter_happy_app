@@ -14,49 +14,50 @@ part 'contact_provider.g.dart';
 // ===========================================================================
 // 1. Contact List Provider
 // ===========================================================================
+
 @Riverpod(keepAlive: true)
 class ContactList extends _$ContactList {
   @override
   Future<List<ChatUser>> build() async {
-    // 获取仓库实例
     final repo = ref.watch(contactRepositoryProvider);
-    //  1. 立即触发一次异步同步（不 await）
-    // 这允许 build 方法立刻继续执行，直接去读本地 DB
+
+    // Trigger an asynchronous background synchronization without awaiting.
+    // This allows the build method to return the local database content immediately.
     _silentSync(repo);
-    //  2. 直接返回本地数据，实现秒开
+
+    // Fetch from local repository for instant UI rendering (Offline-first)
     return repo.getAllContacts();
   }
 
+  /// Performs a background sync and updates the state upon completion
   Future<void> _silentSync(ContactRepository repo) async {
     try {
       await repo.syncContacts();
-      // 同步成功后，手动更新 state，UI 会无感刷新
+      // Silently update the state once sync finishes to refresh the UI
       state = AsyncValue.data(await repo.getAllContacts());
     } catch (e) {
-      debugPrint("Silent sync failed: $e");
+      debugPrint("[ContactList] Silent sync failed: $e");
     }
   }
 
-
-  /// Silently refreshes the contact list state
+  /// Forces a complete refresh of the contact list and synchronization
   Future<void> refresh() async {
     state = const AsyncLoading();
     state = await AsyncValue.guard(() async {
-      final repo = ref.watch(contactRepositoryProvider);
-      // 强制触发同步
+      final repo = ref.read(contactRepositoryProvider);
       await repo.syncContacts();
-      // 同步完成后再读取本地数据，确保数据和索引都是最新的
       return repo.getAllContacts();
     });
   }
 }
 
+/// Computes Pinyin mapping and sorting for the contact list
 @Riverpod(keepAlive: true)
 Future<List<ContactEntity>> contactEntities(ContactEntitiesRef ref) async {
-  // 1. 获取原始 ChatUser 列表
+  // 1. Listen to the raw ChatUser list
   final users = await ref.watch(contactListProvider.future);
 
-  // 2. 在这里处理拼音转换和排序（只在数据变动时跑一次）
+  // 2. Perform Pinyin conversion and grouping (Executed only on list changes)
   return users.map((u) {
     String pinyin = PinyinHelper.getPinyinE(u.nickname);
     String tag = pinyin.substring(0, 1).toUpperCase();
@@ -67,47 +68,45 @@ Future<List<ContactEntity>> contactEntities(ContactEntitiesRef ref) async {
 }
 
 // ===========================================================================
-// 2. Friend Request List Provider (Restored and Enabled)
+// 2. Friend Request List Provider
 // ===========================================================================
+
 @riverpod
 class FriendRequestList extends _$FriendRequestList {
   @override
   Future<List<FriendRequest>> build() async {
-    // Core Change: Listen to Socket events within the Provider
+    // Reactive binding: Listen to Socket service for real-time updates
     final socket = ref.watch(socketServiceProvider);
 
-    // Automatically refresh self when a new application signal is received
+    // Automatically invalidate and re-fetch when a new contact application signal arrives
     final subscription = socket.contactApplyStream.listen((_) {
       ref.invalidateSelf();
     });
 
-    // Cancel subscription when the provider is disposed
     ref.onDispose(() => subscription.cancel());
 
     return await Api.getFriendRequestsApi();
   }
 
-  /// Manually refreshes the friend request list
+  /// Manually refreshes the friend request list state
   Future<void> refresh() async {
     state = await AsyncValue.guard(() => Api.getFriendRequestsApi());
   }
 }
 
 // ===========================================================================
-// 3. User Search Providers (Unified with Annotation Syntax)
+// 3. User Search Providers
 // ===========================================================================
 
-/// General user search by keyword
+/// Executes a local search using the indexed Pinyin repository
 @riverpod
 Future<List<ChatUser>> userSearch(UserSearchRef ref, String keyword) async {
   if (keyword.trim().isEmpty) return [];
-  //  核心修复：调用 Repository 的 searchContacts
-  // 它会利用 syncContacts 建立好的拼音索引进行毫秒级本地搜索
   final repo = ref.watch(contactRepositoryProvider);
   return repo.search(keyword);
 }
 
-/// Search within existing chat contacts
+/// Performs a remote search within existing chat contacts
 @riverpod
 Future<List<ChatUser>> chatContactsSearch(ChatContactsSearchRef ref, String keyword) async {
   if (keyword.trim().isEmpty) return [];
@@ -117,15 +116,15 @@ Future<List<ChatUser>> chatContactsSearch(ChatContactsSearchRef ref, String keyw
 // ===========================================================================
 // 4. Controller: Add Friend
 // ===========================================================================
-// Uses family so that each user's "Add" button state is independent (avoids shared loading states)
+
 @riverpod
 class AddFriendController extends _$AddFriendController {
   @override
   FutureOr<void> build(String userId) => null;
 
+  /// Sends a friend request to a specific user
   Future<bool> execute({String? reason}) async {
     state = const AsyncLoading();
-    // 使用 guard 自动捕获错误并转换状态
     state = await AsyncValue.guard(() => Api.addFriendApi(userId, reason: reason));
     return !state.hasError;
   }
@@ -134,12 +133,13 @@ class AddFriendController extends _$AddFriendController {
 // ===========================================================================
 // 5. Controller: Handle Friend Request
 // ===========================================================================
+
 @riverpod
 class HandleRequestController extends _$HandleRequestController {
   @override
   FutureOr<void> build() => null;
 
-  /// Executes request handling (Accept/Reject)
+  /// Responds to a friend request (Accept/Reject) and triggers downstream refreshes
   Future<bool> execute({
     required String userId,
     required FriendRequestAction action,
@@ -153,12 +153,10 @@ class HandleRequestController extends _$HandleRequestController {
     state = newState;
 
     if (!newState.hasError) {
-      // Linked Logic on Success:
-
-      // 1. Refresh the friend request list (Updates NewFriendPage list)
+      // 1. Refresh the friend request list to update the 'New Friends' page
       ref.invalidate(friendRequestListProvider);
 
-      // 2. If accepted, refresh the Contact List to include the new friend
+      // 2. Refresh the primary Contact List if the request was accepted
       if (action == FriendRequestAction.accepted) {
         ref.invalidate(contactListProvider);
       }

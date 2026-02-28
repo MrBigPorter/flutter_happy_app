@@ -11,12 +11,12 @@ import 'package:flutter_app/ui/chat/models/conversation.dart';
 import '../../../core/services/socket/socket_service.dart';
 import '../handlers/chat_event_handler.dart';
 
-// 控制器 Provider
+/// Controller Provider for managing Chat Room logic and lifecycle
 final chatControllerProvider = Provider.family.autoDispose<ChatRoomController, String>((ref, conversationId) {
   final socketService = ref.read(socketServiceProvider);
   final currentUserId = ref.watch(userProvider.select((s) => s?.id)) ?? '';
   final repo = ref.read(messageRepositoryProvider);
-  
+
   final controller = ChatRoomController(
       socketService,
       conversationId,
@@ -25,9 +25,8 @@ final chatControllerProvider = Provider.family.autoDispose<ChatRoomController, S
       repo
   );
 
-  //  [核心修改] 创建即启动 (自动挡)
-  // Page 一调 watch，这里就执行，Handler 就跑起来了
-  // 这彻底替代了 Page initState 里的逻辑
+  // Automatic Activation: Starts the handler immediately upon provider initialization.
+  // This replaces the manual init logic previously required in Page initState.
   controller.activate();
 
   ref.onDispose(() => controller.dispose());
@@ -36,13 +35,13 @@ final chatControllerProvider = Provider.family.autoDispose<ChatRoomController, S
 
 class ChatRoomController with WidgetsBindingObserver {
   final String conversationId;
-  // 强引用 Handler，防止被 GC
+
+  /// Strong reference to the event handler to prevent garbage collection
   final ChatEventHandler _eventHandler;
   final MessageRepository _repo;
 
-  // 1. 新增：销毁标记位
+  // Internal disposal flag to prevent operations on a disposed controller
   bool _isDisposed = false;
-
 
   ChatRoomController(
       SocketService socketService,
@@ -52,16 +51,16 @@ class ChatRoomController with WidgetsBindingObserver {
       this._repo
       ) : _eventHandler = ChatEventHandler(conversationId, ref, socketService, currentUserId)
   {
-    // 监听生命周期
+    // Register lifecycle observer for foreground/background transitions
     WidgetsBinding.instance.addObserver(this);
   }
 
-  // [新增] 统一启动入口
+  /// Unified entry point to start background processes and initial checks
   void activate() {
     if(_isDisposed) return;
-    // 启动 Handler (它内部会自动处理 Socket 进房、重连监听、初始已读)
+    // Initialize handler: manages socket room entry, reconnection, and sync
     _eventHandler.init();
-    // 激活时检查并上报已读 (Cold Read)
+    // Cold Read check: Validate unread status upon room entry
     checkAndMarkRead();
   }
 
@@ -71,53 +70,53 @@ class ChatRoomController with WidgetsBindingObserver {
     WidgetsBinding.instance.removeObserver(this);
   }
 
-  // 监听前后台切换 (Warm Read)
+  /// Warm Read: Triggered when the app returns from background to foreground
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if(_isDisposed) return;
     if (state == AppLifecycleState.resumed) {
-      debugPrint("DirectChatSettingsPage [Controller] 切回前台 -> 触发已读");
+      debugPrint("[ChatRoomController] App resumed; triggering read receipt check");
       checkAndMarkRead();
     }
   }
 
-
-  // 暴露给外部调用的方法
+  /// Public API to manually mark messages as read
   void markAsRead() {
     if(_isDisposed) return;
     _eventHandler.markAsRead();
   }
 
-  //  使用注入的 Repo 进行检查
+  /// Validates local unread state before committing an expensive network API call
   Future<void> checkAndMarkRead() async {
     if(_isDisposed) return;
     try {
-      // 1. 查本地状态 (调用 Repo)
+      // 1. Check local conversation state via Repository
       final conv = await _repo.getConversation(conversationId);
       final unread = conv?.unreadCount ?? 0;
-      // 再次检查 (因为 await 期间可能发生了 dispose)
+
+      // Safety check after async operation
       if (_isDisposed) return;
 
-       debugPrint("[Controller] 检查本地未读数: $unread");
+      debugPrint("[ChatRoomController] Checking local unread count: $unread");
 
-      // 2. 只有当确实有未读消息时，才去调 API
+      // 2. Optimization: Intercept redundant API requests if unread count is zero
       if (unread > 0) {
-        debugPrint(" [Controller] 发现 $unread 条未读，执行上报...");
+        debugPrint("[ChatRoomController] Found $unread unread messages; reporting to server...");
         _eventHandler.markAsRead();
       } else {
-        // 这行日志能证明拦截生效了
-        debugPrint(" [Controller] 本地未读为 0，拦截了一次多余的 API 请求");
+        debugPrint("[ChatRoomController] Local unread is 0; intercepting redundant API request");
       }
     } catch (e) {
       if (_isDisposed) {
-        debugPrint("️[Controller] 忽略销毁期间的 MarkRead 错误: $e");
+        debugPrint("[ChatRoomController] Ignoring mark-read error during disposal: $e");
         return;
       }
-      debugPrint("Check read failed: $e");
+      debugPrint("[ChatRoomController] Check read failed: $e");
     }
   }
 
-  // 辅助功能：撤回 & 删除
+  // --- Auxiliary Messaging Features ---
+
   Future<void> recallMessage(String messageId) async {
     try {
       final res = await Api.messageRecallApi(MessageRecallRequest(
@@ -126,7 +125,7 @@ class ChatRoomController with WidgetsBindingObserver {
       ));
       await LocalDatabaseService().doLocalRecall(messageId, res.tip);
     } catch (e) {
-      debugPrint("Recall failed: $e");
+      debugPrint("[ChatRoomController] Recall failed: $e");
     }
   }
 
@@ -138,7 +137,7 @@ class ChatRoomController with WidgetsBindingObserver {
           conversationId: conversationId
       ));
     } catch (e) {
-      debugPrint("Delete failed: $e");
+      debugPrint("[ChatRoomController] Delete failed: $e");
     }
   }
 }

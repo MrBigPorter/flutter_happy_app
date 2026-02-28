@@ -1,8 +1,9 @@
 import 'dart:async';
 import 'dart:math';
-import 'package:flutter/cupertino.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_app/common.dart';
 import 'package:flutter_app/core/store/user_store.dart';
+import 'package:flutter_app/ui/chat/repository/message_repository.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../../core/providers/socket_provider.dart';
@@ -12,11 +13,13 @@ import '../services/database/local_database_service.dart';
 
 part 'conversation_provider.g.dart';
 
+/// Provider to track the currently active chat room ID for unread filtering
 final activeConversationIdProvider = StateProvider<String?>((ref) => null);
 
 @Riverpod(keepAlive: true)
 class ConversationList extends _$ConversationList {
   StreamSubscription? _conversationSub;
+
   @override
   FutureOr<List<Conversation>> build() async {
     final currentUserId = ref.watch(userProvider.select((s) => s?.id));
@@ -25,47 +28,46 @@ class ConversationList extends _$ConversationList {
       return [];
     }
 
-    // 1. 初始化数据库
+    // 1. Initialize local storage instance
     await LocalDatabaseService.init(currentUserId);
 
     final socketService = ref.watch(socketServiceProvider);
 
+    // 2. Subscribe to real-time message stream
     _conversationSub?.cancel();
     _conversationSub = socketService.conversationListUpdateStream.listen(
       _onNewMessage,
     );
 
-
     ref.onDispose(() {
       _conversationSub?.cancel();
     });
 
-    // 2. 先加载本地旧数据 (秒开)
+    // 3. Offline-First: Load cached data for instant UI rendering
     final localData = await LocalDatabaseService().getConversations();
     if (localData.isNotEmpty) {
       state = AsyncData(localData);
-      // 3.  [修正 2] 使用 microtask 避免 build 期间 setState 冲突
+      // Use microtask to avoid setState conflicts during the build phase
       Future.microtask(() => _fetchList());
       return localData;
     }
 
-    // 4. 无缓存：走网络请求
+    // 4. Fallback to network fetch if no local cache exists
     return await _fetchList();
   }
 
   // ===========================================================================
-  //  [修正 3] handleSocketEvent: 统一处理后端的 SyncType 指令
+  // 1. Socket Signal Handling (Group Lifecycle & Sync)
   // ===========================================================================
+
   void handleSocketEvent(SocketGroupEvent event) async {
     if (!state.hasValue || state.isLoading) return;
 
-    final payload = event.payload; // ChatSocketPayload
-
-    //  [修正 3.1] 使用强类型属性 (不再用 map['key'])
+    final payload = event.payload;
     final String? syncType = payload.syncType;
     final String groupId = event.groupId;
 
-    //  策略 A: REMOVE (被踢、解散)
+    // Strategy A: REMOVE - Handle group disbandment or expulsion
     if (syncType == 'REMOVE') {
       final newList = state.requireValue.where((c) => c.id != groupId).toList();
       state = AsyncData(newList);
@@ -73,14 +75,13 @@ class ConversationList extends _$ConversationList {
       return;
     }
 
-    //  策略 B: PATCH (改名、禁言等)
+    // Strategy B: PATCH - Atomic updates for group metadata (Name, Avatar)
     if (syncType == 'PATCH') {
-      //  [修正 3.2] 传入 payload.updates Map
       _applyLocalPatch(groupId, payload.updates);
       return;
     }
 
-    //  策略 C: FULL_SYNC (复杂情况兜底)
+    // Strategy C: FULL_SYNC - Trigger network sync with jitter to prevent server spikes
     if (syncType == 'FULL_SYNC') {
       await Future.delayed(Duration(milliseconds: Random().nextInt(3000)));
       await _fetchList();
@@ -88,7 +89,7 @@ class ConversationList extends _$ConversationList {
     }
   }
 
-  // 内部 Helper: 只修补内存，不拉接口
+  /// Updates memory state and local DB for specific group metadata changes
   void _applyLocalPatch(String groupId, Map<String, dynamic>? updates) {
     if (!state.hasValue || updates == null) return;
 
@@ -109,13 +110,14 @@ class ConversationList extends _$ConversationList {
     LocalDatabaseService().saveConversations([newConv]);
   }
 
+  /// Syncs conversation list with the backend and clears unread for the active room
   Future<List<Conversation>> _fetchList() async {
     try {
       final list = await Api.chatListApi(page: 1);
       await LocalDatabaseService().saveConversations(list);
 
       final currentActiveId = ref.read(activeConversationIdProvider);
-      debugPrint(" [ConversationList] Synced ${list.length} conversations.");
+      debugPrint("[ConversationList] Synced ${list.length} conversations.");
 
       final processedList = list.map((c) {
         if (c.id == currentActiveId) return c.copyWith(unreadCount: 0);
@@ -125,7 +127,7 @@ class ConversationList extends _$ConversationList {
       state = AsyncData(processedList);
       return processedList;
     } catch (e) {
-      debugPrint(" [ConversationList] Sync failed: $e");
+      debugPrint("[ConversationList] Sync failed: $e");
       if (state.hasValue) return state.value!;
       return [];
     }
@@ -143,8 +145,9 @@ class ConversationList extends _$ConversationList {
   }
 
   // ===========================================================================
-  //  [修正 4] _onNewMessage: 处理新消息 + 系统消息副作用
+  // 2. Real-time Message & Event Processing
   // ===========================================================================
+
   void _onNewMessage(SocketMessage msg) async {
     if (!state.hasValue || state.isLoading) return;
 
@@ -155,7 +158,7 @@ class ConversationList extends _$ConversationList {
     final bool isMe = senderId.isNotEmpty && (senderId == myUserId);
     final convId = msg.conversationId;
 
-    // 1. 转 UI Model 并入库
+    // 1. Transform to UI Model and persist to DB
     final apiMsg = ChatMessage(
       id: msg.id,
       content: msg.content,
@@ -176,12 +179,11 @@ class ConversationList extends _$ConversationList {
     final uiMsg = ChatUiModelMapper.fromApiModel(apiMsg, convId);
     await LocalDatabaseService().saveMessage(uiMsg);
 
-    //  [修正 4.1] 检查 meta 数据，提取改名信息
+    // Metadata extraction for system notification side-effects
     String? newName;
     String? newAvatar;
 
     if (msg.type == 99 && msg.meta != null) {
-      // 强转 Map 防止 dynamic 问题
       final meta = msg.meta as Map<String, dynamic>;
       if (meta['action'] == 'UPDATE_INFO' && meta['updates'] != null) {
         final updates = meta['updates'] as Map<String, dynamic>;
@@ -190,7 +192,7 @@ class ConversationList extends _$ConversationList {
       }
     }
 
-    // 2. 更新列表项
+    // 2. Update specific conversation item in the list
     final index = currentList.indexWhere((conv) => conv.id == convId);
     if (index != -1) {
       final oldConv = currentList[index];
@@ -200,13 +202,10 @@ class ConversationList extends _$ConversationList {
       final newUnreadCount = (isMe || isViewingNow) ? 0 : (oldConv.unreadCount + 1);
 
       final newConv = oldConv.copyWith(
-        //  [修正 4.2] 传入 isRecalled 参数
         lastMsgContent: _getPreviewContent(msg.type, msg.content, isRecalled: msg.isRecalled ?? false),
         lastMsgTime: DateTime.now().millisecondsSinceEpoch,
         unreadCount: newUnreadCount,
         lastMsgStatus: MessageStatus.success,
-
-        //  [修正 4.3] 如果是系统改名消息，顺便更新会话的名字/头像
         name: newName ?? oldConv.name,
         avatar: newAvatar ?? oldConv.avatar,
       );
@@ -223,10 +222,9 @@ class ConversationList extends _$ConversationList {
   }
 
   // ===========================================================================
-  //  [修正 5] 辅助方法清理
+  // 3. UI Helper Methods
   // ===========================================================================
 
-  // 删除了嵌套错误的 _onNewMessage，修复了 updateLocalItem
   void updateLocalItem({
     required String conversationId,
     String? lastMsgContent,
@@ -264,19 +262,16 @@ class ConversationList extends _$ConversationList {
     state = AsyncData(newList);
   }
 
-  //  [修正 6] 修复了语法错误，使用 Enum 获取文本
+  /// Maps message type and raw content into localized preview text
   String _getPreviewContent(dynamic type, String rawContent, {bool isRecalled = false}) {
     final int typeInt = (type is int) ? type : int.tryParse(type.toString()) ?? 0;
-
-    // 使用你定义的 MessageType Enum
     final typeEnum = MessageType.fromValue(typeInt);
-
-    // 返回处理后的字符串
     return typeEnum.getPreviewText(rawContent, isRecalled: isRecalled);
   }
 }
 
-// --- 其他代码 (CreateDirectChatController, chatDetail) 保持不变，可以照抄原文件 ---
+// --- Controller Definitions ---
+
 @riverpod
 class CreateDirectChatController extends _$CreateDirectChatController {
   @override
@@ -314,7 +309,7 @@ Stream<ConversationDetail> chatDetail(
       yield localData;
     }
   } catch (e) {
-    debugPrint(" [chatDetail] Local DB Fetch Error: $e");
+    debugPrint("[chatDetail] Local DB Fetch Error: $e");
   }
 
   try {
@@ -322,8 +317,7 @@ Stream<ConversationDetail> chatDetail(
     await db.saveConversationDetail(networkData);
     yield networkData;
   } catch (e) {
-    debugPrint(" [chatDetail] Network Fetch Error: $e");
-    // 如果没有本地数据且网络也失败，才抛出异常
+    debugPrint("[chatDetail] Network Fetch Error: $e");
     if (localData == null) rethrow;
   }
 }

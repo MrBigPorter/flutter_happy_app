@@ -26,7 +26,7 @@ class ChatGroup extends _$ChatGroup {
     final localData = await repo.getGroupDetail(conversationId);
 
     if (localData != null) {
-      // 解决 Future already completed 崩溃
+      // Use microtask to avoid "Future already completed" during synchronous build
       Future.microtask(() => _fetchAndSync(conversationId));
       return localData;
     }
@@ -34,31 +34,30 @@ class ChatGroup extends _$ChatGroup {
   }
 
   // ===========================================================================
-  // 1. 被动响应 Socket 事件
+  // 1. Passive Socket Event Handling
   // ===========================================================================
+
   void handleSocketEvent(SocketGroupEvent event) async {
     if (event.groupId != conversationId) return;
     if (!_mounted || !state.hasValue || _isSyncing) return;
 
-    final payload = event.payload; // 这是 ChatSocketPayload 对象
-
-    //  修正点：使用点语法 .syncType
+    final payload = event.payload;
     final String? syncType = payload.syncType;
 
-    // 策略 A: REMOVE
+    // Strategy A: REMOVE - Local cleanup when group is disbanded or kicked
     if (syncType == 'REMOVE') {
       state = AsyncValue.error('Group removed', StackTrace.current);
       await LocalDatabaseService().deleteConversation(conversationId);
       return;
     }
 
-    //  策略 B: PATCH
+    // Strategy B: PATCH - Granular local update without full re-fetch
     if (syncType == 'PATCH') {
       _applyLocalPatch(event);
       return;
     }
 
-    // 策略 C: FULL_SYNC
+    // Strategy C: FULL_SYNC - Trigger network fetch with jitter for high-traffic events
     if (syncType == 'FULL_SYNC') {
       _fetchAndSync(conversationId, useJitter: true);
       return;
@@ -67,18 +66,17 @@ class ChatGroup extends _$ChatGroup {
     _fetchAndSync(conversationId);
   }
 
-  //  内部补丁方法
+  /// Applies atomic updates to the current state based on specific socket events
   void _applyLocalPatch(SocketGroupEvent event) {
     if (!state.hasValue) return;
 
     final currentDetail = state.requireValue;
     ConversationDetail? newDetail;
-    final payload = event.payload; // ChatSocketPayload 对象
+    final payload = event.payload;
 
     switch (event.type) {
       case SocketEvents.memberKicked:
       case SocketEvents.memberLeft:
-        //  修正点：使用 .targetId
         final targetId = payload.targetId;
         if (targetId == null) return;
         final newMembers = currentDetail.members
@@ -89,7 +87,6 @@ class ChatGroup extends _$ChatGroup {
         break;
 
       case SocketEvents.memberMuted:
-        //  修正点：使用 .targetId 和 .mutedUntil
         final targetId = payload.targetId;
         final mutedUntil = payload.mutedUntil;
         if (targetId == null) return;
@@ -101,9 +98,7 @@ class ChatGroup extends _$ChatGroup {
         break;
 
       case SocketEvents.groupInfoUpdated:
-        // 修正点：使用 .updates (假设它是一个 Map<String, dynamic>?)
         final updates = payload.updates;
-
         newDetail = currentDetail.copyWith(
           name: updates['name'] ?? currentDetail.name,
           announcement: updates['announcement'] ?? currentDetail.announcement,
@@ -113,7 +108,7 @@ class ChatGroup extends _$ChatGroup {
         break;
 
       case SocketEvents.memberJoined:
-        // 如果 payload.member 存在
+      // Future implementation: Add single member to list
         break;
     }
 
@@ -124,7 +119,7 @@ class ChatGroup extends _$ChatGroup {
   }
 
   // ===========================================================================
-  // 2. 主动操作 (保持逻辑不变)
+  // 2. Active Administrative Operations
   // ===========================================================================
 
   Future<void> kickMember(String targetUserId) async {
@@ -158,9 +153,9 @@ class ChatGroup extends _$ChatGroup {
           members: currentDetail.members
               .map(
                 (m) => m.userId == targetUserId
-                    ? m.copyWith(mutedUntil: res.mutedUntil)
-                    : m,
-              )
+                ? m.copyWith(mutedUntil: res.mutedUntil)
+                : m,
+          )
               .toList(),
         );
         state = AsyncData(newDetail);
@@ -192,11 +187,11 @@ class ChatGroup extends _$ChatGroup {
           members: currentDetail.members
               .map(
                 (m) => m.userId == targetUserId
-                    ? m.copyWith(
-                        role: isAdmin ? GroupRole.admin : GroupRole.member,
-                      )
-                    : m,
-              )
+                ? m.copyWith(
+              role: isAdmin ? GroupRole.admin : GroupRole.member,
+            )
+                : m,
+          )
               .toList(),
         );
         state = AsyncData(newDetail);
@@ -223,7 +218,6 @@ class ChatGroup extends _$ChatGroup {
         avatar: avatar,
         joinNeedApproval: joinNeedApproval,
       );
-      // 更新本地缓存
       if (state.hasValue) {
         final currentDetail = state.requireValue;
         final newDetail = currentDetail.copyWith(
@@ -241,29 +235,19 @@ class ChatGroup extends _$ChatGroup {
     }
   }
 
-  // ===========================================================================
-  //  [新增] 处理 Socket 新申请事件：直接修改详情里的 count
-  // ===========================================================================
+  /// Increments the pending request counter locally for real-time red dot updates
   void handleNewJoinRequest() {
-    // 1. 如果当前没有数据，或者数据还没加载完，直接忽略
-    // (因为下次加载时，API 会拉取最新的 count)
     if (!state.hasValue || state.value == null) return;
 
     final currentDetail = state.requireValue;
-
-    // 2. 直接增加 count
     final newCount = currentDetail.pendingRequestCount + 1;
-
-    // 3. 更新状态和本地数据库
     final newDetail = currentDetail.copyWith(pendingRequestCount: newCount);
+
     state = AsyncData(newDetail);
-    // 4. 同步到本地数据库
     LocalDatabaseService().saveConversationDetail(newDetail);
   }
 
-  // ===========================================================================
-  //  [新增] 处理申请被处理事件（比如你在列表页处理完了，回来红点要消失）
-  // ===========================================================================
+  /// Resets the pending request counter after viewing or handling requests
   void resetRequestCount() {
     if (!state.hasValue) return;
 
@@ -294,19 +278,19 @@ class ChatGroup extends _$ChatGroup {
     }
   }
 
-  // --- 4. 辅助方法 (核心同步逻辑) ---
+  // --- 4. Internal Synchronization Helpers ---
 
   Future<ConversationDetail> _fetchAndSync(
-    String id, {
-    bool useJitter = false,
-  }) async {
+      String id, {
+        bool useJitter = false,
+      }) async {
     if (_isSyncing || !_mounted)
       return state.value ?? await Api.chatDetailApi(id);
     _isSyncing = true;
 
     try {
       if (useJitter) {
-        // 随机延迟 0~3 秒
+        // Random delay (0-3s) to prevent thundering herd on server
         await Future.delayed(Duration(milliseconds: Random().nextInt(3000)));
       }
 
@@ -327,8 +311,9 @@ class ChatGroup extends _$ChatGroup {
 }
 
 // ===========================================================================
-// 建群控制器
+// Group Creation Controller
 // ===========================================================================
+
 @riverpod
 class GroupCreateController extends _$GroupCreateController {
   @override
@@ -351,31 +336,26 @@ class GroupCreateController extends _$GroupCreateController {
   }
 }
 
-// 1. 数据 Provider：获取某个群的待审批列表
+/// Provider for fetching pending join requests for a specific group
 @riverpod
 Future<List<GroupJoinRequestItem>> groupJoinRequests(
-  GroupJoinRequestsRef ref,
-  String groupId,
-) async {
-  // 进入页面时watch,离开时onDispose
+    GroupJoinRequestsRef ref,
+    String groupId,
+    ) async {
   return await ChatGroupApi.getJoinRequests(groupId);
 }
 
-
-
-// 3. 控制器 Provider：负责“申请”和“审批”动作
+/// Controller responsible for handling individual applications and join actions
 @riverpod
 class GroupJoinController extends _$GroupJoinController {
-  // 修改为 GroupJoinController
   @override
   FutureOr<void> build() {
-    //  [关键修复] 保活机制
-    // 防止 Controller 在异步请求过程中被自动销毁 (autoDispose)
-    // 导致 "Bad state: Future already completed" 报错
+    // Keep alive to prevent auto-dispose during asynchronous operations
+    // which leads to "Bad state: Future already completed" errors.
     ref.keepAlive();
   }
 
-  /// [管理员操作] 处理入群申请
+  /// Admin action: Accept or reject a specific join request
   Future<bool> handleRequest({
     required String groupId,
     required String requestId,
@@ -387,15 +367,14 @@ class GroupJoinController extends _$GroupJoinController {
         requestId: requestId,
         isAccept: isAccept,
       );
-
-      // 【核心逻辑】审批成功后，立即使列表 Provider 失效，触发 UI 重新加载
+      // Invalidate list provider to trigger UI refresh
       ref.invalidate(groupJoinRequestsProvider(groupId));
     });
 
     return !state.hasError;
   }
 
-  /// [普通用户操作] 提交申请入群
+  /// User action: Submit an application to join a group
   Future<ApplyToGroupRes?> apply(String groupId, String reason) async {
     state = const AsyncLoading();
     ApplyToGroupRes? result;

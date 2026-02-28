@@ -38,18 +38,16 @@ class ChatListState {
 
 class ChatViewModel extends StateNotifier<ChatListState> {
   final String conversationId;
-  final Ref ref; // 2. 需要 ref 才能读取 Repository Provider
+  final Ref ref;
 
-  // 3. 声明 Repository
   late final MessageRepository _repo;
 
-  // _dbService 依然保留，用于 watchMessages 流监听（Repo主要负责写，DB负责读流）
+  // DB service handles stream watching while Repo handles data persistence and business logic
   final LocalDatabaseService _dbService = LocalDatabaseService();
 
   StreamSubscription? _subscription;
   int _currentLimit = 50;
 
-  // 4. 构造函数注入 ref 并初始化 _repo
   ChatViewModel(this.conversationId, this.ref) : super(ChatListState()) {
     _repo = ref.read(messageRepositoryProvider);
     _init();
@@ -60,6 +58,7 @@ class ChatViewModel extends StateNotifier<ChatListState> {
     performIncrementalSync();
   }
 
+  /// Listens to local database changes to update the UI reactively
   void _subscribeToStream() {
     _subscription?.cancel();
     _subscription = _dbService.watchMessages(conversationId, limit: _currentLimit).listen((msgs) {
@@ -70,21 +69,22 @@ class ChatViewModel extends StateNotifier<ChatListState> {
   }
 
   // ============================================================
-  //  核心：增量同步算法 (空洞检测 + 递归补齐 + 状态自愈)
+  // Core: Incremental Sync Algorithm (Gap Detection & Healing)
   // ============================================================
 
+  /// Synchronizes local message history with the server, filling missing sequence gaps
   Future<void> performIncrementalSync() async {
     if (!mounted) return;
     if (state.isInitializing) return;
 
-    // 上锁
+    // Lock synchronization process
     state = state.copyWith(isInitializing: true);
 
     try {
-      // 5. 改为使用 Repo 获取 SeqId
+      // 1. Retrieve the highest known SeqId in the local database
       final localMaxSeqId = await _repo.getMaxSeqId(conversationId);
 
-      // 2. 问询：拉取服务器最新的第一页
+      // 2. Fetch the latest page of messages from the server
       final response = await Api.chatMessagesApi(
         MessageHistoryRequest(
           conversationId: conversationId,
@@ -99,24 +99,24 @@ class ChatViewModel extends StateNotifier<ChatListState> {
         final firstMsg = response.list.first;
         final int serverMaxSeqId = (firstMsg.seqId ?? 0);
 
-        // 4. 决策：是否存在空洞？
+        // 3. Decision: Does a gap exist between local and server sequence IDs?
         if (localMaxSeqId > 0 && serverMaxSeqId > localMaxSeqId) {
-          debugPrint(" [Sync] 发现消息空洞: 本地 $localMaxSeqId, 服务器 $serverMaxSeqId");
+          debugPrint("[Sync] Gap detected: Local $localMaxSeqId, Server $serverMaxSeqId");
 
           final lastMsg = response.list.last;
           final int oldestInThisPage = (lastMsg.seqId ?? 0);
 
           if (oldestInThisPage <= localMaxSeqId) {
-            // A-1: 缝合成功
+            // Scenario A-1: Gap bridged within the current page
             await _saveApiMessages(response.list);
           } else {
-            // A-2: 鸿沟太大，启动递归
-            debugPrint(" [Sync] 空洞过大，启动递归补齐机制...");
+            // Scenario A-2: Large gap detected; trigger recursive back-fill
+            debugPrint("[Sync] Large gap detected; initiating recursive bridge...");
             await _recursiveSyncGap(localMaxSeqId, oldestInThisPage);
             await _saveApiMessages(response.list);
           }
         } else {
-          // 情况 B：无空洞或本地为空
+          // Scenario B: No gap or fresh database
           await _saveApiMessages(response.list);
         }
       }
@@ -126,22 +126,18 @@ class ChatViewModel extends StateNotifier<ChatListState> {
       }
 
       // =====================================================
-      // 冷启动状态自愈
+      // Cold Boot State Self-Healing
       // =====================================================
       try {
-        // A. 问服务器：“这个会话我现在有多少未读？”
+        // A. Compare remote unread count with local status
         final remoteConv = await Api.chatDetailApi(conversationId);
-
-        // B. 问本地数据库
         final localConv = await _repo.getConversation(conversationId);
         final int localUnread = localConv?.unreadCount ?? 0;
 
-        // C. 决策逻辑：服务器说0，本地说>0 -> 强制自愈
+        // B. Resolution: If server says 0 but local says > 0, force local reset
         if (remoteConv.unreadCount == 0 && localUnread > 0) {
-          debugPrint(" [Sync] 发现状态不同步！正在静默修复...");
+          debugPrint("[Sync] State mismatch detected; performing silent healing...");
 
-          // 1. 计算当前已知的最大 SeqId，把之前的消息都标为已读
-          // (为了让本地数据库里的 message status 变成 read)
           int targetReadSeqId = localMaxSeqId;
           if (response.list.isNotEmpty) {
             final firstMsg = response.list.first;
@@ -150,28 +146,27 @@ class ChatViewModel extends StateNotifier<ChatListState> {
               targetReadSeqId = serverTopSeq;
             }
           }
-          await _repo.markAsReadLocally(conversationId, targetReadSeqId);
 
-          // 2. 强制把红点抹平！(只调用一次)
+          // Force local read status synchronization
+          await _repo.markAsReadLocally(conversationId, targetReadSeqId);
           await _repo.forceClearUnread(conversationId);
 
-          debugPrint(" [Sync] 红点已静默消除。");
+          debugPrint("[Sync] Red dot state synchronized.");
         }
       } catch (e) {
-        debugPrint(" [Sync] Self-healing check failed: $e");
+        debugPrint("[Sync] Self-healing check failed: $e");
       }
-      // =====================================================
 
     } catch (e) {
-      debugPrint(" [Sync] 增量同步失败: $e");
+      debugPrint("[Sync] Incremental sync failed: $e");
     } finally {
       if (mounted) state = state.copyWith(isInitializing: false);
     }
   }
 
-  /// 辅助：递归向后追溯
+  /// Recursively fetches historical messages until the target SeqId is reached
   Future<void> _recursiveSyncGap(int targetSeqId, int currentCursor) async {
-    debugPrint("  [Sync] 正在抓取 cursor 之前的消息: $currentCursor");
+    debugPrint("[Sync] Stitching gap before cursor: $currentCursor");
     try {
       final response = await Api.chatMessagesApi(
         MessageHistoryRequest(
@@ -191,24 +186,24 @@ class ChatViewModel extends StateNotifier<ChatListState> {
       if (oldestSeq > targetSeqId) {
         await _recursiveSyncGap(targetSeqId, oldestSeq);
       } else {
-        debugPrint(" [Sync] 鸿沟已完全缝合！");
+        debugPrint("[Sync] Gap bridged successfully.");
       }
     } catch(e) {
-      debugPrint("  [Sync] 递归失败: $e");
+      debugPrint("[Sync] Recursive sync failed: $e");
     }
   }
 
-  /// 内部工具：入库
+  /// Internal utility: Maps and persists API messages to local storage
   Future<void> _saveApiMessages(List<dynamic> apiMsgs) async {
     final uiMsgs = apiMsgs.map((m) => ChatUiModelMapper.fromApiModel(m, conversationId)).toList();
 
-    // 8. [关键防御] 改为使用 Repo.saveBatch
-    // 这确保了如果服务器没返回图片路径，本地的高清图不会被覆盖
+    // Architectural Defense: Uses saveBatch to prevent overwriting local HD images
+    // with server-provided empty thumbnail paths.
     await _repo.saveBatch(uiMsgs);
   }
 
   // ============================================================
-  //  上拉加载更多
+  // Pull-to-Load History
   // ============================================================
 
   Future<void> loadMore() async {
@@ -268,13 +263,19 @@ class ChatViewModel extends StateNotifier<ChatListState> {
         }
       }
     } catch (e) {
-      debugPrint(" 拉取历史失败: $e");
+      debugPrint("[ChatViewModel] Fetch history failed: $e");
       state = state.copyWith(isLoadingMore: false);
     }
   }
+
+  @override
+  void dispose() {
+    _subscription?.cancel();
+    super.dispose();
+  }
 }
 
-// 9. Provider 定义也要改，传入 ref
+/// Provider definition with Ref injection for repository access
 final chatViewModelProvider = StateNotifierProvider.family.autoDispose<ChatViewModel, ChatListState, String>(
       (ref, conversationId) {
     return ChatViewModel(conversationId, ref);
