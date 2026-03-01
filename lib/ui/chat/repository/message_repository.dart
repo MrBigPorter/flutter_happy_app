@@ -285,4 +285,9 @@ class MessageRepository {
     await forceClearUnread(conversationId);
   }
 
+  /// Searches for text messages containing the keyword within a specific conversation
+  Future<List<ChatUiModel>> searchMessages(String conversationId, String keyword) async {
+    return await _db.searchMessages(conversationId, keyword);
+  }
+
 }

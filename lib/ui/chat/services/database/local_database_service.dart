@@ -393,6 +393,33 @@ class LocalDatabaseService {
     });
   }
 
+  Future<List<ChatUiModel>> searchMessages(String conversationId, String keyword) async {
+    if(keyword.trim().isEmpty) return [];
+    final db = await database;
+
+    // For simplicity, this is a basic implementation. In production, consider using a full-text search index.
+    final regex = RegExp(keyword.trim(), caseSensitive: false);
+
+    final finder = Finder(
+      filter: Filter.and([
+        // Basic text search on content field
+        Filter.equals('conversationId', conversationId),
+        // text search with regex (inefficient for large datasets, consider indexing in production)
+        Filter.equals('type', MessageType.text.name),
+        // Note: Sembast doesn't support regex directly, so we fetch candidates and filter in memory
+        Filter.matchesRegExp('content', regex),
+      ]),
+      // Sort by createdAt desc to get recent matches first
+      sortOrders: [SortOrder('createdAt', false)],
+    );
+
+    // Fetch candidates and filter in memory due to Sembast limitations
+    final records = await _messageStore.find(db, finder: finder);
+    return records.map((snapshot) {
+      return ChatUiModel.fromJson(snapshot.value);
+    }).toList();
+  }
+
   Future<void> patchFields(String id, Map<String, dynamic> updates) async {
     final db = await database;
     await db.transaction((txn) async {

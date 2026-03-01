@@ -14,6 +14,7 @@ import 'package:flutter_app/app/routes/route_auth_config.dart';
 import 'package:flutter_app/app/routes/transitions.dart';
 import 'package:flutter_app/core/models/payment.dart';
 import 'package:flutter_app/core/store/auth/auth_provider.dart';
+import 'package:flutter_app/ui/chat/chat_search/chat_search_page.dart';
 import 'package:flutter_app/ui/chat/conversation_list_page.dart';
 import 'package:flutter_app/ui/chat/models/conversation.dart';
 import 'package:flutter_app/ui/modal/base/modal_auto_close_observer.dart';
@@ -142,6 +143,20 @@ class AppRouter {
           path: '/chat/group/search',
           name: 'group_search',
           builder: (context, state) => const GroupSearchPage(),
+        ),
+        GoRoute(
+          path: '/chat/search',
+          name: 'chat_search',
+          pageBuilder: (context, state) {
+            final conversationId = state.uri.queryParameters['conversationId'] ?? '';
+            return fxPage(
+              key: state.pageKey,
+              child: ChatSearchPage(
+                conversationId: conversationId,
+              ),
+              fx: RouteFx.slideUp,
+            );
+          },
         ),
         GoRoute(
           path: '/chat/contacts',

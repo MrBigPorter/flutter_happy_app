@@ -77,7 +77,7 @@ class DirectChatSettingsPage extends ConsumerWidget {
           context,
           label: "Search Chat History",
           onTap: () {
-            RadixToast.info("Search UI in progress...");
+            appRouter.push('/chat/search?conversationId=${detail.id}');
           },
         ),
         SizedBox(height: 12.h),
@@ -89,9 +89,7 @@ class DirectChatSettingsPage extends ConsumerWidget {
           onSwitchChanged: (v) async {
             try {
               await ref.read(conversationSettingsControllerProvider.notifier).toggleMute(detail.id, v);
-              print("Mute toggled successfully");
-            } catch (e) {
-              print("Mute toggle failed: $e"); // 看看控制台有没有打印这个
+            } catch (_) {
             }
           },
         ),
