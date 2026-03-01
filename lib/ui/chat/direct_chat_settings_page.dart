@@ -77,7 +77,6 @@ class DirectChatSettingsPage extends ConsumerWidget {
           context,
           label: "Search Chat History",
           onTap: () {
-            // 预留的查找记录入口，后续对接
             RadixToast.info("Search UI in progress...");
           },
         ),
@@ -89,11 +88,10 @@ class DirectChatSettingsPage extends ConsumerWidget {
           switchValue: detail.isMuted,
           onSwitchChanged: (v) async {
             try {
-              // TODO: 在这里调用你的免打扰 API 接口
-              // await ref.read(conversationActionProvider.notifier).setMute(detail.id, v);
-              RadixToast.success(v ? "Notifications Muted" : "Notifications Unmuted");
+              await ref.read(conversationSettingsControllerProvider.notifier).toggleMute(detail.id, v);
+              print("Mute toggled successfully");
             } catch (e) {
-              RadixToast.error("Failed to update settings");
+              print("Mute toggle failed: $e"); // 看看控制台有没有打印这个
             }
           },
         ),
@@ -104,13 +102,7 @@ class DirectChatSettingsPage extends ConsumerWidget {
           isSwitch: true,
           switchValue: detail.isPinned,
           onSwitchChanged: (v) async {
-            try {
-              // TODO: 在这里调用你的置顶 API 接口
-              // await ref.read(conversationActionProvider.notifier).setPin(detail.id, v);
-              RadixToast.success(v ? "Pinned to Top" : "Unpinned");
-            } catch (e) {
-              RadixToast.error("Failed to update settings");
-            }
+            await ref.read(conversationSettingsControllerProvider.notifier).togglePin(detail.id, v);
           },
         ),
       ],
@@ -124,11 +116,20 @@ class DirectChatSettingsPage extends ConsumerWidget {
         variant: ButtonVariant.ghost,
         width: double.infinity,
         onPressed: () {
-          // 弹出危险操作确认框
           RadixModal.show(
             title: "Clear Chat History",
             confirmText: "Clear",
             cancelText: "Cancel",
+            onConfirm: (context) async {
+              try {
+                await ref.read(conversationSettingsControllerProvider.notifier).clearHistory(detail.id);
+                RadixToast.success("Chat history cleared");
+
+                appRouter.pop();
+              } catch (e) {
+                RadixToast.error("Failed to clear history");
+              }
+            },
             builder: (_,close)=> Container(
               padding: EdgeInsets.all(16.w),
               child: Text(
@@ -190,7 +191,6 @@ class DirectChatSettingsPage extends ConsumerWidget {
     );
   }
 
-  // --- 2. 加号按钮 (核心逻辑修改) ---
   Widget _buildAddButton(BuildContext context, WidgetRef ref, ConversationDetail detail) {
     return Column(
       children: [

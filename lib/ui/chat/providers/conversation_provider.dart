@@ -290,35 +290,47 @@ class CreateDirectChatController extends _$CreateDirectChatController {
 }
 
 @riverpod
-Stream<ConversationDetail> chatDetail(
-    ChatDetailRef ref,
-    String conversationId,
-    ) async* {
-  final userId = ref.watch(userProvider.select((s) => s?.id));
+class ChatDetail extends _$ChatDetail {
+  @override
+  FutureOr<ConversationDetail> build(String conversationId) async {
+    final userId = ref.watch(userProvider.select((s) => s?.id));
 
-  if (userId != null && userId.isNotEmpty) {
-    await LocalDatabaseService.init(userId);
-  }
-
-  final db = LocalDatabaseService();
-
-  ConversationDetail? localData;
-  try {
-    localData = await db.getConversationDetail(conversationId);
-    if (localData != null) {
-      yield localData;
+    if (userId != null && userId.isNotEmpty) {
+      await LocalDatabaseService.init(userId);
     }
-  } catch (e) {
-    debugPrint("[chatDetail] Local DB Fetch Error: $e");
-  }
 
-  try {
+    final db = LocalDatabaseService();
+    final localData = await db.getConversationDetail(conversationId);
+
+    if (localData != null) {
+      // 1. 如果有本地缓存：瞬间返回秒开，并在后台静默更新网络数据
+      _syncNetworkData(conversationId, db);
+      return localData;
+    }
+
+    // 2. 如果无本地缓存：老老实实等待网络请求
     final networkData = await Api.chatDetailApi(conversationId);
     await db.saveConversationDetail(networkData);
-    yield networkData;
-  } catch (e) {
-    debugPrint("[chatDetail] Network Fetch Error: $e");
-    if (localData == null) rethrow;
+    return networkData;
+  }
+
+  // 独立抽出的静默更新方法，完美避开 Riverpod 的生命周期冲突
+  Future<void> _syncNetworkData(String conversationId, LocalDatabaseService db) async {
+    try {
+      final networkData = await Api.chatDetailApi(conversationId);
+      await db.saveConversationDetail(networkData);
+      // 确保页面还没被销毁才去更新内存
+      if (state.hasValue) {
+        state = AsyncData(networkData);
+      }
+    } catch (e) {
+      debugPrint("[ChatDetail] Network sync failed: $e");
+    }
+  }
+
+  // 暴露给外层修改的乐观更新口子
+  void updateState(ConversationDetail newDetail) {
+    state = AsyncData(newDetail);
   }
 }
 
@@ -329,52 +341,46 @@ class ConversationSettingsController extends _$ConversationSettingsController {
 
   // 1. 设置免打扰
   Future<void> toggleMute(String conversationId, bool isMuted) async {
-    state = const AsyncLoading();
-    state = await AsyncValue.guard(() async {
-      // TODO: 这里换成你真实的 API 请求，例如：await Api.setMute(conversationId, isMuted);
+    // 🚨 去掉了所有繁琐的 state = AsyncLoading 和 guard，直接跑业务！
+    // 如果报错，外层 UI 的 try/catch 会直接接住它并弹出 RadixToast.error
+    await Api.setConversationMute(conversationId, isMuted);
 
-      // 完美调用你的 MessageRepository 操作本地数据库
-      final repo = ref.read(messageRepositoryProvider);
-      final detail = await repo.getGroupDetail(conversationId);
+    final repo = ref.read(messageRepositoryProvider);
+    final detail = await repo.getGroupDetail(conversationId);
 
-      if (detail != null) {
-        await repo.saveGroupDetail(detail.copyWith(isMuted: isMuted));
-      }
-
-      // 刷新详情页 UI
-      ref.invalidate(chatDetailProvider(conversationId));
-    });
+    if (detail != null) {
+      final newDetail = detail.copyWith(isMuted: isMuted);
+      await repo.saveGroupDetail(newDetail);
+      ref.read(chatDetailProvider(conversationId).notifier).updateState(newDetail);
+    }
   }
 
   // 2. 设置置顶
   Future<void> togglePin(String conversationId, bool isPinned) async {
-    state = const AsyncLoading();
-    state = await AsyncValue.guard(() async {
-      // TODO: 这里换成你真实的 API 请求，例如：await Api.setPin(conversationId, isPinned);
+    await Api.setConversationPin(conversationId, isPinned);
 
-      // 完美调用你的 MessageRepository 操作本地数据库
-      final repo = ref.read(messageRepositoryProvider);
-      final detail = await repo.getGroupDetail(conversationId);
+    final repo = ref.read(messageRepositoryProvider);
+    final detail = await repo.getGroupDetail(conversationId);
 
-      if (detail != null) {
-        await repo.saveGroupDetail(detail.copyWith(isPinned: isPinned));
-      }
+    if (detail != null) {
+      final newDetail = detail.copyWith(isPinned: isPinned);
+      await repo.saveGroupDetail(newDetail);
+      ref.read(chatDetailProvider(conversationId).notifier).updateState(newDetail);
+    }
 
-      // 刷新详情页 UI 和 外部列表 UI (置顶需要重排列表)
-      ref.invalidate(chatDetailProvider(conversationId));
-      ref.read(conversationListProvider.notifier).refresh();
-    });
+    ref.read(conversationListProvider.notifier).refresh();
   }
 
   // 3. 清空聊天记录
   Future<void> clearHistory(String conversationId) async {
-    state = const AsyncLoading();
-    state = await AsyncValue.guard(() async {
-      // TODO: 调真实 API 通知后端清空，例如：await Api.clearHistory(conversationId);
+    await Api.clearConversationHistory(conversationId);
 
-      // 调用我们在第一步加在 Repository 里的清空方法
-      final repo = ref.read(messageRepositoryProvider);
-      await repo.clearConversationHistory(conversationId);
-    });
+    final repo = ref.read(messageRepositoryProvider);
+    await repo.clearConversationHistory(conversationId);
+
+    final detail = await repo.getGroupDetail(conversationId);
+    if (detail != null) {
+      ref.read(chatDetailProvider(conversationId).notifier).updateState(detail);
+    }
   }
 }
