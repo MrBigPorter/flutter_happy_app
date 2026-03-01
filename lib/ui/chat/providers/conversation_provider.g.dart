@@ -6,7 +6,7 @@ part of 'conversation_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$chatDetailHash() => r'8736533b66fddc039e00ffb323718568e019b722';
+String _$chatDetailHash() => r'75c187905681ded26d8d7baf9233056edd7dd93d';
 
 /// Copied from Dart SDK
 class _SystemHash {
@@ -157,7 +157,7 @@ class _ChatDetailProviderElement
   String get conversationId => (origin as ChatDetailProvider).conversationId;
 }
 
-String _$conversationListHash() => r'bb5e1bfc146d49ab80c805d36db8b28b0869c1c7';
+String _$conversationListHash() => r'c68ac7e848f9c00e29285e57dc28de22f60c7e1f';
 
 /// See also [ConversationList].
 @ProviderFor(ConversationList)
@@ -191,5 +191,22 @@ final createDirectChatControllerProvider = AutoDisposeNotifierProvider<
 
 typedef _$CreateDirectChatController
     = AutoDisposeNotifier<AsyncValue<ConversationIdResponse?>>;
+String _$conversationSettingsControllerHash() =>
+    r'b7d6c85e8fa0bedd1bc8963f8d20669c92f8aae1';
+
+/// See also [ConversationSettingsController].
+@ProviderFor(ConversationSettingsController)
+final conversationSettingsControllerProvider = AutoDisposeAsyncNotifierProvider<
+    ConversationSettingsController, void>.internal(
+  ConversationSettingsController.new,
+  name: r'conversationSettingsControllerProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$conversationSettingsControllerHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+typedef _$ConversationSettingsController = AutoDisposeAsyncNotifier<void>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member

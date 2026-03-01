@@ -12,6 +12,7 @@ import 'package:flutter_app/ui/chat/models/conversation.dart';
 import 'package:flutter_app/utils/helper.dart';
 import 'package:flutter_app/core/models/index.dart';
 
+import '../../ui/chat/models/chat_settings_request.dart';
 import '../../ui/chat/models/friend_request.dart';
 import '../../utils/upload/global_upload_service.dart';
 import '../models/fcm_notification.dart';
@@ -684,6 +685,27 @@ class Api {
   static Future<List<CallIceServer>> chatIceServers() async {
     final res = await Http.get('/api/v1/chat/ice-servers');
     return parseList(res, (e) => CallIceServer.fromJson(e));
+  }
+
+  /// 5. 设置免打扰
+  static Future<ChatSettingsResponse> setConversationMute(String conversationId, bool isMuted) async {
+    final req = SetMuteRequest(conversationId: conversationId, isMuted: isMuted);
+    final res = await Http.post('/api/v1/chat/settings/mute', data: req.toJson());
+    return ChatSettingsResponse.fromJson(res);
+  }
+
+  /// 6. 设置置顶
+  static Future<ChatSettingsResponse> setConversationPin(String conversationId, bool isPinned) async {
+    final req = SetPinRequest(conversationId: conversationId, isPinned: isPinned);
+    final res = await Http.post('/api/v1/chat/settings/pin', data: req.toJson());
+    return ChatSettingsResponse.fromJson(res);
+  }
+
+  /// 7. 清空聊天记录 (云端软删除)
+  static Future<bool> clearConversationHistory(String conversationId) async {
+    final req = ClearHistoryRequest(conversationId: conversationId);
+    await Http.post('/api/v1/chat/settings/clear-history', data: req.toJson());
+    return true;
   }
 
 

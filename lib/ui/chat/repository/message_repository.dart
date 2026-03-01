@@ -276,4 +276,13 @@ class MessageRepository {
   Future<void> recallMessage(String msgId, String tipText) async {
     await _db.doLocalRecall(msgId, tipText);
   }
+
+
+  /// clear conversation history by deleting all messages under this conversationId.
+  Future<void> clearConversationHistory(String conversationId) async {
+
+    await _db.clearMessagesByConversation(conversationId);
+    await forceClearUnread(conversationId);
+  }
+
 }

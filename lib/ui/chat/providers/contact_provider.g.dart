@@ -8,7 +8,9 @@ part of 'contact_provider.dart';
 
 String _$contactEntitiesHash() => r'd7d160650b71b587b70e29f626783ca00cc17993';
 
-/// See also [contactEntities].
+/// Computes Pinyin mapping and sorting for the contact list
+///
+/// Copied from [contactEntities].
 @ProviderFor(contactEntities)
 final contactEntitiesProvider = FutureProvider<List<ContactEntity>>.internal(
   contactEntities,
@@ -44,22 +46,22 @@ class _SystemHash {
   }
 }
 
-/// General user search by keyword
+/// Executes a local search using the indexed Pinyin repository
 ///
 /// Copied from [userSearch].
 @ProviderFor(userSearch)
 const userSearchProvider = UserSearchFamily();
 
-/// General user search by keyword
+/// Executes a local search using the indexed Pinyin repository
 ///
 /// Copied from [userSearch].
 class UserSearchFamily extends Family<AsyncValue<List<ChatUser>>> {
-  /// General user search by keyword
+  /// Executes a local search using the indexed Pinyin repository
   ///
   /// Copied from [userSearch].
   const UserSearchFamily();
 
-  /// General user search by keyword
+  /// Executes a local search using the indexed Pinyin repository
   ///
   /// Copied from [userSearch].
   UserSearchProvider call(
@@ -94,11 +96,11 @@ class UserSearchFamily extends Family<AsyncValue<List<ChatUser>>> {
   String? get name => r'userSearchProvider';
 }
 
-/// General user search by keyword
+/// Executes a local search using the indexed Pinyin repository
 ///
 /// Copied from [userSearch].
 class UserSearchProvider extends AutoDisposeFutureProvider<List<ChatUser>> {
-  /// General user search by keyword
+  /// Executes a local search using the indexed Pinyin repository
   ///
   /// Copied from [userSearch].
   UserSearchProvider(
@@ -186,22 +188,22 @@ class _UserSearchProviderElement
 String _$chatContactsSearchHash() =>
     r'ed7aa181eb3c43a3e70516b1a993f2c9e30c948c';
 
-/// Search within existing chat contacts
+/// Performs a remote search within existing chat contacts
 ///
 /// Copied from [chatContactsSearch].
 @ProviderFor(chatContactsSearch)
 const chatContactsSearchProvider = ChatContactsSearchFamily();
 
-/// Search within existing chat contacts
+/// Performs a remote search within existing chat contacts
 ///
 /// Copied from [chatContactsSearch].
 class ChatContactsSearchFamily extends Family<AsyncValue<List<ChatUser>>> {
-  /// Search within existing chat contacts
+  /// Performs a remote search within existing chat contacts
   ///
   /// Copied from [chatContactsSearch].
   const ChatContactsSearchFamily();
 
-  /// Search within existing chat contacts
+  /// Performs a remote search within existing chat contacts
   ///
   /// Copied from [chatContactsSearch].
   ChatContactsSearchProvider call(
@@ -236,12 +238,12 @@ class ChatContactsSearchFamily extends Family<AsyncValue<List<ChatUser>>> {
   String? get name => r'chatContactsSearchProvider';
 }
 
-/// Search within existing chat contacts
+/// Performs a remote search within existing chat contacts
 ///
 /// Copied from [chatContactsSearch].
 class ChatContactsSearchProvider
     extends AutoDisposeFutureProvider<List<ChatUser>> {
-  /// Search within existing chat contacts
+  /// Performs a remote search within existing chat contacts
   ///
   /// Copied from [chatContactsSearch].
   ChatContactsSearchProvider(
@@ -326,7 +328,7 @@ class _ChatContactsSearchProviderElement
   String get keyword => (origin as ChatContactsSearchProvider).keyword;
 }
 
-String _$contactListHash() => r'e59c60c42bf843bf3c0a352e221eb3f8620f7491';
+String _$contactListHash() => r'ab7c61ea4276bb95f94226b80dc1513e56bc6bc5';
 
 /// See also [ContactList].
 @ProviderFor(ContactList)

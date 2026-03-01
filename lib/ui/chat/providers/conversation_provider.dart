@@ -3,12 +3,12 @@ import 'dart:math';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_app/common.dart';
 import 'package:flutter_app/core/store/user_store.dart';
-import 'package:flutter_app/ui/chat/repository/message_repository.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../../core/providers/socket_provider.dart';
 import '../models/chat_ui_model.dart';
 import '../models/conversation.dart';
+import '../repository/message_repository.dart';
 import '../services/database/local_database_service.dart';
 
 part 'conversation_provider.g.dart';
@@ -319,5 +319,62 @@ Stream<ConversationDetail> chatDetail(
   } catch (e) {
     debugPrint("[chatDetail] Network Fetch Error: $e");
     if (localData == null) rethrow;
+  }
+}
+
+@riverpod
+class ConversationSettingsController extends _$ConversationSettingsController {
+  @override
+  FutureOr<void> build() {}
+
+  // 1. 设置免打扰
+  Future<void> toggleMute(String conversationId, bool isMuted) async {
+    state = const AsyncLoading();
+    state = await AsyncValue.guard(() async {
+      // TODO: 这里换成你真实的 API 请求，例如：await Api.setMute(conversationId, isMuted);
+
+      // 完美调用你的 MessageRepository 操作本地数据库
+      final repo = ref.read(messageRepositoryProvider);
+      final detail = await repo.getGroupDetail(conversationId);
+
+      if (detail != null) {
+        await repo.saveGroupDetail(detail.copyWith(isMuted: isMuted));
+      }
+
+      // 刷新详情页 UI
+      ref.invalidate(chatDetailProvider(conversationId));
+    });
+  }
+
+  // 2. 设置置顶
+  Future<void> togglePin(String conversationId, bool isPinned) async {
+    state = const AsyncLoading();
+    state = await AsyncValue.guard(() async {
+      // TODO: 这里换成你真实的 API 请求，例如：await Api.setPin(conversationId, isPinned);
+
+      // 完美调用你的 MessageRepository 操作本地数据库
+      final repo = ref.read(messageRepositoryProvider);
+      final detail = await repo.getGroupDetail(conversationId);
+
+      if (detail != null) {
+        await repo.saveGroupDetail(detail.copyWith(isPinned: isPinned));
+      }
+
+      // 刷新详情页 UI 和 外部列表 UI (置顶需要重排列表)
+      ref.invalidate(chatDetailProvider(conversationId));
+      ref.read(conversationListProvider.notifier).refresh();
+    });
+  }
+
+  // 3. 清空聊天记录
+  Future<void> clearHistory(String conversationId) async {
+    state = const AsyncLoading();
+    state = await AsyncValue.guard(() async {
+      // TODO: 调真实 API 通知后端清空，例如：await Api.clearHistory(conversationId);
+
+      // 调用我们在第一步加在 Repository 里的清空方法
+      final repo = ref.read(messageRepositoryProvider);
+      await repo.clearConversationHistory(conversationId);
+    });
   }
 }

@@ -227,6 +227,25 @@ class LocalDatabaseService {
     await _messageStore.record(msgId).delete(await database);
   }
 
+  /// Clear all messages for a specific conversation
+  Future<void> clearMessagesByConversation(String conversationId) async {
+    final db = await database;
+    await db.transaction((txn) async {
+      final finder = Finder(filter: Filter.equals('conversationId', conversationId));
+      await _messageStore.delete(txn, finder: finder);
+
+      // Reset conversation's last message info and unread count
+      await _conversationStore.record(conversationId).update(txn, {
+        'lastMsgContent': '',
+        'lastMsgTime': 0,
+        'unreadCount': 0,
+      });
+    });
+
+    // After clearing messages, sync badge to reflect changes
+    _syncGlobalBadge();
+  }
+
   /// Transaction support
   Future<T> runTransaction<T>(Future<T> Function(DatabaseClient txn) action) async {
     final db = await database;

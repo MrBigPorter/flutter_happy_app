@@ -12,6 +12,7 @@ import 'package:flutter_app/utils/media/url_resolver.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
+import '../modal/dialog/radix_modal.dart';
 import '../toast/radix_toast.dart';
 import 'models/conversation.dart';
 
@@ -58,11 +59,89 @@ class DirectChatSettingsPage extends ConsumerWidget {
             ),
           ),
           SizedBox(height: 12.h),
-          _buildSettingsList(context, detail),
+          // 👇 这里把 ref 传给设置列表
+          _buildSettingsList(context, ref, detail),
           SizedBox(height: 30.h),
-          _buildFooterButtons(context, detail),
+          // 👇 这里把 ref 传给底部按钮
+          _buildFooterButtons(context, ref, detail),
           SizedBox(height: 50.h),
         ],
+      ),
+    );
+  }
+
+  Widget _buildSettingsList(BuildContext context, WidgetRef ref, ConversationDetail detail) {
+    return Column(
+      children: [
+        _buildMenuItem(
+          context,
+          label: "Search Chat History",
+          onTap: () {
+            // 预留的查找记录入口，后续对接
+            RadixToast.info("Search UI in progress...");
+          },
+        ),
+        SizedBox(height: 12.h),
+        _buildMenuItem(
+          context,
+          label: "Mute Notifications",
+          isSwitch: true,
+          switchValue: detail.isMuted,
+          onSwitchChanged: (v) async {
+            try {
+              // TODO: 在这里调用你的免打扰 API 接口
+              // await ref.read(conversationActionProvider.notifier).setMute(detail.id, v);
+              RadixToast.success(v ? "Notifications Muted" : "Notifications Unmuted");
+            } catch (e) {
+              RadixToast.error("Failed to update settings");
+            }
+          },
+        ),
+        Container(height: 1, color: context.bgSecondary, margin: EdgeInsets.only(left: 16.w)),
+        _buildMenuItem(
+          context,
+          label: "Pin to Top",
+          isSwitch: true,
+          switchValue: detail.isPinned,
+          onSwitchChanged: (v) async {
+            try {
+              // TODO: 在这里调用你的置顶 API 接口
+              // await ref.read(conversationActionProvider.notifier).setPin(detail.id, v);
+              RadixToast.success(v ? "Pinned to Top" : "Unpinned");
+            } catch (e) {
+              RadixToast.error("Failed to update settings");
+            }
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFooterButtons(BuildContext context, WidgetRef ref, ConversationDetail detail) {
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: 16.w),
+      child: Button(
+        variant: ButtonVariant.ghost,
+        width: double.infinity,
+        onPressed: () {
+          // 弹出危险操作确认框
+          RadixModal.show(
+            title: "Clear Chat History",
+            confirmText: "Clear",
+            cancelText: "Cancel",
+            builder: (_,close)=> Container(
+              padding: EdgeInsets.all(16.w),
+              child: Text(
+                "Are you sure you want to clear the chat history? This action cannot be undone.",
+                style: TextStyle(color: context.textSecondary700, fontSize: 14.sp),
+              ),
+            ),
+          );
+        },
+        child: Text(
+          "Clear Chat History",
+          style: TextStyle(color: context.utilityError500, fontSize: 16.sp),
+        ),
       ),
     );
   }
@@ -147,37 +226,6 @@ class DirectChatSettingsPage extends ConsumerWidget {
     );
   }
 
-  // ... 后面部分保持不变 (_buildSettingsList, _buildFooterButtons, _buildSkeleton) ...
-  // 为节省篇幅，省略了未修改的下方代码，请保留原文件中的这些部分
-
-  Widget _buildSettingsList(BuildContext context, ConversationDetail detail) {
-    return Column(
-      children: [
-        _buildMenuItem(
-          context,
-          label: "Search Chat History",
-          onTap: () => RadixToast.info("Search pending"),
-        ),
-        SizedBox(height: 12.h),
-        _buildMenuItem(
-          context,
-          label: "Mute Notifications",
-          isSwitch: true,
-          switchValue: false,
-          onSwitchChanged: (v) => RadixToast.info("Mute API pending"),
-        ),
-        Container(height: 1, color: context.bgSecondary, margin: EdgeInsets.only(left: 16.w)),
-        _buildMenuItem(
-          context,
-          label: "Pin to Top",
-          isSwitch: true,
-          switchValue: false,
-          onSwitchChanged: (v) => RadixToast.info("Pin API pending"),
-        ),
-      ],
-    );
-  }
-
   Widget _buildMenuItem(
       BuildContext context, {
         required String label,
@@ -211,21 +259,6 @@ class DirectChatSettingsPage extends ConsumerWidget {
             else
               Icon(Icons.arrow_forward_ios, size: 14.sp, color: Colors.grey[400]),
           ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildFooterButtons(BuildContext context, ConversationDetail detail) {
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 16.w),
-      child: Button(
-        variant: ButtonVariant.ghost,
-        width: double.infinity,
-        onPressed: () => RadixToast.info("Clear History API pending"),
-        child: Text(
-          "Clear Chat History",
-          style: TextStyle(color: context.utilityError500, fontSize: 16.sp),
         ),
       ),
     );

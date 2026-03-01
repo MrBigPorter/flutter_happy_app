@@ -29,17 +29,25 @@ class _SystemHash {
   }
 }
 
-/// See also [groupJoinRequests].
+/// Provider for fetching pending join requests for a specific group
+///
+/// Copied from [groupJoinRequests].
 @ProviderFor(groupJoinRequests)
 const groupJoinRequestsProvider = GroupJoinRequestsFamily();
 
-/// See also [groupJoinRequests].
+/// Provider for fetching pending join requests for a specific group
+///
+/// Copied from [groupJoinRequests].
 class GroupJoinRequestsFamily
     extends Family<AsyncValue<List<GroupJoinRequestItem>>> {
-  /// See also [groupJoinRequests].
+  /// Provider for fetching pending join requests for a specific group
+  ///
+  /// Copied from [groupJoinRequests].
   const GroupJoinRequestsFamily();
 
-  /// See also [groupJoinRequests].
+  /// Provider for fetching pending join requests for a specific group
+  ///
+  /// Copied from [groupJoinRequests].
   GroupJoinRequestsProvider call(
     String groupId,
   ) {
@@ -72,10 +80,14 @@ class GroupJoinRequestsFamily
   String? get name => r'groupJoinRequestsProvider';
 }
 
-/// See also [groupJoinRequests].
+/// Provider for fetching pending join requests for a specific group
+///
+/// Copied from [groupJoinRequests].
 class GroupJoinRequestsProvider
     extends AutoDisposeFutureProvider<List<GroupJoinRequestItem>> {
-  /// See also [groupJoinRequests].
+  /// Provider for fetching pending join requests for a specific group
+  ///
+  /// Copied from [groupJoinRequests].
   GroupJoinRequestsProvider(
     String groupId,
   ) : this._internal(
@@ -322,7 +334,9 @@ typedef _$GroupCreateController = AutoDisposeAsyncNotifier<String?>;
 String _$groupJoinControllerHash() =>
     r'2f9cfcdba9e08caeaf215c2dd8d4f70cd44468a1';
 
-/// See also [GroupJoinController].
+/// Controller responsible for handling individual applications and join actions
+///
+/// Copied from [GroupJoinController].
 @ProviderFor(GroupJoinController)
 final groupJoinControllerProvider =
     AutoDisposeAsyncNotifierProvider<GroupJoinController, void>.internal(
