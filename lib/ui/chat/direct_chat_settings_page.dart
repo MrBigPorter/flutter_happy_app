@@ -254,7 +254,12 @@ class DirectChatSettingsPage extends ConsumerWidget {
                 child: Switch(
                   value: switchValue,
                   onChanged: onSwitchChanged,
-                  activeColor: context.utilityGreen500,
+                  trackColor: MaterialStateProperty.all(context.bgSecondary),
+                  trackOutlineColor: MaterialStateProperty.all(context.borderPrimary),
+                  activeThumbColor: context.utilityGreen500,
+                  activeTrackColor: context.utilityGreen100,
+                  inactiveThumbColor: context.textSecondary700,
+                  inactiveTrackColor: context.bgSecondary,
                 ),
               )
             else
