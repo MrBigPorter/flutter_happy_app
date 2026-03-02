@@ -65,11 +65,6 @@ class _SettingPageState extends ConsumerState<SettingPage> {
       type: SettingRowType.normal,
     ),
     RowItem(
-      icon: Icons.work,
-      title: 'common.work.order',
-      type: SettingRowType.normal,
-    ),
-    RowItem(
       icon: Icons.language,
       title: 'common.setting.language',
       type: SettingRowType.language,
@@ -78,11 +73,6 @@ class _SettingPageState extends ConsumerState<SettingPage> {
       icon: Icons.dark_mode,
       title: 'common.setting.mode',
       type: SettingRowType.darkModeSwitch,
-    ),
-    RowItem(
-      icon: Icons.notifications,
-      title: 'common.notifications',
-      type: SettingRowType.notificationSwitch,
     ),
   ];
 
@@ -334,7 +324,6 @@ class _KycRight extends StatelessWidget {
   const _KycRight({required this.status});
 
   String _labelText(BuildContext context, KycStatusEnum s) {
-    // 如果你有 i18n key，可以换成 tr()
     switch (s) {
       case KycStatusEnum.draft:
         return 'Draft';
@@ -346,8 +335,6 @@ class _KycRight extends StatelessWidget {
         return 'Need more';
       case KycStatusEnum.approved:
         return 'Approved';
-    // 你后端如果有 5 autoRejected，这里也兜底（如果你 enum 没定义会编译不过）
-    // ignore: dead_code
       default:
         return 'Unknown';
     }
@@ -356,7 +343,7 @@ class _KycRight extends StatelessWidget {
   Color _labelColor(BuildContext context, KycStatusEnum s) {
     switch (s) {
       case KycStatusEnum.draft:
-        return context.utilityGray200;
+        return context.textErrorPrimary600;
       case KycStatusEnum.reviewing:
         return context.utilityBrand200;
       case KycStatusEnum.rejected:

@@ -138,6 +138,8 @@
   "common.ticket": "ticket",
   "common.price.detail": "Price Details",
   "common.tickets.number": "Quantity",
+  "common.customer.service": "Service",
+  "common.login_register": "Login / Register",
   "common.balance": "Balance",
   "common.coins": "coins",
   "common.select": "Select payment method",
