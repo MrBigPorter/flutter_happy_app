@@ -257,7 +257,7 @@ class DirectChatSettingsPage extends ConsumerWidget {
                   trackColor: MaterialStateProperty.all(context.bgSecondary),
                   trackOutlineColor: MaterialStateProperty.all(context.borderPrimary),
                   activeThumbColor: context.utilityGreen500,
-                  activeTrackColor: context.utilityGreen100,
+                  activeTrackColor: context.utilityGreen500,
                   inactiveThumbColor: context.textSecondary700,
                   inactiveTrackColor: context.bgSecondary,
                 ),
