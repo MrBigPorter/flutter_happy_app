@@ -9,6 +9,7 @@ import 'package:flutter_app/core/providers/kyc_provider.dart';
 import 'package:flutter_app/core/store/auth/auth_provider.dart';
 import 'package:flutter_app/ui/button/button.dart';
 import 'package:flutter_app/ui/index.dart';
+import 'package:flutter_app/ui/toast/radix_toast.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
@@ -17,11 +18,13 @@ import '../../theme/theme_provider.dart';
 import 'kyc_status_page.dart';
 
 enum SettingRowType {
-  normal,
-  kyc,
-  darkModeSwitch,
-  notificationSwitch,
-  language,
+  profile,            // 个人资料
+  kyc,                // 实名认证
+  address,            // 地址管理
+  darkModeSwitch,     // 黑夜模式
+  notificationSwitch, // 消息通知
+  language,           // 多语言设定
+  normal,             // 普通选项（预留）
 }
 
 class RowItem {
@@ -48,7 +51,7 @@ class _SettingPageState extends ConsumerState<SettingPage> {
     RowItem(
       icon: Icons.person,
       title: 'common.edit.profile',
-      type: SettingRowType.normal,
+      type: SettingRowType.profile,
     ),
     RowItem(
       icon: Icons.document_scanner,
@@ -58,12 +61,7 @@ class _SettingPageState extends ConsumerState<SettingPage> {
     RowItem(
       icon: Icons.location_city,
       title: 'common.setting.address',
-      type: SettingRowType.normal,
-    ),
-    RowItem(
-      icon: Icons.lock,
-      title: 'common.setting.password',
-      type: SettingRowType.normal,
+      type: SettingRowType.address,
     ),
     RowItem(
       icon: Icons.language,
@@ -117,67 +115,52 @@ class _SettingRowWidget extends ConsumerWidget {
   const _SettingRowWidget({required this.item});
 
   void _handleTap(BuildContext context, WidgetRef ref, SettingRowType type) {
+    if (type == SettingRowType.profile || type == SettingRowType.address || type == SettingRowType.kyc) {
+      final isAuthenticated = ref.read(authProvider).isAuthenticated;
+      if (!isAuthenticated) {
+         appRouter.push('/login');
+        return;
+      }
+    }
+
     switch (type) {
-      case SettingRowType.normal:
-        if (item.title == 'Address Management' || item.title == 'common.setting.address') {
-          RadixSheet.show(
-            builder: (context, close) => const AddressList(),
-          );
-          return;
-        }
+      case SettingRowType.profile:
+      // 个人资料暂未完成，优雅拦截
+        RadixToast.info("Profile editing coming soon!");
         break;
 
-      case SettingRowType.kyc:
-        final isAuthenticated =
-        ref.read(authProvider.select((v) => v.isAuthenticated));
-
-        if (!isAuthenticated) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('common.please_login'.tr())),
-          );
-          return;
-        }
-
-        final kycState = ref.read(kycMeProvider);
-        kycState.when(
-            data: (data){
-              final statusCode = KycStatusEnum.fromStatus(data.kycStatus);
-              switch(statusCode){
-                case KycStatusEnum.draft:
-                   appRouter.push('/me/kyc/verify');
-                  break;
-                default:
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (ctx) => KycStatusPage(),
-                    ),
-                  );
-                  break;
-              }
-            },
-            error: (err, stack){
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Error: $err')),
-              );
-            },
-            loading: (){
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('loading...')),
-              );
-            }
+      case SettingRowType.address:
+        RadixSheet.show(
+          builder: (context, close) => const AddressList(),
         );
         break;
 
-      case SettingRowType.darkModeSwitch:
-      // switch 不走 tap
+      case SettingRowType.kyc:
+      // 简化 KYC 逻辑，直接取 valueOrNull 安全判定
+        final kycStatus = ref.read(kycMeProvider).valueOrNull?.kycStatus ?? 0;
+        final statusCode = KycStatusEnum.fromStatus(kycStatus);
+
+        if (statusCode == KycStatusEnum.draft) {
+          appRouter.push('/me/kyc/verify');
+        } else {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (ctx) => const KycStatusPage(),
+            ),
+          );
+        }
         break;
 
+      case SettingRowType.darkModeSwitch:
       case SettingRowType.notificationSwitch:
       // switch 不走 tap
         break;
 
       case SettingRowType.language:
         _showLangSheet(context);
+        break;
+        case SettingRowType.normal:
+        // 预留普通选项的点击事件
         break;
     }
   }
@@ -278,11 +261,11 @@ class _RowItemWidget extends ConsumerWidget {
       case SettingRowType.kyc:
         final isAuthenticated =
         ref.watch(authProvider.select((v) => v.isAuthenticated));
-        final kycMeProviderData = ref.watch(kycMeProvider);
         if (!isAuthenticated) return null;
 
+        final kycMeProviderData = ref.watch(kycMeProvider);
         final rawStatus = kycMeProviderData.maybeWhen(
-          data: (data) => data.kycStatus,
+          data: (data) => data?.kycStatus,
           orElse: () => null,
         );
         final statusCode = _toInt(rawStatus, fallback: 0);
@@ -317,13 +300,14 @@ class _RowItemWidget extends ConsumerWidget {
           ),
         );
 
+      case SettingRowType.profile:
+      case SettingRowType.address:
       case SettingRowType.normal:
         return null;
     }
   }
 }
 
-///  这里我直接收 KycStatusEnum，避免你 label 枚举改来改去导致编译炸
 class _KycRight extends StatelessWidget {
   final KycStatusEnum status;
 
@@ -367,7 +351,6 @@ class _KycRight extends StatelessWidget {
   Widget build(BuildContext context) {
     final text = _labelText(context, status);
     final color = _labelColor(context, status);
-    
 
     return Text(
       text,
@@ -381,8 +364,10 @@ class _BottomNavigationBar extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return SizedBox(
-      height: 120.h,
+    final isAuthenticated = ref.watch(authProvider.select((v) => v.isAuthenticated));
+    if (!isAuthenticated) return const SizedBox.shrink(); // 未登录不显示退出按钮
+
+    return SafeArea(
       child: Padding(
         padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 20.h),
         child: Column(
@@ -391,10 +376,11 @@ class _BottomNavigationBar extends ConsumerWidget {
             Button(
               backgroundColor: context.buttonPrimaryErrorBg,
               width: double.infinity,
-              height: 43.h,
+              height: 48.h, // 稍微拉高一点，点起来更舒服
               radius: 8.r,
               onPressed: () {
                 ref.read(authProvider.notifier).logout();
+                appRouter.go('/'); // 退出后自动跳回首页
               },
               child: Text(
                 'common.logout'.tr(),
@@ -405,7 +391,7 @@ class _BottomNavigationBar extends ConsumerWidget {
                 ),
               ),
             ),
-            SizedBox(height: 4.h),
+            SizedBox(height: 12.h),
             Text(
               'version 1.0.0',
               style: TextStyle(

@@ -181,7 +181,7 @@ class _Avatar extends ConsumerWidget {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        "ID: ${userId.toUpperCase()}",
+                        "ID: ${userId.substring(0,10).toUpperCase()}",
                         style: TextStyle(
                           fontSize: 12.sp,
                           color: context.textSecondary700,
@@ -201,7 +201,7 @@ class _Avatar extends ConsumerWidget {
             ],
           ),
         ),
-        IconButton(
+        /*IconButton(
           onPressed: () {
             HapticFeedback.selectionClick();
             RadixToast.info("No new notifications");
@@ -214,7 +214,7 @@ class _Avatar extends ConsumerWidget {
               BlendMode.srcIn,
             ),
           ),
-        ),
+        ),*/
       ],
     );
   }
