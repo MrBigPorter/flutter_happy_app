@@ -61,7 +61,8 @@ PreferredSizeWidget _buildAppBar(
     ConversationDetail? detail,
     bool isGroup,
     WidgetRef ref, {
-      VoidCallback? onSettingsTap, // <-- Added callback for settings routing
+      VoidCallback? onSettingsTap,
+      bool isSyncing = false, // <-- Added syncing flag for header loader
     }) {
   // 1. Retrieve current user ID
   final myUserId = ref.read(userProvider)?.id;
@@ -110,18 +111,32 @@ PreferredSizeWidget _buildAppBar(
         ),
         SizedBox(width: 10.w),
         Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Text(
-                displayName,
-                style: TextStyle(
-                  fontSize: 17.sp,
-                  fontWeight: FontWeight.w600,
-                  color: context.textPrimary900,
+              Flexible(
+                child: Text(
+                  displayName,
+                  style: TextStyle(
+                    fontSize: 17.sp,
+                    fontWeight: FontWeight.w600,
+                    color: context.textPrimary900,
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
-                overflow: TextOverflow.ellipsis,
               ),
+              // Silent Header Loader (WeChat/Telegram style)
+              if (isSyncing) ...[
+                SizedBox(width: 8.w),
+                SizedBox(
+                  width: 14.r,
+                  height: 14.r,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: context.textSecondary700,
+                  ),
+                ),
+              ]
             ],
           ),
         ),
@@ -191,7 +206,7 @@ PreferredSizeWidget _buildAppBar(
           color: context.textPrimary900,
           size: 24.sp,
         ),
-        onPressed: onSettingsTap, // <-- Replaced hardcoded navigation with callback
+        onPressed: onSettingsTap, // Handled by logic layer
       ),
       SizedBox(width: 8.w),
     ],

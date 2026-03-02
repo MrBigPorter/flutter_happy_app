@@ -7,7 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:scrollable_positioned_list/scrollable_positioned_list.dart'; // <-- Added package
+import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 
 import 'package:flutter_app/app/routes/app_router.dart';
 import 'package:flutter_app/common.dart';
@@ -51,7 +51,7 @@ class _ChatPageState extends ConsumerState<ChatPage> with ChatPageLogic {
   @override
   void initState() {
     super.initState();
-    initLogic(); // <-- Initialize the new scroll listener for pagination
+    initLogic(); // Initialize the scroll listener for pagination
   }
 
   @override
@@ -99,12 +99,19 @@ class _ChatPageState extends ConsumerState<ChatPage> with ChatPageLogic {
       child: Scaffold(
         backgroundColor: context.bgPrimary,
         resizeToAvoidBottomInset: true,
-        // <-- Pass the onSettingsTap callback to handle routing and search return
-        appBar: _buildAppBar(context, detail, isGroup, ref, onSettingsTap: () {
-          if (detail != null) {
-            goToSettingsAndHandleSearch(detail, isGroup);
-          }
-        }),
+        // Pass the isSyncing state and settings callback to the AppBar
+        appBar: _buildAppBar(
+            context,
+            detail,
+            isGroup,
+            ref,
+            isSyncing: chatState.isInitializing && messages.isEmpty,
+            onSettingsTap: () {
+              if (detail != null) {
+                goToSettingsAndHandleSearch(detail, isGroup);
+              }
+            }
+        ),
         body: Column(
           children: [
             // Announcement Bar (Group chats only)
@@ -118,14 +125,11 @@ class _ChatPageState extends ConsumerState<ChatPage> with ChatPageLogic {
             Expanded(
               child: Builder(
                 builder: (context) {
-                  // Initial loading state
-                  if (messages.isEmpty && chatState.isInitializing) {
-                    return Center(child: CircularProgressIndicator(strokeWidth: 2, color: context.textBrandPrimary900));
-                  }
-                  // Empty state
+                  // Empty state: Only display this when initialization is completely done
                   if (messages.isEmpty && !chatState.isInitializing) {
                     return Center(child: Text("No messages yet", style: TextStyle(color: Colors.grey[400])));
                   }
+
                   return GestureDetector(
                     onTap: () {
                       FocusScope.of(context).unfocus();
@@ -136,7 +140,7 @@ class _ChatPageState extends ConsumerState<ChatPage> with ChatPageLogic {
                       itemAverageHeight: 300.0,
                       preloadWindow: 30,
                       predictWidth: 240.0,
-                      // <-- Replaced standard ListView with ScrollablePositionedList
+                      // ScrollablePositionedList replaces standard ListView
                       child: ScrollablePositionedList.builder(
                         itemScrollController: itemScrollController,
                         itemPositionsListener: itemPositionsListener,

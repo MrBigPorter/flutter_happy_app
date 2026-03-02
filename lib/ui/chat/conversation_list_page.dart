@@ -22,6 +22,7 @@ class ConversationListPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isLoggedIn = ref.watch(authProvider.select((s) => s.isAuthenticated));
+    final isSyncing = ref.watch(globalSyncStateProvider);
 
     // [双保险]：进入列表页立即清理选中状态
     final currentActive = ref.read(activeConversationIdProvider);
@@ -32,7 +33,7 @@ class ConversationListPage extends ConsumerWidget {
     }
 
     return BaseScaffold(
-      title: 'Chats',
+      title: isSyncing ? 'Updating...' : 'Chats',
       actions: [
         const _AddMenuButton(),
       ],

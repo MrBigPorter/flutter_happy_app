@@ -15,6 +15,9 @@ part 'conversation_provider.g.dart';
 /// Provider to track the currently active chat room ID for unread filtering
 final activeConversationIdProvider = StateProvider<String?>((ref) => null);
 
+/// Global flag to indicate if a full sync is in progress, used to suppress UI updates during heavy operations
+final globalSyncStateProvider = StateProvider<bool>((ref) => false);
+
 @Riverpod(keepAlive: true)
 class ConversationList extends _$ConversationList {
   StreamSubscription? _conversationSub;
@@ -170,6 +173,10 @@ class ConversationList extends _$ConversationList {
   }
 
   Future<List<Conversation>> _fetchList() async {
+
+    /// set global sync flag to true to suppress UI updates from socket events during this critical sync window
+    Future.microtask(() => ref.read(globalSyncStateProvider.notifier).state = true);
+
     try {
       final list = await Api.chatListApi(page: 1);
       final repo = ref.read(messageRepositoryProvider);
@@ -190,6 +197,9 @@ class ConversationList extends _$ConversationList {
       debugPrint("[ConversationList] Sync failed: $e");
       if (state.hasValue) return state.value!;
       return [];
+    }finally {
+      // Sync complete, reset global flag to re-enable socket-driven UI updates. Using microtask to avoid setState conflicts if we're still in the build phase.
+      Future.microtask(() => ref.read(globalSyncStateProvider.notifier).state = false);
     }
   }
 
