@@ -12,6 +12,7 @@ import 'package:flutter_app/ui/index.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
+import '../../components/address/address_list.dart';
 import '../../theme/theme_provider.dart';
 import 'kyc_status_page.dart';
 
@@ -118,7 +119,12 @@ class _SettingRowWidget extends ConsumerWidget {
   void _handleTap(BuildContext context, WidgetRef ref, SettingRowType type) {
     switch (type) {
       case SettingRowType.normal:
-      // TODO: 你自己按 row 的 title 做路由映射
+        if (item.title == 'Address Management' || item.title == 'common.setting.address') {
+          RadixSheet.show(
+            builder: (context, close) => const AddressList(),
+          );
+          return;
+        }
         break;
 
       case SettingRowType.kyc:
