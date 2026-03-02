@@ -1,11 +1,75 @@
 part of 'chat_page.dart';
 
 mixin ChatPageLogic on ConsumerState<ChatPage> {
-  final ScrollController scrollController = ScrollController();
+  // --- Enhanced Scroll Controllers for Precision Jumping ---
+  final ItemScrollController itemScrollController = ItemScrollController();
+  final ItemPositionsListener itemPositionsListener = ItemPositionsListener.create();
+
   bool isPanelOpen = false;
 
+  void initLogic() {
+    // Listen to visible items to handle pagination (load more)
+    itemPositionsListener.itemPositions.addListener(_onScrollPositionChanged);
+  }
+
   void disposeLogic() {
-    scrollController.dispose();
+    itemPositionsListener.itemPositions.removeListener(_onScrollPositionChanged);
+  }
+
+  // --- Pagination Logic (Replaces previous NotificationListener) ---
+  void _onScrollPositionChanged() {
+    final positions = itemPositionsListener.itemPositions.value;
+    if (positions.isEmpty) return;
+
+    // Since reverse: true, the "oldest" visible message has the highest index
+    final maxVisibleIndex = positions.map((e) => e.index).reduce((a, b) => a > b ? a : b);
+
+    final chatState = ref.read(chatViewModelProvider(widget.conversationId));
+    final viewModel = ref.read(chatViewModelProvider(widget.conversationId).notifier);
+
+    // Trigger load more when user scrolls near the oldest loaded message
+    if (chatState.hasMore && !chatState.isLoadingMore) {
+      if (maxVisibleIndex >= chatState.messages.length - 10) {
+        viewModel.loadMore();
+      }
+    }
+  }
+
+  // --- Search & Jump Logic ---
+
+  Future<void> goToSettingsAndHandleSearch(ConversationDetail detail, bool isGroup) async {
+    // Determine the correct settings route based on chat type
+    final route = isGroup
+        ? '/chat/group/profile/${detail.id}'
+        : '/chat/direct/profile/${detail.id}';
+
+    // Await the seqId returned from the ChatSearchPage (via appRouter.pop)
+    final result = await appRouter.push(route);
+
+    if (result != null && result is int) {
+      debugPrint(" Received target seqId from search: $result");
+      // Add a slight delay to allow the pop animation to finish before jumping
+      Future.delayed(const Duration(milliseconds: 300), () {
+        _jumpToSearchedMessage(result);
+      });
+    }
+  }
+
+  void _jumpToSearchedMessage(int targetSeqId) {
+    final messages = ref.read(chatViewModelProvider(widget.conversationId)).messages;
+
+    // Find the exact index of the message in the current list
+    final targetIndex = messages.indexWhere((msg) => msg.seqId == targetSeqId);
+
+    if (targetIndex != -1) {
+      // Precision jump, ignoring variable item heights
+      itemScrollController.jumpTo(index: targetIndex);
+      // Optional smooth scroll: itemScrollController.scrollTo(index: targetIndex, duration: const Duration(milliseconds: 300));
+      RadixToast.success("Jumped to message");
+    } else {
+      // Handle the case where the message is too old and not currently loaded in memory
+      RadixToast.info("Message is too old, please load more history first.");
+    }
   }
 
   // --- Interaction Logic ---

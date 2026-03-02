@@ -46,14 +46,57 @@ class ConversationList extends _$ConversationList {
     // 3. Offline-First: Load cached data for instant UI rendering
     final localData = await LocalDatabaseService().getConversations();
     if (localData.isNotEmpty) {
-      state = AsyncData(localData);
+      _sortAndEmit(localData);
+
       // Use microtask to avoid setState conflicts during the build phase
       Future.microtask(() => _fetchList());
-      return localData;
+      return state.requireValue;
     }
 
     // 4. Fallback to network fetch if no local cache exists
     return await _fetchList();
+  }
+
+ /// Centralized sorting and state emission method to ensure consistent ordering logic
+  void _sortAndEmit(List<Conversation> list) {
+    final sortedList = List<Conversation>.from(list);
+
+    sortedList.sort((a, b) {
+      // sort by pinned status first
+      final aPinned = (a.isPinned == true) ? 1 : 0;
+      final bPinned = (b.isPinned == true) ? 1 : 0;
+
+      if (aPinned != bPinned) {
+        return bPinned.compareTo(aPinned);
+      }
+
+      // then sort by last message time
+      final aTime = a.lastMsgTime ?? 0;
+      final bTime = b.lastMsgTime ?? 0;
+      return bTime.compareTo(aTime);
+    });
+
+    state = AsyncData(sortedList);
+  }
+
+  void updateConversationPin(String conversationId, bool isPinned) {
+    if (!state.hasValue || state.isLoading) return;
+
+    final currentList = state.value!;
+    final index = currentList.indexWhere((conv) => conversationId == conv.id);
+
+    if (index != -1) {
+      final oldConv = currentList[index];
+      // 生成新的被置顶/取消置顶的会话对象
+      final newConv = oldConv.copyWith(isPinned: isPinned);
+
+      final newList = [...currentList];
+      newList[index] = newConv;
+
+      _sortAndEmit(newList);
+
+      LocalDatabaseService().updateConversation(conversationId, {'isPinned': isPinned});
+    }
   }
 
   // ===========================================================================
@@ -70,7 +113,7 @@ class ConversationList extends _$ConversationList {
     // Strategy A: REMOVE - Handle group disbandment or expulsion
     if (syncType == 'REMOVE') {
       final newList = state.requireValue.where((c) => c.id != groupId).toList();
-      state = AsyncData(newList);
+      _sortAndEmit(newList);
       await LocalDatabaseService().deleteConversation(groupId);
       return;
     }
@@ -106,7 +149,7 @@ class ConversationList extends _$ConversationList {
     final newList = [...currentList];
     newList[index] = newConv;
 
-    state = AsyncData(newList);
+    _sortAndEmit(newList);
     LocalDatabaseService().saveConversations([newConv]);
   }
 
@@ -124,8 +167,8 @@ class ConversationList extends _$ConversationList {
         return c;
       }).toList();
 
-      state = AsyncData(processedList);
-      return processedList;
+      _sortAndEmit(processedList);
+      return state.requireValue;
     } catch (e) {
       debugPrint("[ConversationList] Sync failed: $e");
       if (state.hasValue) return state.value!;
@@ -141,7 +184,8 @@ class ConversationList extends _$ConversationList {
     if (!state.hasValue || state.isLoading) return;
     final currentList = state.value!;
     if (currentList.any((c) => c.id == newItem.id)) return;
-    state = AsyncData([newItem, ...currentList]);
+
+    _sortAndEmit([newItem, ...currentList]); // 🚀 替换5：通过排序器
   }
 
   // ===========================================================================
@@ -212,9 +256,9 @@ class ConversationList extends _$ConversationList {
 
       final newList = [...currentList];
       newList.removeAt(index);
-      newList.insert(0, newConv);
+      newList.add(newConv);
 
-      state = AsyncData(newList);
+      _sortAndEmit(newList);
       await LocalDatabaseService().saveConversations([newConv]);
     } else {
       _fetchList();
@@ -245,8 +289,9 @@ class ConversationList extends _$ConversationList {
       );
       final newList = [...currentList];
       newList.removeAt(index);
-      newList.insert(0, newConv);
-      state = AsyncData(newList);
+      newList.add(newConv);
+
+      _sortAndEmit(newList);
     } else {
       _fetchList();
     }
@@ -259,7 +304,8 @@ class ConversationList extends _$ConversationList {
       if (c.id == conversationId) return c.copyWith(unreadCount: 0);
       return c;
     }).toList();
-    state = AsyncData(newList);
+
+    _sortAndEmit(newList);
   }
 
   /// Maps message type and raw content into localized preview text
@@ -339,10 +385,7 @@ class ConversationSettingsController extends _$ConversationSettingsController {
   @override
   FutureOr<void> build() {}
 
-  // 1. 设置免打扰
   Future<void> toggleMute(String conversationId, bool isMuted) async {
-    // 🚨 去掉了所有繁琐的 state = AsyncLoading 和 guard，直接跑业务！
-    // 如果报错，外层 UI 的 try/catch 会直接接住它并弹出 RadixToast.error
     await Api.setConversationMute(conversationId, isMuted);
 
     final repo = ref.read(messageRepositoryProvider);
@@ -355,7 +398,6 @@ class ConversationSettingsController extends _$ConversationSettingsController {
     }
   }
 
-  // 2. 设置置顶
   Future<void> togglePin(String conversationId, bool isPinned) async {
     await Api.setConversationPin(conversationId, isPinned);
 
@@ -368,10 +410,9 @@ class ConversationSettingsController extends _$ConversationSettingsController {
       ref.read(chatDetailProvider(conversationId).notifier).updateState(newDetail);
     }
 
-    ref.read(conversationListProvider.notifier).refresh();
+    ref.read(conversationListProvider.notifier).updateConversationPin(conversationId, isPinned);
   }
 
-  // 3. 清空聊天记录
   Future<void> clearHistory(String conversationId) async {
     await Api.clearConversationHistory(conversationId);
 

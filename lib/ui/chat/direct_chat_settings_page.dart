@@ -76,8 +76,11 @@ class DirectChatSettingsPage extends ConsumerWidget {
         _buildMenuItem(
           context,
           label: "Search Chat History",
-          onTap: () {
-            appRouter.push('/chat/search?conversationId=${detail.id}');
+          onTap: () async{
+            final targetSeqId = await appRouter.push('/chat/search?conversationId=${detail.id}');
+            if (targetSeqId != null) {
+              appRouter.pop(targetSeqId);
+            }
           },
         ),
         SizedBox(height: 12.h),

@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:scrollable_positioned_list/scrollable_positioned_list.dart'; // <-- Added package
 
 import 'package:flutter_app/app/routes/app_router.dart';
 import 'package:flutter_app/common.dart';
@@ -48,6 +49,12 @@ class ChatPage extends ConsumerStatefulWidget {
 class _ChatPageState extends ConsumerState<ChatPage> with ChatPageLogic {
 
   @override
+  void initState() {
+    super.initState();
+    initLogic(); // <-- Initialize the new scroll listener for pagination
+  }
+
+  @override
   void dispose() {
     disposeLogic();
     try {
@@ -69,7 +76,6 @@ class _ChatPageState extends ConsumerState<ChatPage> with ChatPageLogic {
 
     // Data Source and View Models
     final chatState = ref.watch(chatViewModelProvider(widget.conversationId));
-    final viewModel = ref.read(chatViewModelProvider(widget.conversationId).notifier);
     final messages = chatState.messages;
     final actionService = ref.read(chatActionServiceProvider(widget.conversationId));
 
@@ -93,7 +99,12 @@ class _ChatPageState extends ConsumerState<ChatPage> with ChatPageLogic {
       child: Scaffold(
         backgroundColor: context.bgPrimary,
         resizeToAvoidBottomInset: true,
-        appBar: _buildAppBar(context, detail, isGroup, ref),
+        // <-- Pass the onSettingsTap callback to handle routing and search return
+        appBar: _buildAppBar(context, detail, isGroup, ref, onSettingsTap: () {
+          if (detail != null) {
+            goToSettingsAndHandleSearch(detail, isGroup);
+          }
+        }),
         body: Column(
           children: [
             // Announcement Bar (Group chats only)
@@ -120,42 +131,33 @@ class _ChatPageState extends ConsumerState<ChatPage> with ChatPageLogic {
                       FocusScope.of(context).unfocus();
                       closePanel();
                     },
-                    child: NotificationListener<ScrollNotification>(
-                      onNotification: (ScrollNotification scrollInfo) {
-                        // Pagination logic: Load more when reaching top threshold
-                        if (chatState.hasMore && !chatState.isLoadingMore) {
-                          if (scrollInfo.metrics.extentAfter < 2000) {
-                            viewModel.loadMore();
+                    child: ScrollAwarePreloader(
+                      items: messages,
+                      itemAverageHeight: 300.0,
+                      preloadWindow: 30,
+                      predictWidth: 240.0,
+                      // <-- Replaced standard ListView with ScrollablePositionedList
+                      child: ScrollablePositionedList.builder(
+                        itemScrollController: itemScrollController,
+                        itemPositionsListener: itemPositionsListener,
+                        reverse: true, // Newer messages at the bottom
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                        itemCount: messages.length + 1,
+                        itemBuilder: (context, index) {
+                          if (index == messages.length) {
+                            return _buildLoadingIndicator(context, chatState.hasMore);
                           }
-                        }
-                        return false;
-                      },
-                      child: ScrollAwarePreloader(
-                        items: messages,
-                        itemAverageHeight: 300.0,
-                        preloadWindow: 30,
-                        predictWidth: 240.0,
-                        child: ListView.builder(
-                          controller: scrollController,
-                          reverse: true, // Newer messages at the bottom
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                          itemCount: messages.length + 1,
-                          itemBuilder: (context, index) {
-                            if (index == messages.length) {
-                              return _buildLoadingIndicator(context, chatState.hasMore);
-                            }
-                            final msg = messages[index];
-                            return ChatBubble(
-                              key: ValueKey(msg.id),
-                              isGroup: isGroup,
-                              message: msg,
-                              showReadStatus: msg.isMe && msg.status == MessageStatus.read && index == 0,
-                              onRetry: () => actionService.resend(msg.id),
-                              // Forward long press events to the logic layer handler
-                              onLongPress: (m) => onMessageLongPress(context, m),
-                            );
-                          },
-                        ),
+                          final msg = messages[index];
+                          return ChatBubble(
+                            key: ValueKey(msg.id),
+                            isGroup: isGroup,
+                            message: msg,
+                            showReadStatus: msg.isMe && msg.status == MessageStatus.read && index == 0,
+                            onRetry: () => actionService.resend(msg.id),
+                            // Forward long press events to the logic layer handler
+                            onLongPress: (m) => onMessageLongPress(context, m),
+                          );
+                        },
                       ),
                     ),
                   );

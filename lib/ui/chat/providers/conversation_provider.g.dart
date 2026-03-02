@@ -6,7 +6,7 @@ part of 'conversation_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$conversationListHash() => r'c68ac7e848f9c00e29285e57dc28de22f60c7e1f';
+String _$conversationListHash() => r'9784cfcc40f41b0205e7eb5b738778d1a8353683';
 
 /// See also [ConversationList].
 @ProviderFor(ConversationList)
@@ -207,7 +207,7 @@ class _ChatDetailProviderElement
 }
 
 String _$conversationSettingsControllerHash() =>
-    r'0c90a8deeb3e40581267a26760357ae06cfa0489';
+    r'3dedc4d712fdb282f5495de0d56f4e327efa7296';
 
 /// See also [ConversationSettingsController].
 @ProviderFor(ConversationSettingsController)

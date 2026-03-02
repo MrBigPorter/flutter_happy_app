@@ -60,8 +60,9 @@ PreferredSizeWidget _buildAppBar(
     BuildContext context,
     ConversationDetail? detail,
     bool isGroup,
-    WidgetRef ref,
-    ) {
+    WidgetRef ref, {
+      VoidCallback? onSettingsTap, // <-- Added callback for settings routing
+    }) {
   // 1. Retrieve current user ID
   final myUserId = ref.read(userProvider)?.id;
 
@@ -190,15 +191,7 @@ PreferredSizeWidget _buildAppBar(
           color: context.textPrimary900,
           size: 24.sp,
         ),
-        onPressed: () {
-          if (detail != null) {
-            if (isGroup) {
-              appRouter.push('/chat/group/profile/${detail.id}');
-            } else {
-              appRouter.push('/chat/direct/profile/${detail.id}');
-            }
-          }
-        },
+        onPressed: onSettingsTap, // <-- Replaced hardcoded navigation with callback
       ),
       SizedBox(width: 8.w),
     ],
