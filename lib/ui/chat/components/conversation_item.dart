@@ -44,12 +44,24 @@ class ConversationItem extends ConsumerWidget {
             size: 48.r,
           ),
 
-          // Unread count badge
+          // muted + unread badge logic
           if (item.unreadCount > 0)
             Positioned(
               right: -2,
               top: -2,
-              child: Container(
+              child: item.isMuted
+                  ?
+              Container(
+                width: 10.w,
+                height: 10.w,
+                decoration: BoxDecoration(
+                  color: Colors.red,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white, width: 1.5),
+                ),
+              )
+                  :
+              Container(
                 padding: EdgeInsets.all(4.w),
                 decoration: BoxDecoration(
                   color: Colors.red,
@@ -76,15 +88,26 @@ class ConversationItem extends ConsumerWidget {
       // ===========================
       // Content Area
       // ===========================
-      title: Text(
-        item.name,
-        style: TextStyle(
-          fontSize: 16.sp,
-          fontWeight: FontWeight.bold,
-          color: context.textPrimary900,
-        ),
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
+      // add muted icon if conversation is muted
+      title: Row(
+        children: [
+          Flexible(
+            child: Text(
+              item.name,
+              style: TextStyle(
+                fontSize: 16.sp,
+                fontWeight: FontWeight.bold,
+                color: context.textPrimary900,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          if (item.isMuted) ...[
+            SizedBox(width: 4.w),
+            Icon(Icons.notifications_off, size: 14.sp, color: Colors.grey[400]),
+          ],
+        ],
       ),
       subtitle: Padding(
         padding: EdgeInsets.only(top: 4.h),

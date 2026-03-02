@@ -9,7 +9,6 @@ import '../../../core/providers/socket_provider.dart';
 import '../models/chat_ui_model.dart';
 import '../models/conversation.dart';
 import '../repository/message_repository.dart';
-import '../services/database/local_database_service.dart';
 
 part 'conversation_provider.g.dart';
 
@@ -28,8 +27,10 @@ class ConversationList extends _$ConversationList {
       return [];
     }
 
-    // 1. Initialize local storage instance
-    await LocalDatabaseService.init(currentUserId);
+    final repo = ref.read(messageRepositoryProvider);
+
+    // 1. Initialize repository (which internally inits DB)
+    await repo.initDatabase(currentUserId);
 
     final socketService = ref.watch(socketServiceProvider);
 
@@ -44,7 +45,7 @@ class ConversationList extends _$ConversationList {
     });
 
     // 3. Offline-First: Load cached data for instant UI rendering
-    final localData = await LocalDatabaseService().getConversations();
+    final localData = await repo.getAllConversations();
     if (localData.isNotEmpty) {
       _sortAndEmit(localData);
 
@@ -57,7 +58,7 @@ class ConversationList extends _$ConversationList {
     return await _fetchList();
   }
 
- /// Centralized sorting and state emission method to ensure consistent ordering logic
+  /// Centralized sorting and state emission method to ensure consistent ordering logic
   void _sortAndEmit(List<Conversation> list) {
     final sortedList = List<Conversation>.from(list);
 
@@ -87,7 +88,6 @@ class ConversationList extends _$ConversationList {
 
     if (index != -1) {
       final oldConv = currentList[index];
-      // 生成新的被置顶/取消置顶的会话对象
       final newConv = oldConv.copyWith(isPinned: isPinned);
 
       final newList = [...currentList];
@@ -95,7 +95,26 @@ class ConversationList extends _$ConversationList {
 
       _sortAndEmit(newList);
 
-      LocalDatabaseService().updateConversation(conversationId, {'isPinned': isPinned});
+      ref.read(messageRepositoryProvider).updateConversationField(conversationId, {'isPinned': isPinned});
+    }
+  }
+
+  void updateConversationMute(String conversationId, bool isMuted) {
+    if (!state.hasValue || state.isLoading) return;
+
+    final currentList = state.value!;
+    final index = currentList.indexWhere((conv) => conversationId == conv.id);
+
+    if (index != -1) {
+      final oldConv = currentList[index];
+      final newConv = oldConv.copyWith(isMuted: isMuted);
+
+      final newList = [...currentList];
+      newList[index] = newConv;
+
+      _sortAndEmit(newList);
+
+      ref.read(messageRepositoryProvider).updateConversationField(conversationId, {'isMuted': isMuted});
     }
   }
 
@@ -109,22 +128,20 @@ class ConversationList extends _$ConversationList {
     final payload = event.payload;
     final String? syncType = payload.syncType;
     final String groupId = event.groupId;
+    final repo = ref.read(messageRepositoryProvider);
 
-    // Strategy A: REMOVE - Handle group disbandment or expulsion
     if (syncType == 'REMOVE') {
       final newList = state.requireValue.where((c) => c.id != groupId).toList();
       _sortAndEmit(newList);
-      await LocalDatabaseService().deleteConversation(groupId);
+      await repo.deleteConversation(groupId); // 🚀 使用 Repo
       return;
     }
 
-    // Strategy B: PATCH - Atomic updates for group metadata (Name, Avatar)
     if (syncType == 'PATCH') {
       _applyLocalPatch(groupId, payload.updates);
       return;
     }
 
-    // Strategy C: FULL_SYNC - Trigger network sync with jitter to prevent server spikes
     if (syncType == 'FULL_SYNC') {
       await Future.delayed(Duration(milliseconds: Random().nextInt(3000)));
       await _fetchList();
@@ -132,7 +149,6 @@ class ConversationList extends _$ConversationList {
     }
   }
 
-  /// Updates memory state and local DB for specific group metadata changes
   void _applyLocalPatch(String groupId, Map<String, dynamic>? updates) {
     if (!state.hasValue || updates == null) return;
 
@@ -150,14 +166,15 @@ class ConversationList extends _$ConversationList {
     newList[index] = newConv;
 
     _sortAndEmit(newList);
-    LocalDatabaseService().saveConversations([newConv]);
+    ref.read(messageRepositoryProvider).saveConversations([newConv]);
   }
 
-  /// Syncs conversation list with the backend and clears unread for the active room
   Future<List<Conversation>> _fetchList() async {
     try {
       final list = await Api.chatListApi(page: 1);
-      await LocalDatabaseService().saveConversations(list);
+      final repo = ref.read(messageRepositoryProvider);
+
+      await repo.saveConversations(list);
 
       final currentActiveId = ref.read(activeConversationIdProvider);
       debugPrint("[ConversationList] Synced ${list.length} conversations.");
@@ -185,7 +202,7 @@ class ConversationList extends _$ConversationList {
     final currentList = state.value!;
     if (currentList.any((c) => c.id == newItem.id)) return;
 
-    _sortAndEmit([newItem, ...currentList]); // 🚀 替换5：通过排序器
+    _sortAndEmit([newItem, ...currentList]);
   }
 
   // ===========================================================================
@@ -201,8 +218,9 @@ class ConversationList extends _$ConversationList {
     final senderId = msg.sender?.id ?? "";
     final bool isMe = senderId.isNotEmpty && (senderId == myUserId);
     final convId = msg.conversationId;
+    final repo = ref.read(messageRepositoryProvider);
 
-    // 1. Transform to UI Model and persist to DB
+    // 1. Transform to UI Model and persist to DB via Repo
     final apiMsg = ChatMessage(
       id: msg.id,
       content: msg.content,
@@ -221,7 +239,7 @@ class ConversationList extends _$ConversationList {
     );
 
     final uiMsg = ChatUiModelMapper.fromApiModel(apiMsg, convId);
-    await LocalDatabaseService().saveMessage(uiMsg);
+    await repo.saveOrUpdate(uiMsg);
 
     // Metadata extraction for system notification side-effects
     String? newName;
@@ -259,7 +277,7 @@ class ConversationList extends _$ConversationList {
       newList.add(newConv);
 
       _sortAndEmit(newList);
-      await LocalDatabaseService().saveConversations([newConv]);
+      await repo.saveConversations([newConv]);
     } else {
       _fetchList();
     }
@@ -308,7 +326,6 @@ class ConversationList extends _$ConversationList {
     _sortAndEmit(newList);
   }
 
-  /// Maps message type and raw content into localized preview text
   String _getPreviewContent(dynamic type, String rawContent, {bool isRecalled = false}) {
     final int typeInt = (type is int) ? type : int.tryParse(type.toString()) ?? 0;
     final typeEnum = MessageType.fromValue(typeInt);
@@ -340,32 +357,28 @@ class ChatDetail extends _$ChatDetail {
   @override
   FutureOr<ConversationDetail> build(String conversationId) async {
     final userId = ref.watch(userProvider.select((s) => s?.id));
+    final repo = ref.read(messageRepositoryProvider);
 
     if (userId != null && userId.isNotEmpty) {
-      await LocalDatabaseService.init(userId);
+      await repo.initDatabase(userId);
     }
 
-    final db = LocalDatabaseService();
-    final localData = await db.getConversationDetail(conversationId);
+    final localData = await repo.getGroupDetail(conversationId);
 
     if (localData != null) {
-      // 1. 如果有本地缓存：瞬间返回秒开，并在后台静默更新网络数据
-      _syncNetworkData(conversationId, db);
+      _syncNetworkData(conversationId, repo);
       return localData;
     }
 
-    // 2. 如果无本地缓存：老老实实等待网络请求
     final networkData = await Api.chatDetailApi(conversationId);
-    await db.saveConversationDetail(networkData);
+    await repo.saveGroupDetail(networkData);
     return networkData;
   }
 
-  // 独立抽出的静默更新方法，完美避开 Riverpod 的生命周期冲突
-  Future<void> _syncNetworkData(String conversationId, LocalDatabaseService db) async {
+  Future<void> _syncNetworkData(String conversationId, MessageRepository repo) async {
     try {
       final networkData = await Api.chatDetailApi(conversationId);
-      await db.saveConversationDetail(networkData);
-      // 确保页面还没被销毁才去更新内存
+      await repo.saveGroupDetail(networkData);
       if (state.hasValue) {
         state = AsyncData(networkData);
       }
@@ -374,7 +387,6 @@ class ChatDetail extends _$ChatDetail {
     }
   }
 
-  // 暴露给外层修改的乐观更新口子
   void updateState(ConversationDetail newDetail) {
     state = AsyncData(newDetail);
   }
@@ -396,6 +408,7 @@ class ConversationSettingsController extends _$ConversationSettingsController {
       await repo.saveGroupDetail(newDetail);
       ref.read(chatDetailProvider(conversationId).notifier).updateState(newDetail);
     }
+    ref.read(conversationListProvider.notifier).updateConversationMute(conversationId, isMuted);
   }
 
   Future<void> togglePin(String conversationId, bool isPinned) async {

@@ -6,7 +6,7 @@ part of 'conversation_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$conversationListHash() => r'9784cfcc40f41b0205e7eb5b738778d1a8353683';
+String _$conversationListHash() => r'977992f39e9132521f01cf51999e3a9162a9a17e';
 
 /// See also [ConversationList].
 @ProviderFor(ConversationList)
@@ -40,7 +40,7 @@ final createDirectChatControllerProvider = AutoDisposeNotifierProvider<
 
 typedef _$CreateDirectChatController
     = AutoDisposeNotifier<AsyncValue<ConversationIdResponse?>>;
-String _$chatDetailHash() => r'4ee1e7e985d67c19d4b36d3de88dd830f6103af3';
+String _$chatDetailHash() => r'2ccb6ba3e3c890bc69c5add408a3fc9fb92b9ae8';
 
 /// Copied from Dart SDK
 class _SystemHash {
@@ -207,7 +207,7 @@ class _ChatDetailProviderElement
 }
 
 String _$conversationSettingsControllerHash() =>
-    r'3dedc4d712fdb282f5495de0d56f4e327efa7296';
+    r'6af2155dabc02e5e5bff3f352e02c8281b967bdb';
 
 /// See also [ConversationSettingsController].
 @ProviderFor(ConversationSettingsController)

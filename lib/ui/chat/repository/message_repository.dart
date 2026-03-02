@@ -290,4 +290,27 @@ class MessageRepository {
     return await _db.searchMessages(conversationId, keyword);
   }
 
+  // ==========================================
+  //  0. Database Initialization & List Operations
+  // ==========================================
+
+  /// Initializes the database for the current user
+  Future<void> initDatabase(String userId) async {
+    await LocalDatabaseService.init(userId);
+  }
+
+  /// Fetches all conversations for the list view
+  Future<List<Conversation>> getAllConversations() async {
+    return await _db.getConversations();
+  }
+
+  /// Saves a batch of conversations to local storage
+  Future<void> saveConversations(List<Conversation> list) async {
+    await _db.saveConversations(list);
+  }
+
+  /// Updates specific fields of a conversation in the list (e.g., isPinned, isMuted)
+  Future<void> updateConversationField(String conversationId, Map<String, dynamic> updates) async {
+    await _db.updateConversation(conversationId, updates);
+  }
 }
