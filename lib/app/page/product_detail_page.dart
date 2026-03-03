@@ -159,10 +159,6 @@ class _ProductDetailPageState extends ConsumerState<ProductDetailPage>
                 ),
               ),
 
-              // 2. Sections
-              // 💡 提示：在 CouponSection 内部请使用 'product_detail.section_coupon'.tr()
-              SliverToBoxAdapter(child: const CouponSection()),
-
               SliverToBoxAdapter(
                 child: TopTreasureSection(
                   item: detail,
@@ -172,7 +168,7 @@ class _ProductDetailPageState extends ConsumerState<ProductDetailPage>
               ),
 
               // 使用 RepaintBoundary 优化长列表滚动的性能
-              // 💡 提示：在 GroupSection 内部请使用 'product_detail.section_group'.tr()
+              //  提示：在 GroupSection 内部请使用 'product_detail.section_group'.tr()
               SliverToBoxAdapter(
                 child: RepaintBoundary(
                   child: GroupSection(treasureId: detail.treasureId),
@@ -181,7 +177,7 @@ class _ProductDetailPageState extends ConsumerState<ProductDetailPage>
 
               SliverToBoxAdapter(child: SizedBox(height: 8.w)),
 
-              // 💡 提示：在 DetailContentSection 内部的 Tab 标题请使用 
+              //  提示：在 DetailContentSection 内部的 Tab 标题请使用 
               // 'product_detail.tab_desc'.tr() 和 'product_detail.tab_rules'.tr()
               SliverToBoxAdapter(
                 child: DetailContentSection(
@@ -196,7 +192,7 @@ class _ProductDetailPageState extends ConsumerState<ProductDetailPage>
           ),
 
           // 3. Bottom Bar (Join / Pre-sale)
-          // 💡 提示：在 JoinTreasureBar 内部请使用 
+          //  提示：在 JoinTreasureBar 内部请使用 
           // 'product_detail.btn_buy_single'.tr() 和 'product_detail.btn_buy_group'.tr()
           bottomNavigationBar: AnimatedPadding(
             padding: EdgeInsets.only(bottom: bottomPadding),
@@ -216,7 +212,6 @@ class _ProductDetailPageState extends ConsumerState<ProductDetailPage>
         );
       },
       error: (err, stack) => const ProductDetailSkeleton(),
-      // 简单处理，实际可加 ErrorWidget
       loading: () => const ProductDetailSkeleton(),
     );
   }
