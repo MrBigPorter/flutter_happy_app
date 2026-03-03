@@ -44,6 +44,7 @@ import 'package:flutter_app/app/page/withdraw_page.dart';
 import 'package:flutter_app/ui/chat/group/group_request_list/group_request_list_page.dart';
 import 'package:flutter_app/ui/chat/group/group_profile/group_profile_page.dart';
 import '../../ui/chat/group/group_search/group_search_page.dart';
+import '../page/deposit/deposit_result_page.dart';
 import '../page/my_vouchers_page.dart';
 import 'extra_codec.dart';
 import 'package:flutter_app/ui/chat/direct_chat_settings_page.dart';
@@ -360,6 +361,22 @@ class AppRouter {
             name: 'deposit',
             path: '/me/wallet/deposit',
             builder: (context, state) => DepositPage()
+        ),
+        GoRoute(
+            name: 'walletRechargeFailure',
+            path: '/wallet/recharge/failure/:orderNo',
+            builder: (context, state) {
+              final  orderNo = state.pathParameters['orderNo'] ?? '';
+              return DepositResultPage(orderNo: orderNo);
+            }
+        ),
+        GoRoute(
+            name: 'walletRechargeSuccess',
+            path: '/wallet/recharge/success/:orderNo',
+            builder: (context, state) {
+              final  orderNo = state.pathParameters['orderNo'] ?? '';
+              return DepositResultPage(orderNo: orderNo);
+            }
         ),
         GoRoute(
             name: 'transactionRecord',

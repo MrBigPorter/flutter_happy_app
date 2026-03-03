@@ -7,7 +7,6 @@ import 'package:flutter_app/components/list.dart';
 import 'package:flutter_app/core/models/index.dart';
 import 'package:flutter_app/utils/helper.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
 import 'package:flutter_app/core/providers/me_provider.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
@@ -92,16 +91,10 @@ class _OrderListState extends ConsumerState<OrderList> with AutomaticKeepAliveCl
                     item: item,
                     isLast: isLast,
                     onRefresh: (){
-                      // 你希望“退款”操作同时刷新“全部”或“售后”Tab，
-                      // 在这里触发 orderRefreshProvider，让其他页面监听到并刷新
                       final tabs = ref.read(tabOrderStateProvider);
                       final targetTab = tabs[2];
                       ref.read(activeOrderTabProvider.notifier).state = tabs[2];// 切到“售后”Tab
 
-                      //  强制失效对应的列表 Provider，下次进入该 Tab 会重新触发接口请求
-                      // 假设你的列表 Provider 是 orderListProvider(tabKey)
-
-                      // 这会触发 initState 里定义的 request 方法，重新请求接口
                       _ctl.refresh();
 
                     },

@@ -1,10 +1,13 @@
+import 'package:flutter/foundation.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_app/app/routes/app_router.dart';
 
 import '../core/models/clickable_resource.dart';
-
+//  核心：如果是 Web 环境导入 web 版实现，否则导入 stub 版
+import 'platform_url_stub.dart'
+if (dart.library.html) 'platform_url_web.dart' as platform_impl;
 
 class JumHelper {
   static Future<void> handleTap(BuildContext context, ClickableResource item) async {
@@ -47,5 +50,13 @@ class JumHelper {
         debugPrint('Play video: ${item.videoUrl!}');
         // Navigator.push(context, MaterialPageRoute(builder: (context) => VideoPlayerScreen(video
       }
+  }
+  static String getBaseRedirectUrl() {
+    if (kIsWeb) {
+      // 调用动态导入的方法
+      return "${platform_impl.getOrigin()}/";
+    } else {
+      return "luckyapp://";
+    }
   }
 }

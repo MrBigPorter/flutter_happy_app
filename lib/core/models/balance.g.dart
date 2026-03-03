@@ -33,6 +33,7 @@ CreateRechargeDto _$CreateRechargeDtoFromJson(Map<String, dynamic> json) =>
         final val = CreateRechargeDto(
           amount: $checkedConvert('amount', (v) => v as num),
           channelId: $checkedConvert('channelId', (v) => (v as num).toInt()),
+          redirectUrl: $checkedConvert('redirectUrl', (v) => v as String),
         );
         return val;
       },
@@ -42,6 +43,7 @@ Map<String, dynamic> _$CreateRechargeDtoToJson(CreateRechargeDto instance) =>
     <String, dynamic>{
       'amount': instance.amount,
       'channelId': instance.channelId,
+      'redirectUrl': instance.redirectUrl,
     };
 
 RechargeResponse _$RechargeResponseFromJson(Map<String, dynamic> json) =>

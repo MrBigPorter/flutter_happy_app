@@ -19,6 +19,7 @@ import '../../core/models/balance.dart'; // 确保这里面有 PaymentChannelCon
 import '../../core/store/wallet_store.dart';
 import '../../utils/form/validation/k_deposit_validation_messages.dart';
 import '../../utils/form/validators.dart';
+import '../../utils/jump_helper.dart';
 import 'deposit/payment_webview_page.dart';
 
 class DepositPage extends ConsumerStatefulWidget {
@@ -65,13 +66,13 @@ class _DepositPageState extends ConsumerState<DepositPage> {
     if (_form.form.valid && _selectedChannel != null) {
       FocusScope.of(context).unfocus();
       final amount = _form.form.control('amount').value;
-
       try {
         // 调用创建订单接口
         final response = await ref.read(createRechargeProvider.notifier).create(
           CreateRechargeDto(
             amount: num.parse(amount),
             channelId: _selectedChannel!.id,
+            redirectUrl: JumHelper.getBaseRedirectUrl()
           ),
         );
 

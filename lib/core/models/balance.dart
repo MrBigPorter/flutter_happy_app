@@ -34,10 +34,12 @@ class Balance {
 class CreateRechargeDto {
   final num amount;
   final int channelId;
+  final String redirectUrl;
 
   CreateRechargeDto({
     required this.amount,
     required this.channelId,
+      required this.redirectUrl,
   });
 
   factory CreateRechargeDto.fromJson(Map<String, dynamic> json) =>
