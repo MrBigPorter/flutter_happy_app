@@ -122,7 +122,6 @@ class _WithdrawPageState extends ConsumerState<WithdrawPage> {
       child: ReactiveForm(
         formGroup: _form.form,
         child: BaseScaffold(
-          // 🌐 国际化
           title: 'withdraw.title'.tr(),
           resizeToAvoidBottomInset: true,
           body: GestureDetector(
@@ -275,9 +274,7 @@ class _WithdrawPageState extends ConsumerState<WithdrawPage> {
     return Container(
       padding: EdgeInsets.all(20.w),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [context.bgBrandPrimary, context.bgBrandPrimary.withOpacity(0.8)],
-        ),
+        color: context.bgPrimary,
         borderRadius: BorderRadius.circular(20.r),
         boxShadow: [
           BoxShadow(

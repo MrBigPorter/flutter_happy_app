@@ -24,7 +24,9 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_app/core/providers/coupon_provider.dart';
 import 'package:flutter_app/ui/modal/index.dart';
 
-const String kOfficialServiceId = '666888';
+import '../../ui/chat/providers/conversation_provider.dart';
+
+const String kOfficialServiceId = 'cmjpcff6h0001qocdwy0w8rgj';
 
 class MePage extends ConsumerStatefulWidget {
   const MePage({super.key});
@@ -334,28 +336,27 @@ class _OrderArea extends StatelessWidget {
   }
 
   Widget _buildOrderItem(
-      BuildContext context,
-      IconData icon,
-      String label, {
-        required VoidCallback onTap,
-      }) =>
-      InkWell(
-        onTap: onTap,
-        child: Column(
-          children: [
-            Icon(icon, size: 28.w, color: context.fgPrimary900),
-            SizedBox(height: 8.h),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 11.sp,
-                fontWeight: FontWeight.w500,
-                color: context.textPrimary900,
-              ),
-            ),
-          ],
+    BuildContext context,
+    IconData icon,
+    String label, {
+    required VoidCallback onTap,
+  }) => InkWell(
+    onTap: onTap,
+    child: Column(
+      children: [
+        Icon(icon, size: 28.w, color: context.fgPrimary900),
+        SizedBox(height: 8.h),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 11.sp,
+            fontWeight: FontWeight.w500,
+            color: context.textPrimary900,
+          ),
         ),
-      );
+      ],
+    ),
+  );
 }
 
 // ===================== Sub-component: Wallet Area =====================
@@ -410,12 +411,12 @@ class _WalletArea extends StatelessWidget {
   }
 
   Widget _buildBalanceCard(
-      BuildContext context, {
-        required String title,
-        required double value,
-        required String actionText,
-        required VoidCallback onTap,
-      }) {
+    BuildContext context, {
+    required String title,
+    required double value,
+    required String actionText,
+    required VoidCallback onTap,
+  }) {
     return Expanded(
       child: InkWell(
         onTap: onTap,
@@ -479,90 +480,101 @@ class _MenuArea extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final List<({String text, Widget icon, VoidCallback onTap})> menuItems = [
       (
-      text: 'common.withdraw'.tr(),
-      icon: Icon(
-        Icons.account_balance_wallet_outlined,
-        size: 26.w,
-        color: context.fgSecondary700,
-      ),
-      onTap: () => appRouter.push('/me/wallet/withdraw'),
-      ),
-      (
-      text: 'common.customer.service'.tr(),
-      icon: Icon(
-        Icons.headset_mic_outlined,
-        size: 26.w,
-        color: context.fgSecondary700,
-      ),
-      onTap: () => appRouter.push('/chat/room/$kOfficialServiceId'),
+        text: 'common.withdraw'.tr(),
+        icon: Icon(
+          Icons.account_balance_wallet_outlined,
+          size: 26.w,
+          color: context.fgSecondary700,
+        ),
+        onTap: () => appRouter.push('/me/wallet/withdraw'),
       ),
       (
-      text: 'common.faq'.tr(),
-      icon: _buildIcon(context, 'assets/images/faq.svg'),
-      onTap: () => appRouter.push('/faq'),
+        text: 'common.customer.service'.tr(),
+        icon: Icon(
+          Icons.headset_mic_outlined,
+          size: 26.w,
+          color: context.fgSecondary700,
+        ),
+        onTap: () async {
+          // 调用 Controller 创建或获取 Direct 会话
+          final conversation = await ref
+              .read(createDirectChatControllerProvider.notifier)
+              .createDirectChat(kOfficialServiceId);
+
+          if (conversation != null && context.mounted) {
+            // 跳转聊天页
+            appRouter.push('/chat/room/${conversation.conversationId}');
+          }
+        },
       ),
+      /*(
+        text: 'common.faq'.tr(),
+        icon: _buildIcon(context, 'assets/images/faq.svg'),
+        onTap: () => appRouter.push('/faq'),
+      ),*/
       (
-      text: 'common.setting'.tr(),
-      icon: _buildIcon(context, 'assets/images/setting.svg'),
-      onTap: () => appRouter.push('/setting'),
+        text: 'common.setting'.tr(),
+        icon: _buildIcon(context, 'assets/images/setting.svg'),
+        onTap: () => appRouter.push('/setting'),
       ),
       // 2. Integrated Redeem Action using RadixModal
       (
-      text: 'Redeem',
-      icon: Icon(
-        CupertinoIcons.gift,
-        size: 26.w,
-        color: context.fgSecondary700,
-      ),
-      onTap: () {
-        final TextEditingController controller = TextEditingController();
+        text: 'Redeem',
+        icon: Icon(
+          CupertinoIcons.gift,
+          size: 26.w,
+          color: context.fgSecondary700,
+        ),
+        onTap: () {
+          final TextEditingController controller = TextEditingController();
 
-        RadixModal.show(
-          title: 'Redeem Promo Code',
-          confirmText: 'Redeem',
-          cancelText: 'Cancel',
-          builder: (ctx, close) {
-            return Padding(
-              padding: EdgeInsets.only(top: 8.w, bottom: 4.w),
-              child: CupertinoTextField(
-                controller: controller,
-                placeholder: 'Enter code (e.g. LUCKY2026)',
-                textCapitalization: TextCapitalization.characters,
-                padding: EdgeInsets.all(12.w),
-                decoration: BoxDecoration(
-                  color: context.bgSecondary,
-                  border: Border.all(color: context.borderPrimary),
-                  borderRadius: BorderRadius.circular(8.r),
+          RadixModal.show(
+            title: 'Redeem Promo Code',
+            confirmText: 'Redeem',
+            cancelText: 'Cancel',
+            builder: (ctx, close) {
+              return Padding(
+                padding: EdgeInsets.only(top: 8.w, bottom: 4.w),
+                child: CupertinoTextField(
+                  controller: controller,
+                  placeholder: 'Enter code (e.g. LUCKY2026)',
+                  textCapitalization: TextCapitalization.characters,
+                  padding: EdgeInsets.all(12.w),
+                  decoration: BoxDecoration(
+                    color: context.bgSecondary,
+                    border: Border.all(color: context.borderPrimary),
+                    borderRadius: BorderRadius.circular(8.r),
+                  ),
+                  style: TextStyle(
+                    fontSize: 14.sp,
+                    fontWeight: FontWeight.w600,
+                    color: context.textPrimary900,
+                  ),
                 ),
-                style: TextStyle(
-                  fontSize: 14.sp,
-                  fontWeight: FontWeight.w600,
-                  color: context.textPrimary900,
-                ),
-              ),
-            );
-          },
-          onConfirm: (close) async {
-            final code = controller.text.trim();
-            if (code.isEmpty) return;
+              );
+            },
+            onConfirm: (close) async {
+              final code = controller.text.trim();
+              if (code.isEmpty) return;
 
-            try {
-              // 1. 等待 API 结果 (此时 RadixModal 内部自动有 Loading 效果)
-              final message = await ref.read(couponActionProvider.notifier).redeem(code);
+              try {
+                // 1. 等待 API 结果 (此时 RadixModal 内部自动有 Loading 效果)
+                final message = await ref
+                    .read(couponActionProvider.notifier)
+                    .redeem(code);
 
-              close();
+                close();
 
-              // 3. 关完之后再弹 Toast，这样不会引起 UI 状态机的并发冲突
-              RadixToast.success(message);
-
-            } catch (e) {
-              // 进到这里说明确实是网络或后端报错了
-              debugPrint('Redeem failed: $e');
-              RadixToast.error('Invalid or expired code');
-            }
-          },
-        );
-      },
+                // 3. 关完之后再弹 Toast，这样不会引起 UI 状态机的并发冲突
+                RadixToast.success(message);
+              } catch (e) {
+                // 进到这里说明确实是网络或后端报错了
+                debugPrint('Redeem failed: $e');
+                RadixToast.error('Invalid or expired code');
+              }
+            },
+          );
+        },
       ),
     ];
 
