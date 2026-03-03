@@ -1,31 +1,16 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_app/app/routes/app_router.dart';
 import 'package:flutter_app/common.dart';
-import 'package:flutter_app/core/models/coupon_threshold_data.dart';
-import 'package:flutter_app/core/providers/me_provider.dart';
+import 'package:flutter_app/core/models/user_coupon.dart';
+import 'package:flutter_app/core/providers/coupon_provider.dart';
 import 'package:flutter_app/ui/button/index.dart';
-import 'package:flutter_app/utils/format_helper.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
-/// voucher list component
-/// - show title area
-/// - show horizontal scrollable coupon list
-/// - each coupon item show coupon content and button area
-/// - coupon content show rewardAmount, thresholdStart, header
-/// - button area show different button based
-/// - on getCoupons value
-/// - if getCoupons == 2 show "Collect" button
-/// - if getCoupons == 3 show "Collected" button
-/// - else show "Spend ₱{buyThresholdStart} to get" button
-/// - [showRuleLink] whether show rule link, default true
-/// - if false, show "More" text instead
-/// - on clicking the link, navigate to voucher rules page
 class VoucherList extends ConsumerStatefulWidget {
-  final bool showRuleLink;
-
-  const VoucherList({super.key, this.showRuleLink = true});
+  const VoucherList({super.key});
 
   @override
   ConsumerState<VoucherList> createState() => _VoucherListState();
@@ -34,94 +19,43 @@ class VoucherList extends ConsumerStatefulWidget {
 class _VoucherListState extends ConsumerState<VoucherList> {
   @override
   Widget build(BuildContext context) {
-    final couponList = ref.watch(thresholdListProvider);
+    final couponListAsync = ref.watch(myValidCouponsProvider);
 
     return Container(
       width: double.infinity,
       margin: EdgeInsets.only(top: 8.w),
-      padding: EdgeInsets.only(bottom: 4.w),
+      padding: EdgeInsets.symmetric(vertical: 12.w), // 调整了上下 padding 让卡片居中更美观
       decoration: BoxDecoration(
         color: context.bgPrimaryAlt,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(12.w)),
+        borderRadius: BorderRadius.all(Radius.circular(12.w)), // 改为全圆角更协调
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          GestureDetector(
-            onTap: () {
-              if (widget.showRuleLink) {
-                appRouter.go('/me/voucher/rules');
-              } else {
-                appRouter.go('/me/voucher');
-              }
-            },
-            child: Padding(
-              padding: EdgeInsets.only(
-                top: 12.w,
-                left: 16.w,
-                right: 12.w,
-                bottom: 12.w,
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.max,
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'coupon.win.amount'.tr(namedArgs: {'number': '5'}),
-                    style: TextStyle(
-                      fontSize: context.textSm,
-                      fontWeight: FontWeight.w800,
-                      color: context.textPrimary900,
-                    ),
-                  ),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.start,
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Text(
-                        widget.showRuleLink ? "Rules" : "More",
-                        style: TextStyle(
-                          fontSize: context.textSm,
-                          fontWeight: FontWeight.w500,
-                          color: context.textPrimary900,
-                        ),
-                      ),
-                      Icon(
-                        CupertinoIcons.chevron_right,
-                        size: 16.w,
-                        color: context.textPrimary900,
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-          couponList.when(
-            data: (data) => _CouponListView(list: data.couponThreshold),
-            error: (error, stackTrace) => Text('Error: $error'),
-            loading: () => Padding(
+      child: couponListAsync.when(
+        data: (list) {
+          if (list.isEmpty) {
+            return Padding(
               padding: EdgeInsets.symmetric(vertical: 24.w),
-              child: Center(child: CupertinoActivityIndicator()),
-            ),
-          ),
-        ],
+              child: Center(
+                child: Text(
+                  "No available vouchers",
+                  style: TextStyle(color: context.textSecondary700),
+                ),
+              ),
+            );
+          }
+          return _CouponListView(list: list);
+        },
+        error: (error, stackTrace) => Padding(
+          padding: EdgeInsets.all(16.w),
+          child: Text('Error loading vouchers', style: const TextStyle(color: Colors.red)),
+        ),
+        loading: () => const _SkeletonListView(),
       ),
     );
   }
 }
 
-/// coupon list view
-/// - horizontal scrollable
-/// - each item show coupon content and button area
-/// - coupon content show rewardAmount, thresholdStart, header
-/// - button area show different button based on getCoupons value
-///  - if getCoupons == 2 show "Collect" button
-///  - if getCoupons == 3 show "Collected" button
-///  - else show "Spend ₱{buyThresholdStart} to get" button
 class _CouponListView extends StatelessWidget {
-  final List<CouponThresholdData> list;
+  final List<UserCoupon> list;
 
   const _CouponListView({required this.list});
 
@@ -129,21 +63,28 @@ class _CouponListView extends StatelessWidget {
   Widget build(BuildContext context) {
     final double itemExtent = 112.w;
 
+    final displayList = list.take(5).toList();
+    final showViewMore = list.length > 5;
+    final itemCount = displayList.length + (showViewMore ? 1 : 0);
+
     return SizedBox(
-      height: 120.w, //一定要有固定高度
+      height: 120.w,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
         padding: EdgeInsets.symmetric(horizontal: 8.w),
-        itemCount: list.length,
+        itemCount: itemCount,
         itemExtent: itemExtent,
-        //固定主轴尺寸，进一步省布局成本
         addAutomaticKeepAlives: false,
-        //卡片无状态，省内存省包裹
         addRepaintBoundaries: true,
-        //保持隔离重绘
         addSemanticIndexes: false,
         itemBuilder: (context, index) {
-          final item = list[index];
+          //  渲染“查看全部”卡片
+          if (showViewMore && index == displayList.length) {
+            return _ViewMoreTile(totalCount: list.length);
+          }
+
+          // 渲染真实优惠券
+          final item = displayList[index];
           return _CouponTile(item: item);
         },
       ),
@@ -151,8 +92,129 @@ class _CouponListView extends StatelessWidget {
   }
 }
 
+// =========================================================================
+// UI精装修：“查看全部” 引导卡片 (带堆叠阴影，和真券完美对齐)
+// =========================================================================
+class _ViewMoreTile extends StatelessWidget {
+  final int totalCount;
+
+  const _ViewMoreTile({required this.totalCount});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () {
+        // 跳转到独立的优惠券管理页面
+        appRouter.push('/me/voucher');
+      },
+      child: SizedBox(
+        height: 120.w, // 和真券总高度保持一致
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: 8.w),
+              child: SizedBox(
+                width: 96.w,
+                height: 82.w,
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    // 背景阴影层 1 (使用浅灰色，区别于真券的品牌色，暗示这是功能卡片)
+                    Positioned(
+                      top: 5.w,
+                      left: -2.w,
+                      bottom: 0,
+                      child: Container(
+                        width: 100.w,
+                        height: 72.w,
+                        decoration: BoxDecoration(
+                          color: context.borderPrimary,
+                          borderRadius: const BorderRadius.all(Radius.circular(4)),
+                        ),
+                      ),
+                    ),
+                    // 背景阴影层 2
+                    Positioned(
+                      top: 10.w,
+                      left: -4.w,
+                      child: Container(
+                        width: 104.w,
+                        height: 66.w,
+                        decoration: BoxDecoration(
+                          color: context.alphaBlack5,
+                          borderRadius: BorderRadius.all(Radius.circular(4.w)),
+                        ),
+                      ),
+                    ),
+                    // 真实内容主体
+                    Positioned.fill(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: context.bgPrimary,
+                          border: Border.all(color: context.borderPrimary, width: 1.w),
+                          borderRadius: BorderRadius.all(Radius.circular(4.w)),
+                        ),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            // 细化图标背景和尺寸
+                            Container(
+                              width: 36.w,
+                              height: 36.w,
+                              decoration: BoxDecoration(
+                                color: context.bgPrimaryAlt,
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                CupertinoIcons.arrow_right,
+                                size: 18.w,
+                                color: context.textPrimary900,
+                              ),
+                            ),
+                            SizedBox(height: 8.w),
+                            Text(
+                              'View All',
+                              style: TextStyle(
+                                fontSize: context.textXs,
+                                color: context.textPrimary900,
+                                fontWeight: FontWeight.w800, // 加粗标题
+                                height: 1.0,
+                              ),
+                            ),
+                            SizedBox(height: 4.w),
+                            Text(
+                              '$totalCount Vouchers',
+                              style: TextStyle(
+                                fontSize: 10.sp, // 比标题小一号
+                                color: context.textSecondary700,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            SizedBox(height: 4.w),
+            //  这里非常重要：用一个透明的 SizedBox 占位，替代真券的 Button
+            // 这样能保证外层的 ViewAll 卡片和左边的真券在同一水平线上，不会塌陷！
+            SizedBox(
+              height: 22.w,
+              width: 85.w,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _CouponTile extends StatelessWidget {
-  final CouponThresholdData item;
+  final UserCoupon item;
 
   const _CouponTile({required this.item});
 
@@ -171,7 +233,7 @@ class _CouponTile extends StatelessWidget {
               child: Stack(
                 clipBehavior: Clip.none,
                 children: [
-                  // backGroud
+                  // 背景阴影层 1
                   Positioned(
                     top: 5.w,
                     left: -2.w,
@@ -181,11 +243,11 @@ class _CouponTile extends StatelessWidget {
                       height: 72.w,
                       decoration: BoxDecoration(
                         color: context.fgBrandPrimary.withValues(alpha: 0.6),
-                        borderRadius: BorderRadius.all(Radius.circular(4)),
+                        borderRadius: const BorderRadius.all(Radius.circular(4)),
                       ),
                     ),
                   ),
-                  // backGroud
+                  // 背景阴影层 2
                   Positioned(
                     top: 10.w,
                     left: -4.w,
@@ -198,7 +260,7 @@ class _CouponTile extends StatelessWidget {
                       ),
                     ),
                   ),
-                  // inner content
+                  // 真实内容
                   _CouponContent(item: item),
                 ],
               ),
@@ -212,17 +274,18 @@ class _CouponTile extends StatelessWidget {
   }
 }
 
-/// coupon content area
-/// - rewardAmount
-/// - thresholdStart
-/// - header
 class _CouponContent extends StatelessWidget {
-  final CouponThresholdData item;
+  final UserCoupon item;
 
   const _CouponContent({required this.item});
 
   @override
   Widget build(BuildContext context) {
+    final isPercentage = item.couponType == 2;
+    final rewardText = isPercentage
+        ? '${double.tryParse(item.discountValue)?.toInt() ?? 0}% OFF'
+        : '₱${item.discountValue}';
+
     return Positioned.fill(
       child: Container(
         width: 96.w,
@@ -235,7 +298,7 @@ class _CouponContent extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // header
+            // 券标题头 (截取一部分防止超长)
             Container(
               width: 80.w,
               height: 14.w,
@@ -252,7 +315,7 @@ class _CouponContent extends StatelessWidget {
                 child: Transform.scale(
                   scale: 0.8,
                   child: Text(
-                    'luck Voucher',
+                    item.couponName.length > 10 ? '${item.couponName.substring(0, 10)}...' : item.couponName,
                     style: TextStyle(
                       fontSize: 12.w,
                       color: context.textWhite,
@@ -263,9 +326,9 @@ class _CouponContent extends StatelessWidget {
               ),
             ),
             SizedBox(height: 5.w),
-            // rewardAmount
+            // 面值 (金额或折扣)
             Text(
-              '₱${item.rewardAmount}',
+              rewardText,
               style: TextStyle(
                 color: context.textBrandPrimary900,
                 fontSize: context.textXs,
@@ -273,7 +336,7 @@ class _CouponContent extends StatelessWidget {
               ),
             ),
             SizedBox(height: 2.w),
-            // dsc
+            // 最低消费描述
             Column(
               children: [
                 Text(
@@ -286,7 +349,7 @@ class _CouponContent extends StatelessWidget {
                 ),
                 SizedBox(height: 2.w),
                 Text(
-                  FormatHelper.formatCurrency(item.thresholdStart),
+                  '₱${item.minPurchase}',
                   style: TextStyle(
                     color: context.textBrandPrimary900,
                     fontSize: context.text2xs,
@@ -302,46 +365,88 @@ class _CouponContent extends StatelessWidget {
   }
 }
 
-/// button area
-/// - if getCoupons == 2 show "Collect" button
-/// - if getCoupons == 3 show "Collected" button
-/// - else show "Spend ₱{buyThresholdStart} to get" button
 class _ButtonArea extends StatelessWidget {
-  final CouponThresholdData item;
+  final UserCoupon item;
 
   const _ButtonArea({required this.item});
 
   @override
   Widget build(BuildContext context) {
-    final isCollectable = item.getCoupons == 2;
-
-    final backgroundColor = isCollectable
-        ? context.utilityBrand500
-        : context.bgPrimary;
-
-    final foregroundColor = isCollectable
-        ? context.textPrimaryOnBrand
-        : context.textBrandPrimary900;
-
-    final text = switch (item.getCoupons) {
-      2 => Text('coupon.collect').tr(),
-      3 => Text('coupon.collected').tr(),
-      _ => Text(
-        'coupon.threshold',
-      ).tr(namedArgs: {'number': '${item.buyThresholdStart}'}),
-    };
-
     return Button(
       width: 85.w,
       height: 22.w,
       borderColor: context.borderBrand,
       radius: context.radiusXs,
-      backgroundColor: backgroundColor,
-      foregroundColor: foregroundColor,
+      backgroundColor: context.utilityBrand500,
+      foregroundColor: context.textPrimaryOnBrand,
       paddingX: 3.w,
       textStyle: TextStyle(fontSize: context.textXs),
-      onPressed: () {},
-      child: text,
+      onPressed: () {
+        // 点击 Use Now，跳回首页去买东西
+        appRouter.go('/');
+      },
+      child: const Text('Use Now'),
+    );
+  }
+}
+
+// =========================================================================
+//  体验优化：骨架屏组件 (Placeholder)
+// =========================================================================
+class _SkeletonListView extends StatelessWidget {
+  const _SkeletonListView();
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 120.w, // 和真实列表高度一致
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        padding: EdgeInsets.symmetric(horizontal: 8.w),
+        itemCount: 4, // 默认假装有 4 张券，填满屏幕
+        itemExtent: 112.w, // 和真实卡片宽度一致
+        physics: const NeverScrollableScrollPhysics(), // 加载时禁止滑动
+        itemBuilder: (context, index) {
+          return SizedBox(
+            height: 120.w,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 8.w),
+                  child: Container(
+                    width: 96.w,
+                    height: 82.w,
+                    decoration: BoxDecoration(
+                      color: context.bgPrimaryAlt.withValues(alpha: 0.5),
+                      border: Border.all(color: context.borderPrimary, width: 1.w),
+                      borderRadius: BorderRadius.all(Radius.circular(4.w)),
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(width: 60.w, height: 10.w, color: context.alphaBlack5),
+                        SizedBox(height: 10.w),
+                        Container(width: 40.w, height: 20.w, color: context.alphaBlack5),
+                      ],
+                    ),
+                  ),
+                ),
+                SizedBox(height: 4.w),
+                // 假按钮
+                Container(
+                  width: 85.w,
+                  height: 22.w,
+                  decoration: BoxDecoration(
+                    color: context.alphaBlack5,
+                    borderRadius: BorderRadius.circular(context.radiusXs),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
     );
   }
 }

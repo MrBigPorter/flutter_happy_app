@@ -1,7 +1,7 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart'; // 用于 Clipboard 和 HapticFeedback
+import 'package:flutter/services.dart';
 import 'package:flutter_app/app/page/me_components/voucher.dart';
 import 'package:flutter_app/app/page/me_components/voucher_list.dart';
 import 'package:flutter_app/app/routes/app_router.dart';
@@ -19,6 +19,10 @@ import 'package:flutter_app/utils/helper.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+
+// 1. Import the coupon provider
+import 'package:flutter_app/core/providers/coupon_provider.dart';
+import 'package:flutter_app/ui/modal/index.dart';
 
 const String kOfficialServiceId = '666888';
 
@@ -50,7 +54,7 @@ class _MePageState extends ConsumerState<MePage> {
         child: CustomScrollView(
           physics: platformScrollPhysics(),
           slivers: [
-            // 1. 顶部区域：头像与基础信息
+            // 1. Top Area: Avatar & Basic Info
             SliverToBoxAdapter(
               child: RepaintBoundary(
                 child: Padding(
@@ -67,7 +71,7 @@ class _MePageState extends ConsumerState<MePage> {
               SliverToBoxAdapter(child: SizedBox(height: 12.h)),
             ],
 
-            // 3. 订单管理卡片
+            // 3. Order Management Card
             SliverToBoxAdapter(
               child: RepaintBoundary(
                 child: Padding(
@@ -78,7 +82,7 @@ class _MePageState extends ConsumerState<MePage> {
             ),
             SliverToBoxAdapter(child: SizedBox(height: 12.h)),
 
-            // 4. 资产管理卡片
+            // 4. Asset Management Card
             SliverToBoxAdapter(
               child: RepaintBoundary(
                 child: Padding(
@@ -89,7 +93,7 @@ class _MePageState extends ConsumerState<MePage> {
             ),
             SliverToBoxAdapter(child: SizedBox(height: 12.h)),
 
-            // 5. 核心菜单卡片
+            // 5. Core Menu Card
             SliverToBoxAdapter(
               child: RepaintBoundary(
                 child: Padding(
@@ -107,7 +111,7 @@ class _MePageState extends ConsumerState<MePage> {
   }
 }
 
-// ===================== 子组件：顶部头像区 =====================
+// ===================== Sub-component: Logged-in Top Area =====================
 class _LoginTopArea extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Column(
@@ -181,7 +185,7 @@ class _Avatar extends ConsumerWidget {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        "ID: ${userId.substring(0,10).toUpperCase()}",
+                        "ID: ${userId.substring(0, 10).toUpperCase()}",
                         style: TextStyle(
                           fontSize: 12.sp,
                           color: context.textSecondary700,
@@ -201,26 +205,12 @@ class _Avatar extends ConsumerWidget {
             ],
           ),
         ),
-        /*IconButton(
-          onPressed: () {
-            HapticFeedback.selectionClick();
-            RadixToast.info("No new notifications");
-          },
-          icon: SvgPicture.asset(
-            'assets/images/bell.svg',
-            width: 26.w,
-            colorFilter: ColorFilter.mode(
-              context.fgPrimary900,
-              BlendMode.srcIn,
-            ),
-          ),
-        ),*/
       ],
     );
   }
 }
 
-// ===================== 子组件：未登录区 =====================
+// ===================== Sub-component: Unlogged Top Area =====================
 class _UnLoginTopArea extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -263,7 +253,7 @@ class _UnLoginTopArea extends StatelessWidget {
   }
 }
 
-// ===================== 子组件：订单区 =====================
+// ===================== Sub-component: Order Area =====================
 class _OrderArea extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -288,7 +278,7 @@ class _OrderArea extends StatelessWidget {
                 ),
               ),
               GestureDetector(
-                onTap: () => appRouter.push('/order/list'), // 查看全部订单
+                onTap: () => appRouter.push('/order/list'),
                 child: Row(
                   children: [
                     Text(
@@ -348,26 +338,27 @@ class _OrderArea extends StatelessWidget {
       IconData icon,
       String label, {
         required VoidCallback onTap,
-      }) => InkWell(
-    onTap: onTap,
-    child: Column(
-      children: [
-        Icon(icon, size: 28.w, color: context.fgPrimary900),
-        SizedBox(height: 8.h),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 11.sp,
-            fontWeight: FontWeight.w500,
-            color: context.textPrimary900,
-          ),
+      }) =>
+      InkWell(
+        onTap: onTap,
+        child: Column(
+          children: [
+            Icon(icon, size: 28.w, color: context.fgPrimary900),
+            SizedBox(height: 8.h),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 11.sp,
+                fontWeight: FontWeight.w500,
+                color: context.textPrimary900,
+              ),
+            ),
+          ],
         ),
-      ],
-    ),
-  );
+      );
 }
 
-// ===================== 子组件：钱包区 =====================
+// ===================== Sub-component: Wallet Area =====================
 class _WalletArea extends StatelessWidget {
   final Balance balance;
 
@@ -482,10 +473,10 @@ class _WalletArea extends StatelessWidget {
   }
 }
 
-// ===================== 子组件：九宫格菜单 =====================
-class _MenuArea extends StatelessWidget {
+// ===================== Sub-component: 9-Grid Menu =====================
+class _MenuArea extends ConsumerWidget {
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final List<({String text, Widget icon, VoidCallback onTap})> menuItems = [
       (
       text: 'common.withdraw'.tr(),
@@ -514,6 +505,64 @@ class _MenuArea extends StatelessWidget {
       text: 'common.setting'.tr(),
       icon: _buildIcon(context, 'assets/images/setting.svg'),
       onTap: () => appRouter.push('/setting'),
+      ),
+      // 2. Integrated Redeem Action using RadixModal
+      (
+      text: 'Redeem',
+      icon: Icon(
+        CupertinoIcons.gift,
+        size: 26.w,
+        color: context.fgSecondary700,
+      ),
+      onTap: () {
+        final TextEditingController controller = TextEditingController();
+
+        RadixModal.show(
+          title: 'Redeem Promo Code',
+          confirmText: 'Redeem',
+          cancelText: 'Cancel',
+          builder: (ctx, close) {
+            return Padding(
+              padding: EdgeInsets.only(top: 8.w, bottom: 4.w),
+              child: CupertinoTextField(
+                controller: controller,
+                placeholder: 'Enter code (e.g. LUCKY2026)',
+                textCapitalization: TextCapitalization.characters,
+                padding: EdgeInsets.all(12.w),
+                decoration: BoxDecoration(
+                  color: context.bgSecondary,
+                  border: Border.all(color: context.borderPrimary),
+                  borderRadius: BorderRadius.circular(8.r),
+                ),
+                style: TextStyle(
+                  fontSize: 14.sp,
+                  fontWeight: FontWeight.w600,
+                  color: context.textPrimary900,
+                ),
+              ),
+            );
+          },
+          onConfirm: (close) async {
+            final code = controller.text.trim();
+            if (code.isEmpty) return;
+
+            try {
+              // 1. 等待 API 结果 (此时 RadixModal 内部自动有 Loading 效果)
+              final message = await ref.read(couponActionProvider.notifier).redeem(code);
+
+              close();
+
+              // 3. 关完之后再弹 Toast，这样不会引起 UI 状态机的并发冲突
+              RadixToast.success(message);
+
+            } catch (e) {
+              // 进到这里说明确实是网络或后端报错了
+              debugPrint('Redeem failed: $e');
+              RadixToast.error('Invalid or expired code');
+            }
+          },
+        );
+      },
       ),
     ];
 
