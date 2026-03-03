@@ -198,7 +198,6 @@ class _ClaimCouponBottomSheetState extends ConsumerState<_ClaimCouponBottomSheet
 
                 // 只要任何一张券在 Loading，或者本身已被领取，就把按钮禁用
                 bool isBtnDisabled = isClaimed || isSoldOut || isActionLoading;
-                print('Coupon ${item.couponId} - isClaimed: $isClaimed, isSoldOut: $isSoldOut, isActionLoading: $isActionLoading, isThisLoading: $isThisLoading');
 
                 return Container(
                   margin: EdgeInsets.only(bottom: 12.w),
