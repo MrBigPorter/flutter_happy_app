@@ -186,7 +186,7 @@ final myValidCouponsProvider = FutureProvider<List<UserCoupon>>.internal(
 
 typedef MyValidCouponsRef = FutureProviderRef<List<UserCoupon>>;
 String _$availableCouponsForOrderHash() =>
-    r'4ad4655b64ce37761bf51826cab3d12b99d6cdb6';
+    r'2d93ac3a4c35264069d0736772cdf5884d5d1063';
 
 /// 结算页：获取当前订单【满足门槛】的可用优惠券
 ///

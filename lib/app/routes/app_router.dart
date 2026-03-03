@@ -7,7 +7,7 @@ import 'package:flutter_app/app/page/group_room_page.dart';
 import 'package:flutter_app/app/page/kyc_verify_page.dart';
 import 'package:flutter_app/app/page/order_list_page.dart';
 import 'package:flutter_app/app/page/page_404.dart';
-import 'package:flutter_app/app/page/payment_page.dart';
+import 'package:flutter_app/app/page/payment/payment_page.dart';
 import 'package:flutter_app/app/page/product_group_page.dart';
 import 'package:flutter_app/app/page/setting_page.dart';
 import 'package:flutter_app/app/routes/route_auth_config.dart';

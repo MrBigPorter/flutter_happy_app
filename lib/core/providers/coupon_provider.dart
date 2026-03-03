@@ -28,8 +28,41 @@ Future<List<UserCoupon>> myValidCoupons(Ref ref) async {
 @riverpod
 Future<List<UserCoupon>> availableCouponsForOrder(Ref ref, double orderAmount) async {
   if (orderAmount <= 0) return [];
-  final res = await Api.myCouponsApi(status: 0, orderAmount: orderAmount, page: 1, pageSize: 50);
-  return res.list;
+
+  // 内存极速计算 + 官方防抖兜底
+  try {
+    // 1. 拿取用户所有的可用券（复用之前已经请求好的全量数据，只要进了页面基本就是秒回）
+    final allValidCoupons = await ref.watch(myValidCouponsProvider.future);
+
+    // 2. 本地直接判断门槛过滤！0 网络请求，告别菊花转！
+    final availableList = allValidCoupons.where((coupon) {
+      final minSpend = double.tryParse(coupon.minPurchase) ?? 0.0;
+      return orderAmount >= minSpend;
+    }).toList();
+
+    return availableList;
+  } catch (e) {
+    // 3. 极速兜底方案：如果万一没拿到缓存，我们走标准的【Riverpod 防抖网络请求】
+
+    // 设置防抖标志
+    var didDispose = false;
+    ref.onDispose(() => didDispose = true);
+
+    // 拦截用户狂点，强制等待 500ms
+    await Future<void>.delayed(const Duration(milliseconds: 500));
+
+    // 如果 500ms 内用户又改了金额，直接丢弃本次废弃的请求，不浪费带宽
+    if (didDispose) throw Exception('Request cancelled due to debounce');
+
+    // 用户彻底停手后，才向后端发出唯一一次真实的请求
+    final res = await Api.myCouponsApi(
+        status: 0,
+        orderAmount: orderAmount,
+        page: 1,
+        pageSize: 50
+    );
+    return res.list;
+  }
 }
 
 /// 领券大厅：获取可以领取的券
