@@ -65,6 +65,9 @@ class ClaimableCoupon {
   final String minPurchase;
   final int totalQuantity;
   final int issuedQuantity;
+  final bool? isClaimed;
+  final bool? isSoldOut;
+
 
   /// 进度百分比 (例如 "80" 代表 80%)
   final String progress;
@@ -86,6 +89,8 @@ class ClaimableCoupon {
     required this.progress,
     required this.canClaim,
     required this.hasReachedLimit,
+    this.isClaimed,
+    this.isSoldOut,
   });
 
   factory ClaimableCoupon.fromJson(Map<String, dynamic> json) => _$ClaimableCouponFromJson(json);

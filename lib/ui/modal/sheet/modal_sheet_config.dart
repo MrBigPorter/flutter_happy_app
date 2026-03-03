@@ -16,12 +16,15 @@ class ModalSheetConfig extends BaseModalConfig {
 
   final bool? showThumb;
 
+  final String? title;
+
   const ModalSheetConfig({
     this.minHeight = 100,
     this.maxHeightFactor = 0.7,
     this.enableDragToClose = true,
     this.dragToCloseThreshold = 40,
     this.showThumb = false,
+    this.title, // 🚀 构造函数支持
     super.theme,
     super.borderRadius,
     super.animationStyleConfig,

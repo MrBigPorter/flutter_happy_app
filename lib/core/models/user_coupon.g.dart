@@ -60,6 +60,8 @@ ClaimableCoupon _$ClaimableCouponFromJson(Map<String, dynamic> json) =>
           progress: $checkedConvert('progress', (v) => v as String),
           canClaim: $checkedConvert('canClaim', (v) => v as bool),
           hasReachedLimit: $checkedConvert('hasReachedLimit', (v) => v as bool),
+          isClaimed: $checkedConvert('isClaimed', (v) => v as bool?),
+          isSoldOut: $checkedConvert('isSoldOut', (v) => v as bool?),
         );
         return val;
       },
@@ -74,6 +76,8 @@ Map<String, dynamic> _$ClaimableCouponToJson(ClaimableCoupon instance) =>
       'minPurchase': instance.minPurchase,
       'totalQuantity': instance.totalQuantity,
       'issuedQuantity': instance.issuedQuantity,
+      'isClaimed': instance.isClaimed,
+      'isSoldOut': instance.isSoldOut,
       'progress': instance.progress,
       'canClaim': instance.canClaim,
       'hasReachedLimit': instance.hasReachedLimit,
