@@ -157,9 +157,12 @@ class TransactionCard extends StatelessWidget {
               ),
             )
         )
-    ).animate(delay: (50 * index).ms)
-        .fadeIn(duration: 400.ms, curve: Curves.easeOut)
-        .slideX(begin: 0.1, end: 0, duration: 400.ms, curve: Curves.easeOut);
+    )
+    //  修复核心：使用取余 (index % 10) 来重置每页的动画延迟
+    // 这样加载第二页 (index 10) 时，延迟又会从 0 开始，而不是等待 500ms
+        .animate(delay: (30 * (index % 10)).ms)
+        .fadeIn(duration: 300.ms, curve: Curves.easeOut) // 适当调快一点点动画速度
+        .slideX(begin: 0.05, end: 0, duration: 300.ms, curve: Curves.easeOut); // 稍微减小 slide 的滑动距离，让进入更自然
   }
 }
 

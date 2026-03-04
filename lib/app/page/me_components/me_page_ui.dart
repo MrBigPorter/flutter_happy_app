@@ -1,119 +1,7 @@
-import 'package:easy_localization/easy_localization.dart';
-import 'package:flutter/cupertino.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:flutter_app/app/page/me_components/voucher.dart';
-import 'package:flutter_app/app/page/me_components/voucher_list.dart';
-import 'package:flutter_app/app/routes/app_router.dart';
-import 'package:flutter_app/common.dart';
-import 'package:flutter_app/components/base_scaffold.dart';
-import 'package:flutter_app/components/lucky_custom_material_indicator.dart';
-import 'package:flutter_app/core/models/index.dart';
-import 'package:flutter_app/core/store/auth/auth_provider.dart';
-import 'package:flutter_app/core/store/user_store.dart';
-import 'package:flutter_app/core/store/wallet_store.dart';
-import 'package:flutter_app/ui/button/index.dart';
-import 'package:flutter_app/ui/toast/radix_toast.dart';
-import 'package:flutter_app/utils/format_helper.dart';
-import 'package:flutter_app/utils/helper.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:flutter_svg/flutter_svg.dart';
+part of 'me_page.dart';
 
-// 1. Import the coupon provider
-import 'package:flutter_app/core/providers/coupon_provider.dart';
-import 'package:flutter_app/ui/modal/index.dart';
 
-import '../../ui/chat/providers/conversation_provider.dart';
-
-const String kOfficialServiceId = 'cmjpcff6h0001qocdwy0w8rgj';
-
-class MePage extends ConsumerStatefulWidget {
-  const MePage({super.key});
-
-  @override
-  ConsumerState<MePage> createState() => _MePageState();
-}
-
-class _MePageState extends ConsumerState<MePage> {
-  Future<void> _onRefresh() async {
-    await ref.read(walletProvider.notifier).fetchBalance();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final isAuthenticated = ref.watch(
-      authProvider.select((s) => s.isAuthenticated),
-    );
-    final balance = ref.watch(walletProvider);
-
-    return BaseScaffold(
-      showBack: false,
-      elevation: 0,
-      backgroundColor: context.bgSecondary,
-      body: LuckyCustomMaterialIndicator(
-        onRefresh: _onRefresh,
-        child: CustomScrollView(
-          physics: platformScrollPhysics(),
-          slivers: [
-            // 1. Top Area: Avatar & Basic Info
-            SliverToBoxAdapter(
-              child: RepaintBoundary(
-                child: Padding(
-                  padding: EdgeInsets.fromLTRB(16.w, 16.h, 16.w, 12.h),
-                  child: isAuthenticated ? _LoginTopArea() : _UnLoginTopArea(),
-                ),
-              ),
-            ),
-
-            if (isAuthenticated) ...[
-              const SliverToBoxAdapter(
-                child: RepaintBoundary(child: VoucherList()),
-              ),
-              SliverToBoxAdapter(child: SizedBox(height: 12.h)),
-            ],
-
-            // 3. Order Management Card
-            SliverToBoxAdapter(
-              child: RepaintBoundary(
-                child: Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 16.w),
-                  child: _OrderArea(),
-                ),
-              ),
-            ),
-            SliverToBoxAdapter(child: SizedBox(height: 12.h)),
-
-            // 4. Asset Management Card
-            SliverToBoxAdapter(
-              child: RepaintBoundary(
-                child: Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 16.w),
-                  child: _WalletArea(balance: balance),
-                ),
-              ),
-            ),
-            SliverToBoxAdapter(child: SizedBox(height: 12.h)),
-
-            // 5. Core Menu Card
-            SliverToBoxAdapter(
-              child: RepaintBoundary(
-                child: Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 16.w),
-                  child: _MenuArea(),
-                ),
-              ),
-            ),
-
-            SliverToBoxAdapter(child: SizedBox(height: 40.h)),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ===================== Sub-component: Logged-in Top Area =====================
+/// Displays user avatar and active vouchers when authenticated
 class _LoginTopArea extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Column(
@@ -125,6 +13,7 @@ class _LoginTopArea extends StatelessWidget {
   );
 }
 
+/// Displays user avatar, nickname, and copyable ID
 class _Avatar extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -137,6 +26,7 @@ class _Avatar extends ConsumerWidget {
 
     return Row(
       children: [
+        // Avatar Image Box
         Container(
           width: 64.w,
           height: 64.w,
@@ -156,6 +46,7 @@ class _Avatar extends ConsumerWidget {
           ),
         ),
         SizedBox(width: 16.w),
+        // User Info Column
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -171,6 +62,7 @@ class _Avatar extends ConsumerWidget {
                 overflow: TextOverflow.ellipsis,
               ),
               SizedBox(height: 6.h),
+              // Copyable User ID Badge
               GestureDetector(
                 onTap: () {
                   Clipboard.setData(ClipboardData(text: userId));
@@ -213,6 +105,8 @@ class _Avatar extends ConsumerWidget {
 }
 
 // ===================== Sub-component: Unlogged Top Area =====================
+
+/// Displays a login prompt when the user is not authenticated
 class _UnLoginTopArea extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -256,6 +150,8 @@ class _UnLoginTopArea extends StatelessWidget {
 }
 
 // ===================== Sub-component: Order Area =====================
+
+/// Displays e-commerce style order statuses
 class _OrderArea extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -268,6 +164,7 @@ class _OrderArea extends StatelessWidget {
       padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 16.h),
       child: Column(
         children: [
+          // Header Row
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -301,6 +198,7 @@ class _OrderArea extends StatelessWidget {
             ],
           ),
           SizedBox(height: 20.h),
+          // Status Items Row
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -335,12 +233,13 @@ class _OrderArea extends StatelessWidget {
     );
   }
 
+  /// Helper to build individual order status icons
   Widget _buildOrderItem(
-    BuildContext context,
-    IconData icon,
-    String label, {
-    required VoidCallback onTap,
-  }) => InkWell(
+      BuildContext context,
+      IconData icon,
+      String label, {
+        required VoidCallback onTap,
+      }) => InkWell(
     onTap: onTap,
     child: Column(
       children: [
@@ -360,6 +259,8 @@ class _OrderArea extends StatelessWidget {
 }
 
 // ===================== Sub-component: Wallet Area =====================
+
+/// Displays user balance and treasure coins with quick action buttons
 class _WalletArea extends StatelessWidget {
   final Balance balance;
 
@@ -401,7 +302,7 @@ class _WalletArea extends StatelessWidget {
                 title: 'common.treasureCoins'.tr(),
                 value: balance.coinBalance,
                 actionText: 'Details',
-                onTap: () => appRouter.push('/me/wallet'),
+                onTap: () => RadixToast.info('Treasure Coins details coming soon!'),
               ),
             ],
           ),
@@ -410,13 +311,14 @@ class _WalletArea extends StatelessWidget {
     );
   }
 
+  /// Helper to build balance cards (Real balance / Coins)
   Widget _buildBalanceCard(
-    BuildContext context, {
-    required String title,
-    required double value,
-    required String actionText,
-    required VoidCallback onTap,
-  }) {
+      BuildContext context, {
+        required String title,
+        required double value,
+        required String actionText,
+        required VoidCallback onTap,
+      }) {
     return Expanded(
       child: InkWell(
         onTap: onTap,
@@ -474,107 +376,120 @@ class _WalletArea extends StatelessWidget {
   }
 }
 
-// ===================== Sub-component: 9-Grid Menu =====================
+// ===================== Sub-component: Grid Menu =====================
+
+/// Grid layout for additional tools (Withdraw, History, Support, Settings, Redeem)
 class _MenuArea extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Defines the grid items and their respective actions
     final List<({String text, Widget icon, VoidCallback onTap})> menuItems = [
       (
-        text: 'common.withdraw'.tr(),
-        icon: Icon(
-          Icons.account_balance_wallet_outlined,
-          size: 26.w,
-          color: context.fgSecondary700,
-        ),
-        onTap: () => appRouter.push('/me/wallet/withdraw'),
+      text: 'common.withdraw'.tr(),
+      icon: Icon(
+        Icons.account_balance_wallet_outlined,
+        size: 26.w,
+        color: context.fgSecondary700,
+      ),
+      onTap: () => appRouter.push('/me/wallet/withdraw'),
+      ),
+      // NEW: Deposit History Entry
+      (
+      text: 'common.deposit.history'.tr(),
+      icon: Icon(
+        Icons.history_outlined,
+        size: 26.w,
+        color: context.fgSecondary700,
+      ),
+      onTap: () => appRouter.push('/me/wallet/transaction/record?tab=deposit'),
+      ),
+      // NEW: Withdraw History Entry
+      (
+      text: 'common.withdraw.history'.tr(),
+      icon: Icon(
+        Icons.receipt_long_outlined,
+        size: 26.w,
+        color: context.fgSecondary700,
+      ),
+      onTap: () => appRouter.push('/me/wallet/transaction/record?tab=withdraw'),
       ),
       (
-        text: 'common.customer.service'.tr(),
-        icon: Icon(
-          Icons.headset_mic_outlined,
-          size: 26.w,
-          color: context.fgSecondary700,
-        ),
-        onTap: () async {
-          // 调用 Controller 创建或获取 Direct 会话
-          final conversation = await ref
-              .read(createDirectChatControllerProvider.notifier)
-              .createDirectChat(kOfficialServiceId);
+      text: 'common.customer.service'.tr(),
+      icon: Icon(
+        Icons.headset_mic_outlined,
+        size: 26.w,
+        color: context.fgSecondary700,
+      ),
+      onTap: () async {
+        // Creates or fetches Direct Chat with Customer Service
+        final conversation = await ref
+            .read(createDirectChatControllerProvider.notifier)
+            .createDirectChat(kOfficialServiceId);
 
-          if (conversation != null && context.mounted) {
-            // 跳转聊天页
-            appRouter.push('/chat/room/${conversation.conversationId}');
-          }
-        },
+        if (conversation != null && context.mounted) {
+          appRouter.push('/chat/room/${conversation.conversationId}');
+        }
+      },
       ),
-      /*(
-        text: 'common.faq'.tr(),
-        icon: _buildIcon(context, 'assets/images/faq.svg'),
-        onTap: () => appRouter.push('/faq'),
-      ),*/
       (
-        text: 'common.setting'.tr(),
-        icon: _buildIcon(context, 'assets/images/setting.svg'),
-        onTap: () => appRouter.push('/setting'),
+      text: 'Redeem',
+      icon: Icon(
+        CupertinoIcons.gift,
+        size: 26.w,
+        color: context.fgSecondary700,
       ),
-      // 2. Integrated Redeem Action using RadixModal
-      (
-        text: 'Redeem',
-        icon: Icon(
-          CupertinoIcons.gift,
-          size: 26.w,
-          color: context.fgSecondary700,
-        ),
-        onTap: () {
-          final TextEditingController controller = TextEditingController();
+      onTap: () {
+        final TextEditingController controller = TextEditingController();
 
-          RadixModal.show(
-            title: 'Redeem Promo Code',
-            confirmText: 'Redeem',
-            cancelText: 'Cancel',
-            builder: (ctx, close) {
-              return Padding(
-                padding: EdgeInsets.only(top: 8.w, bottom: 4.w),
-                child: CupertinoTextField(
-                  controller: controller,
-                  placeholder: 'Enter code (e.g. LUCKY2026)',
-                  textCapitalization: TextCapitalization.characters,
-                  padding: EdgeInsets.all(12.w),
-                  decoration: BoxDecoration(
-                    color: context.bgSecondary,
-                    border: Border.all(color: context.borderPrimary),
-                    borderRadius: BorderRadius.circular(8.r),
-                  ),
-                  style: TextStyle(
-                    fontSize: 14.sp,
-                    fontWeight: FontWeight.w600,
-                    color: context.textPrimary900,
-                  ),
+        RadixModal.show(
+          title: 'Redeem Promo Code',
+          confirmText: 'Redeem',
+          cancelText: 'Cancel',
+          builder: (ctx, close) {
+            return Padding(
+              padding: EdgeInsets.only(top: 8.w, bottom: 4.w),
+              child: CupertinoTextField(
+                controller: controller,
+                placeholder: 'Enter code (e.g. LUCKY2026)',
+                textCapitalization: TextCapitalization.characters,
+                padding: EdgeInsets.all(12.w),
+                decoration: BoxDecoration(
+                  color: context.bgSecondary,
+                  border: Border.all(color: context.borderPrimary),
+                  borderRadius: BorderRadius.circular(8.r),
                 ),
-              );
-            },
-            onConfirm: (close) async {
-              final code = controller.text.trim();
-              if (code.isEmpty) return;
+                style: TextStyle(
+                  fontSize: 14.sp,
+                  fontWeight: FontWeight.w600,
+                  color: context.textPrimary900,
+                ),
+              ),
+            );
+          },
+          onConfirm: (close) async {
+            final code = controller.text.trim();
+            if (code.isEmpty) return;
 
-              try {
-                // 1. 等待 API 结果 (此时 RadixModal 内部自动有 Loading 效果)
-                final message = await ref
-                    .read(couponActionProvider.notifier)
-                    .redeem(code);
+            try {
+              // Wait for API result while RadixModal handles loading state
+              final message = await ref
+                  .read(couponActionProvider.notifier)
+                  .redeem(code);
 
-                close();
-
-                // 3. 关完之后再弹 Toast，这样不会引起 UI 状态机的并发冲突
-                RadixToast.success(message);
-              } catch (e) {
-                // 进到这里说明确实是网络或后端报错了
-                debugPrint('Redeem failed: $e');
-                RadixToast.error('Invalid or expired code');
-              }
-            },
-          );
-        },
+              close();
+              RadixToast.success(message);
+            } catch (e) {
+              debugPrint('Redeem failed: $e');
+              RadixToast.error('Invalid or expired code');
+            }
+          },
+        );
+      },
+      ),
+      (
+      text: 'common.setting'.tr(),
+      icon: _buildIcon(context, 'assets/images/setting.svg'),
+      onTap: () => appRouter.push('/setting'),
       ),
     ];
 
@@ -626,6 +541,7 @@ class _MenuArea extends ConsumerWidget {
     );
   }
 
+  /// Helper to build SVG icons consistently
   Widget _buildIcon(BuildContext context, String asset) => SvgPicture.asset(
     asset,
     width: 26.w,

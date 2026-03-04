@@ -383,7 +383,7 @@ class _ButtonArea extends StatelessWidget {
       textStyle: TextStyle(fontSize: context.textXs),
       onPressed: () {
         // 点击 Use Now，跳回首页去买东西
-        appRouter.go('/');
+        appRouter.go('/home');
       },
       child: const Text('Use Now'),
     );

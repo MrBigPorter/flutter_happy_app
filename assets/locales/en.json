@@ -36,6 +36,8 @@
   "common.setting": "Settings",
   "common.redeem.code": "Code",
   "common.withdraw": "Withdraw",
+  "common.deposit.history": "Deposit History",
+  "common.withdraw.history": "Withdraw History",
   "common.topup": "Top Up",
   "common.refund": "Refund",
   "common.view": "View",

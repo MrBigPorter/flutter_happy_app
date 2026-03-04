@@ -8,6 +8,7 @@ import 'package:easy_localization/easy_localization.dart';
 
 import 'package:flutter_app/ui/button/button.dart';
 import 'package:flutter_app/ui/button/variant.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/store/wallet_store.dart';
 
@@ -111,8 +112,16 @@ class _DepositResultPageState extends ConsumerState<DepositResultPage> {
   }
 
   void _onExit() {
-    // 回到首页/钱包页
-    Navigator.of(context).popUntil((route) => route.isFirst);
+    _onRetry();
+  }
+
+  void _onRetry() {
+    // 使用 pop 退回上一页（金额输入页），让用户换个支付方式重新充
+    if (context.canPop()) {
+      context.pop();
+    } else {
+      context.go('/me/wallet/deposit');
+    }
   }
 
   @override

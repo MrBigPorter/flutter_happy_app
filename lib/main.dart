@@ -3,6 +3,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'dart:ui' as ui;
 
 import 'app/app.dart';
 import 'app/app_startup.dart';
@@ -40,32 +41,36 @@ Future<void> main() async {
   );
 }
 
-// 原来的 AppBootstrap Widget 改名为 AppBootstrapWidget 或 AppRoot
 class AppBootstrapWidget extends ConsumerWidget {
   const AppBootstrapWidget({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // 监听启动逻辑 (AppStartup)
     final startupState = ref.watch(appStartupProvider);
 
     return startupState.when(
-      data: (_) => const MyApp(),
-      loading: () => MaterialApp(
-        debugShowCheckedModeBanner: false,
-        home: Scaffold(
-          backgroundColor: Colors.white,
-          body: const Center(child: CircularProgressIndicator.adaptive()),
+      data: (_) => const MyApp(), // 真正的入口，只在这里暴露路由
+
+      //修复：改用 Directionality，不给 Flutter 拦截 URL 的机会
+      loading: () => const Directionality(
+        textDirection: ui.TextDirection.ltr,
+          child: ColoredBox(
+          color: Colors.white,
+          child: Center(child: CircularProgressIndicator.adaptive()),
         ),
       ),
-      error: (e, st) => MaterialApp(
-        home: Scaffold(
-          body: Center(
+
+      // 修复：错误页同理，去掉 MaterialApp
+      error: (e, st) => Directionality(
+        textDirection: ui.TextDirection.ltr,
+        child: ColoredBox(
+          color: Colors.white,
+          child: Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 const Icon(Icons.error_outline, color: Colors.red, size: 48),
-                Text("Error: $e"),
+                Text("Error: $e", style: const TextStyle(color: Colors.black, fontSize: 14, decoration: TextDecoration.none)),
                 ElevatedButton(
                   onPressed: () => ref.invalidate(appStartupProvider),
                   child: const Text("Retry"),

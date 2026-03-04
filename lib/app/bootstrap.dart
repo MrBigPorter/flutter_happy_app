@@ -33,7 +33,7 @@ class AppBootstrap {
   /// 处理所有不需要 Riverpod 参与的基础设施
   static Future<void> initSystem() async {
     // Web URL 策略
-    //if (kIsWeb) usePathUrlStrategy();
+    if (kIsWeb) usePathUrlStrategy();
     GoRouter.optionURLReflectsImperativeAPIs = true;
 
     // Flutter 绑定
