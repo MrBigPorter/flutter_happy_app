@@ -30,7 +30,6 @@ class _ProductDetailPageState extends ConsumerState<ProductDetailPage>
   late final Animation<Offset> _offsetBarAnimation;
   late final Animation<double> _opacityBarAnimation;
 
-  // Storage keys to preserve scroll position
   late final PageStorageKey _bannerStorageKey;
   late final PageStorageKey _pageStorageKey;
 
@@ -64,9 +63,7 @@ class _ProductDetailPageState extends ConsumerState<ProductDetailPage>
 
   @override
   Widget build(BuildContext context) {
-    // Watch static details (cached, returns instantly)
     final detailAsync = ref.watch(productDetailProvider(widget.productId));
-    // Watch real-time status (not cached, updates dynamic inventory/price)
     final statusAsync = ref.watch(productRealtimeStatusProvider(widget.productId));
     final webBaseUrl = ref.watch(configProvider.select((s) => s.webBaseUrl));
 
@@ -74,12 +71,13 @@ class _ProductDetailPageState extends ConsumerState<ProductDetailPage>
     final bottomPadding = MediaQuery.viewInsetsOf(context).bottom.clamp(0.0, 9999.0);
 
     return detailAsync.when(
+      //Banners 核心优化 4：全局无缝刷新防闪烁，哪怕被 invalidate，也绝不回退到加载骨架屏
+      skipLoadingOnRefresh: true,
       data: (detail) {
         return Scaffold(
           body: CustomScrollView(
             key: _pageStorageKey,
             slivers: [
-              // 1. App Bar & Banner
               SliverAppBar(
                 pinned: true,
                 expandedHeight: expandedHeight,
@@ -87,17 +85,14 @@ class _ProductDetailPageState extends ConsumerState<ProductDetailPage>
                 surfaceTintColor: Colors.transparent,
                 leading: IconButton(
                   onPressed: () {
-                    // Check if there is a previous page in the routing stack
                     if (context.canPop()) {
                       context.pop();
                     } else {
-                      // Fallback: Redirect to home if opened via DeepLink
                       context.go('/home');
                     }
                   },
                   icon: Icon(CupertinoIcons.back, color: context.fgPrimary900, size: 24.w),
                 ),
-                // Optimized FlexibleSpaceBar avoiding manual opacity calculations
                 flexibleSpace: FlexibleSpaceBar(
                   expandedTitleScale: 1.0,
                   titlePadding: EdgeInsets.only(left: 56.w, right: 16.w, bottom: 14.w),
@@ -128,9 +123,6 @@ class _ProductDetailPageState extends ConsumerState<ProductDetailPage>
                 ),
               ),
 
-              // 2. Main Content Sections
-
-              // Integrated Coupon Section (Live API Connection)
               const SliverToBoxAdapter(child: CouponSection()),
 
               SliverToBoxAdapter(
@@ -141,7 +133,6 @@ class _ProductDetailPageState extends ConsumerState<ProductDetailPage>
                 ),
               ),
 
-              // Optimized long list rendering using RepaintBoundary
               SliverToBoxAdapter(
                 child: RepaintBoundary(
                   child: GroupSection(treasureId: detail.treasureId),
@@ -157,12 +148,9 @@ class _ProductDetailPageState extends ConsumerState<ProductDetailPage>
                 ),
               ),
 
-              // Bottom padding to prevent content from being obscured by the bottom bar
               SliverToBoxAdapter(child: SizedBox(height: 100.w)),
             ],
           ),
-
-          // 3. Bottom Bar (Join / Pre-sale)
           bottomNavigationBar: AnimatedPadding(
             padding: EdgeInsets.only(bottom: bottomPadding),
             duration: const Duration(milliseconds: 200),

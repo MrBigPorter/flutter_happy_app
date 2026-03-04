@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui';
 
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/cupertino.dart';
@@ -70,17 +71,16 @@ class CouponSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Watch for available claimable coupons from the backend
     final claimableAsync = ref.watch(claimableCouponsProvider);
 
     return claimableAsync.when(
+      // Banners 核心优化：防闪烁
+      skipLoadingOnRefresh: true,
       data: (coupons) {
-        // Silently hide the section if no coupons are available
         if (coupons.isEmpty) return const SizedBox.shrink();
 
         return GestureDetector(
           onTap: () {
-            // Display the bottom sheet to claim coupons
             RadixSheet.show(
               title: 'Available Coupons',
               builder: (context, close) => _ClaimCouponBottomSheet(
@@ -95,7 +95,6 @@ class CouponSection extends ConsumerWidget {
             color: context.bgPrimary,
             child: Row(
               children: [
-                // Text label (Log/Ticket icon removed)
                 Text(
                   'product_detail.section_coupon'.tr(),
                   style: TextStyle(
@@ -105,7 +104,6 @@ class CouponSection extends ConsumerWidget {
                   ),
                 ),
                 SizedBox(width: 16.w),
-                // Display up to 2 preview tags showing the discount amount
                 Expanded(
                   child: Wrap(
                     spacing: 8.w,
@@ -115,10 +113,10 @@ class CouponSection extends ConsumerWidget {
                       decoration: BoxDecoration(
                         color: Colors.pink[50],
                         borderRadius: BorderRadius.circular(4.w),
-                        border: Border.all(color: Colors.pinkAccent.withValues(alpha: 0.3)),
+                        border: Border.all(color: Colors.pinkAccent.withOpacity(0.3)),
                       ),
                       child: Text(
-                        'Save ₱${c.discountValue}',
+                        'Save ₱${c.discountValue ?? 0}',
                         style: TextStyle(fontSize: 10.sp, color: Colors.pinkAccent, fontWeight: FontWeight.bold),
                       ),
                     )).toList(),
@@ -130,7 +128,6 @@ class CouponSection extends ConsumerWidget {
           ),
         );
       },
-      // Fail silently (hide) during loading or error so it doesn't break the page layout
       loading: () => const SizedBox.shrink(),
       error: (_, __) => const SizedBox.shrink(),
     );
@@ -140,7 +137,6 @@ class CouponSection extends ConsumerWidget {
 // =========================================================================
 // 2.1 UI: Bottom Sheet for Claiming Coupons
 // =========================================================================
-
 class _ClaimCouponBottomSheet extends ConsumerStatefulWidget {
   final List<dynamic> coupons;
   final VoidCallback onClose;
@@ -155,48 +151,34 @@ class _ClaimCouponBottomSheet extends ConsumerStatefulWidget {
 }
 
 class _ClaimCouponBottomSheetState extends ConsumerState<_ClaimCouponBottomSheet> {
-  //  核心：记录当前正在被点击领取的优惠券 ID
   String? _loadingCouponId;
 
   @override
   Widget build(BuildContext context) {
-    // 监听全局动作状态兜底
     final actionState = ref.watch(couponActionProvider);
     final isActionLoading = actionState is AsyncLoading;
-
-    final screenHeight = MediaQuery.of(context).size.height;
-    final maxContentHeight = screenHeight * 0.7;
+    final maxContentHeight = MediaQuery.of(context).size.height * 0.7;
 
     return ConstrainedBox(
-      constraints: BoxConstraints(
-        maxHeight: maxContentHeight,
-      ),
+      constraints: BoxConstraints(maxHeight: maxContentHeight),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Coupon List
           Flexible(
             fit: FlexFit.loose,
             child: ListView.builder(
               shrinkWrap: true,
-              itemCount: widget.coupons.length, //  注意这里变成了 widget.coupons
+              itemCount: widget.coupons.length,
               itemBuilder: (context, index) {
                 final item = widget.coupons[index];
                 final bool isClaimed = item.hasReachedLimit == true;
                 final bool isSoldOut = (item.canClaim == false) && (item.hasReachedLimit != true);
 
-
                 String btnText = 'Claim';
-                if (isSoldOut) {
-                  btnText = 'Sold Out';
-                } else if (isClaimed) {
-                  btnText = 'Claimed';
-                }
+                if (isSoldOut) btnText = 'Sold Out';
+                else if (isClaimed) btnText = 'Claimed';
 
-                //  判断【当前这张券】是不是正在 Loading
                 final bool isThisLoading = _loadingCouponId == item.couponId;
-
-                // 只要任何一张券在 Loading，或者本身已被领取，就把按钮禁用
                 bool isBtnDisabled = isClaimed || isSoldOut || isActionLoading;
 
                 return Container(
@@ -208,7 +190,6 @@ class _ClaimCouponBottomSheetState extends ConsumerState<_ClaimCouponBottomSheet
                   ),
                   child: Row(
                     children: [
-                      // Left Side: Requirements and Value
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -247,34 +228,25 @@ class _ClaimCouponBottomSheetState extends ConsumerState<_ClaimCouponBottomSheet
                           ],
                         ),
                       ),
-                      // Right Side: Action Button
                       SizedBox(width: 12.w),
                       Button(
                         width: 80.w,
                         height: 32.h,
                         disabled: isBtnDisabled,
-                        loading: isThisLoading, //  绑定 Loading 属性！
+                        loading: isThisLoading,
                         variant: (isClaimed || isSoldOut) ? ButtonVariant.outline : ButtonVariant.primary,
                         onPressed: () async {
                           if (isBtnDisabled) return;
-
-                          //  点击时，把当前 ID 设为 loading 状态，触发重新渲染
                           setState(() => _loadingCouponId = item.couponId);
-
                           try {
                             await ref.read(couponActionProvider.notifier).claim(item.couponId);
-
                             ref.invalidate(claimableCouponsProvider);
                             ref.invalidate(myValidCouponsProvider);
-
                             RadixToast.success('Claimed successfully!');
                           } catch (e) {
                             RadixToast.error('Failed to claim');
                           } finally {
-                            //  请求结束后，清除 loading 状态
-                            if (mounted) {
-                              setState(() => _loadingCouponId = null);
-                            }
+                            if (mounted) setState(() => _loadingCouponId = null);
                           }
                         },
                         child: Text(
@@ -311,13 +283,8 @@ class TopTreasureSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // 1. Market price (Strikethrough price) logic
     final double marketPrice = item.marketAmount ?? double.tryParse(item.costAmount ?? '0') ?? 0;
-
-    // 2. Current selling price
     final double currentPrice = realTimeItem?.price ?? item.unitAmount ?? 0;
-
-    // 3. Inventory / Stock logic
     final int sold = item.seqBuyQuantity ?? 0;
     final int totalStock = item.seqShelvesQuantity ?? 0;
     final int left = realTimeItem?.stock ?? (totalStock - sold);
@@ -341,7 +308,6 @@ class TopTreasureSection extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // --- Title & Share Icon ---
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -372,14 +338,10 @@ class TopTreasureSection extends StatelessWidget {
                 ),
               ],
             ),
-
             SizedBox(height: 16.h),
-
-            // --- Price Display Area ---
             Row(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                // Current Price
                 Text(
                   FormatHelper.formatCurrency(currentPrice),
                   style: TextStyle(
@@ -391,8 +353,6 @@ class TopTreasureSection extends StatelessWidget {
                   ),
                 ),
                 SizedBox(width: 8.w),
-
-                // Group Buy Capacity Tag
                 Container(
                   padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.w),
                   decoration: BoxDecoration(
@@ -408,10 +368,7 @@ class TopTreasureSection extends StatelessWidget {
                     ),
                   ),
                 ),
-
                 const Spacer(),
-
-                // Strikethrough Market Price
                 if (marketPrice > currentPrice)
                   Text(
                     FormatHelper.formatCurrency(marketPrice),
@@ -423,15 +380,9 @@ class TopTreasureSection extends StatelessWidget {
                   ),
               ],
             ),
-
             SizedBox(height: 16.h),
-
-            // --- Progress Bar ---
             BubbleProgress(value: item.buyQuantityRate ?? 0),
-
             SizedBox(height: 8.h),
-
-            // --- Sales & Inventory Information ---
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -453,7 +404,7 @@ class TopTreasureSection extends StatelessWidget {
 }
 
 // ==========================================
-// 4. Group Section (Active Groups List) - with auto-refresh
+// 4. Group Section (Active Groups List)
 // ==========================================
 class GroupSection extends ConsumerStatefulWidget {
   final String treasureId;
@@ -470,7 +421,6 @@ class _GroupSectionState extends ConsumerState<GroupSection> {
   @override
   void initState() {
     super.initState();
-    // Auto-refresh the active groups every 15 seconds
     _refreshTimer = Timer.periodic(const Duration(seconds: 15), (timer) {
       ref.invalidate(groupsPreviewProvider(widget.treasureId));
     });
@@ -487,6 +437,8 @@ class _GroupSectionState extends ConsumerState<GroupSection> {
     final groupsAsync = ref.watch(groupsPreviewProvider(widget.treasureId));
 
     return groupsAsync.when(
+      // Banners 核心优化 1：无痕静默刷新！彻底消灭 15 秒闪屏一次的恶心 Bug
+      skipLoadingOnRefresh: true,
       data: (groups) {
         if (groups.isEmpty) return const SizedBox.shrink();
 
@@ -499,7 +451,6 @@ class _GroupSectionState extends ConsumerState<GroupSection> {
             ),
             child: Column(
               children: [
-                // Header - Tap to view all groups
                 GestureDetector(
                   behavior: HitTestBehavior.opaque,
                   onTap: () {
@@ -535,8 +486,6 @@ class _GroupSectionState extends ConsumerState<GroupSection> {
                     ),
                   ),
                 ),
-
-                // Render up to 2 active group items
                 ...groups.take(2).map((item) => _buildActiveGroupItem(context, item)),
                 SizedBox(height: 8.h),
               ],
@@ -545,9 +494,7 @@ class _GroupSectionState extends ConsumerState<GroupSection> {
         );
       },
       error: (_, __) => const SizedBox.shrink(),
-      loading: () {
-        return const SizedBox.shrink();
-      },
+      loading: () => const SizedBox.shrink(),
     );
   }
 
@@ -564,7 +511,6 @@ class _GroupSectionState extends ConsumerState<GroupSection> {
       ),
       child: Row(
         children: [
-          // Avatar
           AppCachedImage(
             item.creator.avatar ?? '',
             width: 32.w,
@@ -575,8 +521,6 @@ class _GroupSectionState extends ConsumerState<GroupSection> {
             placeholder: Icon(FontAwesomeIcons.user, size: 16.w, color: Colors.white),
           ),
           SizedBox(width: 8.w),
-
-          // Name + Member deficit
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -594,8 +538,6 @@ class _GroupSectionState extends ConsumerState<GroupSection> {
               ],
             ),
           ),
-
-          // Countdown Timer + Join Button
           Padding(
             padding: EdgeInsets.only(right: 10.w),
             child: Column(
@@ -617,11 +559,9 @@ class _GroupSectionState extends ConsumerState<GroupSection> {
                   },
                 ),
                 SizedBox(height: 2.h),
-
                 GestureDetector(
                   behavior: HitTestBehavior.opaque,
                   onTap: () {
-                    // Check if group is expired before routing to payment
                     if (DateTime.now().millisecondsSinceEpoch > item.expireAt) {
                       ref.invalidate(groupsPreviewProvider(widget.treasureId));
                       return;
@@ -663,11 +603,27 @@ class DetailContentSection extends StatefulWidget {
 
 class _DetailContentSectionState extends State<DetailContentSection> with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  int _currentIndex = 0;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+
+    // 监听 Tab 切换，动态控制下方 HTML 渲染
+    _tabController.addListener(() {
+      if (_tabController.index != _currentIndex) {
+        setState(() {
+          _currentIndex = _tabController.index;
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
   }
 
   @override
@@ -695,26 +651,27 @@ class _DetailContentSectionState extends State<DetailContentSection> with Single
               ],
             ),
             SizedBox(height: 16.h),
-            SizedBox(
-              height: 400.h,
-              child: TabBarView(
-                controller: _tabController,
-                children: [
-                  SingleChildScrollView(
-                      physics: const NeverScrollableScrollPhysics(),
-                      child: HtmlWidget(
-                          widget.desc ?? 'common.no_data'.tr(),
-                          textStyle: TextStyle(fontSize: 13.sp)
-                      )
-                  ),
-                  SingleChildScrollView(
-                      physics: const NeverScrollableScrollPhysics(),
-                      child: HtmlWidget(
-                          widget.ruleContent ?? 'common.no_data'.tr(),
-                          textStyle: TextStyle(fontSize: 13.sp)
-                      )
-                  ),
-                ],
+
+            // Banners 核心优化 2：彻底干掉高度写死的 SizedBox(height: 400) 和会截断内容的 TabBarView！
+            // 使用 AnimatedSize，让巨型图文详情可以根据真实内容向下完美撑开，无需二次滚动嵌套
+            AnimatedSize(
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeInOutCubic,
+              alignment: Alignment.topCenter,
+              child: _currentIndex == 0
+                  ? RepaintBoundary( // Banners 隔离昂贵的 HTML 图层
+                child: HtmlWidget(
+                  widget.desc ?? 'common.no_data'.tr(),
+                  textStyle: TextStyle(fontSize: 13.sp),
+                  buildAsync: true, // Banners 核心优化 3：开启异步解析，滑动切入详情页时绝对不会掉帧！
+                ),
+              )
+                  : RepaintBoundary(
+                child: HtmlWidget(
+                  widget.ruleContent ?? 'common.no_data'.tr(),
+                  textStyle: TextStyle(fontSize: 13.sp),
+                  buildAsync: true,
+                ),
               ),
             ),
           ],

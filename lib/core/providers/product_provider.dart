@@ -134,9 +134,6 @@ final productListProvider = Provider.family<PageRequest<ProductListItem>, int>((
   };
 });
 
-// ==============================================================================
-// 3. 以下为你原本保留的详情/拼团/状态等 Provider (保持不变)
-// ==============================================================================
 
 /// Product detail provider (保留你原来的智能销毁策略)
 final productDetailProvider = FutureProvider.autoDispose
