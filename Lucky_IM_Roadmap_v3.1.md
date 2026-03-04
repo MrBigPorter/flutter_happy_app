@@ -1,38 +1,4 @@
-大哥，既然决定要对首页进行大刀阔斧的优化，我们需要一个**“按部就班、风险可控、见效最快”**的执行规划。
 
-大厂做性能优化，讲究的是**“先摘低垂的果实（Quick Wins），再啃硬骨头”**。我帮你把前面提到的所有优化点，梳理成了一个分为三个阶段的**《首页极致体验优化落地规划》**。你可以直接把这个当作你的 Todo List。
-
----
-
-### 🟢 阶段一：纯前端渲染急救（耗时：半天）
-
-**目标：干掉滑动卡顿，提升帧率（FPS），优化基础手感。这一步不需要后端配合，全是你自己改。**
-
-* [ ] **任务 1：剥离 `VisibilityDetector` (性能杀手)**
-* **涉及文件**：`recommendation.dart`, `special_area.dart`, `ending.dart`, `home_featured.dart`, `group_buying_section.dart`
-* **做法**：把所有卡片外层包裹的 `VisibilityDetector` 删掉。如果是为了进场动画，直接依赖 `ListView.builder` / `GridView.builder` 的懒加载特性，在 `initState` 里直接启动延时动画（基于 `index` 计算延迟时间），或者引入 `flutter_staggered_animations` 库统一接管。
-* **收益**：极大地减轻主线程计算压力，列表滑动瞬间丝滑。
-
-
-* [ ] **任务 2：干掉 `BackdropFilter` (GPU杀手)**
-* **涉及文件**：`home_featured.dart`
-* **做法**：把高斯模糊去掉，换成带有黑色半透明渐变的 `Container`（如 `LinearGradient(colors: [Colors.transparent, Colors.black87])`）。
-* **收益**：低端安卓机上滑动不再掉帧。
-
-
-* [ ] **任务 3：增加高级触觉反馈**
-* **涉及文件**：`home_page.dart`
-* **做法**：在 `onRefresh` 方法的最开头，加上 `HapticFeedback.mediumImpact();`。
-* **收益**：下拉刷新的手感瞬间变高级。
-
-
-* [ ] **任务 4：图片内存限制（防 OOM）**
-* **涉及文件**：`AppCachedImage` 的底层实现
-* **做法**：虽然你用了 `RemoteUrlBuilder` 限制了网络下发尺寸，但一定要在 `CachedNetworkImage` 里配置 `memCacheWidth` 或 `memCacheHeight`，防止图片在内存中占用过大导致 App 闪退。
-
-
-
----
 
 ### 🟡 阶段二：首屏启动与“秒开”重构（耗时：1-2 天）
 

@@ -77,11 +77,6 @@ class Api {
     return parseList<AdRes>(res, (e) => AdRes.fromJson(e));
   }
 
-  /// Home statistics data
-  static Future<IndexStatistics> indexStatisticsApi() async {
-    final res = await Http.get("/homepageStatisticalData.json");
-    return IndexStatistics.fromJson(res);
-  }
 
   /// User profile info
   static Future<UserInfo> getUserInfo() async {

@@ -6,6 +6,8 @@ import 'package:flutter_app/utils/cache/cache_for_extension.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_app/core/models/index.dart';
 
+import '../cache/api_cache_manager.dart';
+
 /// Product category provider, includes "all" category
 /// // 使用 autoDispose + keepAlive，既能缓存，又能被 invalidate 强制刷新
 final categoryProvider = FutureProvider.autoDispose((ref) async {
@@ -135,7 +137,52 @@ final groupDetailProvider = FutureProvider.autoDispose.family<GroupDetailModel, 
   return Api.getGroupDetailApi(groupId);
 });
 
-final homeGroupBuyingProvider = FutureProvider<List<ProductListItem>>((ref) async {
-  final hotList = await Api.getTreasureHotGroups(10);
-  return hotList.map((e) =>e.toProductListItem()).toList();
+
+// ==============================================================================
+// 首页热门拼团 SWR Provider (补齐首页秒开的最后一块拼图)
+// ==============================================================================
+class HomeGroupBuyingNotifier extends AsyncNotifier<List<ProductListItem>> {
+  static const String _cacheKey = 'home_group_buying_cache_v1';
+
+  @override
+  FutureOr<List<ProductListItem>> build() async {
+    //  SWR 阶段 1: 极速读取缓存
+    final cachedData = ApiCacheManager.getCache(_cacheKey);
+    if (cachedData != null) {
+      try {
+        final list = (cachedData as List).map((e) => ProductListItem.fromJson(e)).toList();
+        _fetchAndCache(); // 后台静默刷新
+        return list;      // 瞬间返回，秒开
+      } catch (_) {}
+    }
+
+    //  SWR 阶段 2: 无缓存时，阻塞等待网络
+    return await _fetchAndCache();
+  }
+
+  Future<List<ProductListItem>> _fetchAndCache() async {
+    try {
+      // 1. 发起网络请求并转换数据模型
+      final hotList = await Api.getTreasureHotGroups(10);
+      final freshData = hotList.map((e) => e.toProductListItem()).toList();
+
+      // 2. 将转换好的标准数据写入缓存
+      ApiCacheManager.setCache(_cacheKey, freshData.map((e) => e.toJson()).toList());
+
+      // 3. 静默覆盖 UI
+      if (state.hasValue) state = AsyncData(freshData);
+
+      return freshData;
+    } catch (e) {
+      if (!state.hasValue) rethrow;
+      return state.value!;
+    }
+  }
+
+  Future<void> forceRefresh() async => await _fetchAndCache();
+}
+
+// 暴露 Provider
+final homeGroupBuyingProvider = AsyncNotifierProvider<HomeGroupBuyingNotifier, List<ProductListItem>>(() {
+  return HomeGroupBuyingNotifier();
 });

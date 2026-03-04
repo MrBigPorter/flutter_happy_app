@@ -15,6 +15,7 @@ import 'package:flutter_web_plugins/url_strategy.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../core/cache/api_cache_manager.dart';
 import '../core/store/auth/auth_provider.dart';
 import '../ui/chat/core/call_manager/call_dispatcher.dart';
 
@@ -43,14 +44,19 @@ class AppBootstrap {
     await AssetManager.init();
     await EasyLocalization.ensureInitialized();
 
+    await ApiCacheManager.init();
+
+
     // 网络层
     await Http.init();
 
     // 错误捕获配置
     _setupErrorHandlers();
 
-    // Firebase
+    //  核心优化：推迟 Firebase 初始化！
     await _setupFirebase();
+    // 改用 Future.microtask 把它扔到后台队列，让 App 瞬间把 UI 跑起来！
+   // Future.microtask(() => _setupFirebase());
   }
 
   /// 2. 数据级初始化 (Data Level)

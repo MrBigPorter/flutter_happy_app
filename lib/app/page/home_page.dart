@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_app/app/page/home_components/home_treasures.dart';
 import 'package:flutter_app/components/base_scaffold.dart';
 import 'package:flutter_app/components/lucky_custom_material_indicator.dart';
@@ -27,13 +28,16 @@ class HomePage extends ConsumerWidget {
 
     /// 下拉刷新
     Future<void> onRefresh() async {
-      // 同时刷新所有数据源
-      ref.invalidate(homeBannerProvider);
-      ref.invalidate(homeTreasuresProvider);
-      ref.invalidate(homeStatisticsProvider);
-      ref.invalidate(homeGroupBuyingProvider);
+      // 1. 触发高级触觉反馈
+      HapticFeedback.mediumImpact();
 
-      await Future.delayed(const Duration(milliseconds: 600));
+      // 2. 使用并发请求，强制所有 Provider 去拿最新数据。
+      // 因为使用了 SWR 机制，底层 state 直接被覆盖，页面不会出现哪怕 1 毫秒的白屏/骨架屏闪烁！
+      await Future.wait([
+        ref.read(homeBannerProvider.notifier).forceRefresh(),
+        ref.read(homeTreasuresProvider.notifier).forceRefresh(),
+         ref.read(homeGroupBuyingProvider.notifier).forceRefresh(),
+      ]);
     }
 
     return BaseScaffold(
@@ -75,7 +79,6 @@ class HomePage extends ConsumerWidget {
               },
               // 加载中或出错时不显示，保持页面整洁，等待数据回来自动弹入
               error: (err, stack) {
-                print(" 拼团数据解析失败: $err"); //看控制台
                 return const SliverToBoxAdapter(child: SizedBox.shrink());
               },
               loading: () => const SliverToBoxAdapter(child: SizedBox.shrink()),
