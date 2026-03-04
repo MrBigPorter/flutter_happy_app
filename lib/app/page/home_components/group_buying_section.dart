@@ -1,20 +1,18 @@
-//  必须引入
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_app/ui/img/app_image.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
-import 'package:visibility_detector/visibility_detector.dart';
 
 import 'package:flutter_app/core/models/product_list_item.dart';
-
 import 'package:flutter_app/theme/design_tokens.g.dart';
 import 'package:flutter_app/utils/media/remote_url_builder.dart';
 import 'package:flutter_app/app/routes/app_router.dart';
 
 // ==============================================================================
-// 1. 主组件: GroupBuyingSection (首页调用的入口)
+// 1. Main Component: GroupBuyingSection
+// Optimized: Removed VisibilityDetector, utilizing native lazy-loading for animation
 // ==============================================================================
 class GroupBuyingSection extends StatelessWidget {
   final List<ProductListItem>? list;
@@ -33,12 +31,12 @@ class GroupBuyingSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // --- 标题栏 ---
+        // --- Header Section ---
         Padding(
           padding: EdgeInsets.fromLTRB(16.w, 16.h, 16.w, 12.h),
           child: Row(
             children: [
-              // 红色竖线装饰
+              // Red vertical decorative line
               Container(
                 width: 4.w,
                 height: 16.h,
@@ -48,7 +46,7 @@ class GroupBuyingSection extends StatelessWidget {
                 ),
               ),
               SizedBox(width: 8.w),
-              // 标题文字 (title 通常由外部传入，如果外部传的是 key，记得在外部 .tr()，或者在这里 .tr())
+              // Title text
               Text(
                 title,
                 style: TextStyle(
@@ -59,7 +57,7 @@ class GroupBuyingSection extends StatelessWidget {
                 ),
               ),
               const Spacer(),
-              // "更多"按钮
+              // "More" Button
               GestureDetector(
                 onTap: () {
                   appRouter.pushNamed('groups');
@@ -67,7 +65,6 @@ class GroupBuyingSection extends StatelessWidget {
                 child: Row(
                   children: [
                     Text(
-                      //  国际化：More
                       'home_group.btn_more'.tr(),
                       style: TextStyle(
                         fontSize: 12.sp,
@@ -87,7 +84,7 @@ class GroupBuyingSection extends StatelessWidget {
           ),
         ),
 
-        // --- 横向滚动列表 ---
+        // --- Horizontal Scrolling List ---
         SizedBox(
           height: 140.w,
           child: ListView.separated(
@@ -98,16 +95,19 @@ class GroupBuyingSection extends StatelessWidget {
             separatorBuilder: (_, __) => SizedBox(width: 12.w),
             itemBuilder: (context, index) {
               final item = list![index];
-              return GroupBuyingItemWrapper(
-                uniqueKey: item.treasureId,
-                index: index,
-                child: GroupBuyingCard(item: item),
-              );
+
+              //  Core Optimization: Staggered animation using modulo
+              final animationDelay = ((index % 4) * 50).ms;
+
+              return GroupBuyingCard(item: item)
+                  .animate(delay: animationDelay) // Trigger instantly upon build
+                  .fadeIn(duration: 400.ms)
+                  .slideX(begin: 0.1, end: 0, duration: 400.ms, curve: Curves.easeOutCubic);
             },
           ),
         ),
 
-        // 底部留一点白，防止卡片阴影被切掉
+        // Bottom spacing to prevent shadow clipping
         SizedBox(height: 16.h),
       ],
     );
@@ -115,7 +115,7 @@ class GroupBuyingSection extends StatelessWidget {
 }
 
 // ==============================================================================
-// 2. 单个卡片组件: GroupBuyingCard
+// 2. Individual Card Component: GroupBuyingCard
 // ==============================================================================
 class GroupBuyingCard extends StatelessWidget {
   final ProductListItem item;
@@ -124,40 +124,38 @@ class GroupBuyingCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // --- 🛠️ 数据处理与容错 (Data Mapping) ---
+    // ---  Data Processing & Fallbacks ---
 
-    // 1. 进度条 (空安全处理，默认为 0)
+    // 1. Progress (Null-safe, defaults to 0.0)
     final double progress = item.buyQuantityRate ?? 0.0;
 
-    // 2. 剩余百分比 (防止计算出负数)
+    // 2. Remaining percentage (Prevent negative values)
     final int remainingPercent = ((1.0 - progress) * 100).toInt().clamp(1, 100);
 
-    // 3. 参与人数 (优先用 seqBuyQuantity，没有则用 betCount，再没有就是 0)
+    // 3. Total participants (Fallback priority: seqBuyQuantity -> betCount -> 0)
     final int totalJoins = item.seqBuyQuantity ?? 0;
 
-    // 4. 用户是否已加入 (需确保 Model 里有 isJoined 字段)
+    // 4. User joined status
     final bool isJoined = item.isJoined ?? false;
 
-    // 5. 头像列表 (如果有真实数据就用，没有就用假数据兜底，或者显示空列表)
-    final List<String> displayAvatars = (item.recentJoinAvatars != null && item.recentJoinAvatars!.isNotEmpty)
+    // 5. Display avatars list
+    final List<String> displayAvatars =
+    (item.recentJoinAvatars != null && item.recentJoinAvatars!.isNotEmpty)
         ? item.recentJoinAvatars!
-        : [
-      // 兜底假头像，为了让 UI 好看点
-
-    ];
+        : []; // Fallback empty list
 
     return GestureDetector(
       onTap: () {
-        //  点击跳转详情页
+        // Navigate to product detail page
         context.pushNamed(
           'productDetail',
           pathParameters: {'id': item.treasureId},
-          // 如果已经加入了，就不自动打开拼团弹窗了
+          // Do not auto-open group modal if already joined
           queryParameters: {'autoOpenGroup': isJoined ? 'false' : 'true'},
         );
-            },
+      },
       child: Container(
-        width: 300.w, // 卡片宽度
+        width: 300.w, // Fixed card width
         decoration: BoxDecoration(
           color: context.bgPrimary,
           borderRadius: BorderRadius.circular(16.r),
@@ -175,23 +173,22 @@ class GroupBuyingCard extends StatelessWidget {
               padding: EdgeInsets.all(10.w),
               child: Row(
                 children: [
-                  // 左侧商品图
+                  // Left side: Product Image
                   _buildProductImage(context),
 
                   SizedBox(width: 12.w),
 
-                  // 右侧信息栏
+                  // Right side: Info Section
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        // 上半部分：标题 + 进度
+                        // Top Half: Title + Progress
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              // 🌐 国际化：商品名 fallback
                               item.treasureName ?? 'home_group.fallback_product_name'.tr(),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -207,13 +204,12 @@ class GroupBuyingCard extends StatelessWidget {
                           ],
                         ),
 
-                        // 下半部分：头像 + 按钮
+                        // Bottom Half: Avatars + Button
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
                             AvatarStack(avatars: displayAvatars, total: totalJoins),
-                            //  传入加入状态
                             _buildJoinButton(context, isJoined),
                           ],
                         ),
@@ -224,7 +220,7 @@ class GroupBuyingCard extends StatelessWidget {
               ),
             ),
 
-            // 左上角 "HOT" 标签
+            // Top-left "HOT" Tag
             Positioned(
               left: 0,
               top: 0,
@@ -243,7 +239,6 @@ class GroupBuyingCard extends StatelessWidget {
                     Icon(Icons.local_fire_department, color: Colors.white, size: 10.sp),
                     SizedBox(width: 2.w),
                     Text(
-                      // 🌐 国际化：HOT / Sikat
                       'home_group.label_hot'.tr(),
                       style: TextStyle(
                         color: Colors.white,
@@ -261,7 +256,7 @@ class GroupBuyingCard extends StatelessWidget {
     );
   }
 
-  // --- 子组件提取 ---
+  // --- Sub-components ---
 
   Widget _buildProductImage(BuildContext context) {
     return Container(
@@ -291,12 +286,12 @@ class GroupBuyingCard extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // 进度条轨道
+        // Progress Bar Track
         Container(
           height: 6.h,
           width: double.infinity,
           decoration: BoxDecoration(
-            color: const Color(0xFFFF8A00).withValues(alpha: 0.2),
+            color: const Color(0xFFFF8A00).withOpacity(0.2), // Fixed withOpacity
             borderRadius: BorderRadius.circular(3.r),
           ),
           child: FractionallySizedBox(
@@ -313,17 +308,15 @@ class GroupBuyingCard extends StatelessWidget {
           ),
         ),
         SizedBox(height: 4.h),
-        // 进度文字
+        // Progress Text
         RichText(
           text: TextSpan(
             style: TextStyle(fontSize: 10.sp, fontFamily: 'Roboto'),
             children: [
-              // 🌐 国际化：前缀 "Only "
               TextSpan(
                 text: 'home_group.progress_prefix'.tr(),
                 style: TextStyle(color: context.textQuaternary500),
               ),
-              // 数字 (保持红色高亮)
               TextSpan(
                 text: '$remaining%',
                 style: TextStyle(
@@ -331,7 +324,6 @@ class GroupBuyingCard extends StatelessWidget {
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              // 🌐 国际化：后缀 " left"
               TextSpan(
                 text: 'home_group.progress_suffix'.tr(),
                 style: TextStyle(color: context.textQuaternary500),
@@ -348,16 +340,15 @@ class GroupBuyingCard extends StatelessWidget {
       height: 32.h,
       padding: EdgeInsets.symmetric(horizontal: 16.w),
       decoration: BoxDecoration(
-        // 如果已加入，移除渐变，使用纯色（绿色）；未加入则显示紫色渐变
+        // Solid green if joined, otherwise purple gradient
         gradient: isJoined
             ? null
             : const LinearGradient(
           colors: [Color(0xFF722ED1), Color(0xFF9254DE)],
         ),
-        color: isJoined ? const Color(0xFF52C41A) : null, // 绿色代表已加入
+        color: isJoined ? const Color(0xFF52C41A) : null,
         borderRadius: BorderRadius.circular(16.r),
         boxShadow: [
-          // 未加入时才显示阴影
           if (!isJoined)
             BoxShadow(
               color: const Color(0xFF722ED1).withOpacity(0.3),
@@ -375,7 +366,6 @@ class GroupBuyingCard extends StatelessWidget {
             SizedBox(width: 4.w),
           ],
           Text(
-            // 🌐 国际化：根据状态切换文案 (Joined vs Join)
             isJoined ? 'home_group.btn_joined'.tr() : 'home_group.btn_join'.tr(),
             style: TextStyle(
               color: Colors.white,
@@ -390,7 +380,7 @@ class GroupBuyingCard extends StatelessWidget {
 }
 
 // ==============================================================================
-// 3. 辅助组件: AvatarStack (头像堆叠)
+// 3. Helper Component: AvatarStack
 // ==============================================================================
 class AvatarStack extends StatelessWidget {
   final List<String> avatars;
@@ -447,86 +437,6 @@ class AvatarStack extends StatelessWidget {
           ),
         ]
       ],
-    );
-  }
-}
-
-// ==============================================================================
-// 4. 辅助组件: GroupBuyingItemWrapper (入场动画)
-// ==============================================================================
-class GroupBuyingItemWrapper extends StatefulWidget {
-  final Widget child;
-  final String uniqueKey;
-  final int index;
-
-  const GroupBuyingItemWrapper({
-    super.key,
-    required this.child,
-    required this.index,
-    required this.uniqueKey,
-  });
-
-  @override
-  State<GroupBuyingItemWrapper> createState() => _GroupBuyingItemWrapperState();
-}
-
-class _GroupBuyingItemWrapperState extends State<GroupBuyingItemWrapper>
-    with AutomaticKeepAliveClientMixin, SingleTickerProviderStateMixin {
-  late final AnimationController _controller;
-  bool _hasStarted = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 400),
-    );
-    if (widget.index == 0) _startAnimation(isFast: false, forceSync: true);
-  }
-
-  void _startAnimation({required bool isFast, bool forceSync = false}) {
-    if (_hasStarted) return;
-    _hasStarted = true;
-    if (isFast) {
-      _controller.value = 1.0;
-    } else {
-      final delayMs = 50 * (widget.index % 4);
-      if (delayMs == 0 || forceSync) {
-        _controller.forward();
-      } else {
-        Future.delayed(Duration(milliseconds: delayMs), () {
-          if (mounted) _controller.forward();
-        });
-      }
-    }
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  bool get wantKeepAlive => true;
-
-  @override
-  Widget build(BuildContext context) {
-    super.build(context);
-    return VisibilityDetector(
-      key: Key('group_buy_${widget.uniqueKey}_${widget.index}'),
-      onVisibilityChanged: (info) {
-        if (_hasStarted) return;
-        if (info.visibleFraction > 0.01) {
-          bool isFast = widget.index >= 3 && (info.visibleFraction > 0.6);
-          _startAnimation(isFast: isFast);
-        }
-      },
-      child: widget.child
-          .animate(controller: _controller, autoPlay: false)
-          .fadeIn(duration: 400.ms)
-          .slideX(begin: 0.1, end: 0, duration: 400.ms, curve: Curves.easeOutCubic),
     );
   }
 }

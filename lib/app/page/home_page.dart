@@ -75,7 +75,7 @@ class HomePage extends ConsumerWidget {
               },
               // 加载中或出错时不显示，保持页面整洁，等待数据回来自动弹入
               error: (err, stack) {
-                print("🛑 拼团数据解析失败: $err"); //看控制台
+                print(" 拼团数据解析失败: $err"); //看控制台
                 return const SliverToBoxAdapter(child: SizedBox.shrink());
               },
               loading: () => const SliverToBoxAdapter(child: SizedBox.shrink()),

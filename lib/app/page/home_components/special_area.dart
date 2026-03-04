@@ -2,7 +2,6 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:visibility_detector/visibility_detector.dart';
 
 import 'package:flutter_app/app/routes/app_router.dart';
 import 'package:flutter_app/common.dart';
@@ -12,9 +11,10 @@ import 'package:flutter_app/ui/button/index.dart';
 import 'package:flutter_app/ui/img/app_image.dart';
 import 'package:flutter_app/utils/format_helper.dart';
 import 'package:flutter_app/core/models/index.dart';
-
 import 'package:flutter_app/utils/media/remote_url_builder.dart';
 
+/// Special Area / Highlighted Products Section
+/// Optimized: Removed VisibilityDetector, utilizing loop index for staggered animations
 class SpecialArea extends StatelessWidget {
   final List<ProductListItem>? list;
   final String title;
@@ -23,14 +23,14 @@ class SpecialArea extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // 数据为空时不渲染任何内容
     if (list == null || list!.isEmpty) {
       return const SizedBox.shrink();
     }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        /// 1. 标题区域 Title Area
+        // 1. Section Title
         Padding(
           padding: EdgeInsets.only(left: 16.w, top: 8.h),
           child: Align(
@@ -47,7 +47,7 @@ class SpecialArea extends StatelessWidget {
         ),
         SizedBox(height: 8.h),
 
-        /// 2. 列表容器 List Container
+        // 2. List Container
         Container(
           margin: EdgeInsets.symmetric(horizontal: 16.w),
           child: Column(children: _buildListItems(context)),
@@ -58,7 +58,7 @@ class SpecialArea extends StatelessWidget {
     );
   }
 
-  /// 手动构建列表项与分割线
+  /// Manually build list items with dynamic border radiuses and dividers
   List<Widget> _buildListItems(BuildContext context) {
     final items = <Widget>[];
     final count = list!.length;
@@ -69,6 +69,7 @@ class SpecialArea extends StatelessWidget {
       final isFirst = i == 0;
       final isLast = i == count - 1;
 
+      // Handle corner radiuses based on item position
       BorderRadius borderRadius = BorderRadius.zero;
       if (count == 1) {
         borderRadius = BorderRadius.circular(8.r);
@@ -84,13 +85,11 @@ class SpecialArea extends StatelessWidget {
         );
       }
 
-      // 添加商品卡片
       items.add(
         GestureDetector(
           onTap: () => appRouter.push('/product/${item.treasureId}'),
-          behavior: HitTestBehavior.opaque, // 确保整个区域可点击
+          behavior: HitTestBehavior.opaque,
           child: Container(
-            // 这里只设置 Top, Left, Right padding
             padding: EdgeInsets.only(left: 12.w, right: 12.w, top: 12.h),
             decoration: BoxDecoration(
               color: context.bgPrimary,
@@ -98,17 +97,18 @@ class SpecialArea extends StatelessWidget {
             ),
             child: Column(
               children: [
-                AnimatedListItem(
-                  uniqueKey: item.treasureId,
-                  title: title,
-                  index: i,
-                  child: _buildSingleItemContent(context, item),
-                ),
+                //  Core Optimization: Staggered animation using loop index
+                _buildSingleItemContent(context, item)
+                    .animate(delay: ((i % 5) * 50).ms) // 50ms stagger
+                    .fadeIn(duration: 400.ms, curve: Curves.easeOut)
+                    .slideX(begin: 0.1, end: 0, duration: 400.ms, curve: Curves.easeOutCubic)
+                // Note: Use withOpacity for color transparency
+                    .shimmer(duration: 1000.ms, color: Colors.white.withOpacity(0.4)),
 
-                // 统一的底部间距 (无论有无分割线，都需要这个间距来平衡顶部 padding)
+                // Uniform bottom spacing to balance top padding
                 SizedBox(height: 12.h),
 
-                // 分割线 (静态显示，不做动画)
+                // Static divider (excluded on the last item)
                 if (!isLast)
                   Divider(height: 1.h, color: context.borderSecondary),
               ],
@@ -120,18 +120,17 @@ class SpecialArea extends StatelessWidget {
     return items;
   }
 
-  /// 构建单个商品的内部布局
+  /// Builds the inner content of a single product item
   Widget _buildSingleItemContent(BuildContext context, ProductListItem item) {
     return Column(
       children: [
-        /// 上半部分：图片 + 标题 + 进度条
+        // Top Section: Image + Title + Progress Bar
         Row(
           children: [
-            /// 商品图片
             AppCachedImage(
               RemoteUrlBuilder.fitAbsoluteUrl(item.treasureCoverImg ?? ''),
               width: 80.w,
-              height: 80.w, // 正方形保持 w
+              height: 80.w,
               fit: BoxFit.cover,
               radius: BorderRadius.circular(8.r),
             ),
@@ -140,7 +139,6 @@ class SpecialArea extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  /// 标题
                   Text(
                     item.treasureName ?? '',
                     maxLines: 2,
@@ -151,10 +149,9 @@ class SpecialArea extends StatelessWidget {
                       color: context.textPrimary900,
                     ),
                   ),
-                  SizedBox(height: 4.h), // 稍微增加一点间距
-                  /// 进度条
+                  SizedBox(height: 4.h),
                   BubbleProgress(
-                    value: item.buyQuantityRate, // 空安全
+                    value: item.buyQuantityRate,
                     showTipBg: true,
                   ),
                 ],
@@ -164,12 +161,12 @@ class SpecialArea extends StatelessWidget {
         ),
         SizedBox(height: 10.h),
 
-        /// 下半部分：价格 + 倒计时 + 按钮
+        // Bottom Section: Price + Countdown + Action Button
         Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween, // 使用对齐方式替代 Spacer
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            // 价格列
+            // Price Column
             Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -194,7 +191,7 @@ class SpecialArea extends StatelessWidget {
               ],
             ),
 
-            // 2. 倒计时列 (建议包裹 Flexible 并在内部处理挤压)
+            // Countdown Column
             Flexible(
               child: Padding(
                 padding: EdgeInsets.symmetric(horizontal: 4.w),
@@ -222,7 +219,7 @@ class SpecialArea extends StatelessWidget {
               ),
             ),
 
-            // 按钮 (仅作视觉展示，点击事件由父级 GestureDetector 接管)
+            // Action Button (Visual only, interaction handled by parent wrapper)
             IgnorePointer(
               ignoring: true,
               child: Button(
@@ -237,18 +234,18 @@ class SpecialArea extends StatelessWidget {
     );
   }
 
-  /// 提取公共状态文本样式
+  /// Helper to build consistent status text layouts
   Widget _buildStatusColumn(
-    BuildContext context,
-    String top,
-    String bottom, {
-    bool isError = false,
-  }) {
+      BuildContext context,
+      String topLabel,
+      String bottomValue, {
+        bool isError = false,
+      }) {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         Text(
-          top,
+          topLabel,
           style: TextStyle(
             fontSize: context.textXs,
             color: context.textQuaternary500,
@@ -258,7 +255,7 @@ class SpecialArea extends StatelessWidget {
         ),
         SizedBox(height: 4.h),
         Text(
-          bottom,
+          bottomValue,
           style: TextStyle(
             fontSize: context.textXs,
             color: isError
@@ -270,120 +267,5 @@ class SpecialArea extends StatelessWidget {
         ),
       ],
     );
-  }
-}
-
-/// ---------------------------------------------------------
-/// 动画列表项组件
-/// ---------------------------------------------------------
-class AnimatedListItem extends StatefulWidget {
-  final Widget child;
-  final String uniqueKey;
-  final int index;
-  final String title;
-  final VoidCallback? onTap;
-
-  const AnimatedListItem({
-    super.key,
-    required this.child,
-    required this.index,
-    required this.uniqueKey,
-    required this.title,
-    this.onTap,
-  });
-
-  @override
-  State<AnimatedListItem> createState() => _AnimatedListItemState();
-}
-
-//  1. 混入 SingleTickerProviderStateMixin 以支持手动控制器
-class _AnimatedListItemState extends State<AnimatedListItem>
-    with AutomaticKeepAliveClientMixin, SingleTickerProviderStateMixin {
-  //  2. 自己持有控制器，不再依赖库的回调，保证永远非空
-  late final AnimationController _controller;
-  bool _hasStarted = false;
-
-  @override
-  void initState() {
-    super.initState();
-    // 初始化控制器，时长 400ms
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 400),
-    );
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  bool get wantKeepAlive => true;
-
-  @override
-  Widget build(BuildContext context) {
-    super.build(context);
-
-    return VisibilityDetector(
-      key: Key(
-        'special_area_item_${widget.uniqueKey}_${widget.index}_${widget.title}',
-      ),
-      onVisibilityChanged: (info) {
-        // 如果动画已经跑过，就直接忽略，节省性能
-        if (_hasStarted) return;
-
-        // 只要露头 > 1% 就开始处理
-        if (info.visibleFraction > 0.01) {
-          _hasStarted = true;
-
-          // 判定逻辑
-          bool isTopItem = widget.index < 6;
-          bool isFast =
-              !isTopItem &&
-              (info.visibleFraction > 0.6 || info.visibleFraction == 1.0);
-
-          if (isFast) {
-            // ：直接拉到终点 (value = 1.0)
-            _controller.value = 1.0;
-          } else {
-            //  慢滑/首屏：计算瀑布流延迟
-            final delayMs = 30 * (widget.index % 5);
-
-            if (delayMs == 0) {
-              // 必须同步调用！不能用 Future！
-              _controller.forward();
-            } else {
-              // 其他 Index：手动延迟
-              Future.delayed(Duration(milliseconds: delayMs), () {
-                if (mounted) {
-                  _controller.forward();
-                }
-              });
-            }
-          }
-        }
-      },
-      child: _buildAnimatedContent(),
-    );
-  }
-
-  Widget _buildAnimatedContent() {
-    return widget.child
-        .animate(
-          //  3. 把我们自己的控制器交给它
-          controller: _controller,
-          //  4. 必须关闭自动播放，否则它会自动开始
-          autoPlay: false,
-        )
-        .fadeIn(duration: 400.ms, curve: Curves.easeOut)
-        .slideX(
-          begin: 0.1,
-          end: 0,
-          duration: 400.ms,
-          curve: Curves.easeOutCubic,
-        )
-        .shimmer(duration: 1000.ms, color: Colors.white.withValues(alpha: 0.4));
   }
 }
