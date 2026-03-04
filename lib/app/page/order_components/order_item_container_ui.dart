@@ -1,7 +1,7 @@
 part of 'order_item_container.dart';
 
 /// ---------------------------------------------------------
-/// 顶部状态栏 (Status Header) - 已增强退款状态显示
+/// Top Status Header - Enhanced with Refund Status
 /// ---------------------------------------------------------
 class _OrderItemStatusHeader extends StatelessWidget {
   final OrderItem item;
@@ -14,6 +14,7 @@ class _OrderItemStatusHeader extends StatelessWidget {
     Color statusColor = context.textBrandSecondary700;
     Color statusBg = context.textBrandSecondary700.withOpacity(0.1);
 
+    // 1. Priority check for Refund Status
     if (item.refundStatus == 1) {
       return _buildContainer(
         text: 'Refunding',
@@ -30,6 +31,7 @@ class _OrderItemStatusHeader extends StatelessWidget {
       );
     }
 
+    // 2. Regular Order Status
     switch (item.orderStatusEnum) {
       case OrderStatus.won:
         statusText = 'Winner';
@@ -124,7 +126,7 @@ class _OrderItemStatusHeader extends StatelessWidget {
 }
 
 /// ---------------------------------------------------------
-/// 商品头部信息
+/// Product Header Info
 /// ---------------------------------------------------------
 class _OrderItemHeader extends StatelessWidget {
   final OrderItem item;
@@ -180,7 +182,7 @@ class _OrderItemHeader extends StatelessWidget {
 }
 
 /// ---------------------------------------------------------
-/// 订单信息
+/// Order Info
 /// ---------------------------------------------------------
 class _OrderItemInfo extends StatelessWidget {
   final OrderItem item;
@@ -242,7 +244,7 @@ class _InfoRow extends StatelessWidget {
 }
 
 /// ---------------------------------------------------------
-/// 中奖/拼团成功块
+/// Winning / Group Success Block
 /// ---------------------------------------------------------
 class _OrderItemGroupSuccess extends StatelessWidget {
   final OrderItem item;
@@ -329,7 +331,7 @@ class _SuccessRow extends StatelessWidget {
 }
 
 /// ---------------------------------------------------------
-/// 退款详情块
+/// Refund Details Block
 /// ---------------------------------------------------------
 class _OrderItemRefundInfo extends StatefulWidget {
   final OrderItem item;
@@ -439,7 +441,7 @@ class _OrderItemRefundInfoState extends State<_OrderItemRefundInfo> {
 }
 
 /// ---------------------------------------------------------
-/// 底部按钮操作栏
+/// Bottom Actions Bar
 /// ---------------------------------------------------------
 class _OrderItemActions extends StatelessWidget {
   final OrderItem item;
@@ -463,6 +465,14 @@ class _OrderItemActions extends StatelessWidget {
     final canRefund = item.canRequestRefund;
     final showRewardDetails = item.orderStatus != 1 && item.orderStatus != 4;
 
+    //  Check if the order is "Dead" (Cancelled or Refunded)
+    final bool isDeadOrder = item.orderStatusEnum == OrderStatus.cancelled ||
+        item.orderStatusEnum == OrderStatus.refunded;
+    final bool hasGroup = item.group != null;
+
+    //  Only show View Friends if it belongs to a group AND it's not a dead order
+    final bool showViewFriends = hasGroup && !isDeadOrder;
+
     List<Widget> buttons = [
       if (canRefund)
         Button(
@@ -475,15 +485,18 @@ class _OrderItemActions extends StatelessWidget {
           ),
         ),
 
-      Button(
-        height: 36.h,
-        variant: ButtonVariant.outline,
-        onPressed: onViewFriends,
-        child: Text(
-          'common.view.friends'.tr(),
-          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12.sp),
+      // Smart display of View Friends
+      if (showViewFriends)
+        Button(
+          height: 36.h,
+          variant: ButtonVariant.outline,
+          onPressed: onViewFriends,
+          child: Text(
+            'common.view.friends'.tr(),
+            style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12.sp),
+          ),
         ),
-      ),
+
       if (showRewardDetails)
         Button(
           variant: ButtonVariant.outline,
@@ -494,7 +507,7 @@ class _OrderItemActions extends StatelessWidget {
             style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12.sp),
           ),
         )
-      else
+      else if (!isDeadOrder) //  Hide Team Up for dead orders
         Button(
           height: 36.h,
           trailing: SvgPicture.asset(
@@ -506,18 +519,17 @@ class _OrderItemActions extends StatelessWidget {
           onPressed: onTeamUp,
           child: Text('common.team.up'.tr()),
         ),
+
       if (item.isWon)
         Button(
           height: 36.h,
           variant: ButtonVariant.primary,
-          trailing: SvgPicture.asset(
-            'assets/images/team-up.svg',
-            width: 16.w,
-            height: 16.h,
-            colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
-          ),
+          //  REMOVED THE UNNECESSARY 'team-up.svg' LOGO/ICON HERE
           onPressed: onClaimPrize,
-          child: null,
+          child: Text(
+            'Claim Prize',
+            style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12.sp),
+          ),
         ),
     ];
 
@@ -536,7 +548,7 @@ class _OrderItemActions extends StatelessWidget {
 }
 
 /// ---------------------------------------------------------
-/// 虚线分割线
+/// Dashed Separator
 /// ---------------------------------------------------------
 class _DashedSeparator extends StatelessWidget {
   final double height;
@@ -571,7 +583,7 @@ class _DashedSeparator extends StatelessWidget {
 }
 
 /// ---------------------------------------------------------
-/// 骨架屏 (Skeleton)
+/// Skeleton Loading Screen
 /// ---------------------------------------------------------
 class OrderItemContainerSkeleton extends StatelessWidget {
   final bool isLast;

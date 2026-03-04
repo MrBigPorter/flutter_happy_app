@@ -1,5 +1,4 @@
 import 'dart:async';
-// 必须引入
 import 'package:flutter/material.dart';
 import 'package:flutter_app/ui/img/app_image.dart';
 import 'package:flutter_countdown_timer/flutter_countdown_timer.dart';
@@ -262,56 +261,60 @@ class _GroupRoomPageState extends ConsumerState<GroupRoomPage> {
     String treasureName = group.treasure?.treasureName ?? '';
     String treasureImg = group.treasure?.treasureCoverImg ?? '';
     String treasureId = group.treasure?.treasureId ?? '';
-    // 计算剩余人数 (假设 maxMembers 和 currentMembers 是你 Model 里的字段)
     final int remain = group.maxMembers - group.members.length;
 
-    // 1. 进行中 -> 邀请好友
+    //  核心新增：判断当前登录用户是否已经在团里
+
+    bool isMember = true;
+
+    // 1. 进行中 (Ongoing)
     if (group.groupStatus == 1) {
-      return Column(
-        children: [
-          Button(
-            width: double.infinity,
-            onPressed: () {
-              ShareManager.startShare(
-                context,
-                ShareContent.group(
-                  id: treasureId,
-                  groupId: group.groupId,
-                  title: treasureName,
-                  imageUrl: treasureImg,
-                  desc: "快来加入我的【$treasureName】拼团，还差$remain人就成功啦！",
+        // 1.1 已经在团里 -> 邀请别人
+        return Column(
+          children: [
+            Button(
+              width: double.infinity,
+              onPressed: () {
+                ShareManager.startShare(
+                  context,
+                  ShareContent.group(
+                    id: treasureId,
+                    groupId: group.groupId,
+                    title: treasureName,
+                    imageUrl: treasureImg,
+                    desc: "Join my team for [$treasureName]! We only need $remain more people to succeed!",
+                  ),
+                );
+              },
+              child: Text(
+                "Invite Friends",
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
                 ),
-              );
-            },
-            child: Text(
-              "Invite Friends",
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
               ),
             ),
-          ),
-          SizedBox(height: 12.w),
-          Text(
-            "Share link to your friends to join faster!",
-            style: TextStyle(color: Colors.grey, fontSize: 12.sp),
-          ),
-        ],
-      );
+            SizedBox(height: 12.w),
+            Text(
+              "Share link to your friends to join faster!",
+              style: TextStyle(color: Colors.grey, fontSize: 12.sp),
+            ),
+          ],
+        );
     }
 
-    // 2. 成功 -> 查看订单
+    // 2. 成功 -> 查看订单 (Success -> View Order)
     if (group.groupStatus == 2) {
       return Button(
         width: double.infinity,
         onPressed: () {
-          appRouter.go('/orders');
+          appRouter.push('/order/list');
         },
         child: Text("View My Order", style: TextStyle(color: Colors.white)),
       );
     }
 
-    // 3. 失败 -> 重新开团
+    // 3. 失败 -> 重新开团 (Failed -> Try Again)
     return Button(
       width: double.infinity,
       onPressed: () {

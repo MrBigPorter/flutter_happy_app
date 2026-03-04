@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_app/common.dart';
 import 'package:flutter_app/features/share/models/share_data.dart';
+import 'package:flutter_app/utils/media/remote_url_builder.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
@@ -92,7 +93,7 @@ class SharePostState extends State<SharePost> {
         children: [
           Container(
             width: 310.w,
-            height: 350.w,
+            height: 350.h,
             color: context.bgPrimary,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -100,56 +101,59 @@ class SharePostState extends State<SharePost> {
                 Container(
                   color: Colors.grey[200],
                   width: 310.w,
-                  height: 200.w,
+                  height: 200.h,
                   child: widget.data.imageUrl == null
                       ? const SizedBox.shrink()
                       : Image.network(
-                          widget.data.imageUrl!,
+                          RemoteUrlBuilder.fitAbsoluteUrl(widget.data.imageUrl!),
                           width: 310.w,
-                          height: 200.w,
+                          height: 200.h,
                           fit: BoxFit.cover,
                         ),
                 ),
-                Padding(
-                  padding: EdgeInsets.only(top: 16.w, left: 16.w, right: 16.w),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        widget.data.title,
-                        maxLines: 2,
-                        style: TextStyle(
-                          fontSize: context.textMd,
-                          fontWeight: FontWeight.w800,
-                          color: context.textSecondary700,
-                          height: context.leadingMd,
+                SizedBox(
+                  width: 200.w,
+                  child:  Padding(
+                    padding: EdgeInsets.only(top: 16.w, left: 16.w, right: 16.w),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          widget.data.title,
+                          maxLines: 2,
+                          style: TextStyle(
+                            fontSize: context.textMd,
+                            fontWeight: FontWeight.w800,
+                            color: context.textSecondary700,
+                            height: context.leadingMd,
+                          ),
                         ),
-                      ),
-                      SizedBox(height: 20.w),
-                      Text(
-                        widget.data.text ?? '',
-                        maxLines: 3,
-                        style: TextStyle(
-                          fontSize: context.textXs,
-                          color: context.textSecondary700,
-                          height: context.leadingXs,
-                          fontWeight: FontWeight.w800,
+                        SizedBox(height: 20.w),
+                        Text(
+                          widget.data.text ?? '',
+                          maxLines: 3,
+                          style: TextStyle(
+                            fontSize: context.textXs,
+                            color: context.textSecondary700,
+                            height: context.leadingXs,
+                            fontWeight: FontWeight.w800,
+                          ),
                         ),
-                      ),
-                      SizedBox(height: 8.w),
-                      Text(
-                        widget.data.subTitle ?? '',
-                        maxLines: 1,
-                        style: TextStyle(
-                          fontSize: context.textXs,
-                          color: context.textSecondary700,
-                          height: context.leadingXs,
-                          fontWeight: FontWeight.w800,
+                        SizedBox(height: 8.w),
+                        Text(
+                          widget.data.subTitle ?? '',
+                          maxLines: 1,
+                          style: TextStyle(
+                            fontSize: context.textXs,
+                            color: context.textSecondary700,
+                            height: context.leadingXs,
+                            fontWeight: FontWeight.w800,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
+                )
               ],
             ),
           ),

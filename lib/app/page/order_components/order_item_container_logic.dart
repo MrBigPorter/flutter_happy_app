@@ -1,9 +1,9 @@
 part of 'order_item_container.dart';
 
-/// 统一管理 OrderItemContainer 的所有业务逻辑
+/// Manages all business logic for OrderItemContainer
 class OrderItemLogic {
 
-  /// 处理退款请求逻辑
+  /// Handle Refund Request logic
   static void handleRequestRefund(
       BuildContext context,
       WidgetRef ref,
@@ -16,13 +16,13 @@ class OrderItemLogic {
         amount: '₱${item.finalAmount}',
         onSubmit: (reason) async {
           Navigator.pop(ctx);
-          // 调用 Provider 进行退款申请
+          // Call Provider to submit the refund request
           final req = RefundApplyReq(orderId: item.orderId, reason: reason);
           final result = await ref.read(orderRefundApplyProvider.notifier).create(req);
 
           if (result != null) {
             RadixToast.success('Refund request submitted successfully.');
-            // 关键：刷新列表和详情，UI 才会变
+            // Crucial: Invalidate the provider to refresh UI
             ref.invalidate(orderDetailProvider(item.orderId));
             if (onRefresh != null) onRefresh();
           }
@@ -31,14 +31,15 @@ class OrderItemLogic {
     );
   }
 
-  /// 查看拼团好友
+  /// View Group Friends / Progress
   static void handleViewFriends(OrderItem item) {
     if (item.group != null) {
-      appRouter.push('/group-member/?groupId=${item.group!.groupId}');
+      // Redirect to the Group Room (better conversion & sharing features)
+      appRouter.push('/group-room?groupId=${item.group!.groupId}');
     }
   }
 
-  /// 查看奖品详情
+  /// View Prize/Reward Details
   static void handleViewRewardDetails(BuildContext context, OrderItem item) {
     Navigator.of(context).push(
       TransparentFadeRoute(
@@ -51,12 +52,12 @@ class OrderItemLogic {
     );
   }
 
-  /// 继续拼团
+  /// Continue Teaming Up
   static void handleTeamUp(OrderItem item) {
     appRouter.push('/me/order/${item.orderId}/team-up');
   }
 
-  /// 领奖
+  /// Claim Prize
   static void handleClaimPrize(OrderItem item) {
     appRouter.push('/me/order/${item.orderId}/claim-prize');
   }
