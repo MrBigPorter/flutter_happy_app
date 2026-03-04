@@ -178,13 +178,16 @@ class AddressSection extends ConsumerWidget {
 }
 
 /// Displays product details (Image, Name, Price) in the checkout flow
-class ProductSection extends StatelessWidget {
+class ProductSection extends ConsumerWidget {
   final ProductListItem detail;
 
   const ProductSection({super.key, required this.detail});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    // 核心修复 2：监听动态价格，而不是写死的基础价
+    final purchaseState = ref.watch(purchaseProvider(detail.treasureId ?? ''));
+
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 16.w),
       child: Container(
@@ -240,12 +243,13 @@ class ProductSection extends StatelessWidget {
                 ),
                 SizedBox(width: 10.w),
                 Text(
-                  FormatHelper.formatCurrency(detail.unitAmount),
+                  // 这里改为动态取价！如果是 Solo Buy，这里就会跟着变成 1000.00
+                  FormatHelper.formatCurrency(purchaseState.unitAmount),
                   style: TextStyle(color: context.textPrimary900, fontSize: context.textXs, fontWeight: FontWeight.w800),
                 ),
               ],
             ),
-            QuantityControl(treasureId: detail.treasureId),
+            QuantityControl(treasureId: detail.treasureId ?? ''),
           ],
         ),
       ),

@@ -166,7 +166,6 @@ class _BottomNavigationBar extends ConsumerStatefulWidget {
   ConsumerState<_BottomNavigationBar> createState() => _BottomNavigationBarState();
 }
 
-/// Bottom bar handles price calculation including coupon discounts and coin deductions
 class _BottomNavigationBarState extends ConsumerState<_BottomNavigationBar> with BottomNavigationBarLogic {
   @override
   Widget build(BuildContext context) {
@@ -174,10 +173,10 @@ class _BottomNavigationBarState extends ConsumerState<_BottomNavigationBar> with
     final purchase = ref.watch(purchaseProvider(widget.params.treasureId ?? ''));
     final addressListAsync = ref.watch(addressListProvider);
 
-    // Calculate actual payable amount after coupon deduction
     final selectedCoupon = ref.watch(selectedCouponProvider);
     final double couponDiscount = double.tryParse(selectedCoupon?.discountValue ?? '0') ?? 0.0;
-    final double finalPayable = (notifier.payableAmount - couponDiscount).clamp(0.0, double.infinity);
+
+    final double finalPayable = notifier.payableAmount;
 
     final isBusy = purchase.isSubmitting || (addressListAsync.isLoading && !addressListAsync.hasValue);
 
@@ -224,15 +223,16 @@ class _BottomNavigationBarState extends ConsumerState<_BottomNavigationBar> with
                   ]),
                 ),
                 SizedBox(height: 8.w),
+                //  优化展示逻辑：让优惠券和金币抵扣能同时展示，不互相覆盖
                 if (couponDiscount > 0)
                   Text(
                     'Voucher Discount: -${FormatHelper.formatCurrency(couponDiscount)}',
                     style: TextStyle(color: context.textErrorPrimary600, fontSize: 11.sp, fontWeight: FontWeight.w600),
-                  )
-                else if (purchase.useDiscountCoins)
+                  ),
+                if (purchase.useDiscountCoins && notifier.coinAmount > 0)
                   Text(
                     '${'common.total.discount'.tr()} ${FormatHelper.formatCurrency(notifier.coinAmount)}',
-                    style: TextStyle(color: context.textErrorPrimary600, fontSize: context.textSm, fontWeight: FontWeight.w600),
+                    style: TextStyle(color: context.textErrorPrimary600, fontSize: 11.sp, fontWeight: FontWeight.w600),
                   ),
               ],
             ),
@@ -241,7 +241,6 @@ class _BottomNavigationBarState extends ConsumerState<_BottomNavigationBar> with
               width: 120.w,
               height: 40.h,
               loading: isBusy,
-              // Triggers payment submission logic (handles debouncing and order creation)
               onPressed: submitPayment,
               child: Text('common.checkout'.tr(), style: TextStyle(color: Colors.white, fontSize: context.textMd, fontWeight: FontWeight.w600)),
             ),
@@ -251,7 +250,6 @@ class _BottomNavigationBarState extends ConsumerState<_BottomNavigationBar> with
     );
   }
 }
-
 // =========================================================================
 // Specialized Voucher Entry Section for the Checkout Page
 // =========================================================================

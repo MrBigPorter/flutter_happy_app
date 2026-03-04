@@ -12,23 +12,19 @@ import 'package:flutter_app/utils/helper.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../utils/time/server_time_helper.dart';
 
-//  ADDED: 引入优惠券 Provider，用于底层读取选中状态和扣减金额
 import 'package:flutter_app/core/providers/coupon_provider.dart';
 
 // ==========================================
-// 1. State 改造：增加价格缓存和模式标记
+// 1. State 改造：使用 Getter 派生价格，杜绝数据不同步
 // ==========================================
 class PurchaseState {
   final int entries;
 
-  //  unitAmount 现在表示“当前生效的单价” (可能是拼团价，也可能是单买价)
-  // 用于计算 subtotal
-  final double unitAmount;
-
-  //  新增：分别缓存两种价格，以便切换
+  // 分别缓存两种价格，作为底层数据源
   final double baseGroupPrice;
   final double baseSoloPrice;
-  final bool isGroupBuy; // 当前是否为拼团模式
+
+  final bool isGroupBuy; // 当前模式：拼团 (true) / 单买 (false)
 
   final double maxUnitCoins;
   final int maxPerBuyQuantity;
@@ -43,7 +39,6 @@ class PurchaseState {
 
   PurchaseState({
     required this.entries,
-    required this.unitAmount,
     required this.baseGroupPrice,
     required this.baseSoloPrice,
     required this.isGroupBuy,
@@ -58,6 +53,19 @@ class PurchaseState {
     this.productState = 1,
   });
 
+  //  核心修复 1：将 unitAmount 变成动态计算的 Getter
+  // 无论后台接口什么时候回来，或者怎么切模式，当前单价永远正确！
+  double get unitAmount {
+    if (isGroupBuy) return baseGroupPrice;
+
+    // 如果是单买：优先用后端的单买价，如果没有，强制兜底为拼团价的 1.5 倍
+    if (baseSoloPrice > 0) return baseSoloPrice;
+    return baseGroupPrice * 1.5;
+  }
+
+  //  核心修复 2：小计自动使用上面算出的绝对正确单价
+  double get subtotal => unitAmount * entries;
+
   int get _maxEntriesAllowed {
     if (stockLeft <= 0) return 0;
     final maxByLimit = maxPerBuyQuantity <= 0 ? stockLeft : maxPerBuyQuantity;
@@ -70,8 +78,6 @@ class PurchaseState {
     return math.min(minByConfig, stockLeft);
   }
 
-  double get subtotal => unitAmount * entries;
-
   double get theoreticalMaxCoins {
     if (!useDiscountCoins) return 0;
     return maxUnitCoins * entries;
@@ -80,7 +86,6 @@ class PurchaseState {
   PurchaseState copyWith({
     int? entries,
     int? stockLeft,
-    double? unitAmount,
     double? baseGroupPrice,
     double? baseSoloPrice,
     bool? isGroupBuy,
@@ -92,7 +97,6 @@ class PurchaseState {
   }) {
     return PurchaseState(
       entries: entries ?? this.entries,
-      unitAmount: unitAmount ?? this.unitAmount,
       baseGroupPrice: baseGroupPrice ?? this.baseGroupPrice,
       baseSoloPrice: baseSoloPrice ?? this.baseSoloPrice,
       isGroupBuy: isGroupBuy ?? this.isGroupBuy,
@@ -110,18 +114,9 @@ class PurchaseState {
 }
 
 enum PurchaseSubmitError {
-  none,
-  needLogin,
-  insufficientBalance,
-  insufficientStock,
-  purchaseLimitExceeded,
-  soldOut,
-  unknown,
-  preSaleNotStarted,
-  salesEnded,
-  productOffline,
-  needKyc,
-  noAddress,
+  none, needLogin, insufficientBalance, insufficientStock,
+  purchaseLimitExceeded, soldOut, unknown, preSaleNotStarted,
+  salesEnded, productOffline, needKyc, noAddress,
 }
 
 class PurchaseSubmitResult {
@@ -132,15 +127,13 @@ class PurchaseSubmitResult {
 
   const PurchaseSubmitResult._(this.ok, this.error, this.message, [this.data]);
 
-  factory PurchaseSubmitResult.ok(data) =>
-      PurchaseSubmitResult._(true, PurchaseSubmitError.none, null, data);
-
-  factory PurchaseSubmitResult.error(
-      PurchaseSubmitError error, {
-        String? message,
-      }) => PurchaseSubmitResult._(false, error, message);
+  factory PurchaseSubmitResult.ok(data) => PurchaseSubmitResult._(true, PurchaseSubmitError.none, null, data);
+  factory PurchaseSubmitResult.error(PurchaseSubmitError error, {String? message}) => PurchaseSubmitResult._(false, error, message);
 }
 
+// ==========================================
+// 2. Notifier：彻底清爽，只管改模式和存数据
+// ==========================================
 class PurchaseNotifier extends StateNotifier<PurchaseState> {
   final Ref ref;
   final String treasureId;
@@ -153,117 +146,62 @@ class PurchaseNotifier extends StateNotifier<PurchaseState> {
     _listenToProductUpdates();
   }
 
-  // ==========================================
-  // 2. Notifier 改造：增加模式切换
-  // ==========================================
-
+  //  核心修复 3：切模式时，只需要改 isGroupBuy 标识，不用再手动算价了！
   void setGroupMode(bool isGroup) {
-    double targetPrice = isGroup ? state.baseGroupPrice : state.baseSoloPrice;
-    if (targetPrice <= 0) targetPrice = state.baseGroupPrice;
-
-    state = state.copyWith(
-      isGroupBuy: isGroup,
-      unitAmount: targetPrice,
-    );
+    state = state.copyWith(isGroupBuy: isGroup);
+    _clampEntries(); // 切模式后检查数量是否合法
   }
 
   void _listenToProductUpdates() {
+    // 监听实时状态
     ref.listen(productRealtimeStatusProvider(treasureId), (prev, next) {
       next.whenData((status) {
         final newStock = status.stock;
         final newState = status.state;
         final newGroupPrice = status.price;
-        final newSoloPrice = status.soloPrice ?? state.baseSoloPrice;
 
-        double newActivePrice = state.unitAmount;
-        if (state.isGroupBuy) {
-          newActivePrice = newGroupPrice;
-        } else {
-          if (status.soloPrice != null && status.soloPrice! > 0) {
-            newActivePrice = status.soloPrice!;
-          }
-        }
+        //  加上 1.5 倍兜底
+        final newSoloPrice = status.soloPrice ?? (newGroupPrice * 1.5);
 
-        if (newStock != state.stockLeft ||
-            newState != state.productState ||
-            newActivePrice != state.unitAmount ||
-            newSoloPrice != state.baseSoloPrice) {
-
-          final currentEntries = state.entries;
-          final maxAllowed = math.min(
-            newStock,
-            state.maxPerBuyQuantity > 0 ? state.maxPerBuyQuantity : newStock,
-          );
-          final safeEntries = math.min(currentEntries, math.max(1, maxAllowed));
-
-          state = state.copyWith(
-            stockLeft: newStock,
-            entries: safeEntries,
-            unitAmount: newActivePrice,
-            baseGroupPrice: newGroupPrice,
-            baseSoloPrice: newSoloPrice,
-            productState: newState,
-          );
-        }
+        state = state.copyWith(
+          stockLeft: newStock,
+          baseGroupPrice: newGroupPrice,
+          baseSoloPrice: newSoloPrice,
+          productState: newState,
+        );
+        _clampEntries();
       });
     });
 
+    // 监听商品详情
     ref.listen(productDetailProvider(treasureId), (prev, next) {
       next.whenData((detail) {
-        bool shouldUpdate = false;
+        final newGroupPrice = detail.unitAmount ?? 0.0;
+        final newSoloPrice = detail.soloAmount ?? (newGroupPrice * 1.5);
 
-        final newMaxLimit = JsonNumConverter.toInt(detail.maxPerBuyQuantity ?? 0);
-        final newMinLimit = detail.minBuyQuantity ?? 1;
-
-        double newBaseGroup = state.baseGroupPrice;
-        double newBaseSolo = state.baseSoloPrice;
-
-        if (newBaseGroup <= 0 && (detail.unitAmount ?? 0) > 0) {
-          newBaseGroup = detail.unitAmount!;
-          shouldUpdate = true;
-        }
-        if (newBaseSolo <= 0 && (detail.soloAmount ?? 0) > 0) {
-          newBaseSolo = detail.soloAmount!;
-          shouldUpdate = true;
-        }
-
-        if (newMaxLimit != state.maxPerBuyQuantity ||
-            newMinLimit != state.minBuyQuantity ||
-            shouldUpdate) {
-
-          final currentEntries = state.entries;
-          final currentAuthoritativeStock = state.stockLeft;
-          final maxAllowed = math.min(
-            currentAuthoritativeStock,
-            newMaxLimit > 0 ? newMaxLimit : currentAuthoritativeStock,
-          );
-          final safeEntries = math.min(currentEntries, math.max(1, maxAllowed));
-
-          double newActivePrice = state.unitAmount;
-          if (state.isGroupBuy) {
-            if (newBaseGroup > 0) newActivePrice = newBaseGroup;
-          } else {
-            if (newBaseSolo > 0) newActivePrice = newBaseSolo;
-          }
-
-          state = state.copyWith(
-            entries: safeEntries,
-            maxPerBuyQuantity: newMaxLimit,
-            minBuyQuantity: newMinLimit,
-            baseGroupPrice: newBaseGroup,
-            baseSoloPrice: newBaseSolo,
-            unitAmount: newActivePrice,
-          );
-        }
+        state = state.copyWith(
+          baseGroupPrice: state.baseGroupPrice > 0 ? state.baseGroupPrice : newGroupPrice,
+          baseSoloPrice: state.baseSoloPrice > 0 ? state.baseSoloPrice : newSoloPrice,
+          maxPerBuyQuantity: JsonNumConverter.toInt(detail.maxPerBuyQuantity ?? 0),
+          minBuyQuantity: detail.minBuyQuantity ?? 1,
+        );
+        _clampEntries();
       });
     });
   }
 
-  void resetEntries(int targetEntries) {
+  void _clampEntries() {
     final min = state._minEntriesAllowed;
     final max = state._maxEntriesAllowed;
-    final next = targetEntries.clamp(min, max);
-    state = state.copyWith(entries: next);
+    final safeEntries = state.entries.clamp(min, max);
+    if (safeEntries != state.entries) {
+      state = state.copyWith(entries: safeEntries);
+    }
+  }
+
+  void resetEntries(int targetEntries) {
+    state = state.copyWith(entries: targetEntries);
+    _clampEntries();
   }
 
   // Getters
@@ -285,13 +223,9 @@ class PurchaseNotifier extends StateNotifier<PurchaseState> {
     return coinsCanUse / rate;
   }
 
-  // ==========================================
-  //  MODIFIED: payableAmount 彻底接管优惠券抵扣计算
-  // ==========================================
   double get payableAmount {
     double currentSubtotal = state.subtotal;
 
-    //  核心修改：读取当前选中的优惠券金额，进行扣减
     final selectedCoupon = ref.read(selectedCouponProvider);
     if (selectedCoupon != null) {
       final discount = double.tryParse(selectedCoupon.discountValue) ?? 0.0;
@@ -303,14 +237,10 @@ class PurchaseNotifier extends StateNotifier<PurchaseState> {
     return raw <= 0 ? 0.0 : raw;
   }
 
-  // ==========================================
-  //  MODIFIED: submitOrder 增加 userCouponId 入参
-  // ==========================================
   Future<PurchaseSubmitResult> submitOrder({String? groupId, String? couponId}) async {
     if (!mounted) return PurchaseSubmitResult.error(PurchaseSubmitError.unknown);
     if (state.isSubmitting) return PurchaseSubmitResult.error(PurchaseSubmitError.unknown);
 
-    // 校验逻辑
     if (!_isAuthenticated) return PurchaseSubmitResult.error(PurchaseSubmitError.needLogin);
     if (state.stockLeft <= 0) return PurchaseSubmitResult.error(PurchaseSubmitError.soldOut);
     if (state.productState != 1) return PurchaseSubmitResult.error(PurchaseSubmitError.productOffline);
@@ -323,12 +253,10 @@ class PurchaseNotifier extends StateNotifier<PurchaseState> {
       return PurchaseSubmitResult.error(PurchaseSubmitError.salesEnded, message: 'Sales have ended.');
     }
 
-    // KYC 校验
     final kycStatus = ref.read(userProvider.select((s) => s?.kycStatus));
     if (KycStatusEnum.fromStatus(kycStatus ?? 0) != KycStatusEnum.approved) {
       return PurchaseSubmitResult.error(PurchaseSubmitError.needKyc);
     }
-    // 地址校验
     final address = await ref.read(selectedAddressProvider);
     if (address == null) return PurchaseSubmitResult.error(PurchaseSubmitError.noAddress);
 
@@ -336,7 +264,6 @@ class PurchaseNotifier extends StateNotifier<PurchaseState> {
       return PurchaseSubmitResult.error(PurchaseSubmitError.purchaseLimitExceeded);
     }
 
-    //  因为上面的 payableAmount 已经减去了优惠券，这里的余额拦截终于精确了！
     if (_realBalance < payableAmount) {
       return PurchaseSubmitResult.error(PurchaseSubmitError.insufficientBalance);
     }
@@ -344,7 +271,6 @@ class PurchaseNotifier extends StateNotifier<PurchaseState> {
     try {
       state = state.copyWith(isSubmitting: true);
 
-      // 下单请求
       final orderCheckoutResult = await ref.read(
         orderCheckoutProvider(
           OrdersCheckoutParams(
@@ -352,17 +278,15 @@ class PurchaseNotifier extends StateNotifier<PurchaseState> {
             entries: state.entries,
             paymentMethod: state.useDiscountCoins ? 2 : 1,
             groupId: groupId,
-            isGroup: state.isGroupBuy,
-            couponId:couponId, //  传给后端你使用的优惠券 ID
+            isGroup: state.isGroupBuy, // 这里取的值现在永远是对的！
+            couponId: couponId,
           ),
         ).future,
       );
 
       if (!mounted) return PurchaseSubmitResult.error(PurchaseSubmitError.unknown);
 
-      //  核心修改：订单提交成功后，清空已选中的优惠券，防止下次进来带着脏数据
       ref.read(selectedCouponProvider.notifier).select(null);
-
       ref.read(walletProvider.notifier).fetchBalance();
       ref.invalidate(productRealtimeStatusProvider(treasureId));
 
@@ -377,17 +301,15 @@ class PurchaseNotifier extends StateNotifier<PurchaseState> {
   void inc(Function(int)? onChanged) {
     final max = state._maxEntriesAllowed;
     if (state.entries >= max) return;
-    final next = state.entries + 1;
-    state = state.copyWith(entries: next);
-    onChanged?.call(next);
+    state = state.copyWith(entries: state.entries + 1);
+    onChanged?.call(state.entries);
   }
 
   void dec(Function(int)? onChanged) {
     final min = state._minEntriesAllowed;
     if (state.entries <= min) return;
-    final next = state.entries - 1;
-    state = state.copyWith(entries: next);
-    onChanged?.call(next);
+    state = state.copyWith(entries: state.entries - 1);
+    onChanged?.call(state.entries);
   }
 
   void setEntriesFromText(String v) {
@@ -417,15 +339,16 @@ final purchaseProvider = StateNotifierProvider.family
   final minBuy = detail?.minBuyQuantity ?? 1;
 
   final groupPrice = status?.price ?? (detail?.unitAmount ?? 0.0);
-  final soloPrice = status?.soloPrice ?? (detail?.soloAmount ?? 0.0);
+
+  //  核心修复 4：初始化时也必须带上 1.5 倍兜底！
+  final soloPrice = status?.soloPrice ?? (detail?.soloAmount ?? (groupPrice * 1.5));
 
   final initialState = PurchaseState(
     entries: stockLeft > 0 ? minBuy : 0,
 
-    unitAmount: groupPrice,
     baseGroupPrice: groupPrice,
     baseSoloPrice: soloPrice,
-    isGroupBuy: true,
+    isGroupBuy: true, // 初始先设为默认，反正会被逻辑层立即 setGroupMode 改掉
 
     maxUnitCoins: JsonNumConverter.toDouble(detail?.maxUnitCoins),
     maxPerBuyQuantity: JsonNumConverter.toInt(detail?.maxPerBuyQuantity ?? 0),
