@@ -13,6 +13,7 @@ import 'package:flutter_app/ui/img/app_image.dart';
 import 'package:flutter_app/utils/format_helper.dart';
 import 'package:flutter_app/core/models/index.dart';
 
+import 'package:flutter_app/utils/media/remote_url_builder.dart';
 
 class SpecialArea extends StatelessWidget {
   final List<ProductListItem>? list;
@@ -128,7 +129,7 @@ class SpecialArea extends StatelessWidget {
           children: [
             /// 商品图片
             AppCachedImage(
-              item.treasureCoverImg ?? '',
+              RemoteUrlBuilder.fitAbsoluteUrl(item.treasureCoverImg ?? ''),
               width: 80.w,
               height: 80.w, // 正方形保持 w
               fit: BoxFit.cover,
@@ -141,7 +142,7 @@ class SpecialArea extends StatelessWidget {
                 children: [
                   /// 标题
                   Text(
-                    item.treasureName??'',
+                    item.treasureName ?? '',
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
@@ -199,9 +200,24 @@ class SpecialArea extends StatelessWidget {
                 padding: EdgeInsets.symmetric(horizontal: 4.w),
                 child: RenderCountdown(
                   lotteryTime: item.lotteryTime,
-                  renderSoldOut: () => _buildStatusColumn(context, 'common.draw_once'.tr(), 'common.sold'.tr(), isError: true),
-                  renderEnd: (days) => _buildStatusColumn(context, 'common.refile_end'.tr(), 'common.days'.tr(namedArgs: {'days': days.toString()}), isError: true),
-                  renderCountdown: (time) => _buildStatusColumn(context, 'common.countdown'.tr(), time, isError: true),
+                  renderSoldOut: () => _buildStatusColumn(
+                    context,
+                    'common.draw_once'.tr(),
+                    'common.sold'.tr(),
+                    isError: true,
+                  ),
+                  renderEnd: (days) => _buildStatusColumn(
+                    context,
+                    'common.refile_end'.tr(),
+                    'common.days'.tr(namedArgs: {'days': days.toString()}),
+                    isError: true,
+                  ),
+                  renderCountdown: (time) => _buildStatusColumn(
+                    context,
+                    'common.countdown'.tr(),
+                    time,
+                    isError: true,
+                  ),
                 ),
               ),
             ),
@@ -310,7 +326,7 @@ class _AnimatedListItemState extends State<AnimatedListItem>
   Widget build(BuildContext context) {
     super.build(context);
 
-    return  VisibilityDetector(
+    return VisibilityDetector(
       key: Key(
         'special_area_item_${widget.uniqueKey}_${widget.index}_${widget.title}',
       ),
@@ -326,7 +342,7 @@ class _AnimatedListItemState extends State<AnimatedListItem>
           bool isTopItem = widget.index < 6;
           bool isFast =
               !isTopItem &&
-                  (info.visibleFraction > 0.6 || info.visibleFraction == 1.0);
+              (info.visibleFraction > 0.6 || info.visibleFraction == 1.0);
 
           if (isFast) {
             // ：直接拉到终点 (value = 1.0)
@@ -371,4 +387,3 @@ class _AnimatedListItemState extends State<AnimatedListItem>
         .shimmer(duration: 1000.ms, color: Colors.white.withValues(alpha: 0.4));
   }
 }
-

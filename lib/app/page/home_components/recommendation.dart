@@ -41,14 +41,14 @@ class Recommendation extends StatelessWidget {
             padding: EdgeInsets.zero,
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            // ✨ 性能优化：在 Grid 这种高密度场景，禁用 addRepaintBoundaries
+            //  性能优化：在 Grid 这种高密度场景，禁用 addRepaintBoundaries
             // 因为我们在 GridAnimatedItem 内部会手动根据动画状态添加，避免过度绘制。
             addRepaintBoundaries: false,
             gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 2,
               crossAxisSpacing: 10.w,
               mainAxisSpacing: 12.h,
-              childAspectRatio: 165.w / 380.h, // ✨ 根据 ProductItem 实际高度微调，防止溢出
+              childAspectRatio: 165.w / 380.h, //  根据 ProductItem 实际高度微调，防止溢出
             ),
             itemCount: list!.length,
             itemBuilder: (context, index) {
@@ -75,7 +75,7 @@ class ProductCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () => appRouter.push('/product/${item.treasureId}'),
-      // ✨ 这里的 ProductItem 内部现在由于有了 RenderCountdown 的 ValueNotifier，
+      //  这里的 ProductItem 内部现在由于有了 RenderCountdown 的 ValueNotifier，
       // 它的倒计时跳动是局部刷新的，不会带动整个 GridAnimatedItem 刷新。
       child: ProductItem(data: item, imgWidth: 165, imgHeight: 165),
     );
@@ -111,7 +111,7 @@ class _GridAnimatedItemState extends State<GridAnimatedItem>
       duration: const Duration(milliseconds: 500),
     );
 
-    // ✨ Grid 策略：前 6 个（三行）通常都在首屏可见范围内，直接同步加载
+    //  Grid 策略：前 6 个（三行）通常都在首屏可见范围内，直接同步加载
     if (widget.index < 6) {
       _startAnimation(isFast: false, forceSync: true);
     }
@@ -157,7 +157,7 @@ class _GridAnimatedItemState extends State<GridAnimatedItem>
           _startAnimation(isFast: info.visibleFraction > 0.8);
         }
       },
-      // ✨ 性能优化：只有在执行动画期间，才会被包裹在 RepaintBoundary 中
+      //  性能优化：只有在执行动画期间，才会被包裹在 RepaintBoundary 中
       // 动画结束后，由于 _controller 状态固定，不再产生新的图层压力
       child: RepaintBoundary(
         child: widget.child

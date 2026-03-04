@@ -5,6 +5,8 @@ import 'package:card_swiper/card_swiper.dart';
 import 'package:flutter_app/ui/img/app_image.dart';
 import 'package:flutter_app/utils/helper.dart';
 
+import '../utils/media/remote_url_builder.dart';
+
 
 
 class SwiperBanner<T> extends StatelessWidget {
@@ -221,7 +223,7 @@ class ImageWidget<T> extends StatelessWidget {
     }
 
     return AppCachedImage(
-      url,
+      RemoteUrlBuilder.fitAbsoluteUrl(url),
       width: width,
       height: height,
       fit: BoxFit.cover,
