@@ -365,6 +365,10 @@ class _OrderInfoSection extends StatelessWidget {
   Widget build(BuildContext context) {
     final paymentTimeStr = orderDetail.createdAt != null ? DateFormatHelper.formatFull(DateTime.fromMillisecondsSinceEpoch(orderDetail.createdAt!.toInt())) : '-';
 
+    // 将金额安全解析为 double，用于判断“抵扣额是否大于0”，避免出现 "- 0.00" 的尴尬 UI
+    final double couponAmt = double.tryParse(orderDetail.couponAmount.toString()) ?? 0.0;
+    final double coinAmt = double.tryParse(orderDetail.coinAmount.toString()) ?? 0.0;
+
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 20.w),
       child: Column(
@@ -389,7 +393,24 @@ class _OrderInfoSection extends StatelessWidget {
           _OrderInfoRow(title: "order.detail.item_price".tr(), value: orderDetail.unitPrice),
           _OrderInfoRow(title: "order.detail.quantity".tr(), value: 'x${orderDetail.buyQuantity}'),
           _OrderInfoRow(title: "order.detail.total_price".tr(), value: orderDetail.originalAmount),
-          _OrderInfoRow(title: "order.detail.coupon".tr(), value: '- ${orderDetail.coinAmount}', valueColor: context.utilityError500),
+
+          // ========================================================
+          // 核心修复 1 & 2：准确分离并映射 优惠券(Coupon) 和 金币(Coin)
+          // ========================================================
+          if (couponAmt > 0)
+            _OrderInfoRow(
+              title: "order.detail.coupon".tr(),
+              value: '- ${orderDetail.couponAmount}',
+              valueColor: context.utilityError500,
+            ),
+
+          if (coinAmt > 0)
+            _OrderInfoRow(
+              title: "common.total.discount".tr(),
+              value: '- ${orderDetail.coinAmount}',
+              valueColor: context.utilityError500,
+            ),
+
           Divider(color: context.borderSecondary, height: 32.w),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -403,6 +424,7 @@ class _OrderInfoSection extends StatelessWidget {
           SizedBox(height: 16.w),
           _OrderInfoRow(title: "order.detail.order_id".tr(), value: orderDetail.orderNo, isCopyable: true),
           _OrderInfoRow(title: "order.detail.pay_time".tr(), value: paymentTimeStr),
+
           if (orderDetail.transactions.isNotEmpty) ...[
             SizedBox(height: 20.w),
             Container(
@@ -412,12 +434,28 @@ class _OrderInfoSection extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text("order.detail.tx_history".tr(), style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w700, color: context.textSecondary700)),
-                  ...orderDetail.transactions.map((item) => Column(
-                    children: [
-                      _OrderInfoRow(title: "order.detail.tx_no".tr(), value: item.transactionNo.length > 20 ? '${item.transactionNo.substring(0, 20)}...' : item.transactionNo, isSmall: true, isCopyable: true),
-                      _OrderInfoRow(title: "order.detail.pay_method".tr(), value: item.balanceType.toString().toUpperCase(), isSmall: true),
-                    ],
-                  )),
+                  ...orderDetail.transactions.map((item) {
+                    // ========================================================
+                    // balanceType: 1=现金余额(Wallet), 2=金币(Coin)
+                    // ========================================================
+                    final String payMethodName = item.balanceType == 2 ? 'COIN' : 'WALLET';
+
+                    return Column(
+                      children: [
+                        _OrderInfoRow(
+                            title: "order.detail.tx_no".tr(),
+                            value: item.transactionNo.length > 20 ? '${item.transactionNo.substring(0, 20)}...' : item.transactionNo,
+                            isSmall: true,
+                            isCopyable: true
+                        ),
+                        _OrderInfoRow(
+                            title: "order.detail.pay_method".tr(),
+                            value: payMethodName,
+                            isSmall: true
+                        ),
+                      ],
+                    );
+                  }),
                 ],
               ),
             ),
