@@ -265,7 +265,7 @@ class _RowItemWidget extends ConsumerWidget {
 
         final kycMeProviderData = ref.watch(kycMeProvider);
         final rawStatus = kycMeProviderData.maybeWhen(
-          data: (data) => data?.kycStatus,
+          data: (data) => data.kycStatus,
           orElse: () => null,
         );
         final statusCode = _toInt(rawStatus, fallback: 0);

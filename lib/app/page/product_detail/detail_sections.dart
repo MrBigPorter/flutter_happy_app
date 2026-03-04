@@ -118,7 +118,7 @@ class CouponSection extends ConsumerWidget {
                         border: Border.all(color: Colors.pinkAccent.withValues(alpha: 0.3)),
                       ),
                       child: Text(
-                        'Save ₱${c.discountValue ?? 0}',
+                        'Save ₱${c.discountValue}',
                         style: TextStyle(fontSize: 10.sp, color: Colors.pinkAccent, fontWeight: FontWeight.bold),
                       ),
                     )).toList(),
