@@ -101,6 +101,9 @@ mixin BottomNavigationBarLogic on ConsumerState<_BottomNavigationBar> {
       return;
     }
 
+    ref.invalidate(homeGroupBuyingProvider);
+    ref.invalidate(homeTreasuresProvider);
+
     if (widget.isGroupBuy) {
       final groupId = result.data?.groupId ?? widget.params.groupId;
       if (groupId != null) {

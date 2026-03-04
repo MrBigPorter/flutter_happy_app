@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_app/app/page/home_components/home_treasures.dart';
+import 'package:flutter_app/app/routes/app_router.dart';
 import 'package:flutter_app/components/base_scaffold.dart';
 import 'package:flutter_app/components/lucky_custom_material_indicator.dart';
 import 'package:flutter_app/components/swiper_banner.dart';
@@ -21,7 +22,49 @@ class HomePage extends ConsumerStatefulWidget {
 }
 
 // Use RouteAware to detect when the user pops back to this screen
-class _HomePageState extends ConsumerState<HomePage> with RouteAware {
+class _HomePageState extends ConsumerState<HomePage> {
+
+  late VoidCallback _routeListener;
+  bool _wasOnHome = true;
+
+  @override
+  void initState() {
+    super.initState();
+
+    //  核心逻辑：无论通过什么极其复杂的链路，只要 URL 最终回到了 /home，就触发刷新！
+    _routeListener = (){
+      if(!mounted) return;
+       // 获取当前最新的 URL 路径
+      final location = appRouter.routerDelegate.currentConfiguration.uri.path;
+      final isOnHome = location == "/home";
+
+      // 状态机判断：如果刚刚不在首页，现在回到了首页 -> 触发刷新
+      if(isOnHome && !_wasOnHome){
+        _silentRefresh();
+        _wasOnHome = isOnHome;
+      }
+    };
+
+    WidgetsBinding.instance.addPostFrameCallback((_){
+      appRouter.routerDelegate.addListener(_routeListener);
+    });
+
+  }
+
+  @override
+  void dispose() {
+    appRouter.routerDelegate.removeListener(_routeListener);
+    super.dispose();
+  }
+
+
+  /// 静默刷新：不闪屏、不显示 Loading
+  Future<void> _silentRefresh() async {
+    await Future.wait([
+      ref.read(homeTreasuresProvider.notifier).forceRefresh(),
+      ref.read(homeGroupBuyingProvider.notifier).forceRefresh(),
+    ]);
+  }
 
   /// Explicit Manual Refresh (With Haptic Feedback)
   Future<void> _onManualRefresh() async {
