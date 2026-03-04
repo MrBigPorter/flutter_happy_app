@@ -9,6 +9,7 @@ class ProductListItem {
   final String treasureId;
   final String? treasureName; // 改为可空更稳妥
   final bool? isJoined; // 新增字段：当前用户是否已参与
+  final String? groupId; // 新增字段：当前用户所在的团 ID，未参与时为 ''
 
   // 0~100 保留两位小数
   final double? buyQuantityRate;
@@ -27,7 +28,7 @@ class ProductListItem {
   final bool? enableRobot;
   final int? leaderBonusType;
 
-  // 🚨 详情页用它判断是否下架
+  //Banners 详情页用它判断是否下架
   @JsonKey(defaultValue: 1)
   final int state;
 
@@ -114,6 +115,7 @@ class ProductListItem {
     this.cashState,
     this.recentJoinAvatars,
     this.isJoined,
+    this.groupId
   });
 
   factory ProductListItem.fromJson(Map<String, dynamic> json) =>

@@ -3,16 +3,19 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_app/ui/img/app_image.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:go_router/go_router.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:flutter_app/core/models/product_list_item.dart';
 import 'package:flutter_app/theme/design_tokens.g.dart';
 import 'package:flutter_app/utils/media/remote_url_builder.dart';
 import 'package:flutter_app/app/routes/app_router.dart';
+import 'package:flutter_app/core/providers/index.dart';
+
+import '../../../features/share/models/share_content.dart';
+import '../../../features/share/services/app_share_manager.dart';
 
 // ==============================================================================
-// 1. Main Component: GroupBuyingSection
-// Optimized: Removed VisibilityDetector, utilizing native lazy-loading for animation
+// 1. 主区域组件: GroupBuyingSection 
 // ==============================================================================
 class GroupBuyingSection extends StatelessWidget {
   final List<ProductListItem>? list;
@@ -31,12 +34,12 @@ class GroupBuyingSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // --- Header Section ---
+        // --- 头部标题栏 ---
         Padding(
           padding: EdgeInsets.fromLTRB(16.w, 16.h, 16.w, 12.h),
           child: Row(
             children: [
-              // Red vertical decorative line
+              // 红色装饰线
               Container(
                 width: 4.w,
                 height: 16.h,
@@ -46,7 +49,7 @@ class GroupBuyingSection extends StatelessWidget {
                 ),
               ),
               SizedBox(width: 8.w),
-              // Title text
+              // 标题
               Text(
                 title,
                 style: TextStyle(
@@ -57,7 +60,7 @@ class GroupBuyingSection extends StatelessWidget {
                 ),
               ),
               const Spacer(),
-              // "More" Button
+              // 更多按钮
               GestureDetector(
                 onTap: () {
                   appRouter.pushNamed('groups');
@@ -84,7 +87,7 @@ class GroupBuyingSection extends StatelessWidget {
           ),
         ),
 
-        // --- Horizontal Scrolling List ---
+        // --- 横向滑动列表 ---
         SizedBox(
           height: 140.w,
           child: ListView.separated(
@@ -96,18 +99,17 @@ class GroupBuyingSection extends StatelessWidget {
             itemBuilder: (context, index) {
               final item = list![index];
 
-              //  Core Optimization: Staggered animation using modulo
+              // 轻量级入场动画：取余实现阶梯延迟
               final animationDelay = ((index % 4) * 50).ms;
 
               return GroupBuyingCard(item: item)
-                  .animate(delay: animationDelay) // Trigger instantly upon build
+                  .animate(delay: animationDelay)
                   .fadeIn(duration: 400.ms)
                   .slideX(begin: 0.1, end: 0, duration: 400.ms, curve: Curves.easeOutCubic);
             },
           ),
         ),
 
-        // Bottom spacing to prevent shadow clipping
         SizedBox(height: 16.h),
       ],
     );
@@ -115,47 +117,40 @@ class GroupBuyingSection extends StatelessWidget {
 }
 
 // ==============================================================================
-// 2. Individual Card Component: GroupBuyingCard
+// 2. 单个卡片组件: GroupBuyingCard ( 已升级为 ConsumerWidget)
 // ==============================================================================
-class GroupBuyingCard extends StatelessWidget {
+class GroupBuyingCard extends ConsumerWidget {
   final ProductListItem item;
 
   const GroupBuyingCard({super.key, required this.item});
 
   @override
-  Widget build(BuildContext context) {
-    // ---  Data Processing & Fallbacks ---
-
-    // 1. Progress (Null-safe, defaults to 0.0)
+  Widget build(BuildContext context, WidgetRef ref) {
+    // --- 数据处理与兜底 ---
     final double progress = item.buyQuantityRate ?? 0.0;
-
-    // 2. Remaining percentage (Prevent negative values)
     final int remainingPercent = ((1.0 - progress) * 100).toInt().clamp(1, 100);
-
-    // 3. Total participants (Fallback priority: seqBuyQuantity -> betCount -> 0)
     final int totalJoins = item.seqBuyQuantity ?? 0;
-
-    // 4. User joined status
     final bool isJoined = item.isJoined ?? false;
-
-    // 5. Display avatars list
     final List<String> displayAvatars =
     (item.recentJoinAvatars != null && item.recentJoinAvatars!.isNotEmpty)
         ? item.recentJoinAvatars!
-        : []; // Fallback empty list
+        : [];
 
     return GestureDetector(
-      onTap: () {
-        // Navigate to product detail page
-        context.pushNamed(
+      //  核心优化：外层点击卡片跳转时，增加 await 等待路由返回
+      onTap: () async {
+        await appRouter.pushNamed(
           'productDetail',
-          pathParameters: {'id': item.treasureId},
-          // Do not auto-open group modal if already joined
+          pathParameters: {'id': item.treasureId ?? ''},
           queryParameters: {'autoOpenGroup': isJoined ? 'false' : 'true'},
         );
+
+        //  用户返回首页后，静默触发刷新
+        ref.read(homeGroupBuyingProvider.notifier).forceRefresh();
+        ref.read(homeTreasuresProvider.notifier).forceRefresh();
       },
       child: Container(
-        width: 300.w, // Fixed card width
+        width: 300.w, // 固定卡片宽度
         decoration: BoxDecoration(
           color: context.bgPrimary,
           borderRadius: BorderRadius.circular(16.r),
@@ -173,18 +168,18 @@ class GroupBuyingCard extends StatelessWidget {
               padding: EdgeInsets.all(10.w),
               child: Row(
                 children: [
-                  // Left side: Product Image
+                  // 左侧商品图
                   _buildProductImage(context),
 
                   SizedBox(width: 12.w),
 
-                  // Right side: Info Section
+                  // 右侧信息区
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        // Top Half: Title + Progress
+                        // 上半部分：标题 + 进度条
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -204,13 +199,13 @@ class GroupBuyingCard extends StatelessWidget {
                           ],
                         ),
 
-                        // Bottom Half: Avatars + Button
+                        // 下半部分：头像堆叠 + 按钮
                         Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          crossAxisAlignment: CrossAxisAlignment.end,
+                          mainAxisAlignment: MainAxisAlignment.end,
                           children: [
-                            AvatarStack(avatars: displayAvatars, total: totalJoins),
-                            _buildJoinButton(context, isJoined),
+                            //AvatarStack(avatars: displayAvatars, total: totalJoins),
+                            //  传入 ref 供按钮的点击事件使用
+                            _buildJoinButton(context, ref, item, isJoined),
                           ],
                         ),
                       ],
@@ -220,7 +215,7 @@ class GroupBuyingCard extends StatelessWidget {
               ),
             ),
 
-            // Top-left "HOT" Tag
+            // 左上角 HOT 标签
             Positioned(
               left: 0,
               top: 0,
@@ -256,7 +251,7 @@ class GroupBuyingCard extends StatelessWidget {
     );
   }
 
-  // --- Sub-components ---
+  // --- 子组件提取 ---
 
   Widget _buildProductImage(BuildContext context) {
     return Container(
@@ -286,12 +281,12 @@ class GroupBuyingCard extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Progress Bar Track
+        // 进度条轨道
         Container(
           height: 6.h,
           width: double.infinity,
           decoration: BoxDecoration(
-            color: const Color(0xFFFF8A00).withOpacity(0.2), // Fixed withOpacity
+            color: const Color(0xFFFF8A00).withOpacity(0.2),
             borderRadius: BorderRadius.circular(3.r),
           ),
           child: FractionallySizedBox(
@@ -308,7 +303,7 @@ class GroupBuyingCard extends StatelessWidget {
           ),
         ),
         SizedBox(height: 4.h),
-        // Progress Text
+        // 进度文字
         RichText(
           text: TextSpan(
             style: TextStyle(fontSize: 10.sp, fontFamily: 'Roboto'),
@@ -335,52 +330,79 @@ class GroupBuyingCard extends StatelessWidget {
     );
   }
 
-  Widget _buildJoinButton(BuildContext context, bool isJoined) {
-    return Container(
-      height: 32.h,
-      padding: EdgeInsets.symmetric(horizontal: 16.w),
-      decoration: BoxDecoration(
-        // Solid green if joined, otherwise purple gradient
-        gradient: isJoined
-            ? null
-            : const LinearGradient(
-          colors: [Color(0xFF722ED1), Color(0xFF9254DE)],
-        ),
-        color: isJoined ? const Color(0xFF52C41A) : null,
-        borderRadius: BorderRadius.circular(16.r),
-        boxShadow: [
-          if (!isJoined)
+  //  带裂变和等待刷新逻辑的按钮
+  Widget _buildJoinButton(BuildContext context, WidgetRef ref, ProductListItem item, bool isJoined) {
+    return GestureDetector(
+      onTap: () async {
+        if (isJoined && item.groupId != null) {
+          // --- 状态A：已加入 -> 瞬间拉起分享面板，极速裂变 ---
+          ShareManager.startShare(
+            context,
+            ShareContent.group(
+              id: item.treasureId ?? '',
+              groupId: item.groupId!,
+              title: item.treasureName ?? '',
+              imageUrl: item.treasureCoverImg ?? '',
+              desc: "I just joined this group! We need more people, let's win together!",
+            ),
+          );
+        } else {
+          // --- 状态B：未加入 -> 拦截等待跳转详情页 ---
+          await appRouter.pushNamed(
+            'productDetail',
+            pathParameters: {'id': item.treasureId ?? ''},
+            queryParameters: {'autoOpenGroup': 'true'},
+          );
+
+          //  从详情页返回后，静默触发刷新
+          ref.read(homeGroupBuyingProvider.notifier).forceRefresh();
+        }
+      },
+      child: Container(
+        height: 32.h,
+        padding: EdgeInsets.symmetric(horizontal: 16.w),
+        decoration: BoxDecoration(
+          // 视觉优化：已参团用高亮橙红渐变刺激分享
+          gradient: isJoined
+              ? const LinearGradient(colors: [Color(0xFFFF8A00), Color(0xFFFF4D4F)])
+              : const LinearGradient(colors: [Color(0xFF722ED1), Color(0xFF9254DE)]),
+          borderRadius: BorderRadius.circular(16.r),
+          boxShadow: [
             BoxShadow(
-              color: const Color(0xFF722ED1).withOpacity(0.3),
+              color: (isJoined ? const Color(0xFFFF4D4F) : const Color(0xFF722ED1)).withOpacity(0.3),
               blurRadius: 6,
               offset: const Offset(0, 2),
             ),
-        ],
-      ),
-      alignment: Alignment.center,
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (isJoined) ...[
-            Icon(Icons.check, size: 12.sp, color: Colors.white),
-            SizedBox(width: 4.w),
           ],
-          Text(
-            isJoined ? 'home_group.btn_joined'.tr() : 'home_group.btn_join'.tr(),
-            style: TextStyle(
+        ),
+        alignment: Alignment.center,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              isJoined ? Icons.ios_share_rounded : Icons.group_add_rounded,
+              size: 14.sp,
               color: Colors.white,
-              fontSize: 12.sp,
-              fontWeight: FontWeight.bold,
             ),
-          ),
-        ],
+            SizedBox(width: 4.w),
+            Text(
+              // 动态文案
+              isJoined ? 'Invite' : 'home_group.btn_join'.tr(),
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 12.sp,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 }
 
 // ==============================================================================
-// 3. Helper Component: AvatarStack
+// 3. 辅助组件: AvatarStack (用于渲染左下角的头像堆叠)
 // ==============================================================================
 class AvatarStack extends StatelessWidget {
   final List<String> avatars;

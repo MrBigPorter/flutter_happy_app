@@ -198,6 +198,8 @@ HotGroupItem _$HotGroupItemFromJson(Map<String, dynamic> json) => HotGroupItem(
               .toList() ??
           [],
       salesEndAt: (json['salesEndAt'] as num?)?.toInt(),
+      isJoined: json['isJoined'] as bool?,
+      groupId: json['groupId'] as String?,
     );
 
 Map<String, dynamic> _$HotGroupItemToJson(HotGroupItem instance) =>
@@ -205,6 +207,8 @@ Map<String, dynamic> _$HotGroupItemToJson(HotGroupItem instance) =>
       'treasureId': instance.treasureId,
       'treasureName': instance.treasureName,
       'treasureCoverImg': instance.treasureCoverImg,
+      'isJoined': instance.isJoined,
+      'groupId': instance.groupId,
       'unitAmount': instance.unitAmount,
       'marketAmount': instance.marketAmount,
       'buyQuantityRate': instance.buyQuantityRate,

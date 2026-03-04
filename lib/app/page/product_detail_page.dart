@@ -135,7 +135,11 @@ class _ProductDetailPageState extends ConsumerState<ProductDetailPage>
 
               SliverToBoxAdapter(
                 child: RepaintBoundary(
-                  child: GroupSection(treasureId: detail.treasureId),
+                  child: GroupSection(
+                    treasureId: detail.treasureId,
+                    item: detail,
+                    realTimeStatus: statusAsync.value,
+                  ),
                 ),
               ),
 
@@ -162,6 +166,7 @@ class _ProductDetailPageState extends ConsumerState<ProductDetailPage>
                 child: JoinTreasureBar(
                   groupId: widget.queryParams?['groupId'],
                   item: detail,
+                  realTimeStatus: statusAsync.value,
                 ),
               ),
             ),

@@ -41,12 +41,12 @@ class Api {
   }
 
   /// Treasure hot groups
-  static Future<List<HotGroupItem>> getTreasureHotGroups(int limit) async {
+  static Future<List<ProductListItem>> getTreasureHotGroups(int limit) async {
     final res = await Http.get(
       '/api/v1/treasure/hot-groups',
       query: {'limit': limit},
     );
-    return parseList<HotGroupItem>(res, (e) => HotGroupItem.fromJson(e));
+    return parseList<ProductListItem>(res, (e) => ProductListItem.fromJson(e));
   }
 
   /// Home treasure recommendations

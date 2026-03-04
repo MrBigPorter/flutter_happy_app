@@ -9,20 +9,6 @@
 * **做法**：不要在 `main.dart` 的 `loading` 状态里死等 Firebase 初始化。把涉及推送、甚至 Socket 的初始化扔到后台 `Future.microtask` 里，**让 `MyApp` 和路由第一时间先跑起来，把 UI 渲染出来**。
 
 
-* [ ] **任务 2：实现 SWR (缓存直出) 机制**
-* **涉及文件**：你存放 `homeBannerProvider`, `homeTreasuresProvider` 的相关 Repository / StateNotifier。
-* **做法**：
-1. 接口返回数据时，将 JSON 序列化存入 `SharedPreferences`。
-2. 下次打开 App 时，Provider 先读取本地缓存，如果存在直接赋给 state（此时 UI 瞬间显示上次的商品，无骨架屏）。
-3. 同步发起网络请求，拿到新数据后再静默替换 state。
-
-
-
-
-* [ ] **任务 3：骨架屏防闪烁 (Anti-Flicker)**
-* **涉及文件**：`home_page.dart` 里的 `.when` 判断
-* **做法**：如果执行了任务 2（缓存直出），那么在有缓存的情况下，直接跳过 `loading: () => HomeTreasureSkeleton()`。只有在**第一次安装 App（无缓存）**或者**网络极差超过 500ms** 时，才显示骨架屏。
-
 
 
 ---

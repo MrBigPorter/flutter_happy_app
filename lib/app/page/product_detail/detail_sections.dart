@@ -29,6 +29,8 @@ import 'package:flutter_app/ui/button/variant.dart';
 import 'package:flutter_app/ui/modal/sheet/radix_sheet.dart';
 import 'package:flutter_app/ui/toast/radix_toast.dart';
 
+import '../../../core/store/auth/auth_provider.dart';
+
 // ==========================================
 // 1. Banner Section (Image Carousel)
 // ==========================================
@@ -71,6 +73,10 @@ class CouponSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final isAuthenticated = ref.watch(authProvider.select((a) => a.isAuthenticated));
+
+    if (!isAuthenticated) return const SizedBox.shrink();
+
     final claimableAsync = ref.watch(claimableCouponsProvider);
 
     return claimableAsync.when(
@@ -406,10 +412,21 @@ class TopTreasureSection extends StatelessWidget {
 // ==========================================
 // 4. Group Section (Active Groups List)
 // ==========================================
+//
+// ==========================================
+// 4. Group Section (Active Groups List)
+// ==========================================
 class GroupSection extends ConsumerStatefulWidget {
   final String treasureId;
+  final ProductListItem item;                //  接收商品基础信息
+  final TreasureStatusModel? realTimeStatus; //  接收实时状态
 
-  const GroupSection({super.key, required this.treasureId});
+  const GroupSection({
+    super.key,
+    required this.treasureId,
+    required this.item,
+    this.realTimeStatus,
+  });
 
   @override
   ConsumerState<GroupSection> createState() => _GroupSectionState();
@@ -434,10 +451,15 @@ class _GroupSectionState extends ConsumerState<GroupSection> {
 
   @override
   Widget build(BuildContext context) {
+    final bool isOffline = (widget.realTimeStatus?.state ?? widget.item.state) == 0;
+    final int initialStockLeft = (widget.item.seqShelvesQuantity ?? 0) - (widget.item.seqBuyQuantity ?? 0);
+    final bool isSoldOut = widget.realTimeStatus?.isSoldOut ?? (initialStockLeft <= 0);
+    final bool isExpired = widget.realTimeStatus?.isExpired ?? false;
+
+
     final groupsAsync = ref.watch(groupsPreviewProvider(widget.treasureId));
 
     return groupsAsync.when(
-      // Banners 核心优化 1：无痕静默刷新！彻底消灭 15 秒闪屏一次的恶心 Bug
       skipLoadingOnRefresh: true,
       data: (groups) {
         if (groups.isEmpty) return const SizedBox.shrink();
@@ -486,7 +508,14 @@ class _GroupSectionState extends ConsumerState<GroupSection> {
                     ),
                   ),
                 ),
-                ...groups.take(2).map((item) => _buildActiveGroupItem(context, item)),
+                //  把全局状态传给每一个子 Item
+                ...groups.take(2).map((groupItem) => _buildActiveGroupItem(
+                  context,
+                  groupItem,
+                  isOffline,
+                  isSoldOut,
+                  isExpired,
+                )),
                 SizedBox(height: 8.h),
               ],
             ),
@@ -498,8 +527,17 @@ class _GroupSectionState extends ConsumerState<GroupSection> {
     );
   }
 
-  Widget _buildActiveGroupItem(BuildContext context, GroupForTreasureItem item) {
+  //  2. 深度改造子 Item，融合倒计时与全局状态
+  Widget _buildActiveGroupItem(
+      BuildContext context,
+      GroupForTreasureItem item,
+      bool isOffline,
+      bool isSoldOut,
+      bool isExpired,
+      ) {
     final int endTime = item.expireAt;
+    // 只要触发了任意一个全局不可售条件，就不能买
+    final bool canBuyGlobally = !isOffline && !isSoldOut && !isExpired;
 
     return Container(
       key: ValueKey(item.groupId),
@@ -511,6 +549,7 @@ class _GroupSectionState extends ConsumerState<GroupSection> {
       ),
       child: Row(
         children: [
+          // --- 左侧：头像 ---
           AppCachedImage(
             item.creator.avatar ?? '',
             width: 32.w,
@@ -521,6 +560,8 @@ class _GroupSectionState extends ConsumerState<GroupSection> {
             placeholder: Icon(FontAwesomeIcons.user, size: 16.w, color: Colors.white),
           ),
           SizedBox(width: 8.w),
+
+          // --- 中间：名字与差几人 ---
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -533,54 +574,80 @@ class _GroupSectionState extends ConsumerState<GroupSection> {
                 ),
                 Text(
                   '${'product_detail.short_of_prefix'.tr()}${item.maxMembers - item.currentMembers}${'product_detail.short_of_suffix'.tr()}',
-                  style: TextStyle(fontSize: 10.sp, color: const Color(0xFFFF4D4F)),
+                  style: TextStyle(
+                    fontSize: 10.sp,
+                    // 如果全局卖光了，差几人也变成灰色，不再用红色刺激用户
+                    color: canBuyGlobally ? const Color(0xFFFF4D4F) : Colors.grey,
+                  ),
                 ),
               ],
             ),
           ),
+
+          // --- 右侧：倒计时 + 按钮 ( 魔法发生在这里) ---
           Padding(
             padding: EdgeInsets.only(right: 10.w),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                CountdownTimer(
-                  endTime: endTime,
-                  widgetBuilder: (_, time) {
-                    if (time == null) return Text('product_detail.status_ended'.tr(), style: TextStyle(fontSize: 10.sp, color: context.textSecondary700));
-                    String pad(int? n) => (n ?? 0).toString().padLeft(2, '0');
-                    return Text(
-                      '${pad(time.hours)}:${pad(time.min)}:${pad(time.sec)}',
-                      style: TextStyle(
-                          fontSize: 10.sp,
-                          color: Colors.grey,
-                          fontFeatures: const [FontFeature.tabularFigures()]
+            child: CountdownTimer(
+              endTime: endTime,
+              widgetBuilder: (_, time) {
+                // time == null 意味着当前组的倒计时结束了
+                final bool isLocallyExpired = time == null;
+                // 真正的能否加入 = 全局允许买 且 本地时间没结束
+                final bool canJoin = canBuyGlobally && !isLocallyExpired;
+
+                // 动态计算按钮文案和颜色
+                String btnText = 'product_detail.btn_join'.tr();
+                Color btnColor = const Color(0xFFFF4D4F);
+
+                if (isOffline) {
+                  btnText = 'Off Shelves';
+                  btnColor = Colors.grey[400]!;
+                } else if (isSoldOut) {
+                  btnText = 'Sold Out';
+                  btnColor = Colors.grey[400]!;
+                } else if (isExpired || isLocallyExpired) {
+                  btnText = 'Ended';
+                  btnColor = Colors.grey[400]!;
+                }
+
+                String pad(int? n) => (n ?? 0).toString().padLeft(2, '0');
+
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    // 倒计时文本
+                    if (isLocallyExpired)
+                      Text('product_detail.status_ended'.tr(), style: TextStyle(fontSize: 10.sp, color: context.textSecondary700))
+                    else
+                      Text(
+                        '${pad(time.hours)}:${pad(time.min)}:${pad(time.sec)}',
+                        style: TextStyle(fontSize: 10.sp, color: Colors.grey, fontFeatures: const [FontFeature.tabularFigures()]),
                       ),
-                    );
-                  },
-                ),
-                SizedBox(height: 2.h),
-                GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onTap: () {
-                    if (DateTime.now().millisecondsSinceEpoch > item.expireAt) {
-                      ref.invalidate(groupsPreviewProvider(widget.treasureId));
-                      return;
-                    }
-                    appRouter.push('/payment?treasureId=${item.treasureId}&groupId=${item.groupId}&isGroupBuy=true');
-                  },
-                  child: Container(
-                    padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 4.h),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFF4D4F),
-                      borderRadius: BorderRadius.circular(14.r),
-                    ),
-                    child: Text(
-                      'product_detail.btn_join'.tr(),
-                      style: TextStyle(color: Colors.white, fontSize: 11.sp, fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                )
-              ],
+
+                    SizedBox(height: 2.h),
+
+                    // 加入按钮
+                    GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      //  物理阻断：如果不满足 canJoin，onTap 就是 null，点穿屏幕也没用
+                      onTap: canJoin ? () {
+                        appRouter.push('/payment?treasureId=${item.treasureId}&groupId=${item.groupId}&isGroupBuy=true');
+                      } : null,
+                      child: Container(
+                        padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 4.h),
+                        decoration: BoxDecoration(
+                          color: btnColor, //  动态颜色
+                          borderRadius: BorderRadius.circular(14.r),
+                        ),
+                        child: Text(
+                          btnText, //  动态文案
+                          style: TextStyle(color: Colors.white, fontSize: 11.sp, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    )
+                  ],
+                );
+              },
             ),
           )
         ],
@@ -588,6 +655,7 @@ class _GroupSectionState extends ConsumerState<GroupSection> {
     );
   }
 }
+
 
 // ==========================================
 // 5. Content Details (Details / Rules Tabs)

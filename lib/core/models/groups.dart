@@ -291,6 +291,9 @@ class HotGroupItem {
   final String treasureId;
   final String treasureName;
   final String treasureCoverImg;
+  final bool? isJoined; // 新增字段：当前用户是否已参与
+  final String? groupId; // 新增字段：当前用户所在的团 ID，未参与时为 ''
+
 
   // 价格相关
   @JsonKey(fromJson: JsonNumConverter.toDouble)
@@ -321,6 +324,8 @@ class HotGroupItem {
     required this.joinCount,
     required this.recentJoinAvatars,
     this.salesEndAt,
+    this.isJoined,
+    this.groupId,
   });
 
   factory HotGroupItem.fromJson(Map<String, dynamic> json) =>

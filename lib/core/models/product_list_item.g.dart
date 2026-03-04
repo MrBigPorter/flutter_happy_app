@@ -77,6 +77,7 @@ ProductListItem _$ProductListItemFromJson(Map<String, dynamic> json) =>
           recentJoinAvatars: $checkedConvert('recentJoinAvatars',
               (v) => (v as List<dynamic>?)?.map((e) => e as String).toList()),
           isJoined: $checkedConvert('isJoined', (v) => v as bool?),
+          groupId: $checkedConvert('groupId', (v) => v as String?),
         );
         return val;
       },
@@ -87,6 +88,7 @@ Map<String, dynamic> _$ProductListItemToJson(ProductListItem instance) =>
       'treasureId': instance.treasureId,
       'treasureName': instance.treasureName,
       'isJoined': instance.isJoined,
+      'groupId': instance.groupId,
       'buyQuantityRate': instance.buyQuantityRate,
       'unitAmount': JsonNumConverter.doubleToString(instance.unitAmount),
       'marketAmount': JsonNumConverter.doubleToString(instance.marketAmount),

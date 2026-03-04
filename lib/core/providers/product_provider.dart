@@ -230,13 +230,12 @@ class HomeGroupBuyingNotifier extends AsyncNotifier<List<ProductListItem>> {
   Future<List<ProductListItem>> _fetchAndCache() async {
     try {
       final hotList = await Api.getTreasureHotGroups(10);
-      final freshData = hotList.map((e) => e.toProductListItem()).toList();
       ApiCacheManager.setCache(
         _cacheKey,
-        freshData.map((e) => e.toJson()).toList(),
+          hotList
       );
-      if (state.hasValue) state = AsyncData(freshData);
-      return freshData;
+      if (state.hasValue) state = AsyncData(hotList);
+      return hotList;
     } catch (e) {
       if (!state.hasValue) rethrow;
       return state.value!;

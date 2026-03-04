@@ -55,6 +55,7 @@ import 'package:flutter_app/ui/chat/selector/contact_selection_page.dart';
 final _shellKey = GlobalKey<NavigatorState>(debugLabel: 'shell');
 // 全局路由器实例  Global router instance
 late GoRouter appRouter;
+final RouteObserver<PageRoute> routeObserver = RouteObserver<PageRoute>();
 
 /// application router
 /// Defines the application's routing structure and navigation logic.
@@ -90,6 +91,7 @@ class AppRouter {
       // 监听路由变化以关闭弹层：
       // observe route changes to close modals:
       observers: [
+        routeObserver,
         ModalManager.instance,
         ModalAutoCloseObserver(),
         BotToastNavigatorObserver()
