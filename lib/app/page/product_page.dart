@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_app/components/base_scaffold.dart';
 import 'package:flutter_app/components/list.dart';
@@ -17,17 +16,13 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:nested_scroll_view_plus/nested_scroll_view_plus.dart';
 
 /// 商品页状态 Product Page State
-/// use CustomScrollView with Slivers to achieve app bar fade out on scroll
-/// and tabs stick to top
-/// and product list below tabs
 class ProductPage extends ConsumerWidget {
   const ProductPage({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // 1. 使用 Riverpod 监听分类数据，自动处理 Loading/Error
+    // 监听分类数据，使用 SWR 机制，缓存瞬间直出
     final categoriesAsync = ref.watch(categoryProvider);
-
 
     return BaseScaffold(
       showBack: false,
@@ -39,7 +34,7 @@ class ProductPage extends ConsumerWidget {
           }
           return _ProductContent(categories: categories);
         },
-        loading: () => _ProductLoadingSkeleton(),
+        loading: () => const _ProductLoadingSkeleton(),
         error: (err, stack) => Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -80,13 +75,25 @@ class _ProductContentState extends ConsumerState<_ProductContent>
   @override
   void didUpdateWidget(covariant _ProductContent oldWidget) {
     super.didUpdateWidget(oldWidget);
-    //  优化 1: 更严谨的比较逻辑
-    // 仅仅比较 length 是不够的，如果分类 ID 变了但数量没变，会导致 Tab 显示错误
-    if (!listEquals(oldWidget.categories, widget.categories)) {
+
+    // 核心优化：深度比较 ID
+    // 防止 SWR 后台拉取新数据时，因为内存地址变更导致 TabController 强行重置
+    bool isSameCategories = _checkIfCategoriesSame(oldWidget.categories, widget.categories);
+
+    if (!isSameCategories) {
       _tabController.dispose();
       _initTabController();
       setState(() {});
     }
+  }
+
+  // 手动比对 ID 和长度，确保滑动位置绝对稳定
+  bool _checkIfCategoriesSame(List<ProductCategoryItem> oldList, List<ProductCategoryItem> newList) {
+    if (oldList.length != newList.length) return false;
+    for (int i = 0; i < oldList.length; i++) {
+      if (oldList[i].id != newList[i].id) return false;
+    }
+    return true;
   }
 
   void _initTabController() {
@@ -94,12 +101,9 @@ class _ProductContentState extends ConsumerState<_ProductContent>
       length: widget.categories.length,
       vsync: this,
     );
-    // 同步当前选中的分类到 Provider
     _tabController.addListener(() {
       if (_tabController.indexIsChanging) {
-        //final curCategory = widget.categories[_tabController.index];
-        // 注意：这会导致频繁通知，根据业务需求决定是否需要同步给 activeCategoryProvider
-        // ref.read(activeCategoryProvider.notifier).state = curCategory;
+        // ref.read(activeCategoryProvider.notifier).state = widget.categories[_tabController.index];
       }
     });
   }
@@ -116,13 +120,12 @@ class _ProductContentState extends ConsumerState<_ProductContent>
     Future<bool> onRefresh() async {
       try {
         final currentCatId = widget.categories[_tabController.index].id;
-        //  优化 2: 刷新逻辑
-        // invalidate 会导致 Provider 重置，配合 PageListController 的 requestKey 变化
-        // 或者 PageListController 内部监听了 Provider 变化，从而触发刷新
+
+        // 1. 刷新当前选中分类的列表数据
         ref.invalidate(productListProvider(currentCatId));
 
-        // 可选：如果需要在下拉时同时刷新分类配置
-        // ref.refresh(categoryProvider);
+        // 2.  使用 forceRefresh 强制且静默更新顶部分类栏，不闪白屏
+        ref.read(categoryProvider.notifier).forceRefresh();
 
         return true;
       } catch (e) {
@@ -134,7 +137,7 @@ class _ProductContentState extends ConsumerState<_ProductContent>
       onRefresh: onRefresh,
       child: NestedScrollViewPlus(
         overscrollBehavior: OverscrollBehavior.outer,
-        physics: const AlwaysScrollableScrollPhysics(), // 确保不满一屏也能下拉
+        physics: const AlwaysScrollableScrollPhysics(),
         headerSliverBuilder: (context, innerBoxIsScrolled) {
           return [
             SliverPersistentHeader(
@@ -142,12 +145,10 @@ class _ProductContentState extends ConsumerState<_ProductContent>
               delegate: LuckySliverTabBarDelegate(
                 showPersistentBg: true,
                 height: 60,
-                // 建议用 .w 适配: 60.w
                 tabs: widget.categories,
                 renderItem: (t) => Tab(text: t.name),
                 controller: _tabController,
                 onTap: (item) {
-                  // 点击 Tab 时的逻辑
                   ref.read(activeCategoryProvider.notifier).state = item;
                 },
               ),
@@ -158,7 +159,7 @@ class _ProductContentState extends ConsumerState<_ProductContent>
           controller: _tabController,
           children: widget.categories.map((category) {
             return _List(
-              //  优化 3: Key 的唯一性非常重要，确保 Tab 切换时 Element 树能正确复用或重建
+              // Key 非常重要，保证 Tab 状态复用
               key: PageStorageKey<String>('cat_${category.id}'),
               categoryId: category.id,
             );
@@ -178,7 +179,7 @@ class _List extends ConsumerStatefulWidget {
   ConsumerState<_List> createState() => _ListState();
 }
 
-/// 商品列表6. 混入 AutomaticKeepAliveClientMixin 实现页面保活
+/// 混入 AutomaticKeepAliveClientMixin 实现页面保活
 class _ListState extends ConsumerState<_List>
     with AutomaticKeepAliveClientMixin {
   late final PageListController<ProductListItem> _ctl;
@@ -256,7 +257,7 @@ class _ProductLoadingSkeleton extends StatelessWidget {
               height: 60,
               tabs: List.generate(
                 4,
-                (index) => ProductCategoryItem(id: index, name: '分类$index'),
+                    (index) => ProductCategoryItem(id: index, name: '分类$index'),
               ),
               renderItem: (t) => Skeleton.react(
                 width: 60.w,
@@ -276,7 +277,7 @@ class _ProductLoadingSkeleton extends StatelessWidget {
             padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 20.h),
             sliver: SliverGrid(
               delegate: SliverChildBuilderDelegate(
-                (context, index) =>
+                    (context, index) =>
                     RepaintBoundary(child: const ProductItemSkeleton()),
                 childCount: 10,
               ),
