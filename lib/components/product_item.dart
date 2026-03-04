@@ -11,6 +11,8 @@ import 'package:flutter_app/utils/format_helper.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_app/core/models/index.dart';
 
+import 'package:flutter_app/utils/media/remote_url_builder.dart';
+
 class ProductItem extends StatelessWidget {
   final ProductListItem data;
   final int? cardWidth;
@@ -67,7 +69,7 @@ class ProductItem extends StatelessWidget {
                 child: ClipRRect(
                   borderRadius: BorderRadius.vertical(top: Radius.circular(8.w)),
                   child: AppCachedImage(
-                    data.treasureCoverImg!,
+                    RemoteUrlBuilder.fitAbsoluteUrl(data.treasureCoverImg!,),
                     width: imgWidth!.w,
                     height: imgHeight!.h,
                     fit: BoxFit.cover,

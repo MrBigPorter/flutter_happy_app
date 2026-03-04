@@ -1,4 +1,3 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:card_swiper/card_swiper.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:extended_nested_scroll_view/extended_nested_scroll_view.dart';
@@ -15,6 +14,7 @@ import 'package:flutter_app/components/skeleton.dart';
 import 'package:flutter_app/components/swiper_banner.dart';
 import 'package:flutter_app/core/models/index.dart';
 import 'package:flutter_app/core/providers/winners_provider.dart';
+import 'package:flutter_app/ui/img/app_image.dart';
 import 'package:flutter_app/ui/lucky_tab_bar_delegate.dart';
 import 'package:flutter_app/utils/helper.dart';
 import 'package:flutter_app/utils/format_helper.dart';
@@ -23,7 +23,8 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:nested_scroll_view_plus/nested_scroll_view_plus.dart';
 
-import '../../ui/button/index.dart';
+import 'package:flutter_app/ui/button/index.dart';
+import 'package:flutter_app/utils/media/remote_url_builder.dart';
 
 /// Winners Page
 /// 1. 上半部分 header 包含 banner、total winners、latest winners
@@ -368,16 +369,12 @@ class _LatestWinnerSwiperItem extends StatelessWidget {
               ClipRRect(
                 borderRadius: BorderRadius.circular(8.w),
                 /// images
-                child: CachedNetworkImage(
-                  imageUrl: item.mainImageList!.first,
+                child: AppCachedImage(
+                   item.mainImageList!.first,
                   width: 180.w,
                   height: 120.w,
                   fit: BoxFit.cover,
-                  placeholder: (_, __) =>
-                      Skeleton.react(width: 180.w, height: 120.w),
-                  errorWidget: (_, __, ___) =>
-                      Skeleton.react(width: 180.w, height: 120.w),
-                ),
+                )
               ),
               SizedBox(height: 8.w),
               /// winner name
@@ -613,25 +610,11 @@ class _WinnerListItem extends StatelessWidget {
               ClipRRect(
                 clipBehavior: Clip.antiAlias,
                 borderRadius: BorderRadius.circular(8.w),
-                child: CachedNetworkImage(
-                  imageUrl: item.mainImageList!.first,
+                child: AppCachedImage(
+                  RemoteUrlBuilder.fitAbsoluteUrl(item.mainImageList!.first,),
                   width: 72.w,
                   height: 72.w,
                   fit: BoxFit.cover,
-                  placeholder: (_, __) {
-                    return Skeleton.react(
-                      width: 72.w,
-                      height: 72.w,
-                      borderRadius: BorderRadius.circular(8.w),
-                    );
-                  },
-                  errorWidget: (_, __, ___) {
-                    return Skeleton.react(
-                      width: 72.w,
-                      height: 72.w,
-                      borderRadius: BorderRadius.circular(8.w),
-                    );
-                  },
                 ),
               ),
               SizedBox(width: 4.w),

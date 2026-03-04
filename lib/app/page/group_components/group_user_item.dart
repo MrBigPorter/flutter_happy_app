@@ -1,12 +1,12 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_app/common.dart';
-import 'package:flutter_app/components/skeleton.dart';
 import 'package:flutter_app/core/models/groups.dart';
 import 'package:flutter_app/ui/button/index.dart';
+import 'package:flutter_app/ui/img/app_image.dart';
 import 'package:flutter_app/utils/date_helper.dart';
-import 'package:flutter_app/utils/helper.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+
+import 'package:flutter_app/utils/media/remote_url_builder.dart';
 
 class GroupUserItem extends StatefulWidget {
   final GroupMemberItem item;
@@ -66,19 +66,11 @@ class _Avatar extends StatelessWidget {
       child: Stack(
         alignment: Alignment.center,
         children: [
-          CachedNetworkImage(
-              imageUrl: avatarUrl ?? '/assets/images/avatar01.png',
+          AppCachedImage(
+              avatarUrl != null ?   RemoteUrlBuilder.fitAbsoluteUrl(avatarUrl ?? ''): '/assets/images/avatar01.png',
               width: 40.w,
               height: 40.w,
-              memCacheWidth: (40.w * ViewUtils.dpr).toInt(),
-              memCacheHeight: (40.w * ViewUtils.dpr).toInt(),
               fit: BoxFit.cover,
-              placeholder: (context, url) => Skeleton.circle(width: 40.w, height: 40.w),
-              errorWidget: (context, url, error) => CircleAvatar(
-                radius: 40.w,
-                backgroundColor: context.bgBrandSecondary,
-                child: Icon(Icons.person, size: 25.w, color: context.fgPrimary900),
-              )
           ),
           if(isOwner == 1)
             Positioned.fill(

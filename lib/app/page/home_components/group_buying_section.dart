@@ -1,16 +1,17 @@
 //  必须引入
 import 'package:easy_localization/easy_localization.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_app/ui/img/app_image.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 import 'package:visibility_detector/visibility_detector.dart';
 
 import 'package:flutter_app/core/models/product_list_item.dart';
 
-import '../../../theme/design_tokens.g.dart';
-import '../../routes/app_router.dart';
+import 'package:flutter_app/theme/design_tokens.g.dart';
+import 'package:flutter_app/utils/media/remote_url_builder.dart';
+import 'package:flutter_app/app/routes/app_router.dart';
 
 // ==============================================================================
 // 1. 主组件: GroupBuyingSection (首页调用的入口)
@@ -66,7 +67,7 @@ class GroupBuyingSection extends StatelessWidget {
                 child: Row(
                   children: [
                     Text(
-                      // 🌐 国际化：More
+                      //  国际化：More
                       'home_group.btn_more'.tr(),
                       style: TextStyle(
                         fontSize: 12.sp,
@@ -276,22 +277,11 @@ class GroupBuyingCard extends StatelessWidget {
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(12.r),
-        child: CachedNetworkImage(
-          imageUrl: item.treasureCoverImg ?? '',
+        child: AppCachedImage(
+          RemoteUrlBuilder.fitAbsoluteUrl(item.treasureCoverImg ?? ''),
           width: 90.w,
           height: 110.w,
           fit: BoxFit.cover,
-          placeholder: (_, __) => Container(
-            color: Colors.grey[200],
-            width: 90.w,
-            height: 110.w,
-          ),
-          errorWidget: (_, __, ___) => Container(
-            color: Colors.grey[200],
-            width: 90.w,
-            height: 110.w,
-            child: const Icon(Icons.broken_image, color: Colors.grey),
-          ),
         ),
       ),
     );

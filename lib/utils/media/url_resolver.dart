@@ -9,6 +9,7 @@ class UrlResolver {
     return "${AppConfig.apiBaseUrl}/api/v1/media/static-map?lat=$lat&lng=$lng";
   }
 
+
   static String resolveFile(String? path) {
     final t = MediaPath.classify(path);
     if (t == MediaPathType.empty) return '';

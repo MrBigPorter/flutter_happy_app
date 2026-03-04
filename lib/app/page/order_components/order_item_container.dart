@@ -1,14 +1,13 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_app/ui/img/app_image.dart';
 import 'package:flutter_app/ui/index.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
-// --- 你的项目引用，请根据实际路径调整 ---
 import 'package:flutter_app/app/page/order_detail_page.dart';
 import 'package:flutter_app/app/routes/app_router.dart';
 import 'package:flutter_app/common.dart';
@@ -19,8 +18,9 @@ import 'package:flutter_app/ui/button/index.dart';
 import 'package:flutter_app/ui/modal/sheet/radix_sheet.dart';
 import 'package:flutter_app/utils/date_helper.dart';
 import 'package:flutter_app/utils/format_helper.dart';
-import '../../../core/providers/order_provider.dart';
-import 'refund_request_sheet.dart'; // 刚才写的弹窗组件
+import 'package:flutter_app/core/providers/order_provider.dart';
+import 'package:flutter_app/utils/media/remote_url_builder.dart';
+import 'refund_request_sheet.dart';
 
 class OrderItemContainer extends ConsumerWidget {
   final OrderItem item;
@@ -316,14 +316,11 @@ class _OrderItemHeader extends StatelessWidget {
       children: [
         ClipRRect(
           borderRadius: BorderRadius.circular(8.w),
-          child: CachedNetworkImage(
-            imageUrl: item.treasure.treasureCoverImg,
+          child: AppCachedImage(
+            RemoteUrlBuilder.fitAbsoluteUrl(item.treasure.treasureCoverImg),
             width: 80.w,
             height: 80.w,
             fit: BoxFit.cover,
-            memCacheWidth: (80.w * MediaQuery.of(context).devicePixelRatio).round(),
-            errorWidget: (_, __, ___) => Container(color: context.borderSecondary),
-            placeholder: (_, __) => Skeleton.react(width: 80.w, height: 80.w),
           ),
         ),
         SizedBox(width: 12.w),

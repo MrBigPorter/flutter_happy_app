@@ -21,6 +21,39 @@ class RemoteUrlBuilder {
     return '${AppConfig.imgBaseUrl}/$key';
   }
 
+  /// 专门用于给完整的绝对路径（如商品图）插入 Cloudflare 缩放参数
+  static String fitAbsoluteUrl(
+      String fullUrl, {
+        int? width,
+        int? height,
+        String fit = 'cover', // cover(裁剪填满) 或 scale-down(等比缩小)
+      }) {
+    if (fullUrl.trim().isEmpty) return fullUrl;
+
+    // 如果已经被处理过，直接返回防重复拼接
+    if (fullUrl.contains('/cdn-cgi/image/')) return fullUrl;
+
+    try {
+      final uri = Uri.parse(fullUrl);
+
+      // 组装 Cloudflare 的处理参数
+      List<String> options = [];
+      if (width != null) options.add('width=$width');
+      if (height != null) options.add('height=$height');
+      options.add('fit=$fit');
+      options.add('f=auto'); // 自动转换为 webp 等高效格式
+      options.add('quality=80');
+
+      final optionsStr = options.join(',');
+
+      // 重新拼装：https://img.joyminis.com + /cdn-cgi/image/参数 + /images/xxx.png
+      return '${uri.scheme}://${uri.host}/cdn-cgi/image/$optionsStr${uri.path}';
+    } catch (e) {
+      debugPrint('图片 URL 解析失败: $e');
+      return fullUrl; // 兜底：如果出错就返回原图
+    }
+  }
+
   /// 生成带 CDN 参数的 URL
   // 直接替换 imageCdn 方法
   static String imageCdn(

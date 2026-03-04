@@ -1,19 +1,20 @@
 import 'dart:ui';
 
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_app/app/routes/app_router.dart';
 import 'package:flutter_app/common.dart';
 import 'package:flutter_app/components/render_countdown.dart';
-import 'package:flutter_app/components/skeleton.dart';
 import 'package:flutter_app/core/models/index.dart';
 import 'package:flutter_app/ui/bubble_progress.dart';
 import 'package:flutter_app/ui/button/index.dart';
+import 'package:flutter_app/ui/img/app_image.dart';
 import 'package:flutter_app/utils/format_helper.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:visibility_detector/visibility_detector.dart';
+
+import 'package:flutter_app/utils/media/remote_url_builder.dart';
 
 /// 首页未来可期 (商品列表)
 class HomeFuture extends StatelessWidget {
@@ -166,17 +167,14 @@ class ProductCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(8.r),
           child: Stack(
             children: [
-              CachedNetworkImage(
-                imageUrl: item.treasureCoverImg!,
+              AppCachedImage(
+                RemoteUrlBuilder.fitAbsoluteUrl(item.treasureCoverImg!),
                 width: 343.w,
                 height: 288.w,
                 fit: BoxFit.cover,
-                memCacheWidth: (343.w * 2).toInt(),
-                placeholder: (_, __) => Skeleton.react(width: 343.w, height: 288.w),
-                errorWidget: (_, __, ___) => Skeleton.react(width: 343.w, height: 288.w),
               ),
 
-              /// ✨ [新增] 左上角业务标签
+              ///  [新增] 左上角业务标签
               Positioned(
                 top: 10.h,
                 left: 10.w,
@@ -332,7 +330,7 @@ class _ProductInfoCardBottomState extends State<ProductInfoCardBottom> {
             // 目标时间：预售中取开始时间，否则取结束时间
             lotteryTime: isWaitingSale ? salesStart : salesEnd,
 
-            // ✨ 重点：倒计时归零时触发刷新，状态机重新计算
+            //  重点：倒计时归零时触发刷新，状态机重新计算
             onFinished: () {
               if (mounted) setState(() {});
             },

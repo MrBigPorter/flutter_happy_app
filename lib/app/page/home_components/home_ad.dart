@@ -1,11 +1,12 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_app/components/skeleton.dart';
 import 'package:flutter_app/core/models/clickable_resource.dart';
+import 'package:flutter_app/ui/img/app_image.dart';
 import 'package:flutter_app/utils/jump_helper.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_app/core/models/index.dart';
+
+import 'package:flutter_app/utils/media/remote_url_builder.dart';
 
 /// 首页广告位 Home Ad
 /// 包含单图广告、三图广告等模块 including single-image ad, three-image ad, etc.
@@ -151,18 +152,10 @@ class AdImage extends StatelessWidget {
       },
       child: ClipRRect(
         borderRadius: BorderRadius.circular(8.r),
-        child: CachedNetworkImage(
-          imageUrl: src,
-          fit: fit,
+        child: AppCachedImage(
+          RemoteUrlBuilder.fitAbsoluteUrl(src),
           width: width.w,
           height: height.h,
-          placeholder: (_, __) =>
-              Skeleton.react(width: width.w, height: height.h),
-          errorWidget: (_, __, ___) => Container(
-            color: const Color(0x11000000),
-            alignment: Alignment.center,
-            child: Icon(CupertinoIcons.photo, size: 32.w, color: Colors.grey),
-          ),
         ),
       ),
     );

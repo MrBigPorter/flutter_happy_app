@@ -136,7 +136,7 @@ class _HorizontalAnimatedItemState extends State<HorizontalAnimatedItem>
           _startAnimation(isFast: info.visibleFraction > 0.8);
         }
       },
-      // ✨ 性能优化：动画执行期间独立 Layer
+      //  性能优化：动画执行期间独立 Layer
       child: RepaintBoundary(
         child: widget.child
             .animate(controller: _controller, autoPlay: false)
