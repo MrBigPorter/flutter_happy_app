@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 import 'package:cross_file/cross_file.dart';
@@ -13,12 +14,16 @@ class PlatformAssetStore implements AssetStore {
 
   @override
   Future<void> init() async {
+    if (kIsWeb) return;
+
     final dir = await getApplicationDocumentsDirectory();
     _docPath = dir.path;
   }
 
   @override
   Future<void> saveFile(XFile source, String fileName, String subDir) async {
+    if (kIsWeb) return;
+
     final targetDir = Directory(p.join(_docPath, subDir));
     if (!targetDir.existsSync()) targetDir.createSync(recursive: true);
     final targetPath = p.join(targetDir.path, fileName);
@@ -26,11 +31,16 @@ class PlatformAssetStore implements AssetStore {
   }
 
   @override
-  bool existsSync(String fullPath) =>
-      fullPath.isNotEmpty && File(fullPath).existsSync();
+  bool existsSync(String fullPath) {
+    if (kIsWeb) return true;
+
+    return fullPath.isNotEmpty && File(fullPath).existsSync();
+  }
 
   @override
   Future<String?> getCachedAvatarPath(String key) async {
+    if (kIsWeb) return null;
+
     final dir = await getTemporaryDirectory();
     final path = p.join(dir.path, 'group_avatars', '$key.png');
     return File(path).existsSync() ? path : null;
@@ -38,6 +48,8 @@ class PlatformAssetStore implements AssetStore {
 
   @override
   Future<void> saveAvatar(String key, Uint8List bytes) async {
+    if (kIsWeb) return;
+
     final dir = await getTemporaryDirectory();
     final avatarDir = Directory(p.join(dir.path, 'group_avatars'));
     if (!avatarDir.existsSync()) avatarDir.createSync(recursive: true);
