@@ -2,7 +2,9 @@ import 'dart:async';
 import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
-import 'package:universal_html/html.dart' as html;
+
+// Optimization: Replaced universal_html with package:web for WASM compatibility
+import 'package:web/web.dart' as web;
 
 import 'package:open_filex/open_filex.dart';
 import 'package:path_provider/path_provider.dart';
@@ -96,9 +98,12 @@ class FileDownloadService {
     }
   }
 
-  /// Handles Web platform file downloads by creating a virtual anchor element.
+  /// Handles Web platform file downloads by creating a virtual HTML anchor element.
+  /// Fully WASM compatible using package:web.
   void _downloadWeb(String url, {String? fileName}) {
-    final anchor = html.AnchorElement(href: url);
+    // Safely cast the created element to HTMLAnchorElement
+    final anchor = web.document.createElement('a') as web.HTMLAnchorElement;
+    anchor.href = url;
 
     // Open in a new tab for Blobs or PDFs to prevent immediate UI navigation.
     anchor.target = '_blank';
@@ -116,7 +121,12 @@ class FileDownloadService {
     }
 
     anchor.download = finalName;
+
+    // WASM Best Practice: Temporarily append to DOM to ensure the click event
+    // is registered properly by strict browsers, then remove it.
+    web.document.body?.appendChild(anchor);
     anchor.click();
+    anchor.remove();
   }
 
   /// Opens a local file using system-default applications (Native platforms).

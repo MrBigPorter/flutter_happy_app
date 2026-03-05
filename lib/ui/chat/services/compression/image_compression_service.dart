@@ -1,10 +1,13 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
+import 'dart:js_interop'; // Required for WASM byte and callback conversions
 import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
-import 'package:universal_html/html.dart' as html;
+
+// Optimization: Replaced universal_html with package:web for WASM compatibility
+import 'package:web/web.dart' as web;
 
 class ImageCompressionService {
   /// Compresses images for network upload.
@@ -40,29 +43,47 @@ class ImageCompressionService {
   }
 
   /// Extracts a video frame on Web using the browser's Canvas API.
-  /// Architectural Fix: Uses (video as dynamic) to bypass iOS compilation errors
-  /// while maintaining cross-platform compatibility.
+  /// Fully WASM compatible using package:web.
   static Future<Uint8List?> captureWebVideoFrame(String blobUrl) async {
     if (!kIsWeb) return null;
     final completer = Completer<Uint8List?>();
+
     try {
-      final video = html.VideoElement()
+      final video = web.HTMLVideoElement()
         ..src = blobUrl
         ..crossOrigin = 'anonymous'
         ..muted = true;
 
-      video.onLoadedData.listen((_) async {
-        // Defensive Logic: Cast to dynamic to access videoWidth/Height
-        // without triggering strict type checks in iOS builds.
-        final int vW = (video as dynamic).videoWidth;
-        final int vH = (video as dynamic).videoHeight;
+      video.onLoadedData.listen((_) {
+        final int vW = video.videoWidth;
+        final int vH = video.videoHeight;
 
-        final canvas = html.CanvasElement(width: vW ~/ 2, height: vH ~/ 2);
-        canvas.context2D.drawImageScaled(video, 0, 0, canvas.width!, canvas.height!);
+        final canvas = web.HTMLCanvasElement()
+          ..width = vW ~/ 2
+          ..height = vH ~/ 2;
 
-        final blob = await canvas.toBlob('image/jpeg', 0.7);
-        final reader = html.FileReader()..readAsArrayBuffer(blob);
-        reader.onLoadEnd.listen((_) => completer.complete(reader.result as Uint8List?));
+        final context = canvas.getContext('2d') as web.CanvasRenderingContext2D;
+
+        // Draw the video frame onto the canvas
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+        // Convert canvas to Blob asynchronously
+        // toJS is required for passing Dart callbacks to JS in WASM
+        canvas.toBlob((web.Blob? blob) {
+          if (blob == null) {
+            completer.complete(null);
+            return;
+          }
+
+          final reader = web.FileReader();
+          reader.readAsArrayBuffer(blob);
+
+          reader.onLoadEnd.listen((_) {
+            // Safely cast JSAny to JSArrayBuffer, then convert to Dart Uint8List
+            final result = reader.result as JSArrayBuffer?;
+            completer.complete(result?.toDart.asUint8List());
+          });
+        }.toJS, 'image/jpeg', 0.7.toJS);
       });
 
       video.onError.listen((_) => completer.complete(null));
@@ -70,6 +91,7 @@ class ImageCompressionService {
     } catch (e) {
       completer.complete(null);
     }
+
     return completer.future.timeout(const Duration(seconds: 5), onTimeout: () => null);
   }
 
@@ -78,15 +100,19 @@ class ImageCompressionService {
     final Completer<XFile> completer = Completer();
     try {
       final bytes = await file.readAsBytes();
-      final blob = html.Blob([bytes]);
-      final url = html.Url.createObjectUrlFromBlob(blob);
-      final img = html.ImageElement()..src = url;
+
+      // package:web requires wrapping the byte array into a JS array
+      final blob = web.Blob([bytes.toJS].toJS);
+      final url = web.URL.createObjectURL(blob);
+      final img = web.HTMLImageElement()..src = url;
+
       await img.onLoad.first;
 
-      int w = img.naturalWidth ?? 0;
-      int h = img.naturalHeight ?? 0;
+      int w = img.naturalWidth;
+      int h = img.naturalHeight;
+
       if (w == 0 || h == 0) {
-        html.Url.revokeObjectUrl(url);
+        web.URL.revokeObjectURL(url);
         return file;
       }
 
@@ -97,24 +123,30 @@ class ImageCompressionService {
         h = (h * ratio).round();
       }
 
-      final canvas = html.CanvasElement(width: w, height: h);
-      canvas.context2D
-        ..imageSmoothingEnabled = true
-        ..imageSmoothingQuality = 'high'
-        ..drawImageScaled(img, 0, 0, w, h);
+      final canvas = web.HTMLCanvasElement()
+        ..width = w
+        ..height = h;
 
-      canvas.toBlob('image/jpeg', quality).then((blob) {
-        html.Url.revokeObjectUrl(url);
+      final context = canvas.getContext('2d') as web.CanvasRenderingContext2D;
+      context.imageSmoothingEnabled = true;
+      context.imageSmoothingQuality = 'high';
+      context.drawImage(img, 0, 0, w, h);
 
-        // Generate a new Blob URL for the XFile to ensure UI accessibility.
-        final newUrl = html.Url.createObjectUrlFromBlob(blob);
+      // Async Blob conversion for WASM compatibility
+      canvas.toBlob((web.Blob? outBlob) {
+        web.URL.revokeObjectURL(url);
 
-        completer.complete(XFile(
-            newUrl,
-            name: file.name.replaceAll(RegExp(r'\.[^.]+$'), '.jpg'),
-            mimeType: 'image/jpeg'
-        ));
-      });
+        if (outBlob != null) {
+          final newUrl = web.URL.createObjectURL(outBlob);
+          completer.complete(XFile(
+              newUrl,
+              name: file.name.replaceAll(RegExp(r'\.[^.]+$'), '.jpg'),
+              mimeType: 'image/jpeg'
+          ));
+        } else {
+          completer.complete(file);
+        }
+      }.toJS, 'image/jpeg', quality.toJS);
     } catch (e) {
       completer.complete(file);
     }

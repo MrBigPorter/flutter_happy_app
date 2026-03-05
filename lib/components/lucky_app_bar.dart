@@ -81,23 +81,19 @@ class _Title extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (title == null) {
-      return Center(
-        child: Image.asset(
-          'assets/images/logo.png',
-          height: 32.h,
-        ),
-      );
-    }
+
+    final String displayTitle = title ?? "JoyMini";
+
 
     return Align(
       alignment: Alignment.center,
       child: Text(
         title.toString(),
         style: TextStyle(
-          fontSize: 16.w,
-          fontWeight: FontWeight.w800,
+          fontSize: 18.w,
+          fontWeight: FontWeight.w900,
           color: context.textPrimary900,
+          letterSpacing: -0.5,
         ),
       ),
     );

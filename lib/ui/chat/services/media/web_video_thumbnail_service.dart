@@ -1,11 +1,14 @@
 import 'dart:async';
 import 'dart:typed_data';
-import 'dart:ui' as ui;
-import 'package:universal_html/html.dart' as html;
+import 'dart:js_interop'; // Required for WASM JSAny/JSArrayBuffer conversions
 import 'package:flutter/foundation.dart';
+
+// Optimization: Replaced universal_html with package:web for WASM compatibility
+import 'package:web/web.dart' as web;
 
 class WebVideoThumbnailService {
   /// Extracts a JPEG thumbnail from video bytes specifically for Web environments.
+  /// Fully WASM compatible using package:web.
   /// [atSeconds]: The timestamp from which to capture the frame.
   /// [maxWidth]: The target width for the resulting thumbnail.
   static Future<Uint8List?> extractJpegThumb(
@@ -22,10 +25,11 @@ class WebVideoThumbnailService {
     String? blobUrl;
 
     try {
-      final blob = html.Blob([videoBytes]);
-      blobUrl = html.Url.createObjectUrlFromBlob(blob);
+      // Wrap Uint8List into a JS Array for strict WASM memory boundaries
+      final blob = web.Blob([videoBytes.toJS].toJS);
+      blobUrl = web.URL.createObjectURL(blob);
 
-      final video = html.VideoElement()
+      final video = web.HTMLVideoElement()
         ..src = blobUrl
         ..crossOrigin = 'anonymous'
         ..muted = true
@@ -41,10 +45,10 @@ class WebVideoThumbnailService {
         await video.onSeeked.first;
       }
 
-      // Architectural Fix: Cast to dynamic to bypass iOS compilation checks.
-      // This circumvents missing properties in universal_html mock classes.
-      final int vW = (video as dynamic).videoWidth;
-      final int vH = (video as dynamic).videoHeight;
+      // Architectural Clean-up: package:web handles cross-platform types natively,
+      // so the old (video as dynamic) cast hack for iOS is completely removed.
+      final int vW = video.videoWidth;
+      final int vH = video.videoHeight;
 
       if (vW == 0 || vH == 0) {
         throw Exception("Video dimensions resolved as zero");
@@ -59,24 +63,44 @@ class WebVideoThumbnailService {
         targetH = (vH * ratio).round();
       }
 
-      final canvas = html.CanvasElement(width: targetW, height: targetH);
-      canvas.context2D.drawImageScaled(video, 0, 0, targetW, targetH);
+      final canvas = web.HTMLCanvasElement()
+        ..width = targetW
+        ..height = targetH;
 
-      final outBlob = await canvas.toBlob('image/jpeg', quality);
-      final reader = html.FileReader();
-      reader.readAsArrayBuffer(outBlob);
-      reader.onLoadEnd.listen((_) {
-        completer.complete(reader.result as Uint8List?);
-      });
+      final context = canvas.getContext('2d') as web.CanvasRenderingContext2D;
+
+      // Draw the extracted frame onto the canvas
+      context.drawImage(video, 0, 0, targetW, targetH);
+
+      // Async Blob conversion for WASM
+      // .toJS proxy wraps the Dart callback into a JS function
+      canvas.toBlob((web.Blob? outBlob) {
+        if (outBlob == null) {
+          completer.complete(null);
+          return;
+        }
+
+        final reader = web.FileReader();
+        reader.readAsArrayBuffer(outBlob);
+
+        reader.onLoadEnd.listen((_) {
+          // Safely cast JSAny to JSArrayBuffer, then convert to Dart Uint8List
+          final result = reader.result as JSArrayBuffer?;
+          completer.complete(result?.toDart.asUint8List());
+        });
+      }.toJS, 'image/jpeg', quality.toJS);
 
     } catch (e) {
       debugPrint("[WebVideoThumbnailService] Extraction failed: $e");
       completer.complete(null);
     } finally {
       // Resource Management: Revoke Blob URL to prevent memory leaks.
-      if (blobUrl != null) {
-        html.Url.revokeObjectUrl(blobUrl);
-      }
+      // We wait for the future to complete since canvas.toBlob is callback-based.
+      completer.future.whenComplete(() {
+        if (blobUrl != null) {
+          web.URL.revokeObjectURL(blobUrl);
+        }
+      });
     }
 
     return completer.future;

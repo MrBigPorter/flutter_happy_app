@@ -1,17 +1,23 @@
 import 'dart:async';
+import 'dart:js_interop'; // Required for WASM JS conversions
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
-import 'deposit_result_page.dart';
 
-// 优化 1：使用 universal_html 解决移动端编译报错问题
-import 'package:universal_html/html.dart' as html;
+// Optimization 1: Use package:web to support both mobile compilation and WASM
+import 'package:web/web.dart' as web;
+
+import 'deposit_result_page.dart';
 
 class PaymentWebViewPage extends StatefulWidget {
   final String url;
   final String orderNo;
 
-  const PaymentWebViewPage({super.key, required this.url, required this.orderNo});
+  const PaymentWebViewPage({
+    super.key,
+    required this.url,
+    required this.orderNo,
+  });
 
   @override
   State<PaymentWebViewPage> createState() => _PaymentWebViewPageState();
@@ -20,10 +26,14 @@ class PaymentWebViewPage extends StatefulWidget {
 class _PaymentWebViewPageState extends State<PaymentWebViewPage> {
   InAppWebViewController? _webViewController;
   double _progress = 0;
-  String _pageTitle = "Payment";
-  html.WindowBase? _popupWindow;
+  final String _pageTitle = "Payment";
+
+  // Use web.Window for WASM compatibility
+  web.Window? _popupWindow;
   Timer? _checkTimer;
-  StreamSubscription? _messageSubscription; // 优化 2：消息监听器
+
+  // Optimization 2: Message listener using package:web EventStream
+  StreamSubscription<web.MessageEvent>? _messageSubscription;
 
   @override
   void initState() {
@@ -32,21 +42,24 @@ class _PaymentWebViewPageState extends State<PaymentWebViewPage> {
 
   @override
   void dispose() {
+    // Release resources
     _checkTimer?.cancel();
-    _messageSubscription?.cancel(); // 释放资源
+    _messageSubscription?.cancel();
     super.dispose();
   }
 
-  // Web 端专用：监听支付窗口状态和消息
+  /// Web specific: Monitor payment window status and messages
   void _startWebCheck() {
     _checkTimer?.cancel();
     _messageSubscription?.cancel();
 
-    // A. 监听 postMessage (支付成功页传回的信号)
-    _messageSubscription = html.window.onMessage.listen((event) {
-      print("Received message from payment window: ${event.data}");
-      // 这里的 'payment_success' 是你 success.html 里定义的字符串
-      if (event.data == 'payment_success') {
+    // A. Listen for postMessage (signal returned from the payment success page)
+    _messageSubscription = web.window.onMessage.listen((web.MessageEvent event) {
+      // Use dartify() to convert JSAny? to a Dart object safely in WASM
+      final data = event.data?.dartify();
+
+      // 'payment_success' is the string defined in your success.html
+      if (data == 'payment_success') {
         _messageSubscription?.cancel();
         _checkTimer?.cancel();
         _popupWindow?.close();
@@ -54,9 +67,9 @@ class _PaymentWebViewPageState extends State<PaymentWebViewPage> {
       }
     });
 
-    // B. 兜底：监听窗口是否被手动关闭
+    // B. Fallback: Check if the window was manually closed by the user
     _checkTimer = Timer.periodic(const Duration(seconds: 2), (timer) {
-      if (_popupWindow != null && _popupWindow!.closed == true) {
+      if (_popupWindow != null && _popupWindow!.closed) {
         timer.cancel();
         _goToResult();
       }
@@ -77,14 +90,14 @@ class _PaymentWebViewPageState extends State<PaymentWebViewPage> {
               javaScriptEnabled: true,
               domStorageEnabled: true,
               useShouldOverrideUrlLoading: true,
-              // 使用 Pixel 7 UA 避开部分风控
+              // Use Pixel 7 UA to bypass certain risk controls
               userAgent: "Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Mobile Safari/537.36",
             ),
             onWebViewCreated: (controller) => _webViewController = controller,
             onProgressChanged: (_, p) => setState(() => _progress = p / 100),
             shouldOverrideUrlLoading: (controller, navigationAction) async {
               final urlString = navigationAction.request.url.toString();
-              // 移动端拦截逻辑
+              // Mobile interception logic
               if (urlString.contains('wallet/recharge/success')) {
                 _goToResult();
                 return NavigationActionPolicy.CANCEL;
@@ -107,11 +120,15 @@ class _PaymentWebViewPageState extends State<PaymentWebViewPage> {
           children: [
             const CircularProgressIndicator(),
             const SizedBox(height: 24),
-            const Text("Waiting for payment to complete...",
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            const Text(
+              "Waiting for payment to complete...",
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 12),
-            const Text("Payment window opened in a new tab",
-                style: TextStyle(color: Colors.grey)),
+            const Text(
+              "Payment window opened in a new tab",
+              style: TextStyle(color: Colors.grey),
+            ),
             const SizedBox(height: 32),
             ElevatedButton.icon(
               icon: const Icon(Icons.open_in_new),
@@ -129,8 +146,8 @@ class _PaymentWebViewPageState extends State<PaymentWebViewPage> {
   }
 
   void _openWebPayment() {
-    // 使用 window.open 保持引用
-    html.window.location.href = widget.url;
+    // Open in a new tab/window and maintain the reference
+    _popupWindow = web.window.open(widget.url, '_blank');
     _startWebCheck();
   }
 

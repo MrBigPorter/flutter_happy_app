@@ -10,7 +10,6 @@
 	<string>JoyMini</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
-	<key>CFBundleGetInfoString</key>
 	<key>CFBundleIdentifier</key>
 	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
 	<key>CFBundleInfoDictionaryVersion</key>
@@ -61,7 +60,7 @@
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Lucky needs access to the microphone for audio/video calls and recording voice messages.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
-	<string>This app requires permission to save photos and images from your chats to your device's library.</string>
+	<string>This app requires permission to save photos and images from your chats to your device&apos;s library.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>This app requires access to your photo library to let you share photos and videos with your contacts.</string>
 	<key>UIApplicationSupportsIndirectInputEvents</key>

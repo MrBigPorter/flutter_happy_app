@@ -1,3 +1,13 @@
+import java.util.Properties
+import java.io.FileInputStream
+
+// 1. 在 android 块的最上方，增加读取 key.properties 的逻辑
+val keystoreProperties = Properties()
+val keystorePropertiesFile = rootProject.file("key.properties")
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(FileInputStream(keystorePropertiesFile))
+}
+
 plugins {
     id("com.android.application")
     id("kotlin-android")
@@ -35,9 +45,31 @@ android {
         compose = true
     }
 
+    // 2. 新增签名配置块
+        signingConfigs {
+            // 创建一个名为 "release" 的签名配置
+            create("release") {
+                keyAlias = keystoreProperties.getProperty("keyAlias")
+                keyPassword = keystoreProperties.getProperty("keyPassword")
+                storePassword = keystoreProperties.getProperty("storePassword")
+                val stFile = keystoreProperties.getProperty("storeFile")
+                if (stFile != null) {
+                    storeFile = project.file(stFile)
+                }
+            }
+        }
+
     buildTypes {
         release {
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("release") [cite: 4]
+
+            isMinifyEnabled = false
+            isShrinkResources = false
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
+            //signingConfig = signingConfigs.getByName("debug")
         }
     }
 }
