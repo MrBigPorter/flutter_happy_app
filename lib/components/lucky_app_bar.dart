@@ -84,11 +84,10 @@ class _Title extends StatelessWidget {
 
     final String displayTitle = title ?? "JoyMini";
 
-
     return Align(
       alignment: Alignment.center,
       child: Text(
-        title.toString(),
+        displayTitle.toString(),
         style: TextStyle(
           fontSize: 18.w,
           fontWeight: FontWeight.w900,
