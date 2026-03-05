@@ -473,14 +473,19 @@ class LocalDatabaseService {
   }
 
   Future<void> _syncGlobalBadge() async {
+    //  Web 隔离：浏览器没有手机桌面角标的概念，直接退出！
+    if (kIsWeb) return;
+
     try {
       final db = await database;
       final snapshots = await _conversationStore.find(db);
       int total = 0;
-      for (var snap in snapshots)
+      for (var snap in snapshots) {
         total += (snap.value['unreadCount'] as int?) ?? 0;
-      if (await AppBadgePlus.isSupported())
+      }
+      if (await AppBadgePlus.isSupported()) {
         total > 0 ? AppBadgePlus.updateBadge(total) : AppBadgePlus.updateBadge(0);
+      }
     } catch (_) {}
   }
 

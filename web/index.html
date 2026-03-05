@@ -1,52 +1,104 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <!--
-    If you are serving your web app in a path other than the root, change the
-    href value below to reflect the base path you are serving from.
+    <base href="$FLUTTER_BASE_HREF">
+    <meta charset="UTF-8">
+    <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+    <meta name="description" content="JoyMini Web App">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-title" content="JoyMini">
+    <link rel="apple-touch-icon" href="icons/Icon-192.png">
+    <link rel="icon" type="image/png" href="favicon.png"/>
+    <title>JoyMini</title>
+    <link rel="manifest" href="manifest.json">
 
-    The path provided below has to start and end with a slash "/" in order for
-    it to work correctly.
+    <style>
+        body {
+            background-color: #F8F9FA;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+        .joymini-loader-wrapper {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            width: 100vw;
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 9999;
+        }
+        .app-icon-anim {
+            width: 100px;
+            height: 100px;
+            background-image: url("assets/images/app_icon.png");
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+            animation: breath 2s ease-in-out infinite;
+        }
+        .loading-text {
+            margin-top: 24px;
+            color: #FF5722;
+            font-family: 'Inter', sans-serif;
+            font-size: 16px;
+            font-weight: 600;
+            letter-spacing: 1px;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
 
-    For more details:
-    * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
-
-    This is a placeholder for base href that will be replaced by the value of
-    the `--base-href` argument provided to `flutter build`.
-  -->
-  <base href="$FLUTTER_BASE_HREF">
-
-  <meta charset="UTF-8">
-  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="A new Flutter project.">
-
-  <!-- iOS meta tags & icons -->
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="flutter_app">
-  <link rel="apple-touch-icon" href="icons/Icon-192.png">
-
-  <!-- Favicon -->
-  <link rel="icon" type="image/png" href="favicon.png"/>
-
-  <title>JoyMini - Win Together</title>
-  <link rel="manifest" href="manifest.json">
-
-  <style>
-    html, body {
-      margin: 0;
-      padding: 0;
-      /* 改成和你 app 的 scaffoldBackgroundColor 一样的颜色 */
-      background-color: #F3F3F3;  /* 比如你的 TokensLight.bgMobilePrimary */
-    }
-
-    /* 可选：让 flutter-canvas 不留白边 */
-    body {
-      overflow: hidden;
-    }
-  </style>
+        @keyframes breath {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.15); }
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 0.5; }
+            50% { opacity: 1; }
+        }
+    </style>
 </head>
 <body>
-  <script src="flutter_bootstrap.js" async></script>
+
+<div class="joymini-loader-wrapper" id="joymini-loader">
+    <div class="app-icon-anim"></div>
+    <div class="loading-text">JoyMini is starting...</div>
+</div>
+
+<script src="flutter_bootstrap.js" async></script>
+
+<script>
+    const observer = new MutationObserver(function(mutations) {
+        for (let mutation of mutations) {
+            if (mutation.addedNodes.length > 0) {
+                for (let node of mutation.addedNodes) {
+                    //  关键修复：加入对最新 <flutter-view> 标签的捕获！
+                    if (node.tagName === 'FLUTTER-VIEW' ||
+                        node.tagName === 'FLT-GLASS-PANE' ||
+                        node.tagName === 'FLT-SCENE-HOST') {
+
+                        let loader = document.getElementById('joymini-loader');
+                        if (loader) {
+                            // 给 0.5 秒的渐隐过度，掩盖 Flutter 引擎初始化的微小闪烁
+                            loader.style.transition = "opacity 0.5s ease-out";
+                            loader.style.opacity = "0";
+                            setTimeout(() => {
+                                loader.remove(); // 彻底从内存中铲除！
+                            }, 500);
+                        }
+                        observer.disconnect(); // 任务完成，停止监控
+                        return;
+                    }
+                }
+            }
+        }
+    });
+    // 让监控器盯紧 <body> 标签
+    observer.observe(document.body, { childList: true, subtree: true });
+</script>
+
 </body>
 </html>

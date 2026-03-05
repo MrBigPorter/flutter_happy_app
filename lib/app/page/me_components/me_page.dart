@@ -109,7 +109,7 @@ class _MePageState extends ConsumerState<MePage> {
               child: RepaintBoundary(
                 child: Padding(
                   padding: EdgeInsets.symmetric(horizontal: 16.w),
-                  child: _MenuArea(),
+                  child: _MenuArea(isAuthenticated:isAuthenticated),
                 ),
               ),
             ),

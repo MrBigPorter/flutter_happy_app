@@ -8,7 +8,9 @@ import 'package:cross_file/cross_file.dart';
 
 import 'asset_store.dart';
 import '../../ui/chat/models/chat_ui_model.dart';
-import 'asset_store_mobile.dart' if (dart.library.html) 'asset_store_web.dart';
+import 'asset_store_mobile.dart'
+  if (dart.library.js_interop) 'asset_store_web.dart'
+  if (dart.library.html) 'asset_store_web.dart';
 
 class AssetManager {
   AssetManager._();

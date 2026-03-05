@@ -380,6 +380,11 @@ class _WalletArea extends StatelessWidget {
 
 /// Grid layout for additional tools (Withdraw, History, Support, Settings, Redeem)
 class _MenuArea extends ConsumerWidget {
+
+  final bool isAuthenticated;
+
+  const _MenuArea({required this.isAuthenticated});
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     // Defines the grid items and their respective actions
@@ -423,6 +428,10 @@ class _MenuArea extends ConsumerWidget {
           color: context.fgSecondary700,
         ),
         onTap: () async {
+          if(!isAuthenticated) {
+            appRouter.push('/login');
+            return;
+          }
           CustomerServiceHelper.startChat();
         },
       ),

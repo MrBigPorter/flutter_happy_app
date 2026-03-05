@@ -125,7 +125,12 @@ class AppBootstrap {
       await Firebase.initializeApp(
         options: DefaultFirebaseOptions.currentPlatform,
       );
-      FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+
+      //  核心修改：只有在【非 Web】平台才注册这个后台处理函数
+      if (!kIsWeb) {
+        FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+      }
+
       debugPrint("[Firebase] Core initialized.");
     } catch (e) {
       debugPrint("[Firebase] Init failed: $e");
