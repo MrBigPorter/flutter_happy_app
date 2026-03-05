@@ -20,6 +20,7 @@ class GroupForTreasureItem {
 
   final int currentMembers;
   final int maxMembers;
+  final bool? isJoined; // 新增：当前用户是否已参与
 
   // 新增：过期时间戳 (毫秒)，倒计时全靠它
   @JsonKey(defaultValue: 0)
@@ -49,6 +50,7 @@ class GroupForTreasureItem {
     required this.createdAt,
     required this.creator,
     required this.members,
+    this.isJoined,
     this.treasure,
   });
 
@@ -56,6 +58,7 @@ class GroupForTreasureItem {
     int? currentMembers,
     int? groupStatus,
     num? updatedAt,
+    bool? isJoined,
   }) {
     return GroupForTreasureItem(
       groupId: groupId,
@@ -69,6 +72,7 @@ class GroupForTreasureItem {
       creator: creator,
       members: members,
       treasure: treasure,
+      isJoined: isJoined ?? this.isJoined,
     );
   }
 

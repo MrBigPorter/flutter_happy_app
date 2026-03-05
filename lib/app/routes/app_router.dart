@@ -31,7 +31,7 @@ import 'package:flutter_app/ui/chat/contact_search_page.dart';
 import 'package:flutter_app/ui/chat/group/group_member_select_page.dart';
 import 'package:flutter_app/ui/chat/new_friend_page.dart';
 import 'package:flutter_app/app/page/deposit_detail_page.dart';
-import 'package:flutter_app/app/page/group_lobby_page.dart';
+import 'package:flutter_app/app/page/group_lobby/group_lobby_page.dart';
 import 'package:flutter_app/app/page/guide_page.dart';
 import 'package:flutter_app/app/page/home_page.dart';
 import 'package:flutter_app/app/page/product_page.dart';

@@ -34,6 +34,7 @@ GroupForTreasureItem _$GroupForTreasureItemFromJson(
                           GroupMemberItem.fromJson(e as Map<String, dynamic>))
                       .toList() ??
                   []),
+          isJoined: $checkedConvert('isJoined', (v) => v as bool?),
           treasure: $checkedConvert(
               'treasure',
               (v) => v == null
@@ -52,6 +53,7 @@ Map<String, dynamic> _$GroupForTreasureItemToJson(
       'groupStatus': instance.groupStatus,
       'currentMembers': instance.currentMembers,
       'maxMembers': instance.maxMembers,
+      'isJoined': instance.isJoined,
       'expireAt': instance.expireAt,
       'updatedAt': instance.updatedAt,
       'createdAt': instance.createdAt,

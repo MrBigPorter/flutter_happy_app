@@ -477,9 +477,11 @@ class _GroupSectionState extends ConsumerState<GroupSection> {
                   behavior: HitTestBehavior.opaque,
                   onTap: () {
                     if (widget.treasureId.isNotEmpty) {
+                      // 从商品详情页进，带上当前商品ID，看这个商品的大厅
                       appRouter.pushNamed('product-groups-detail', queryParameters: {'treasureId': widget.treasureId});
                     } else {
-                      appRouter.pushNamed('groups');
+                      // 兜底防错，去全局大厅
+                      appRouter.pushNamed('product-groups-detail');
                     }
                   },
                   child: Padding(

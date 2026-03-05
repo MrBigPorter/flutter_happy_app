@@ -63,7 +63,7 @@ class GroupBuyingSection extends StatelessWidget {
               // 更多按钮
               GestureDetector(
                 onTap: () {
-                  appRouter.pushNamed('groups');
+                  appRouter.pushNamed('product-groups-detail');
                 },
                 child: Row(
                   children: [
