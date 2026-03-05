@@ -11,6 +11,8 @@ import 'package:flutter_app/ui/modal/draggable/draggable_scrollable_scaffold.dar
 import 'package:flutter_app/app/page/transaction/transaction_ui_model.dart';
 import 'package:flutter_app/common.dart';
 
+import 'package:flutter_app/core/services/customer_service/customer_service_helper.dart';
+
 class TransactionHistoryDetailPage extends ConsumerWidget {
   final TransactionUiModel item;
   final VoidCallback? onClose;
@@ -177,7 +179,7 @@ class TransactionHistoryDetailPage extends ConsumerWidget {
                 // 底部帮助
                 TextButton.icon(
                   onPressed: () {
-                    // TODO: 客服逻辑
+                    CustomerServiceHelper.startChat();
                   },
                   style: TextButton.styleFrom(
                     foregroundColor: context.textSecondary700,

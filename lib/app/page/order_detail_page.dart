@@ -19,7 +19,8 @@ import 'package:flutter_app/utils/date_helper.dart';
 import 'package:flutter_app/components/swiper_banner.dart';
 import 'package:flutter_app/ui/index.dart';
 
-import '../../core/store/config_store.dart';
+import 'package:flutter_app/core/services/customer_service/customer_service_helper.dart';
+import 'package:flutter_app/core/store/config_store.dart';
 
 class OrderDetailPage extends ConsumerStatefulWidget {
   final String orderId;
@@ -278,6 +279,18 @@ class _AnimatedHeaderState extends ConsumerState<AnimatedHeader> {
             trailing: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
+                // 新增：官方客服入口
+                CircleAvatar(
+                  backgroundColor: context.bgPrimary.withValues(alpha: 0.8 * iconBgOpacity),
+                  child: IconButton(
+                    icon: Icon(Icons.headset_mic_outlined, color: context.fgSecondary700),
+                    onPressed: () {
+                      // 极其优雅的 1 行代码调用
+                      CustomerServiceHelper.startChat();
+                    },
+                  ),
+                ),
+                SizedBox(width: 8.w), // 间距
                 if (widget.imageList.isNotEmpty)
                   CircleAvatar(
                     backgroundColor: context.bgPrimary.withValues(alpha: 0.8 * iconBgOpacity),

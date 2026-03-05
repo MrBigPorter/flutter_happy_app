@@ -1,6 +1,5 @@
 part of 'me_page.dart';
 
-
 /// Displays user avatar and active vouchers when authenticated
 class _LoginTopArea extends StatelessWidget {
   @override
@@ -235,11 +234,11 @@ class _OrderArea extends StatelessWidget {
 
   /// Helper to build individual order status icons
   Widget _buildOrderItem(
-      BuildContext context,
-      IconData icon,
-      String label, {
-        required VoidCallback onTap,
-      }) => InkWell(
+    BuildContext context,
+    IconData icon,
+    String label, {
+    required VoidCallback onTap,
+  }) => InkWell(
     onTap: onTap,
     child: Column(
       children: [
@@ -302,7 +301,8 @@ class _WalletArea extends StatelessWidget {
                 title: 'common.treasureCoins'.tr(),
                 value: balance.coinBalance,
                 actionText: 'Details',
-                onTap: () => RadixToast.info('Treasure Coins details coming soon!'),
+                onTap: () =>
+                    RadixToast.info('Treasure Coins details coming soon!'),
               ),
             ],
           ),
@@ -313,12 +313,12 @@ class _WalletArea extends StatelessWidget {
 
   /// Helper to build balance cards (Real balance / Coins)
   Widget _buildBalanceCard(
-      BuildContext context, {
-        required String title,
-        required double value,
-        required String actionText,
-        required VoidCallback onTap,
-      }) {
+    BuildContext context, {
+    required String title,
+    required double value,
+    required String actionText,
+    required VoidCallback onTap,
+  }) {
     return Expanded(
       child: InkWell(
         onTap: onTap,
@@ -385,111 +385,106 @@ class _MenuArea extends ConsumerWidget {
     // Defines the grid items and their respective actions
     final List<({String text, Widget icon, VoidCallback onTap})> menuItems = [
       (
-      text: 'common.withdraw'.tr(),
-      icon: Icon(
-        Icons.account_balance_wallet_outlined,
-        size: 26.w,
-        color: context.fgSecondary700,
-      ),
-      onTap: () => appRouter.push('/me/wallet/withdraw'),
+        text: 'common.withdraw'.tr(),
+        icon: Icon(
+          Icons.account_balance_wallet_outlined,
+          size: 26.w,
+          color: context.fgSecondary700,
+        ),
+        onTap: () => appRouter.push('/me/wallet/withdraw'),
       ),
       // NEW: Deposit History Entry
       (
-      text: 'common.deposit.history'.tr(),
-      icon: Icon(
-        Icons.history_outlined,
-        size: 26.w,
-        color: context.fgSecondary700,
-      ),
-      onTap: () => appRouter.push('/me/wallet/transaction/record?tab=deposit'),
+        text: 'common.deposit.history'.tr(),
+        icon: Icon(
+          Icons.history_outlined,
+          size: 26.w,
+          color: context.fgSecondary700,
+        ),
+        onTap: () =>
+            appRouter.push('/me/wallet/transaction/record?tab=deposit'),
       ),
       // NEW: Withdraw History Entry
       (
-      text: 'common.withdraw.history'.tr(),
-      icon: Icon(
-        Icons.receipt_long_outlined,
-        size: 26.w,
-        color: context.fgSecondary700,
-      ),
-      onTap: () => appRouter.push('/me/wallet/transaction/record?tab=withdraw'),
-      ),
-      (
-      text: 'common.customer.service'.tr(),
-      icon: Icon(
-        Icons.headset_mic_outlined,
-        size: 26.w,
-        color: context.fgSecondary700,
-      ),
-      onTap: () async {
-        // Creates or fetches Direct Chat with Customer Service
-        final conversation = await ref
-            .read(createDirectChatControllerProvider.notifier)
-            .createDirectChat(kOfficialServiceId);
-
-        if (conversation != null && context.mounted) {
-          appRouter.push('/chat/room/${conversation.conversationId}');
-        }
-      },
+        text: 'common.withdraw.history'.tr(),
+        icon: Icon(
+          Icons.receipt_long_outlined,
+          size: 26.w,
+          color: context.fgSecondary700,
+        ),
+        onTap: () =>
+            appRouter.push('/me/wallet/transaction/record?tab=withdraw'),
       ),
       (
-      text: 'Redeem',
-      icon: Icon(
-        CupertinoIcons.gift,
-        size: 26.w,
-        color: context.fgSecondary700,
+        text: 'common.customer.service'.tr(),
+        icon: Icon(
+          Icons.headset_mic_outlined,
+          size: 26.w,
+          color: context.fgSecondary700,
+        ),
+        onTap: () async {
+          CustomerServiceHelper.startChat();
+        },
       ),
-      onTap: () {
-        final TextEditingController controller = TextEditingController();
+      (
+        text: 'Redeem',
+        icon: Icon(
+          CupertinoIcons.gift,
+          size: 26.w,
+          color: context.fgSecondary700,
+        ),
+        onTap: () {
+          final TextEditingController controller = TextEditingController();
 
-        RadixModal.show(
-          title: 'Redeem Promo Code',
-          confirmText: 'Redeem',
-          cancelText: 'Cancel',
-          builder: (ctx, close) {
-            return Padding(
-              padding: EdgeInsets.only(top: 8.w, bottom: 4.w),
-              child: CupertinoTextField(
-                controller: controller,
-                placeholder: 'Enter code (e.g. LUCKY2026)',
-                textCapitalization: TextCapitalization.characters,
-                padding: EdgeInsets.all(12.w),
-                decoration: BoxDecoration(
-                  color: context.bgSecondary,
-                  border: Border.all(color: context.borderPrimary),
-                  borderRadius: BorderRadius.circular(8.r),
+          RadixModal.show(
+            title: 'Redeem Promo Code',
+            confirmText: 'Redeem',
+            cancelText: 'Cancel',
+            builder: (ctx, close) {
+              return Padding(
+                padding: EdgeInsets.only(top: 8.w, bottom: 4.w),
+                child: CupertinoTextField(
+                  controller: controller,
+                  placeholder: 'Enter code (e.g. LUCKY2026)',
+                  textCapitalization: TextCapitalization.characters,
+                  padding: EdgeInsets.all(12.w),
+                  decoration: BoxDecoration(
+                    color: context.bgSecondary,
+                    border: Border.all(color: context.borderPrimary),
+                    borderRadius: BorderRadius.circular(8.r),
+                  ),
+                  style: TextStyle(
+                    fontSize: 14.sp,
+                    fontWeight: FontWeight.w600,
+                    color: context.textPrimary900,
+                  ),
                 ),
-                style: TextStyle(
-                  fontSize: 14.sp,
-                  fontWeight: FontWeight.w600,
-                  color: context.textPrimary900,
-                ),
-              ),
-            );
-          },
-          onConfirm: (close) async {
-            final code = controller.text.trim();
-            if (code.isEmpty) return;
+              );
+            },
+            onConfirm: (close) async {
+              final code = controller.text.trim();
+              if (code.isEmpty) return;
 
-            try {
-              // Wait for API result while RadixModal handles loading state
-              final message = await ref
-                  .read(couponActionProvider.notifier)
-                  .redeem(code);
+              try {
+                // Wait for API result while RadixModal handles loading state
+                final message = await ref
+                    .read(couponActionProvider.notifier)
+                    .redeem(code);
 
-              close();
-              RadixToast.success(message);
-            } catch (e) {
-              debugPrint('Redeem failed: $e');
-              RadixToast.error('Invalid or expired code');
-            }
-          },
-        );
-      },
+                close();
+                RadixToast.success(message);
+              } catch (e) {
+                debugPrint('Redeem failed: $e');
+                RadixToast.error('Invalid or expired code');
+              }
+            },
+          );
+        },
       ),
       (
-      text: 'common.setting'.tr(),
-      icon: _buildIcon(context, 'assets/images/setting.svg'),
-      onTap: () => appRouter.push('/setting'),
+        text: 'common.setting'.tr(),
+        icon: _buildIcon(context, 'assets/images/setting.svg'),
+        onTap: () => appRouter.push('/setting'),
       ),
     ];
 

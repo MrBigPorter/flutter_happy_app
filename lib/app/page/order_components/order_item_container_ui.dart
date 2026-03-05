@@ -104,21 +104,33 @@ class _OrderItemStatusHeader extends StatelessWidget {
               fontFamily: 'Monospace',
             ),
           ),
-          Container(
-            padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 2.w),
-            decoration: BoxDecoration(
-              color: bgColor,
-              borderRadius: BorderRadius.circular(4.w),
-            ),
-            child: Text(
-              text,
-              style: TextStyle(
-                fontSize: 10.sp,
-                fontWeight: FontWeight.bold,
-                color: textColor,
-              ),
-            ),
-          ),
+         Row(
+           children: [
+             //  新增：轻量级客服小图标
+             GestureDetector(
+               onTap: () => CustomerServiceHelper.startChat(),
+               child: Padding(
+                 padding: EdgeInsets.symmetric(horizontal: 8.w),
+                 child: Icon(Icons.headset_mic_outlined, size: 16.w, color: context.textTertiary600),
+               ),
+             ),
+             Container(
+               padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 2.w),
+               decoration: BoxDecoration(
+                 color: bgColor,
+                 borderRadius: BorderRadius.circular(4.w),
+               ),
+               child: Text(
+                 text,
+                 style: TextStyle(
+                   fontSize: 10.sp,
+                   fontWeight: FontWeight.bold,
+                   color: textColor,
+                 ),
+               ),
+             ),
+           ],
+         )
         ],
       ),
     );

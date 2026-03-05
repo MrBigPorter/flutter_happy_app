@@ -24,12 +24,12 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_app/core/providers/coupon_provider.dart';
 import 'package:flutter_app/ui/modal/index.dart';
 
-import 'package:flutter_app/ui/chat/providers/conversation_provider.dart';
+
+import 'package:flutter_app/core/services/customer_service/customer_service_helper.dart';
 
 // Link to the UI part file
 part 'me_page_ui.dart';
 
-const String kOfficialServiceId = 'cmjpcff6h0001qocdwy0w8rgj';
 
 /// Main Profile Page (Me Page)
 class MePage extends ConsumerStatefulWidget {
