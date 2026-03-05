@@ -407,41 +407,30 @@ class AppRouter {
           },
         ),
       ],
-      redirect: (context,state){
-        // 1. 获取当前尝试访问的完整路径
-        final String path = state.uri.toString();
+      redirect: (context, state) {
+        final String path = state.matchedLocation;
+        final isAuthenticated = ref.read(authProvider.select((auth) => auth.isAuthenticated));
 
-        //  核心修复：拦截 luckyapp:// 开头的分享链接
-        // 只要是 luckyapp://product/ 开头，马上把它修正成内部路由 /product-detail/
-        if (path.startsWith('luckyapp://product/')) {
-          // 比如: luckyapp://product/123?groupId=abc
-          // 变成: /product/123?groupId=abc
-          final newPath = path.replaceFirst('luckyapp://product/', '/product/');
-
-          print(" 自动修正分享链接: $path -> $newPath");
+        // Handle deep link redirection for product sharing.
+        if (state.uri.toString().startsWith('luckyapp://product/')) {
+          final newPath = state.uri.toString().replaceFirst('luckyapp://product/', '/product/');
+          debugPrint("[Router] Redirecting deep link: $newPath");
           return newPath;
         }
 
-
-        // check if the user is authenticated
-        final isAuthenticated = ref.read(authProvider.select( (auth) => auth.isAuthenticated ));
-
-
-        // check if the current path requires login
+        // Check if the target route requires authentication.
         final bool needLogin = RouteAuthConfig.needLoginForPath(path);
 
-        // if the user is not authenticated and trying to access a protected route, redirect to login
-        if(needLogin && !isAuthenticated){
+        // Redirect unauthenticated users to login page for protected routes.
+        if (needLogin && !isAuthenticated) {
           return '/login';
         }
 
-        if(isAuthenticated && path == '/login'){
-          // If the user is authenticated and tries to access the login page, redirect to home
+        // Prevent authenticated users from accessing the login page.
+        if (isAuthenticated && path == '/login') {
           return '/home';
         }
 
-
-        // Add global redirect logic here
         return null;
       },
       errorPageBuilder: (context, state) {

@@ -11,79 +11,55 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../config_store.dart';
 import '../wallet_store.dart';
 
-/// 改变登录状态的 Notifier
-/// AuthNotifier - StateNotifier for authentication state management
-/// Manages AuthState and handles login, logout, and rehydration
-/// Parameters:
-/// - ref: Ref for accessing other providers
-/// - storage: TokenStorage for persisting tokens
-/// Methods:
-/// - Future<‘void’> _rehydrate(): Rehydrates state from storage
-/// - Future<‘void’> login(String access, String? refresh): Logs in user and saves tokens
-/// - Future<’void‘> logout(): Logs out user and clears tokens
-/// extends StateNotifier<‘AuthState’>
-/// constructor AuthNotifier(Ref ref, TokenStorage storage)
-/// - super(AuthState.initial())
-/// - calls _rehydrate()
-/// - final Ref ref
-/// - final TokenStorage storage
+/// AuthNotifier manages the authentication lifecycle of the application.
 class AuthNotifier extends StateNotifier<AuthState> {
   AuthNotifier(
-    this.ref,
-    this.storage,
-    String? initialAccess,
-    String? initialRefresh,
-  ) : super(
-        AuthState(
-          accessToken: initialAccess,
-          refreshToken: initialRefresh,
-          isAuthenticated: initialAccess != null,
-        ),
-      ){
-       if(initialAccess != null && initialAccess.isNotEmpty){
-         Http.setToken(initialAccess);
-         debugPrint('[Auth] ctor: initialAccess=$initialAccess');
-       }
+      this.ref,
+      this.storage,
+      String? initialAccess,
+      String? initialRefresh,
+      ) : super(
+    AuthState(
+      accessToken: initialAccess,
+      refreshToken: initialRefresh,
+      isAuthenticated: initialAccess != null,
+    ),
+  ) {
+    // Initialize HTTP client token if access token exists
+    if (initialAccess != null && initialAccess.isNotEmpty) {
+      Http.setToken(initialAccess);
+      debugPrint('[Auth] Constructor: initialAccess set');
+    }
   }
 
   final Ref ref;
   final TokenStorage storage;
 
+  /// Handles user login by storing tokens and fetching initial profile data.
   Future<void> login(String access, String? refresh) async {
-    // Set token for HTTP requests
     Http.setToken(access);
     await storage.save(access, refresh);
+
     state = state.copyWith(
       accessToken: access,
       refreshToken: refresh,
       isAuthenticated: true,
     );
 
-    //  第一步：关键路径 (Critical Path)
-    // =========================================================
-    // 必须 Await！因为没有 UserID，进入 APP 会崩 (数据库无法初始化)
-    // 这个接口通常很快 (<200ms)
+    // Critical Path: Fetch user profile synchronously to ensure UserID is available.
     await ref.read(userProvider.notifier).fetchProfile();
 
-   // =========================================================
-    // 第二步：后台加载 (Background Fetch)
-    // =========================================================
-    // 不加 await！让它们在后台悄悄跑，用户立马能跳转进首页
-    // 钱包余额和系统配置会在 1秒左右后自动刷新出来
+    // Background Tasks: Fetch non-critical data without blocking navigation.
     Future.wait<void>([
       ref.read(walletProvider.notifier).fetchBalance(),
-      ref.read(configProvider.notifier).fetchLatest(),
     ]).then((_) {
-      if(kDebugMode){
-        print('[LOGIN]==> background data loaded: wallet and config refreshed');
-      }
+      debugPrint('[Auth] Login: Background data loaded');
     }).catchError((e) {
-      if(kDebugMode){
-        print('[LOGIN]==> background data load error: $e');
-      }
+      debugPrint('[Auth] Login: Background data error: $e');
     });
   }
 
+  /// Updates current access and refresh tokens.
   void updateTokens(String access, String? refresh) {
     state = state.copyWith(
       accessToken: access,
@@ -92,12 +68,23 @@ class AuthNotifier extends StateNotifier<AuthState> {
     );
   }
 
+  /// Handles user logout by clearing tokens, closing DB, and navigating to home.
   Future<void> logout() async {
-    // Clear token for HTTP requests
+    // 1. Clear local persistence and HTTP headers
     await storage.clear();
     await Http.clearToken();
+
+    // 2. Close database services
     await LocalDatabaseService.close();
+
+    // 3. Reset authentication state
     state = AuthState.initial();
-    appRouter.replace('/home');
+
+    // 4. Navigate to home page safely.
+    // Using go() instead of replace() is more robust for cross-ShellRoute navigation.
+    // Microtask ensures navigation occurs after the current state-change build cycle.
+    Future.microtask(() => appRouter.go('/home'));
+
+    debugPrint('[Auth] Logout: State reset and navigating to home');
   }
 }

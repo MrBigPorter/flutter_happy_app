@@ -18,13 +18,12 @@ import '../../theme/theme_provider.dart';
 import 'kyc_status_page.dart';
 
 enum SettingRowType {
-  profile,            // 个人资料
-  kyc,                // 实名认证
-  address,            // 地址管理
-  darkModeSwitch,     // 黑夜模式
-  notificationSwitch, // 消息通知
-  language,           // 多语言设定
-  normal,             // 普通选项（预留）
+  profile,
+  kyc,
+  address,
+  darkModeSwitch,
+  notificationSwitch,
+  language,
 }
 
 class RowItem {
@@ -32,11 +31,7 @@ class RowItem {
   final String title;
   final SettingRowType type;
 
-  const RowItem({
-    required this.icon,
-    required this.title,
-    required this.type,
-  });
+  const RowItem({required this.icon, required this.title, required this.type});
 }
 
 class SettingPage extends ConsumerStatefulWidget {
@@ -78,9 +73,11 @@ class _SettingPageState extends ConsumerState<SettingPage> {
   @override
   void initState() {
     super.initState();
-    // 每次进入设置页面，刷新 KYC 状态
+    // Only fetch KYC status if authenticated to avoid 401 errors.
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.refresh(kycMeProvider);
+      if (ref.read(authProvider).isAuthenticated) {
+        ref.refresh(kycMeProvider);
+      }
     });
   }
 
@@ -90,19 +87,13 @@ class _SettingPageState extends ConsumerState<SettingPage> {
       title: "common.setting".tr(),
       body: ListView.separated(
         padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 20.h),
-        separatorBuilder: (_, __) => Divider(
-          height: 1.h,
-          color: context.borderSecondary,
-          thickness: 1.h,
-        ),
+        separatorBuilder: (_, __) =>
+            Divider(height: 1.h, color: context.borderSecondary),
         itemCount: items.length,
-        itemBuilder: (context, index) {
-          final item = items[index];
-          return Padding(
-            padding: EdgeInsets.symmetric(vertical: 14.h),
-            child: _SettingRowWidget(item: item),
-          );
-        },
+        itemBuilder: (context, index) => Padding(
+          padding: EdgeInsets.symmetric(vertical: 14.h),
+          child: _SettingRowWidget(item: items[index]),
+        ),
       ),
       bottomNavigationBar: const _BottomNavigationBar(),
     );
@@ -115,110 +106,90 @@ class _SettingRowWidget extends ConsumerWidget {
   const _SettingRowWidget({required this.item});
 
   void _handleTap(BuildContext context, WidgetRef ref, SettingRowType type) {
-    if (type == SettingRowType.profile || type == SettingRowType.address || type == SettingRowType.kyc) {
-      final isAuthenticated = ref.read(authProvider).isAuthenticated;
-      if (!isAuthenticated) {
-         appRouter.push('/login');
+    // Auth Guard for specific actions.
+    if ([
+      SettingRowType.profile,
+      SettingRowType.address,
+      SettingRowType.kyc,
+    ].contains(type)) {
+      if (!ref.read(authProvider).isAuthenticated) {
+        appRouter.push('/login');
         return;
       }
     }
 
     switch (type) {
       case SettingRowType.profile:
-      // 个人资料暂未完成，优雅拦截
-        RadixToast.info("Profile editing coming soon!");
+        RadixToast.info("Feature coming soon");
         break;
-
       case SettingRowType.address:
-        RadixSheet.show(
-          builder: (context, close) => const AddressList(),
-        );
+        RadixSheet.show(builder: (context, close) => const AddressList());
         break;
-
       case SettingRowType.kyc:
-      // 简化 KYC 逻辑，直接取 valueOrNull 安全判定
         final kycStatus = ref.read(kycMeProvider).valueOrNull?.kycStatus ?? 0;
         final statusCode = KycStatusEnum.fromStatus(kycStatus);
-
         if (statusCode == KycStatusEnum.draft) {
           appRouter.push('/me/kyc/verify');
         } else {
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (ctx) => const KycStatusPage(),
-            ),
-          );
+          Navigator.of(
+            context,
+          ).push(MaterialPageRoute(builder: (_) => const KycStatusPage()));
         }
         break;
-
-      case SettingRowType.darkModeSwitch:
-      case SettingRowType.notificationSwitch:
-      // switch 不走 tap
-        break;
-
       case SettingRowType.language:
         _showLangSheet(context);
         break;
-        case SettingRowType.normal:
-        // 预留普通选项的点击事件
+      default:
         break;
     }
   }
 
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => _handleTap(context, ref, item.type),
+        child: _RowContent(item: item),
+      ),
+    );
+  }
+
+  // Simplified language picker.
   Future<void> _showLangSheet(BuildContext context) async {
     final cur = context.locale.languageCode;
-
     final picked = await showCupertinoModalPopup<String>(
       context: context,
-      builder: (sheetCtx) => CupertinoActionSheet(
+      builder: (ctx) => CupertinoActionSheet(
         actions: [
           CupertinoActionSheetAction(
-            onPressed: () => Navigator.pop(sheetCtx, 'en'),
-            child: Text(cur == 'en' ? 'English  ✓' : 'English'),
+            onPressed: () => Navigator.pop(ctx, 'en'),
+            child: Text(cur == 'en' ? 'English ✓' : 'English'),
           ),
           CupertinoActionSheetAction(
-            onPressed: () => Navigator.pop(sheetCtx, 'tl'),
-            child: Text(cur == 'tl' ? 'Tagalog  ✓' : 'Tagalog'),
+            onPressed: () => Navigator.pop(ctx, 'tl'),
+            child: Text(cur == 'tl' ? 'Tagalog ✓' : 'Tagalog'),
           ),
         ],
         cancelButton: CupertinoActionSheetAction(
-          onPressed: () => Navigator.pop(sheetCtx),
+          onPressed: () => Navigator.pop(ctx),
           child: Text('common.cancel'.tr()),
         ),
       ),
     );
-
-    if (picked != null && picked != cur) {
+    if (picked != null && picked != cur)
       await context.setLocale(Locale(picked));
-    }
-  }
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final clickable = item.type != SettingRowType.darkModeSwitch &&
-        item.type != SettingRowType.notificationSwitch;
-
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: clickable ? () => _handleTap(context, ref, item.type) : null,
-        child: _RowItemWidget(item: item),
-      ),
-    );
   }
 }
 
-class _RowItemWidget extends ConsumerWidget {
+class _RowContent extends ConsumerWidget {
   final RowItem item;
 
-  const _RowItemWidget({required this.item});
+  const _RowContent({required this.item});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final right = _buildRight(context, ref, item.type);
-    final showChevron = item.type != SettingRowType.darkModeSwitch &&
-        item.type != SettingRowType.notificationSwitch;
-
     return Row(
       children: [
         Icon(item.icon, color: context.fgPrimary900, size: 24.w),
@@ -234,127 +205,63 @@ class _RowItemWidget extends ConsumerWidget {
           ),
         ),
         if (right != null) right,
-        if (showChevron) ...[
-          SizedBox(width: 10.w),
-          Icon(
-            Icons.chevron_right,
-            color: context.fgSecondary700,
-            size: 24.w,
-          ),
-        ]
+        SizedBox(width: 10.w),
+        Icon(Icons.chevron_right, color: context.fgSecondary700, size: 24.w),
       ],
     );
   }
 
-  int _toInt(dynamic v, {int fallback = 0}) {
-    if (v == null) return fallback;
-    if (v is int) return v;
-    return int.tryParse(v.toString()) ?? fallback;
-  }
-
   Widget? _buildRight(
-      BuildContext context,
-      WidgetRef ref,
-      SettingRowType type,
-      ) {
+    BuildContext context,
+    WidgetRef ref,
+    SettingRowType type,
+  ) {
     switch (type) {
       case SettingRowType.kyc:
-        final isAuthenticated =
-        ref.watch(authProvider.select((v) => v.isAuthenticated));
-        if (!isAuthenticated) return null;
-
-        final kycMeProviderData = ref.watch(kycMeProvider);
-        final rawStatus = kycMeProviderData.maybeWhen(
-          data: (data) => data.kycStatus,
-          orElse: () => null,
+        if (!ref.watch(authProvider).isAuthenticated)
+          return Text(
+            'Login to view',
+            style: TextStyle(color: context.textSecondary700, fontSize: 14.sp),
+          );
+        final status = KycStatusEnum.fromStatus(
+          ref.watch(kycMeProvider).valueOrNull?.kycStatus ?? 0,
         );
-        final statusCode = _toInt(rawStatus, fallback: 0);
-        final statusEnum = KycStatusEnum.fromStatus(statusCode);
-
-        return _KycRight(status: statusEnum);
-
-      case SettingRowType.darkModeSwitch:
-        final themeMode = ref.watch(themeModeProvider);
-        final isDarkMode = themeMode == ThemeMode.dark;
-        return CupertinoSwitch(
-          value: isDarkMode,
-          onChanged: (_) {
-            ref.read(themeModeProvider.notifier).toggleThemeMode();
-          },
-        );
-
-      case SettingRowType.notificationSwitch:
-        return CupertinoSwitch(
-          value: false,
-          onChanged: (bool value) {
-            // TODO
-          },
-        );
-
+        return _KycStatusLabel(status: status);
       case SettingRowType.language:
         return Text(
           context.locale.languageCode == 'en' ? 'English' : 'Tagalog',
-          style: TextStyle(
-            color: context.textSecondary700,
-            fontSize: 14.sp,
-          ),
+          style: TextStyle(color: context.textSecondary700, fontSize: 14.sp),
         );
-
-      case SettingRowType.profile:
-      case SettingRowType.address:
-      case SettingRowType.normal:
+      case SettingRowType.darkModeSwitch:
+        return CupertinoSwitch(
+          value: ref.watch(themeModeProvider) == ThemeMode.dark,
+          onChanged: (_) =>
+              ref.read(themeModeProvider.notifier).toggleThemeMode(),
+        );
+      default:
         return null;
     }
   }
 }
 
-class _KycRight extends StatelessWidget {
+class _KycStatusLabel extends StatelessWidget {
   final KycStatusEnum status;
 
-  const _KycRight({required this.status});
-
-  String _labelText(BuildContext context, KycStatusEnum s) {
-    switch (s) {
-      case KycStatusEnum.draft:
-        return 'Draft';
-      case KycStatusEnum.reviewing:
-        return 'Reviewing';
-      case KycStatusEnum.rejected:
-        return 'Rejected';
-      case KycStatusEnum.needMore:
-        return 'Need more';
-      case KycStatusEnum.approved:
-        return 'Approved';
-      default:
-        return 'Unknown';
-    }
-  }
-
-  Color _labelColor(BuildContext context, KycStatusEnum s) {
-    switch (s) {
-      case KycStatusEnum.draft:
-        return context.textErrorPrimary600;
-      case KycStatusEnum.reviewing:
-        return context.utilityBrand200;
-      case KycStatusEnum.rejected:
-        return context.utilityError200;
-      case KycStatusEnum.needMore:
-        return context.utilityBlue200;
-      case KycStatusEnum.approved:
-        return context.utilityGreen200;
-      default:
-        return context.utilityGray200;
-    }
-  }
+  const _KycStatusLabel({required this.status});
 
   @override
   Widget build(BuildContext context) {
-    final text = _labelText(context, status);
-    final color = _labelColor(context, status);
-
+    final colors = {
+      KycStatusEnum.draft: context.textErrorPrimary600,
+      KycStatusEnum.approved: context.utilityGreen200,
+    };
     return Text(
-      text,
-      style: TextStyle(color: color, fontSize: 14.sp, fontWeight: FontWeight.w600),
+      status.name,
+      style: TextStyle(
+        color: colors[status] ?? context.utilityGray200,
+        fontSize: 14.sp,
+        fontWeight: FontWeight.bold,
+      ),
     );
   }
 }
@@ -364,9 +271,7 @@ class _BottomNavigationBar extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final isAuthenticated = ref.watch(authProvider.select((v) => v.isAuthenticated));
-    if (!isAuthenticated) return const SizedBox.shrink(); // 未登录不显示退出按钮
-
+    final auth = ref.watch(authProvider);
     return SafeArea(
       child: Padding(
         padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 20.h),
@@ -374,16 +279,19 @@ class _BottomNavigationBar extends ConsumerWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Button(
-              backgroundColor: context.buttonPrimaryErrorBg,
+              backgroundColor: auth.isAuthenticated
+                  ? context.buttonPrimaryErrorBg
+                  : context.utilityBrand500,
               width: double.infinity,
-              height: 48.h, // 稍微拉高一点，点起来更舒服
+              height: 48.h,
               radius: 8.r,
-              onPressed: () {
-                ref.read(authProvider.notifier).logout();
-                appRouter.go('/'); // 退出后自动跳回首页
-              },
+              onPressed: () => auth.isAuthenticated
+                  ? ref.read(authProvider.notifier).logout()
+                  : appRouter.push('/login'),
               child: Text(
-                'common.logout'.tr(),
+                auth.isAuthenticated
+                    ? 'common.logout'.tr()
+                    : 'common.login'.tr(),
                 style: TextStyle(
                   color: context.textWhite,
                   fontSize: 16.sp,
@@ -394,11 +302,7 @@ class _BottomNavigationBar extends ConsumerWidget {
             SizedBox(height: 12.h),
             Text(
               'version 1.0.0',
-              style: TextStyle(
-                color: context.textPrimary900,
-                fontSize: 12.sp,
-                fontWeight: FontWeight.w600,
-              ),
+              style: TextStyle(color: context.textPrimary900, fontSize: 12.sp),
             ),
           ],
         ),
