@@ -10,11 +10,8 @@ import 'package:flutter_app/ui/img/app_image.dart';
 import 'package:flutter_app/utils/format_helper.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_app/core/models/index.dart';
-
 import 'package:flutter_app/utils/media/remote_url_builder.dart';
 
-/// Product Item Card
-/// 增加了 FittedBox 防爆盾，完美解决多端设备上的 Right Overflow 问题
 class ProductItem extends StatelessWidget {
   final ProductListItem data;
   final int? cardWidth;
@@ -24,7 +21,7 @@ class ProductItem extends StatelessWidget {
   const ProductItem({
     super.key,
     required this.data,
-    this.cardWidth = 157,
+    this.cardWidth = 157, // 虽然保留参数防报错，但内部已不再使用硬编码宽度
     this.imgWidth = 157,
     this.imgHeight = 157,
   });
@@ -42,6 +39,7 @@ class ProductItem extends StatelessWidget {
 
     return Container(
       key: ValueKey(data.treasureId),
+      //  核心优化：去掉了 width: cardWidth!.w，让外界来决定大小
       decoration: BoxDecoration(
         color: context.bgPrimary,
         borderRadius: BorderRadius.circular(8.r),
@@ -56,7 +54,7 @@ class ProductItem extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // --- 1. 图片区域 (严防死守 1:1) ---
+          // 1. 顶部正方形图片
           AspectRatio(
             aspectRatio: 1,
             child: Stack(
@@ -66,7 +64,7 @@ class ProductItem extends StatelessWidget {
                 ClipRRect(
                   borderRadius: BorderRadius.vertical(top: Radius.circular(8.r)),
                   child: AppCachedImage(
-                    RemoteUrlBuilder.fitAbsoluteUrl(data.treasureCoverImg!),
+                    RemoteUrlBuilder.fitAbsoluteUrl(data.treasureCoverImg ?? ''),
                     fit: BoxFit.cover,
                   ),
                 ),
@@ -80,89 +78,87 @@ class ProductItem extends StatelessWidget {
             ),
           ),
 
-          // --- 2. 信息区域 ---
+          // 2. 底部信息区 (魔法等比缩放盒)
           Expanded(
-            child: Padding(
-              // 稍微调小一点左右 Padding，给文字留足呼吸空间
-              padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 8.h),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: [
-                  // 标题 (原生支持换行和省略号，不用包 FittedBox)
-                  Text(
-                    data.treasureName ?? '',
-                    textAlign: TextAlign.center,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 12.sp, // 稍微缩小一点基准字号
-                      fontWeight: FontWeight.w700,
-                      color: context.textPrimary900,
-                      height: 1.2,
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                //  神奇的防拥挤魔法：如果在 iPad 上装不下，整个内容自动等比例微缩！
+                return FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.topCenter,
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      maxWidth: constraints.maxWidth, // 必须限制宽度，确保标题能自动换行
                     ),
-                  ),
-
-                  // 价格 (防爆盾 1 号)
-                  FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: Text(
-                      FormatHelper.formatCurrency(data.unitAmount, symbol: "₱"),
-                      style: TextStyle(
-                        fontSize: 16.sp,
-                        fontWeight: FontWeight.w900,
-                        color: context.utilityBrand500,
-                      ),
-                    ),
-                  ),
-
-                  // 进度条及文字 (防爆盾 2 号)
-                  Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      BubbleProgress(
-                        value: rate,
-                        showTip: false,
-                        color: context.utilityBrand500,
-                        trackHeight: 4,
-                      ),
-                      SizedBox(height: 2.h),
-                      FittedBox(
-                        fit: BoxFit.scaleDown,
-                        child: Text(
-                          'common.sold.upperCase'.tr(namedArgs: {'number': (rate ?? 0).toStringAsFixed(0)}),
-                          style: TextStyle(fontSize: 10.sp, color: context.textPrimary900),
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  // 倒计时
-                  _buildCountdownSection(context, isWaitingSale, isSoldOut, isExpired, salesStart, salesEnd),
-
-                  // 按钮 (防爆盾 3 号)
-                  SizedBox(
-                    height: 28.h,
-                    width: double.infinity,
-                    child: Button(
-                      backgroundColor: (isWaitingSale || isSoldOut || isExpired) ? context.buttonSecondaryBg : context.utilityBrand500,
-                      foregroundColor: (isWaitingSale || isSoldOut || isExpired) ? context.textPrimary900 : context.textWhite,
-                      onPressed: () {
-                        appRouter.pushNamed('productDetail', pathParameters: {'id': data.treasureId});
-                      },
-                      child: FittedBox(
-                        fit: BoxFit.scaleDown,
-                        child: Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 4.w),
-                          child: Text(
-                            isWaitingSale ? 'common.pre_sale'.tr() : 'common.enter.now'.tr(),
-                            style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.bold),
+                    child: Padding(
+                      // 完美的呼吸感间距，在手机上完美复刻 UI，在 iPad 上等比微缩
+                      padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 8.w),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Text(
+                            data.treasureName ?? '',
+                            textAlign: TextAlign.center,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 12.sp,
+                              fontWeight: FontWeight.w700,
+                              color: context.textPrimary900,
+                              height: 1.2,
+                            ),
                           ),
-                        ),
+                          SizedBox(height: 8.w),
+                          FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text(
+                              FormatHelper.formatCurrency(data.unitAmount, symbol: "₱"),
+                              style: TextStyle(
+                                fontSize: 16.sp,
+                                fontWeight: FontWeight.w900,
+                                color: context.utilityBrand500,
+                              ),
+                            ),
+                          ),
+                          SizedBox(height: 8.w),
+                          BubbleProgress(
+                            value: rate,
+                            showTip: false,
+                            color: context.utilityBrand500,
+                            trackHeight: 4,
+                          ),
+                          SizedBox(height: 4.w),
+                          Text(
+                            'common.sold.upperCase'.tr(namedArgs: {'number': (rate ?? 0).toStringAsFixed(0)}),
+                            textAlign: TextAlign.center,
+                            style: TextStyle(fontSize: 10.sp, color: context.textPrimary900),
+                          ),
+                          SizedBox(height: 8.w),
+                          _buildCountdownSection(context, isWaitingSale, isSoldOut, isExpired, salesStart, salesEnd),
+                          SizedBox(height: 12.w),
+                          SizedBox(
+                            height: 32.h, // 恢复成胶囊形大按钮
+                            child: Button(
+                              paddingY: 0,
+                              paddingX: 0,
+                              backgroundColor: (isWaitingSale || isSoldOut || isExpired) ? context.buttonSecondaryBg : context.utilityBrand500,
+                              foregroundColor: (isWaitingSale || isSoldOut || isExpired) ? context.textPrimary900 : context.textWhite,
+                              onPressed: () {
+                                appRouter.pushNamed('productDetail', pathParameters: {'id': data.treasureId ?? ''});
+                              },
+                              child: Text(
+                                isWaitingSale ? 'common.pre_sale'.tr() : 'common.enter.now'.tr(),
+                                style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
-                ],
-              ),
+                );
+              },
             ),
           ),
         ],
@@ -190,27 +186,16 @@ class ProductItem extends StatelessWidget {
     );
   }
 
-  // 状态文字 (防爆盾 4 号)
   Widget _statusText(String label, String value, {bool isError = false}) {
     return Column(
-      mainAxisSize: MainAxisSize.min,
       children: [
-        FittedBox(
-          fit: BoxFit.scaleDown,
-          child: Text(
-            label,
-            style: TextStyle(fontSize: 10.sp, color: Colors.grey[600]),
-          ),
-        ),
-        FittedBox(
-          fit: BoxFit.scaleDown,
-          child: Text(
-            value,
-            style: TextStyle(
-              fontSize: 11.sp,
-              fontWeight: FontWeight.w800,
-              color: isError ? Colors.redAccent : Colors.black,
-            ),
+        Text(label, style: TextStyle(fontSize: 10.sp, color: Colors.grey[600])),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 11.sp,
+            fontWeight: FontWeight.w800,
+            color: isError ? Colors.redAccent : Colors.black,
           ),
         ),
       ],
@@ -220,18 +205,13 @@ class ProductItem extends StatelessWidget {
   Widget _buildTag(String text, Color color) {
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.9),
-        borderRadius: BorderRadius.circular(4.r),
-      ),
-      child: Text(
-        text,
-        style: TextStyle(color: Colors.white, fontSize: 9.sp, fontWeight: FontWeight.bold),
-      ),
+      decoration: BoxDecoration(color: color.withOpacity(0.9), borderRadius: BorderRadius.circular(4.r)),
+      child: Text(text, style: TextStyle(color: Colors.white, fontSize: 9.sp, fontWeight: FontWeight.bold)),
     );
   }
 }
 
+// 骨架屏也同步去掉了写死的宽度
 class ProductItemSkeleton extends StatelessWidget {
   final int? cardWidth;
   final int? imgWidth;
@@ -250,53 +230,24 @@ class ProductItemSkeleton extends StatelessWidget {
       decoration: BoxDecoration(
         color: context.bgPrimary,
         borderRadius: BorderRadius.circular(8.r),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.02),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 8, offset: const Offset(0, 2))],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           AspectRatio(
             aspectRatio: 1,
-            child: Skeleton.react(
-              width: double.infinity,
-              height: double.infinity,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(8.r)),
-            ),
+            child: Skeleton.react(width: double.infinity, height: double.infinity, borderRadius: BorderRadius.vertical(top: Radius.circular(8.r))),
           ),
           Expanded(
             child: Padding(
-              padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 8.h),
+              padding: EdgeInsets.all(8.w),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Column(
-                    children: [
-                      Skeleton.react(width: double.infinity, height: 12.h, borderRadius: BorderRadius.circular(2.r)),
-                      SizedBox(height: 6.h),
-                      Skeleton.react(width: 100.w, height: 12.h, borderRadius: BorderRadius.circular(2.r)),
-                    ],
-                  ),
+                  Skeleton.react(width: double.infinity, height: 12.h, borderRadius: BorderRadius.circular(2.r)),
                   Skeleton.react(width: 80.w, height: 16.h, borderRadius: BorderRadius.circular(4.r)),
-                  Column(
-                    children: [
-                      Skeleton.react(width: double.infinity, height: 6.h, borderRadius: BorderRadius.circular(3.r)),
-                      SizedBox(height: 6.h),
-                      Skeleton.react(width: 40.w, height: 8.h, borderRadius: BorderRadius.circular(2.r)),
-                    ],
-                  ),
-                  Column(
-                    children: [
-                      Skeleton.react(width: 60.w, height: 8.h, borderRadius: BorderRadius.circular(2.r)),
-                      SizedBox(height: 4.h),
-                      Skeleton.react(width: 80.w, height: 8.h, borderRadius: BorderRadius.circular(2.r)),
-                    ],
-                  ),
+                  Skeleton.react(width: double.infinity, height: 6.h, borderRadius: BorderRadius.circular(3.r)),
                   Skeleton.react(width: double.infinity, height: 32.h, borderRadius: BorderRadius.circular(8.r)),
                 ],
               ),

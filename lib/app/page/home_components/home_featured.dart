@@ -55,9 +55,16 @@ class HomeFuture extends StatelessWidget {
               return Padding(
                 padding: EdgeInsets.only(bottom: 8.h),
                 child: ProductCard(item: item)
-                    .animate(delay: animationDelay) // Trigger instantly upon build
+                    .animate(
+                      delay: animationDelay,
+                    ) // Trigger instantly upon build
                     .fadeIn(duration: 400.ms, curve: Curves.easeOut)
-                    .slideY(begin: 0.1, end: 0, duration: 400.ms, curve: Curves.easeOutQuart),
+                    .slideY(
+                      begin: 0.1,
+                      end: 0,
+                      duration: 400.ms,
+                      curve: Curves.easeOutQuart,
+                    ),
               );
             }),
           ),
@@ -70,6 +77,7 @@ class HomeFuture extends StatelessWidget {
 /// Individual Product Card
 class ProductCard extends StatelessWidget {
   final ProductListItem item;
+
   const ProductCard({super.key, required this.item});
 
   @override
@@ -85,7 +93,7 @@ class ProductCard extends StatelessWidget {
               color: Colors.black.withOpacity(0.05),
               blurRadius: 10,
               offset: const Offset(0, 4),
-            )
+            ),
           ],
         ),
         child: ClipRRect(
@@ -107,7 +115,11 @@ class ProductCard extends StatelessWidget {
                 child: Row(
                   children: [
                     if (item.groupSize != null && item.groupSize! > 1)
-                      _buildTag(context, '${item.groupSize}P Group', Colors.orange),
+                      _buildTag(
+                        context,
+                        '${item.groupSize}P Group',
+                        Colors.orange,
+                      ),
                     if (item.shippingType == 2)
                       Padding(
                         padding: EdgeInsets.only(left: 4.w),
@@ -123,7 +135,7 @@ class ProductCard extends StatelessWidget {
                 left: 0,
                 right: 0,
                 child: ProductInfoCard(item: item),
-              )
+              ),
             ],
           ),
         ),
@@ -140,7 +152,11 @@ class ProductCard extends StatelessWidget {
       ),
       child: Text(
         text,
-        style: TextStyle(color: Colors.white, fontSize: 10.sp, fontWeight: FontWeight.bold),
+        style: TextStyle(
+          color: Colors.white,
+          fontSize: 10.sp,
+          fontWeight: FontWeight.bold,
+        ),
       ),
     );
   }
@@ -149,6 +165,7 @@ class ProductCard extends StatelessWidget {
 /// Floating Info Card at the bottom of the image
 class ProductInfoCard extends StatelessWidget {
   final ProductListItem item;
+
   const ProductInfoCard({super.key, required this.item});
 
   @override
@@ -169,10 +186,7 @@ class ProductInfoCard extends StatelessWidget {
             ],
           ),
           borderRadius: BorderRadius.circular(context.radiusXs),
-          border: Border.all(
-            color: Colors.white.withOpacity(0.15),
-            width: 0.5,
-          ),
+          border: Border.all(color: Colors.white.withOpacity(0.15), width: 0.5),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -183,16 +197,16 @@ class ProductInfoCard extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
-                  fontSize: context.textSm,
-                  fontWeight: FontWeight.w800,
-                  color: Colors.white,
-                  shadows: [
-                    Shadow(
-                      offset: const Offset(0, 1),
-                      blurRadius: 2,
-                      color: Colors.black.withOpacity(0.5),
-                    )
-                  ]
+                fontSize: context.textSm,
+                fontWeight: FontWeight.w800,
+                color: Colors.white,
+                shadows: [
+                  Shadow(
+                    offset: const Offset(0, 1),
+                    blurRadius: 2,
+                    color: Colors.black.withOpacity(0.5),
+                  ),
+                ],
               ),
             ),
             SizedBox(height: 15.h),
@@ -216,7 +230,7 @@ class ProductInfoCard extends StatelessWidget {
             SizedBox(height: 10.h),
 
             // Bottom Row (Price, Countdown, Button)
-            ProductInfoCardBottom(item: item)
+            ProductInfoCardBottom(item: item),
           ],
         ),
       ),
@@ -224,9 +238,9 @@ class ProductInfoCard extends StatelessWidget {
   }
 }
 
-/// Bottom Row containing Price, Countdown Timer, and CTA Button
 class ProductInfoCardBottom extends StatefulWidget {
   final ProductListItem item;
+
   const ProductInfoCardBottom({super.key, required this.item});
 
   @override
@@ -236,50 +250,56 @@ class ProductInfoCardBottom extends StatefulWidget {
 class _ProductInfoCardBottomState extends State<ProductInfoCardBottom> {
   @override
   Widget build(BuildContext context) {
-    // Get current time on every build to calculate business state
     final now = DateTime.now().millisecondsSinceEpoch;
-
     final salesStart = widget.item.salesStartAt ?? 0;
     final salesEnd = widget.item.salesEndAt ?? 0;
 
-    // State determination logic
     final bool isSoldOut = widget.item.buyQuantityRate! >= 100;
     final bool isWaitingSale = salesStart > now;
     final bool isExpired = salesEnd != 0 && now >= salesEnd;
 
     return Row(
       children: [
-        // --- Price Section ---
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               'common.ticket.price'.tr(),
-              style: TextStyle(fontSize: context.textXs, color: Colors.white.withOpacity(0.8)),
+              style: TextStyle(
+                fontSize: context.textXs,
+                color: Colors.white.withOpacity(0.8),
+              ),
             ),
             Text(
               '₱${widget.item.costAmount}',
-              style: TextStyle(fontSize: context.textXs, fontWeight: FontWeight.bold, color: Colors.white),
+              style: TextStyle(
+                fontSize: context.textXs,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
             ),
           ],
         ),
         const Spacer(),
-
-        // --- Core Countdown / End Logic Section ---
         if (isSoldOut)
-          _buildStatusText(context, 'common.status'.tr(), 'common.sold_out'.tr())
+          _buildStatusText(
+            context,
+            'common.status'.tr(),
+            'common.sold_out'.tr(),
+          )
         else if (isExpired)
-          _buildStatusText(context, 'common.status'.tr(), 'common.activity_ended'.tr(), isError: true)
+          _buildStatusText(
+            context,
+            'common.status'.tr(),
+            'common.activity_ended'.tr(),
+            isError: true,
+          )
         else
           RenderCountdown(
-            // Target time: Start time if in pre-sale, otherwise end time
             lotteryTime: isWaitingSale ? salesStart : salesEnd,
-
-            // Crucial: Trigger rebuild when countdown reaches zero to recalculate state
             onFinished: () {
               if (mounted) setState(() {});
             },
-
             renderCountdown: (time) => _buildStatusText(
               context,
               isWaitingSale ? 'common.starts_in'.tr() : 'common.countdown'.tr(),
@@ -297,18 +317,25 @@ class _ProductInfoCardBottomState extends State<ProductInfoCardBottom> {
             ),
           ),
         const Spacer(),
-
-        // --- Button Section ---
         IgnorePointer(
           ignoring: true,
           child: Button(
-            height: 36.w,
-            backgroundColor: (isWaitingSale || isSoldOut || isExpired) ? context.buttonSecondaryBg : null,
-            foregroundColor: (isWaitingSale || isSoldOut || isExpired) ? context.textPrimary900 : context.textWhite,
+            //  这里：缩小高度，增加内部边距，让它变成好看的胶囊按钮
+            height: 32.h,
+            paddingX: 14.w,
+            backgroundColor: (isWaitingSale || isSoldOut || isExpired)
+                ? context.buttonSecondaryBg
+                : null,
+            foregroundColor: (isWaitingSale || isSoldOut || isExpired)
+                ? context.textPrimary900
+                : context.textWhite,
             child: Text(
               isWaitingSale
                   ? 'common.pre_sale'.tr()
-                  : (isSoldOut ? 'common.sold_out'.tr() : 'common.join_group'.tr()),
+                  : (isSoldOut
+                        ? 'common.sold_out'.tr()
+                        : 'common.join_group'.tr()),
+              style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.bold),
             ),
           ),
         ),
@@ -316,13 +343,21 @@ class _ProductInfoCardBottomState extends State<ProductInfoCardBottom> {
     );
   }
 
-  Widget _buildStatusText(BuildContext context, String label, String value, {bool isError = false}) {
+  Widget _buildStatusText(
+    BuildContext context,
+    String label,
+    String value, {
+    bool isError = false,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           label,
-          style: TextStyle(fontSize: 10.sp, color: Colors.white.withOpacity(0.7)),
+          style: TextStyle(
+            fontSize: 10.sp,
+            color: Colors.white.withOpacity(0.7),
+          ),
         ),
         Text(
           value,

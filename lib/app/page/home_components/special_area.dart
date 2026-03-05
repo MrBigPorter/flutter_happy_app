@@ -13,8 +13,6 @@ import 'package:flutter_app/utils/format_helper.dart';
 import 'package:flutter_app/core/models/index.dart';
 import 'package:flutter_app/utils/media/remote_url_builder.dart';
 
-/// Special Area / Highlighted Products Section
-/// Optimized: Removed VisibilityDetector, utilizing loop index for staggered animations
 class SpecialArea extends StatelessWidget {
   final List<ProductListItem>? list;
   final String title;
@@ -23,66 +21,53 @@ class SpecialArea extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (list == null || list!.isEmpty) {
-      return const SizedBox.shrink();
-    }
+    if (list == null || list!.isEmpty) return const SizedBox.shrink();
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // 1. Section Title
-        Padding(
-          padding: EdgeInsets.only(left: 16.w, top: 8.h),
-          child: Align(
-            alignment: Alignment.centerLeft,
-            child: Text(
-              title,
-              style: TextStyle(
-                fontSize: 16.sp,
-                fontWeight: FontWeight.w800,
-                color: context.textPrimary900,
+    return Center(
+      child:  Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: EdgeInsets.only(left: 16.w, top: 8.h),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                title,
+                style: TextStyle(
+                  fontSize: 16.sp,
+                  fontWeight: FontWeight.w800,
+                  color: context.textPrimary900,
+                ),
               ),
             ),
           ),
-        ),
-        SizedBox(height: 8.h),
-
-        // 2. List Container
-        Container(
-          margin: EdgeInsets.symmetric(horizontal: 16.w),
-          child: Column(children: _buildListItems(context)),
-        ),
-
-        SizedBox(height: 20.h),
-      ],
+          SizedBox(height: 8.h),
+          Container(
+            margin: EdgeInsets.symmetric(horizontal: 16.w),
+            child: Column(children: _buildListItems(context)),
+          ),
+          SizedBox(height: 20.h),
+        ],
+      )
     );
   }
 
-  /// Manually build list items with dynamic border radiuses and dividers
   List<Widget> _buildListItems(BuildContext context) {
     final items = <Widget>[];
     final count = list!.length;
 
     for (int i = 0; i < count; i++) {
       final item = list![i];
-
       final isFirst = i == 0;
       final isLast = i == count - 1;
 
-      // Handle corner radiuses based on item position
       BorderRadius borderRadius = BorderRadius.zero;
       if (count == 1) {
         borderRadius = BorderRadius.circular(8.r);
       } else if (isFirst) {
-        borderRadius = BorderRadius.only(
-          topLeft: Radius.circular(8.r),
-          topRight: Radius.circular(8.r),
-        );
+        borderRadius = BorderRadius.vertical(top: Radius.circular(8.r));
       } else if (isLast) {
-        borderRadius = BorderRadius.only(
-          bottomLeft: Radius.circular(8.r),
-          bottomRight: Radius.circular(8.r),
-        );
+        borderRadius = BorderRadius.vertical(bottom: Radius.circular(8.r));
       }
 
       items.add(
@@ -97,18 +82,16 @@ class SpecialArea extends StatelessWidget {
             ),
             child: Column(
               children: [
-                //  Core Optimization: Staggered animation using loop index
                 _buildSingleItemContent(context, item)
-                    .animate(delay: ((i % 5) * 50).ms) // 50ms stagger
+                    .animate(delay: ((i % 5) * 50).ms)
                     .fadeIn(duration: 400.ms, curve: Curves.easeOut)
-                    .slideX(begin: 0.1, end: 0, duration: 400.ms, curve: Curves.easeOutCubic)
-                // Note: Use withOpacity for color transparency
-                    .shimmer(duration: 1000.ms, color: Colors.white.withOpacity(0.4)),
-
-                // Uniform bottom spacing to balance top padding
+                    .slideX(
+                      begin: 0.1,
+                      end: 0,
+                      duration: 400.ms,
+                      curve: Curves.easeOutCubic,
+                    ),
                 SizedBox(height: 12.h),
-
-                // Static divider (excluded on the last item)
                 if (!isLast)
                   Divider(height: 1.h, color: context.borderSecondary),
               ],
@@ -120,12 +103,11 @@ class SpecialArea extends StatelessWidget {
     return items;
   }
 
-  /// Builds the inner content of a single product item
   Widget _buildSingleItemContent(BuildContext context, ProductListItem item) {
     return Column(
       children: [
-        // Top Section: Image + Title + Progress Bar
         Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             AppCachedImage(
               RemoteUrlBuilder.fitAbsoluteUrl(item.treasureCoverImg ?? ''),
@@ -134,7 +116,7 @@ class SpecialArea extends StatelessWidget {
               fit: BoxFit.cover,
               radius: BorderRadius.circular(8.r),
             ),
-            SizedBox(width: 8.w),
+            SizedBox(width: 10.w),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -144,57 +126,49 @@ class SpecialArea extends StatelessWidget {
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      fontSize: context.textSm,
+                      fontSize: 14.sp,
                       fontWeight: FontWeight.w800,
                       color: context.textPrimary900,
+                      height: 1.2,
                     ),
                   ),
-                  SizedBox(height: 4.h),
-                  BubbleProgress(
-                    value: item.buyQuantityRate,
-                    showTipBg: true,
-                  ),
+                  SizedBox(height: 8.h),
+                  BubbleProgress(value: item.buyQuantityRate, showTipBg: true),
                 ],
               ),
             ),
           ],
         ),
-        SizedBox(height: 10.h),
-
-        // Bottom Section: Price + Countdown + Action Button
+        SizedBox(height: 12.h),
         Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          crossAxisAlignment: CrossAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.end,
           children: [
-            // Price Column
+            // 取消强行 Expanded，让价格正常显示
             Column(
-              mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   'common.ticket.price'.tr(),
                   style: TextStyle(
-                    fontSize: context.textXs,
+                    fontSize: 10.sp,
                     color: context.textQuaternary500,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-                SizedBox(height: 4.h),
                 Text(
                   FormatHelper.formatCurrency(item.unitAmount),
                   style: TextStyle(
-                    fontSize: context.textXs,
+                    fontSize: 16.sp,
                     color: context.textPrimary900,
-                    fontWeight: FontWeight.w800,
+                    fontWeight: FontWeight.w900,
                   ),
                 ),
               ],
             ),
-
-            // Countdown Column
-            Flexible(
+            //  核心：倒计时区域用 Expanded 占据剩下的所有空间，把左右推开
+            Expanded(
               child: Padding(
-                padding: EdgeInsets.symmetric(horizontal: 4.w),
+                padding: EdgeInsets.symmetric(horizontal: 8.w),
                 child: RenderCountdown(
                   lotteryTime: item.lotteryTime,
                   renderSoldOut: () => _buildStatusColumn(
@@ -218,13 +192,16 @@ class SpecialArea extends StatelessWidget {
                 ),
               ),
             ),
-
-            // Action Button (Visual only, interaction handled by parent wrapper)
+            // 取消强行 Expanded，让按钮恢复小巧的胶囊形状
             IgnorePointer(
               ignoring: true,
               child: Button(
-                height: 46.h,
-                child: Text('common.enter.now'.tr()),
+                height: 32.h,
+                paddingX: 16.w,
+                child: Text(
+                  'common.enter.now'.tr(),
+                  style: TextStyle(fontSize: 12.sp),
+                ),
                 onPressed: () {},
               ),
             ),
@@ -234,35 +211,39 @@ class SpecialArea extends StatelessWidget {
     );
   }
 
-  /// Helper to build consistent status text layouts
   Widget _buildStatusColumn(
-      BuildContext context,
-      String topLabel,
-      String bottomValue, {
-        bool isError = false,
-      }) {
+    BuildContext context,
+    String topLabel,
+    String bottomValue, {
+    bool isError = false,
+  }) {
     return Column(
       mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        Text(
-          topLabel,
-          style: TextStyle(
-            fontSize: context.textXs,
-            color: context.textQuaternary500,
-            fontWeight: FontWeight.w600,
-            height: 1.2,
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            topLabel,
+            style: TextStyle(
+              fontSize: 10.sp,
+              color: context.textQuaternary500,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ),
-        SizedBox(height: 4.h),
-        Text(
-          bottomValue,
-          style: TextStyle(
-            fontSize: context.textXs,
-            color: isError
-                ? context.textErrorPrimary600
-                : context.textPrimary900,
-            fontWeight: FontWeight.w800,
-            height: 1.2,
+        SizedBox(height: 2.h),
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            bottomValue,
+            style: TextStyle(
+              fontSize: 12.sp,
+              color: isError
+                  ? context.textErrorPrimary600
+                  : context.textPrimary900,
+              fontWeight: FontWeight.w800,
+            ),
           ),
         ),
       ],
