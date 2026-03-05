@@ -196,10 +196,17 @@ class _ButtonState extends State<Button> {
       ),
       child: IconTheme(
         data: IconThemeData(color: fg, size: 20),
-        child: content,
+
+        // 核心架构修复：在这里加一层 FittedBox！
+        // 这样一来，不管传入的文字有多长，一旦超过 (按钮宽度 - Padding)，
+        // 它就会自动像弹簧一样缩小字号，绝对不会再报 Overflow！
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: content,
+        ),
+
       ),
     );
-
     return AnimatedScale(
       scale: targetScale,
       duration:  Duration(milliseconds: _isPressed ? 80 : 220),

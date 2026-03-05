@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../ui/modal/progress/overlay_shrink.dart';
@@ -49,6 +50,9 @@ class BaseScaffold extends StatelessWidget {
       bottomNavigationBar: bottomNavigationBar,
       resizeToAvoidBottomInset: resizeToAvoidBottomInset,
     );
+    if(kIsWeb){
+      return scaffold;
+    }
     return OverlayShrink(child: scaffold);
   }
 }
