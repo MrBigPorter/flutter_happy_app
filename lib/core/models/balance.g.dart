@@ -357,3 +357,29 @@ Map<String, dynamic> _$PaymentChannelConfigItemToJson(
       'feeFixed': instance.feeFixed,
       'isCustom': instance.isCustom,
     };
+
+RechargeStatusResponse _$RechargeStatusResponseFromJson(
+        Map<String, dynamic> json) =>
+    $checkedCreate(
+      'RechargeStatusResponse',
+      json,
+      ($checkedConvert) {
+        final val = RechargeStatusResponse(
+          orderNo: $checkedConvert('orderNo', (v) => v as String),
+          amount:
+              $checkedConvert('amount', (v) => JsonNumConverter.toDouble(v)),
+          status: $checkedConvert('status', (v) => v as String),
+          createdAt: $checkedConvert('createdAt', (v) => v as num),
+        );
+        return val;
+      },
+    );
+
+Map<String, dynamic> _$RechargeStatusResponseToJson(
+        RechargeStatusResponse instance) =>
+    <String, dynamic>{
+      'orderNo': instance.orderNo,
+      'amount': instance.amount,
+      'status': instance.status,
+      'createdAt': instance.createdAt,
+    };

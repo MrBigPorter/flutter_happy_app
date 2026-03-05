@@ -57,6 +57,159 @@ final walletBalanceProvider = AutoDisposeFutureProvider<Balance>.internal(
 );
 
 typedef WalletBalanceRef = AutoDisposeFutureProviderRef<Balance>;
+String _$rechargeStatusHash() => r'77ed9e57548e76ca3b4eafde5333a8f929d51262';
+
+/// Copied from Dart SDK
+class _SystemHash {
+  _SystemHash._();
+
+  static int combine(int hash, int value) {
+    // ignore: parameter_assignments
+    hash = 0x1fffffff & (hash + value);
+    // ignore: parameter_assignments
+    hash = 0x1fffffff & (hash + ((0x0007ffff & hash) << 10));
+    return hash ^ (hash >> 6);
+  }
+
+  static int finish(int hash) {
+    // ignore: parameter_assignments
+    hash = 0x1fffffff & (hash + ((0x03ffffff & hash) << 3));
+    // ignore: parameter_assignments
+    hash = hash ^ (hash >> 11);
+    return 0x1fffffff & (hash + ((0x00003fff & hash) << 15));
+  }
+}
+
+/// See also [rechargeStatus].
+@ProviderFor(rechargeStatus)
+const rechargeStatusProvider = RechargeStatusFamily();
+
+/// See also [rechargeStatus].
+class RechargeStatusFamily extends Family<AsyncValue<RechargeStatusResponse>> {
+  /// See also [rechargeStatus].
+  const RechargeStatusFamily();
+
+  /// See also [rechargeStatus].
+  RechargeStatusProvider call(
+    String orderNo,
+  ) {
+    return RechargeStatusProvider(
+      orderNo,
+    );
+  }
+
+  @override
+  RechargeStatusProvider getProviderOverride(
+    covariant RechargeStatusProvider provider,
+  ) {
+    return call(
+      provider.orderNo,
+    );
+  }
+
+  static const Iterable<ProviderOrFamily>? _dependencies = null;
+
+  @override
+  Iterable<ProviderOrFamily>? get dependencies => _dependencies;
+
+  static const Iterable<ProviderOrFamily>? _allTransitiveDependencies = null;
+
+  @override
+  Iterable<ProviderOrFamily>? get allTransitiveDependencies =>
+      _allTransitiveDependencies;
+
+  @override
+  String? get name => r'rechargeStatusProvider';
+}
+
+/// See also [rechargeStatus].
+class RechargeStatusProvider
+    extends AutoDisposeFutureProvider<RechargeStatusResponse> {
+  /// See also [rechargeStatus].
+  RechargeStatusProvider(
+    String orderNo,
+  ) : this._internal(
+          (ref) => rechargeStatus(
+            ref as RechargeStatusRef,
+            orderNo,
+          ),
+          from: rechargeStatusProvider,
+          name: r'rechargeStatusProvider',
+          debugGetCreateSourceHash:
+              const bool.fromEnvironment('dart.vm.product')
+                  ? null
+                  : _$rechargeStatusHash,
+          dependencies: RechargeStatusFamily._dependencies,
+          allTransitiveDependencies:
+              RechargeStatusFamily._allTransitiveDependencies,
+          orderNo: orderNo,
+        );
+
+  RechargeStatusProvider._internal(
+    super._createNotifier, {
+    required super.name,
+    required super.dependencies,
+    required super.allTransitiveDependencies,
+    required super.debugGetCreateSourceHash,
+    required super.from,
+    required this.orderNo,
+  }) : super.internal();
+
+  final String orderNo;
+
+  @override
+  Override overrideWith(
+    FutureOr<RechargeStatusResponse> Function(RechargeStatusRef provider)
+        create,
+  ) {
+    return ProviderOverride(
+      origin: this,
+      override: RechargeStatusProvider._internal(
+        (ref) => create(ref as RechargeStatusRef),
+        from: from,
+        name: null,
+        dependencies: null,
+        allTransitiveDependencies: null,
+        debugGetCreateSourceHash: null,
+        orderNo: orderNo,
+      ),
+    );
+  }
+
+  @override
+  AutoDisposeFutureProviderElement<RechargeStatusResponse> createElement() {
+    return _RechargeStatusProviderElement(this);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is RechargeStatusProvider && other.orderNo == orderNo;
+  }
+
+  @override
+  int get hashCode {
+    var hash = _SystemHash.combine(0, runtimeType.hashCode);
+    hash = _SystemHash.combine(hash, orderNo.hashCode);
+
+    return _SystemHash.finish(hash);
+  }
+}
+
+mixin RechargeStatusRef
+    on AutoDisposeFutureProviderRef<RechargeStatusResponse> {
+  /// The parameter `orderNo` of this provider.
+  String get orderNo;
+}
+
+class _RechargeStatusProviderElement
+    extends AutoDisposeFutureProviderElement<RechargeStatusResponse>
+    with RechargeStatusRef {
+  _RechargeStatusProviderElement(super.provider);
+
+  @override
+  String get orderNo => (origin as RechargeStatusProvider).orderNo;
+}
+
 String _$createRechargeHash() => r'9e259c7b9fb8f5592787bf4dd6e131f5f5178f38';
 
 /// See also [CreateRecharge].

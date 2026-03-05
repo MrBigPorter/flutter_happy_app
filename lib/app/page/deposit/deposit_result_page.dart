@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_app/common.dart';
+import 'package:flutter_app/core/providers/wallet_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -78,28 +79,21 @@ class _DepositResultPageState extends ConsumerState<DepositResultPage> {
       _retryCount++;
 
       try {
-        // --- 真实业务逻辑 (请解开注释并适配你的API) ---
-        /*
-        final order = await Api.getRechargeOrderDetail(widget.orderNo);
-        if (order.status == 'SUCCESS') {
+        //  核心接入：使用 ref.refresh 强制清除缓存并重新拉取最新状态
+        final res = await ref.refresh(rechargeStatusProvider(widget.orderNo).future);
+
+        final currentStatus = res.status;
+
+        if (currentStatus== 'SUCCESS') {
           _handleSuccess();
           timer.cancel();
-        } else if (order.status == 'FAILED' || order.status == 'EXPIRED') {
+        } else if (currentStatus == 'FAILED' || currentStatus == 'EXPIRED') {
           if (mounted) setState(() => _status = 'failed');
           timer.cancel();
         }
-        */
-        // -------------------------------------------
-
-        // ---  模拟测试逻辑 (测试通过后请删除) ---
-        if (_retryCount > 2) {
-          _handleSuccess();
-          timer.cancel();
-        }
-        // ---------------------------------------
 
       } catch (e) {
-        //print("Polling error: $e");
+       // print("Polling error: $e");
       }
     });
   }

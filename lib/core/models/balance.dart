@@ -383,3 +383,36 @@ class PaymentChannelConfigItem {
     return toJson().toString();
   }
 }
+
+@JsonSerializable(checked: true)
+class RechargeStatusResponse{
+  final String orderNo;
+
+  @JsonKey(fromJson: JsonNumConverter.toDouble)
+  final double amount;
+
+  final String status;
+
+  final num createdAt;
+
+  RechargeStatusResponse({
+    required this.orderNo,
+    required this.amount,
+    required this.status,
+    required this.createdAt,
+  });
+
+
+  factory RechargeStatusResponse.fromJson(Map<String, dynamic> json) =>
+      _$RechargeStatusResponseFromJson(json);
+
+
+  Map<String, dynamic> toJson() => _$RechargeStatusResponseToJson(this);
+
+
+  @override
+  String toString() {
+    return toJson().toString();
+  }
+
+}

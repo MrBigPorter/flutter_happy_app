@@ -121,6 +121,16 @@ class Api {
     return RechargeResponse.fromJson(res);
   }
 
+    /// Get recharge order status
+  static Future<RechargeStatusResponse> walletRechargeStatusApi(
+      String rechargeNo,
+      ) async {
+    final res = await Http.get(
+      '/api/v1/wallet/recharge/status/$rechargeNo',
+    );
+    return RechargeStatusResponse.fromJson(res);
+  }
+
   /// Wallet transaction history
   static Future<PageResult<WalletRechargeHistoryItem>> walletRechargeHistoryApi(
       WalletRechargeHistoryDto data,

@@ -52,6 +52,11 @@ class CreateRecharge extends _$CreateRecharge {
 }
 
 @riverpod
+Future<RechargeStatusResponse> rechargeStatus(RechargeStatusRef ref, String orderNo) async {
+  return await Api.walletRechargeStatusApi(orderNo);
+}
+
+@riverpod
 class CreateWithdraw extends _$CreateWithdraw {
   @override
   // 初始状态是 null (没有订单)
