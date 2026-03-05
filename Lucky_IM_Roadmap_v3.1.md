@@ -1,46 +1,88 @@
+大哥，先本地再云端这个思路非常稳！这就好比造火箭，咱们先在地面实验室（本地）把火点着了，确保能飞起来，再去发射台（GitHub Actions）搞自动化任务。
 
+既然咱们现在的环境配置（`prod.json` 等）已经非常规范，咱们的第一步目标是：**在你的电脑上，打出一个带签名的、能直接安装在手机上的 Release 版 Android APK。**
 
-### 🟡 阶段二：首屏启动与“秒开”重构（耗时：1-2 天）
-
-**目标：消灭首页漫长的白屏和骨架屏等待，实现“点击图标即出画面”。**
-
-* [ ] **任务 1：推迟 Firebase 等重型初始化任务**
-* **涉及文件**：`bootstrap.dart` 和 `main.dart`
-* **做法**：不要在 `main.dart` 的 `loading` 状态里死等 Firebase 初始化。把涉及推送、甚至 Socket 的初始化扔到后台 `Future.microtask` 里，**让 `MyApp` 和路由第一时间先跑起来，把 UI 渲染出来**。
-
-
-
+这是我为你制定的“两步走”详细计划：
 
 ---
 
-### 🔴 阶段三：产品逻辑与 BFF 架构改造（耗时：需与后端排期）
+## 阶段一：本地 Android 打包（地基篇）
 
-**目标：提升转化率与分享裂变，极致压缩网络请求耗时。**
+在执行打包命令前，Android 需要一份“身份证”（签名文件），否则打出来的包无法在手机上安装或覆盖。
 
-* [ ] **任务 1：“拼团”卡片转化率优化**
-* **涉及文件**：`group_buying_section.dart` -> `_buildJoinButton`
-* **做法**：增加判断，如果用户已经加入了该团，按钮不要显示死气沉沉的“Joined”，改成**高亮**的“Invite（邀请好友）”，点击直接拉起 Share 面板，促进社交裂变。
+### 1. 生成签名文件 (Keystore)
 
+打开你的终端（Mac 或 Windows 都可以），运行以下命令生成一个 `.jks` 签名文件：
 
-* [ ] **任务 2：倒计时焦虑感强化**
-* **涉及文件**：`home_featured.dart`
-* **做法**：如果倒计时小于 1 小时，把倒计时文字变成醒目的**红色**。
+```bash
+keytool -genkey -v -keystore ~/upload-keystore.jks -keyalg RSA -keysize 2048 -validity 10000 -alias upload
 
+```
 
-* [ ] **任务 3：首页接口聚合 (BFF 架构)**
-* **涉及文件**：后端接口、前端 `home_page.dart` 的 Provider
-* **做法**：找后端大哥吃顿饭，让他把现在首页需要请求的 `banners`、`hotGroups`、`treasures`、`statistics` 四个接口合成一个 `/api/v1/home/init`。
-* **收益**：前端只需建立 1 次 TCP 连接，速度提升 300% 以上。拿到大 JSON 后，在前端通过 Provider 的 `select` 分发给不同的组件即可。
+> **注意**：过程中会让你输入密码，请务必记住这个密码，一会儿配置要用。
 
+### 2. 配置签名属性
 
+在项目的 `android/` 目录下新建一个文件 `key.properties`，内容如下：
 
-🎯 总结与下一步
-历史拼团：难度低，转化收益高，做！ 建议做一个滚动跑马灯或者横向小列表。
+```properties
+storePassword=你的密码
+keyPassword=你的密码
+keyAlias=upload
+storeFile=/Users/你的用户名/upload-keystore.jks
 
-点击私聊：难度极低（你路由都写好了），社交收益高，做！ 但交互上一定要先跳ContactProfilePage，不要直达聊天室。
+```
 
-大哥，这两个功能你想先搞哪个？
+### 3. 修改构建逻辑
 
-如果先搞历史拼团，我马上给你出后端的查询 Prisma 逻辑和前端跑马灯的 UI 动画代码。
+修改 **`android/app/build.gradle`**，让它在打包时自动读取这个文件并签名。
 
-如果先搞点击看主页/私聊，我立马告诉你前端该改哪几个组件把点击事件挂上去！开刀？我可以马上帮你写出对应任务的具体改造代码！**
+### 4. 本地终极打包命令
+
+确保你的手机已连上或者你想直接拿安装包，运行：
+
+```bash
+flutter build apk --release --dart-define-from-file=lib/core/config/env/prod.json
+
+```
+
+* **指令解析**：这一步会把 `prod.json` 里的生产接口地址 硬编码进 App。
+* **产物位置**：打完后，去 `build/app/outputs/flutter-apk/app-release.apk` 找你的成果。
+
+---
+
+## 阶段二：云端自动化 (GitHub Actions 篇)
+
+当你本地能打出正常的包，且安装到手机上接口、功能都完美时，咱们再搞云端。
+
+### 1. 准备 Secrets（核心难点）
+
+GitHub 仓库不能直接存 `.jks` 文件和 `prod.json`。
+
+* 我们要把 `upload-keystore.jks` 转换成 **Base64 字符串**。
+* 把这个字符串和 `prod.json` 的内容分别存入 GitHub 仓库的 **Actions Secrets**。
+
+### 2. 编写工作流脚本
+
+我会帮你写一个 `.github/workflows/android_build.yml`。它的逻辑是：
+
+1. **拉取代码**：从 GitHub 获取你的最新代码。
+2. **还原文件**：把 Secrets 里的 Base64 变回 `.jks` 文件，把 JSON 内容变回 `prod.json`。
+3. **安装 Flutter**：环境准备。
+4. **执行打包**：运行同样的 `flutter build apk` 命令。
+5. **发布产物**：自动把打好的 APK 上传到 GitHub 的 Release 页面。
+
+---
+
+### 💡 现在的行动建议
+
+大哥，咱们先把**阶段一**跑通：
+
+1. 你先在本地用 `keytool` 命令把签名文件弄出来。
+2. 尝试打一次 `flutter build apk`。
+
+**如果你在本地打包遇到了报错（比如 SDK 版本冲突或者 Proguard 混淆报错），直接把错误甩给我。**
+
+等你本地拿到了那个 `app-release.apk`，咱们立马开始写 GitHub Actions 脚本，实现“只要一提交代码，机器人就自动帮你打包”的骚操作！
+
+你需要我把 **`android/app/build.gradle`** 里那段复杂的签名配置代码直接写给你吗？

@@ -7,7 +7,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:reactive_forms/reactive_forms.dart';
 
-// 你的项目特定 import，请根据实际路径调整
 import 'package:flutter_app/common.dart';
 import 'package:flutter_app/components/base_scaffold.dart';
 import 'package:flutter_app/core/providers/wallet_provider.dart';
@@ -15,7 +14,7 @@ import 'package:flutter_app/ui/button/button.dart';
 import 'package:flutter_app/ui/index.dart';
 import 'package:flutter_app/utils/form/deposit_form/deposit_form.dart';
 import 'package:flutter_app/utils/format_helper.dart';
-import '../../core/models/balance.dart'; // 确保这里面有 PaymentChannelConfigItem
+import '../../core/models/balance.dart';
 import '../../core/store/wallet_store.dart';
 import '../../utils/form/validation/k_deposit_validation_messages.dart';
 import '../../utils/form/validators.dart';
