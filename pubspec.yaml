@@ -208,7 +208,6 @@ flutter:
     - assets/images/tab_bar/
     - assets/locales/en.json
     - assets/locales/tl.json
-    - assets/data/
     - assets/fonts/
   fonts:
     - family: Inter
