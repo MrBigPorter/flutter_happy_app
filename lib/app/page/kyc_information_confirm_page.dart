@@ -150,7 +150,7 @@ class _KycInformationConfirmPageState
 
       final dto = SubmitKycDto(
         sessionId: sessionId,
-        // 🛠️ 关键修复：全部加上强转 (as 类型?)，解决 Object 报错
+        //  关键修复：全部加上强转 (as 类型?)，解决 Object 报错
         idType: (confirmed.type as int?) ?? widget.kycOcrResult.type,
         idNumber: (confirmed.idNumber as String?) ?? '',
         realName: (confirmed.realName as String?) ?? '',
@@ -162,7 +162,7 @@ class _KycInformationConfirmPageState
         countryCode: (confirmed.countryCode as int?) ?? 63,
         expiryDate: confirmed.expiryDate ?? '',
 
-        // 🛠️ 修复报错的核心位置
+        //  修复报错的核心位置
         provinceId: confirmed.province ?? 0,
         cityId: confirmed.city ?? 0,
         barangayId: confirmed.barangay ?? 0,

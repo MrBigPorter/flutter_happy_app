@@ -13,11 +13,11 @@ struct LivenessView: View {
 
     var body: some View {
         FaceLivenessDetectorView(
-        // 👇 修改点：这里必须是 sessionID (大写 ID)，不能是 sessionId
+        //  修改点：这里必须是 sessionID (大写 ID)，不能是 sessionId
             sessionID: sessionId,
             region: region,
             isPresented: $isPresented,
-            onCompletion: { result in // 👇 确保这里是 onCompletion
+            onCompletion: { result in //  确保这里是 onCompletion
                 switch result {
                 case .success:
                     onComplete()
