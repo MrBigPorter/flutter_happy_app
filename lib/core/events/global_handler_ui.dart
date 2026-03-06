@@ -2,6 +2,7 @@ part of 'global_handler.dart';
 
 // 职责：专注于“样式呈现与交互”的逻辑分层
 extension GlobalHandlerUIExtension on _GlobalHandlerState {
+
   /// 1. 交互式好友申请通知 (使用 RadixToast 核心逻辑)
   void _showContactApplyNotification(Map<String, dynamic> data) {
     // 数据预处理
@@ -9,7 +10,7 @@ extension GlobalHandlerUIExtension on _GlobalHandlerState {
         data['nickname'] ?? data['applicantId'] ?? 'Someone';
     final String reason = data['reason'] ?? 'Wants to add you';
 
-    //  改动：使用自定义 Notification 构建，但保持 RadixToast 的现代感设计
+    // 使用自定义 Notification 构建，保持现代感设计
     BotToast.showCustomNotification(
       duration: const Duration(seconds: 5),
       toastBuilder: (cancelFunc) {
@@ -35,20 +36,20 @@ extension GlobalHandlerUIExtension on _GlobalHandlerState {
     );
   }
 
-  ///  2. 成功提示：直接调用封装好的 RadixToast
+  /// 2. 成功提示：直接调用封装好的 RadixToast
   void _showSuccessToast(String title, String msg) {
     if (_isDuplicate(title, msg)) return;
     RadixToast.success(msg, title: title);
   }
 
-  ///  3. 错误提示：直接调用封装好的 RadixToast
+  /// 3. 错误提示：直接调用封装好的 RadixToast
   void _showErrorToast(String title, String msg) {
     if (_isDuplicate(title, msg)) return;
     RadixToast.error(msg, title: title);
   }
 
   // ----------------------------------------------------------------
-  //  内部逻辑与系统弹窗 (保持不变)
+  // 内部逻辑与系统弹窗
   // ----------------------------------------------------------------
 
   /// 通用去重判断
@@ -71,14 +72,14 @@ extension GlobalHandlerUIExtension on _GlobalHandlerState {
     if (event.type == GlobalEventType.deviceBanned) _showLockDialog();
   }
 
-  ///  4. 系统锁定对话框 (完整的 RadixModal 实现)
+  /// 4. 系统锁定对话框 (完整的 RadixModal 实现)
   void _showLockDialog() {
     RadixModal.show(
       config: ModalDialogConfig(showCloseButton: false),
       clickBgToClose: false,
       builder: (context, close) {
         return PopScope(
-          canPop: false,
+          canPop: false, // 阻止返回键关闭弹窗
           child: Container(
             padding: EdgeInsets.all(16.w),
             child: Column(
@@ -116,9 +117,23 @@ extension GlobalHandlerUIExtension on _GlobalHandlerState {
                   child: Text('security.btn_contact_support'.tr()),
                 ),
                 SizedBox(height: 12.h),
+
+                // 🚀 核心优化：多端适配的退出逻辑
                 GestureDetector(
-                  onTap: () =>
-                      Platform.isAndroid ? SystemNavigator.pop() : exit(0),
+                  onTap: () {
+                    if (kIsWeb) {
+                      // 🌐 Web 端：网页没有“退出”概念，最佳实践是清空路由并踢回登录页
+                      // 请将 '/login' 替换为你项目中实际的登录路由或错误提示页
+                      appRouter.go('/login');
+                    } else {
+                      // 📱 移动原生端：安全调用 Platform
+                      if (Platform.isAndroid) {
+                        SystemNavigator.pop();
+                      } else {
+                        exit(0);
+                      }
+                    }
+                  },
                   child: Padding(
                     padding: EdgeInsets.symmetric(vertical: 8.h),
                     child: Text(
@@ -137,8 +152,7 @@ extension GlobalHandlerUIExtension on _GlobalHandlerState {
     );
   }
 
-  // 注：这里的 _buildModernNotificationCard 可以保留在当前文件作为私有构建器，
-  // 也可以迁移到 RadixToast 内部作为一个通用的基础构建方法。
+  /// 构建现代感通知卡片
   Widget _buildModernNotificationCard({
     required BuildContext context,
     required String title,
