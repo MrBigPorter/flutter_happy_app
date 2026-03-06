@@ -1,5 +1,5 @@
 import 'dart:io';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart'; // 🚀 必须引入 kIsWeb
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:device_info_plus/device_info_plus.dart';
@@ -10,8 +10,9 @@ import '../camera_helper.dart';
 class LivenessService {
   static const MethodChannel _channel = MethodChannel('com.porter.joyminis/liveness');
 
-  ///  活体检测
   static Future<bool?> start(BuildContext context, String sessionId) async {
+    if (kIsWeb) return true; //  Web 端直接假装活体通过
+
     if (kDebugMode && !await _isPhysicalDevice()) return true;
     if (!await CameraHelper.ensureCameraPermission(context)) return false;
 
@@ -28,61 +29,47 @@ class LivenessService {
     }
   }
 
-  /// 文档扫描
   static Future<String?> scanDocument(BuildContext context) async {
+    //  核心防爆：Web 端绝对不能碰 Platform，直接跳到网页相机 UI！
+    if (kIsWeb) {
+      debugPrint("Web 环境：调起网页版相机 UI...");
+      return await _switchToFlutterScanner(context);
+    }
+
     if (kDebugMode && !await _isPhysicalDevice()) return "mock_image_path.jpg";
     if (!await CameraHelper.ensureCameraPermission(context)) return null;
 
     try {
-      // 1. Android GMS 环境初步预检
       if (Platform.isAndroid) {
         final availability = await GoogleApiAvailability.instance.checkGooglePlayServicesAvailability();
-        debugPrint("Google Play Services: $availability");
-
-        // 如果明确不支持，直接跳转自定义拍照页
         if (availability != GooglePlayServicesAvailability.success) {
           return await _switchToFlutterScanner(context);
         }
       }
 
-      // 2. 尝试调用原生扫描 (在华为海外版上，这里极大概率会抛出 PlatformException)
-      debugPrint(" 正在调起原生高级扫描...");
       final String? rawPath = await _channel.invokeMethod('scanDocument');
-
-      // 3. 处理返回路径（兼容 file:// 前缀）
       if (rawPath != null && rawPath.isNotEmpty) {
-        final cleanPath = rawPath.replaceFirst('file://', '').replaceFirst('content://', '');
-        debugPrint(" 扫描成功: $cleanPath");
-        return cleanPath;
+        return rawPath.replaceFirst('file://', '').replaceFirst('content://', '');
       }
       return null;
-
-    } on PlatformException catch (e) {
-      //  关键处理：针对华为海外版“假支持”的降级逻辑
-      // 捕获到原生代码中的 SCAN_INIT_FAILED 或任何初始化失败
-      debugPrint(" 原生扫描不可用 (华为海外版兼容性): ${e.code}");
-      debugPrint(" 自动切换至 Flutter 自定义拍照...");
+    } on PlatformException catch (_) {
       return await _switchToFlutterScanner(context);
-
     } catch (e) {
       debugPrint(" 扫描过程发生未知异常: $e");
-      return await _switchToFlutterScanner(context); // 保底方案
+      return await _switchToFlutterScanner(context);
     }
   }
 
-  ///  统一跳转：Flutter 自定义拍照页面
   static Future<String?> _switchToFlutterScanner(BuildContext context) async {
     final camera = await CameraHelper.getBackCamera();
     return await Navigator.push<String>(
       context,
-      MaterialPageRoute(
-        builder: (c) => IDScanPage(cameraDescription: camera),
-      ),
+      MaterialPageRoute(builder: (c) => IDScanPage(cameraDescription: camera)),
     );
   }
 
-  ///  真机检测逻辑
   static Future<bool> _isPhysicalDevice() async {
+    if (kIsWeb) return false;
     final deviceInfo = DeviceInfoPlugin();
     try {
       if (Platform.isAndroid) return (await deviceInfo.androidInfo).isPhysicalDevice;

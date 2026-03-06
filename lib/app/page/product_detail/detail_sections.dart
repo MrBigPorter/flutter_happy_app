@@ -73,26 +73,27 @@ class CouponSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final isAuthenticated = ref.watch(authProvider.select((a) => a.isAuthenticated));
+    final isAuthenticated = ref.watch(
+      authProvider.select((a) => a.isAuthenticated),
+    );
 
     if (!isAuthenticated) return const SizedBox.shrink();
 
+    // 外层仅仅是为了展示前两个优惠券的简略信息
     final claimableAsync = ref.watch(claimableCouponsProvider);
 
     return claimableAsync.when(
-      // Banners 核心优化：防闪烁
-      skipLoadingOnRefresh: true,
+      skipLoadingOnRefresh: true, // 核心优化：防闪烁
       data: (coupons) {
         if (coupons.isEmpty) return const SizedBox.shrink();
 
         return GestureDetector(
           onTap: () {
+            // 核心改动 1：不再把 coupons 作为死数据传进去了！
             RadixSheet.show(
               title: 'Available Coupons',
-              builder: (context, close) => _ClaimCouponBottomSheet(
-                coupons: coupons,
-                onClose: close,
-              ),
+              builder: (context, close) =>
+                  _ClaimCouponBottomSheet(onClose: close),
             );
           },
           child: Container(
@@ -114,21 +115,39 @@ class CouponSection extends ConsumerWidget {
                   child: Wrap(
                     spacing: 8.w,
                     runSpacing: 4.w,
-                    children: coupons.take(2).map((c) => Container(
-                      padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.w),
-                      decoration: BoxDecoration(
-                        color: Colors.pink[50],
-                        borderRadius: BorderRadius.circular(4.w),
-                        border: Border.all(color: Colors.pinkAccent.withOpacity(0.3)),
-                      ),
-                      child: Text(
-                        'Save ₱${c.discountValue ?? 0}',
-                        style: TextStyle(fontSize: 10.sp, color: Colors.pinkAccent, fontWeight: FontWeight.bold),
-                      ),
-                    )).toList(),
+                    children: coupons
+                        .take(2)
+                        .map(
+                          (c) => Container(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 6.w,
+                              vertical: 2.w,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.pink[50],
+                              borderRadius: BorderRadius.circular(4.w),
+                              border: Border.all(
+                                color: Colors.pinkAccent.withOpacity(0.3),
+                              ),
+                            ),
+                            child: Text(
+                              'Save ₱${c.discountValue ?? 0}',
+                              style: TextStyle(
+                                fontSize: 10.sp,
+                                color: Colors.pinkAccent,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        )
+                        .toList(),
                   ),
                 ),
-                Icon(CupertinoIcons.chevron_right, size: 16.w, color: context.textQuaternary500),
+                Icon(
+                  CupertinoIcons.chevron_right,
+                  size: 16.w,
+                  color: context.textQuaternary500,
+                ),
               ],
             ),
           ),
@@ -144,19 +163,17 @@ class CouponSection extends ConsumerWidget {
 // 2.1 UI: Bottom Sheet for Claiming Coupons
 // =========================================================================
 class _ClaimCouponBottomSheet extends ConsumerStatefulWidget {
-  final List<dynamic> coupons;
   final VoidCallback onClose;
 
-  const _ClaimCouponBottomSheet({
-    required this.coupons,
-    required this.onClose,
-  });
+  const _ClaimCouponBottomSheet({required this.onClose});
 
   @override
-  ConsumerState<_ClaimCouponBottomSheet> createState() => _ClaimCouponBottomSheetState();
+  ConsumerState<_ClaimCouponBottomSheet> createState() =>
+      _ClaimCouponBottomSheetState();
 }
 
-class _ClaimCouponBottomSheetState extends ConsumerState<_ClaimCouponBottomSheet> {
+class _ClaimCouponBottomSheetState
+    extends ConsumerState<_ClaimCouponBottomSheet> {
   String? _loadingCouponId;
 
   @override
@@ -165,109 +182,166 @@ class _ClaimCouponBottomSheetState extends ConsumerState<_ClaimCouponBottomSheet
     final isActionLoading = actionState is AsyncLoading;
     final maxContentHeight = MediaQuery.of(context).size.height * 0.7;
 
-    return ConstrainedBox(
-      constraints: BoxConstraints(maxHeight: maxContentHeight),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Flexible(
-            fit: FlexFit.loose,
-            child: ListView.builder(
-              shrinkWrap: true,
-              itemCount: widget.coupons.length,
-              itemBuilder: (context, index) {
-                final item = widget.coupons[index];
-                final bool isClaimed = item.hasReachedLimit == true;
-                final bool isSoldOut = (item.canClaim == false) && (item.hasReachedLimit != true);
+    // 核心改动 2：弹窗自己独立监听数据源！
+    // 只要执行了 ref.invalidate(claimableCouponsProvider)，这里立刻响应并原地重绘！
+    final claimableAsync = ref.watch(claimableCouponsProvider);
 
-                String btnText = 'Claim';
-                if (isSoldOut) btnText = 'Sold Out';
-                else if (isClaimed) btnText = 'Claimed';
+    return claimableAsync.when(
+      // 核心改动 3：刷新数据时保持列表原样，绝对不要变成 Loading 圈，实现无缝状态切换！
+      skipLoadingOnRefresh: true,
+      data: (coupons) {
+        return ConstrainedBox(
+          constraints: BoxConstraints(maxHeight: maxContentHeight),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Flexible(
+                fit: FlexFit.loose,
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: coupons.length,
+                  itemBuilder: (context, index) {
+                    final item = coupons[index];
+                    final bool isClaimed = item.hasReachedLimit == true;
+                    final bool isSoldOut =
+                        (item.canClaim == false) &&
+                        (item.hasReachedLimit != true);
 
-                final bool isThisLoading = _loadingCouponId == item.couponId;
-                bool isBtnDisabled = isClaimed || isSoldOut || isActionLoading;
+                    String btnText = 'Claim';
+                    if (isSoldOut)
+                      btnText = 'Sold Out';
+                    else if (isClaimed)
+                      btnText = 'Claimed';
 
-                return Container(
-                  margin: EdgeInsets.only(bottom: 12.w),
-                  padding: EdgeInsets.all(16.w),
-                  decoration: BoxDecoration(
-                    color: context.bgPrimary,
-                    borderRadius: BorderRadius.circular(8.w),
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              item.couponName ?? 'Platform Voucher',
-                              style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.bold, color: context.textPrimary900),
-                            ),
-                            SizedBox(height: 4.w),
-                            Text(
-                              'Min. Spend ₱${item.minPurchase}',
-                              style: TextStyle(fontSize: 12.sp, color: context.textSecondary700),
-                            ),
-                            SizedBox(height: 8.w),
-                            Text(
-                              '- ₱${item.discountValue}',
-                              style: TextStyle(fontSize: 20.sp, fontWeight: FontWeight.w900, color: context.textBrandPrimary900),
-                            ),
-                            if (!isSoldOut) ...[
-                              SizedBox(height: 8.w),
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(4.w),
-                                child: LinearProgressIndicator(
-                                  value: (double.tryParse('${item.progress ?? 0}') ?? 0) / 100,
-                                  minHeight: 4.w,
-                                  backgroundColor: Colors.pink[50],
-                                  valueColor: const AlwaysStoppedAnimation<Color>(Colors.pinkAccent),
+                    final bool isThisLoading =
+                        _loadingCouponId == item.couponId;
+                    bool isBtnDisabled =
+                        isClaimed || isSoldOut || isActionLoading;
+
+                    return Container(
+                      margin: EdgeInsets.only(bottom: 12.w),
+                      padding: EdgeInsets.all(16.w),
+                      decoration: BoxDecoration(
+                        color: context.bgPrimary,
+                        borderRadius: BorderRadius.circular(8.w),
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  item.couponName ?? 'Platform Voucher',
+                                  style: TextStyle(
+                                    fontSize: 14.sp,
+                                    fontWeight: FontWeight.bold,
+                                    color: context.textPrimary900,
+                                  ),
                                 ),
+                                SizedBox(height: 4.w),
+                                Text(
+                                  'Min. Spend ₱${item.minPurchase}',
+                                  style: TextStyle(
+                                    fontSize: 12.sp,
+                                    color: context.textSecondary700,
+                                  ),
+                                ),
+                                SizedBox(height: 8.w),
+                                Text(
+                                  '- ₱${item.discountValue}',
+                                  style: TextStyle(
+                                    fontSize: 20.sp,
+                                    fontWeight: FontWeight.w900,
+                                    color: context.textBrandPrimary900,
+                                  ),
+                                ),
+                                if (!isSoldOut) ...[
+                                  SizedBox(height: 8.w),
+                                  ClipRRect(
+                                    borderRadius: BorderRadius.circular(4.w),
+                                    child: LinearProgressIndicator(
+                                      value:
+                                          (double.tryParse(
+                                                '${item.progress ?? 0}',
+                                              ) ??
+                                              0) /
+                                          100,
+                                      minHeight: 4.w,
+                                      backgroundColor: Colors.pink[50],
+                                      valueColor:
+                                          const AlwaysStoppedAnimation<Color>(
+                                            Colors.pinkAccent,
+                                          ),
+                                    ),
+                                  ),
+                                  SizedBox(height: 4.w),
+                                  Text(
+                                    '${item.progress}% Claimed',
+                                    style: TextStyle(
+                                      fontSize: 10.sp,
+                                      color: Colors.pinkAccent,
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                          SizedBox(width: 12.w),
+                          Button(
+                            width: 80.w,
+                            height: 32.h,
+                            disabled: isBtnDisabled,
+                            loading: isThisLoading,
+                            variant: (isClaimed || isSoldOut)
+                                ? ButtonVariant.outline
+                                : ButtonVariant.primary,
+                            onPressed: () async {
+                              if (isBtnDisabled) return;
+
+                              // 开启局部 Loading (只有当前点击的按钮在转圈)
+                              setState(() => _loadingCouponId = item.couponId);
+
+                              try {
+                                // 1. 发起领取请求
+                                await ref
+                                    .read(couponActionProvider.notifier)
+                                    .claim(item.couponId);
+
+                                // 2. 关键：作废旧数据，强制刷新！
+                                // 此时底层的 detail_sections 和当前弹窗，因为都在 watch 这个 Provider，所以会同时无缝更新！
+                                ref.invalidate(claimableCouponsProvider);
+                                ref.invalidate(myValidCouponsProvider);
+
+                                RadixToast.success('Claimed successfully!');
+                              } catch (e) {
+                                RadixToast.error('Failed to claim');
+                              } finally {
+                                // 确保不管成功失败，都关闭局部 Loading
+                                if (mounted)
+                                  setState(() => _loadingCouponId = null);
+                              }
+                            },
+                            child: Text(
+                              btnText,
+                              style: TextStyle(
+                                fontSize: 12.sp,
+                                fontWeight: FontWeight.bold,
                               ),
-                              SizedBox(height: 4.w),
-                              Text(
-                                '${item.progress}% Claimed',
-                                style: TextStyle(fontSize: 10.sp, color: Colors.pinkAccent),
-                              ),
-                            ]
-                          ],
-                        ),
+                            ),
+                          ),
+                        ],
                       ),
-                      SizedBox(width: 12.w),
-                      Button(
-                        width: 80.w,
-                        height: 32.h,
-                        disabled: isBtnDisabled,
-                        loading: isThisLoading,
-                        variant: (isClaimed || isSoldOut) ? ButtonVariant.outline : ButtonVariant.primary,
-                        onPressed: () async {
-                          if (isBtnDisabled) return;
-                          setState(() => _loadingCouponId = item.couponId);
-                          try {
-                            await ref.read(couponActionProvider.notifier).claim(item.couponId);
-                            ref.invalidate(claimableCouponsProvider);
-                            ref.invalidate(myValidCouponsProvider);
-                            RadixToast.success('Claimed successfully!');
-                          } catch (e) {
-                            RadixToast.error('Failed to claim');
-                          } finally {
-                            if (mounted) setState(() => _loadingCouponId = null);
-                          }
-                        },
-                        child: Text(
-                          btnText,
-                          style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
+                    );
+                  },
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (_, __) => const SizedBox.shrink(),
     );
   }
 }
@@ -289,7 +363,8 @@ class TopTreasureSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final double marketPrice = item.marketAmount ?? double.tryParse(item.costAmount ?? '0') ?? 0;
+    final double marketPrice =
+        item.marketAmount ?? double.tryParse(item.costAmount ?? '0') ?? 0;
     final double currentPrice = realTimeItem?.price ?? item.unitAmount ?? 0;
     final int sold = item.seqBuyQuantity ?? 0;
     final int totalStock = item.seqShelvesQuantity ?? 0;
@@ -319,7 +394,8 @@ class TopTreasureSection extends StatelessWidget {
               children: [
                 Expanded(
                   child: Text(
-                    item.treasureName ?? 'home_group.fallback_product_name'.tr(),
+                    item.treasureName ??
+                        'home_group.fallback_product_name'.tr(),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
@@ -338,7 +414,10 @@ class TopTreasureSection extends StatelessWidget {
                     child: SvgPicture.asset(
                       'assets/images/product_detail/share.svg',
                       width: 20.w,
-                      colorFilter:  ColorFilter.mode(context.textPrimary900, BlendMode.srcIn),
+                      colorFilter: ColorFilter.mode(
+                        context.textPrimary900,
+                        BlendMode.srcIn,
+                      ),
                     ),
                   ),
                 ),
@@ -368,9 +447,9 @@ class TopTreasureSection extends StatelessWidget {
                   child: Text(
                     '${item.groupSize ?? 5}${'product_detail.group_size_suffix'.tr()}',
                     style: TextStyle(
-                        fontSize: 10.sp,
-                        color: const Color(0xFFFF4D4F),
-                        fontWeight: FontWeight.bold
+                      fontSize: 10.sp,
+                      color: const Color(0xFFFF4D4F),
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
                 ),
@@ -394,11 +473,18 @@ class TopTreasureSection extends StatelessWidget {
               children: [
                 Text(
                   '$sold${'product_detail.suffix_sold'.tr()}',
-                  style: TextStyle(fontSize: 11.sp, color: context.textSecondary700),
+                  style: TextStyle(
+                    fontSize: 11.sp,
+                    color: context.textSecondary700,
+                  ),
                 ),
                 Text(
                   '${'product_detail.prefix_only'.tr()}$left${'product_detail.suffix_left'.tr()}',
-                  style: TextStyle(fontSize: 11.sp, color: const Color(0xFFFF4D4F), fontWeight: FontWeight.w700),
+                  style: TextStyle(
+                    fontSize: 11.sp,
+                    color: const Color(0xFFFF4D4F),
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ],
             ),
@@ -412,14 +498,10 @@ class TopTreasureSection extends StatelessWidget {
 // ==========================================
 // 4. Group Section (Active Groups List)
 // ==========================================
-//
-// ==========================================
-// 4. Group Section (Active Groups List)
-// ==========================================
 class GroupSection extends ConsumerStatefulWidget {
   final String treasureId;
-  final ProductListItem item;                //  接收商品基础信息
-  final TreasureStatusModel? realTimeStatus; //  接收实时状态
+  final ProductListItem item;
+  final TreasureStatusModel? realTimeStatus;
 
   const GroupSection({
     super.key,
@@ -451,11 +533,14 @@ class _GroupSectionState extends ConsumerState<GroupSection> {
 
   @override
   Widget build(BuildContext context) {
-    final bool isOffline = (widget.realTimeStatus?.state ?? widget.item.state) == 0;
-    final int initialStockLeft = (widget.item.seqShelvesQuantity ?? 0) - (widget.item.seqBuyQuantity ?? 0);
-    final bool isSoldOut = widget.realTimeStatus?.isSoldOut ?? (initialStockLeft <= 0);
+    final bool isOffline =
+        (widget.realTimeStatus?.state ?? widget.item.state) == 0;
+    final int initialStockLeft =
+        (widget.item.seqShelvesQuantity ?? 0) -
+        (widget.item.seqBuyQuantity ?? 0);
+    final bool isSoldOut =
+        widget.realTimeStatus?.isSoldOut ?? (initialStockLeft <= 0);
     final bool isExpired = widget.realTimeStatus?.isExpired ?? false;
-
 
     final groupsAsync = ref.watch(groupsPreviewProvider(widget.treasureId));
 
@@ -477,10 +562,11 @@ class _GroupSectionState extends ConsumerState<GroupSection> {
                   behavior: HitTestBehavior.opaque,
                   onTap: () {
                     if (widget.treasureId.isNotEmpty) {
-                      // 从商品详情页进，带上当前商品ID，看这个商品的大厅
-                      appRouter.pushNamed('product-groups-detail', queryParameters: {'treasureId': widget.treasureId});
+                      appRouter.pushNamed(
+                        'product-groups-detail',
+                        queryParameters: {'treasureId': widget.treasureId},
+                      );
                     } else {
-                      // 兜底防错，去全局大厅
                       appRouter.pushNamed('product-groups-detail');
                     }
                   },
@@ -492,32 +578,42 @@ class _GroupSectionState extends ConsumerState<GroupSection> {
                         Text(
                           '${groups.length}${'product_detail.suffix_people_joining'.tr()}',
                           style: TextStyle(
-                              fontWeight: FontWeight.w800,
-                              fontSize: 13.sp,
-                              color: context.textPrimary900
+                            fontWeight: FontWeight.w800,
+                            fontSize: 13.sp,
+                            color: context.textPrimary900,
                           ),
                         ),
                         Row(
                           children: [
                             Text(
-                                'product_detail.btn_view_all'.tr(),
-                                style: TextStyle(fontSize: 11.sp, color: context.textSecondary700)
+                              'product_detail.btn_view_all'.tr(),
+                              style: TextStyle(
+                                fontSize: 11.sp,
+                                color: context.textSecondary700,
+                              ),
                             ),
-                            Icon(Icons.chevron_right, size: 16.w, color: context.textSecondary700),
+                            Icon(
+                              Icons.chevron_right,
+                              size: 16.w,
+                              color: context.textSecondary700,
+                            ),
                           ],
                         ),
                       ],
                     ),
                   ),
                 ),
-                //  把全局状态传给每一个子 Item
-                ...groups.take(2).map((groupItem) => _buildActiveGroupItem(
-                  context,
-                  groupItem,
-                  isOffline,
-                  isSoldOut,
-                  isExpired,
-                )),
+                ...groups
+                    .take(2)
+                    .map(
+                      (groupItem) => _buildActiveGroupItem(
+                        context,
+                        groupItem,
+                        isOffline,
+                        isSoldOut,
+                        isExpired,
+                      ),
+                    ),
                 SizedBox(height: 8.h),
               ],
             ),
@@ -529,16 +625,14 @@ class _GroupSectionState extends ConsumerState<GroupSection> {
     );
   }
 
-  //  2. 深度改造子 Item，融合倒计时与全局状态
   Widget _buildActiveGroupItem(
-      BuildContext context,
-      GroupForTreasureItem item,
-      bool isOffline,
-      bool isSoldOut,
-      bool isExpired,
-      ) {
+    BuildContext context,
+    GroupForTreasureItem item,
+    bool isOffline,
+    bool isSoldOut,
+    bool isExpired,
+  ) {
     final int endTime = item.expireAt;
-    // 只要触发了任意一个全局不可售条件，就不能买
     final bool canBuyGlobally = !isOffline && !isSoldOut && !isExpired;
 
     return Container(
@@ -551,7 +645,6 @@ class _GroupSectionState extends ConsumerState<GroupSection> {
       ),
       child: Row(
         children: [
-          // --- 左侧：头像 ---
           AppCachedImage(
             item.creator.avatar ?? '',
             width: 32.w,
@@ -559,11 +652,13 @@ class _GroupSectionState extends ConsumerState<GroupSection> {
             radius: BorderRadius.circular(16.r),
             fit: BoxFit.cover,
             error: Icon(FontAwesomeIcons.user, size: 16.w, color: Colors.white),
-            placeholder: Icon(FontAwesomeIcons.user, size: 16.w, color: Colors.white),
+            placeholder: Icon(
+              FontAwesomeIcons.user,
+              size: 16.w,
+              color: Colors.white,
+            ),
           ),
           SizedBox(width: 8.w),
-
-          // --- 中间：名字与差几人 ---
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -572,32 +667,31 @@ class _GroupSectionState extends ConsumerState<GroupSection> {
                   item.creator.nickname ?? 'group_lobby.default_user'.tr(),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w700),
+                  style: TextStyle(
+                    fontSize: 12.sp,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
                 Text(
                   '${'product_detail.short_of_prefix'.tr()}${item.maxMembers - item.currentMembers}${'product_detail.short_of_suffix'.tr()}',
                   style: TextStyle(
                     fontSize: 10.sp,
-                    // 如果全局卖光了，差几人也变成灰色，不再用红色刺激用户
-                    color: canBuyGlobally ? const Color(0xFFFF4D4F) : Colors.grey,
+                    color: canBuyGlobally
+                        ? const Color(0xFFFF4D4F)
+                        : Colors.grey,
                   ),
                 ),
               ],
             ),
           ),
-
-          // --- 右侧：倒计时 + 按钮 ( 魔法发生在这里) ---
           Padding(
             padding: EdgeInsets.only(right: 10.w),
             child: CountdownTimer(
               endTime: endTime,
               widgetBuilder: (_, time) {
-                // time == null 意味着当前组的倒计时结束了
                 final bool isLocallyExpired = time == null;
-                // 真正的能否加入 = 全局允许买 且 本地时间没结束
                 final bool canJoin = canBuyGlobally && !isLocallyExpired;
 
-                // 动态计算按钮文案和颜色
                 String btnText = 'product_detail.btn_join'.tr();
                 Color btnColor = const Color(0xFFFF4D4F);
 
@@ -617,47 +711,62 @@ class _GroupSectionState extends ConsumerState<GroupSection> {
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    // 倒计时文本
                     if (isLocallyExpired)
-                      Text('product_detail.status_ended'.tr(), style: TextStyle(fontSize: 10.sp, color: context.textSecondary700))
+                      Text(
+                        'product_detail.status_ended'.tr(),
+                        style: TextStyle(
+                          fontSize: 10.sp,
+                          color: context.textSecondary700,
+                        ),
+                      )
                     else
                       Text(
                         '${pad(time.hours)}:${pad(time.min)}:${pad(time.sec)}',
-                        style: TextStyle(fontSize: 10.sp, color: Colors.grey, fontFeatures: const [FontFeature.tabularFigures()]),
+                        style: TextStyle(
+                          fontSize: 10.sp,
+                          color: Colors.grey,
+                          fontFeatures: const [FontFeature.tabularFigures()],
+                        ),
                       ),
-
                     SizedBox(height: 2.h),
-
-                    // 加入按钮
                     GestureDetector(
                       behavior: HitTestBehavior.opaque,
-                      //  物理阻断：如果不满足 canJoin，onTap 就是 null，点穿屏幕也没用
-                      onTap: canJoin ? () {
-                        appRouter.push('/payment?treasureId=${item.treasureId}&groupId=${item.groupId}&isGroupBuy=true');
-                      } : null,
+                      onTap: canJoin
+                          ? () {
+                              appRouter.push(
+                                '/payment?treasureId=${item.treasureId}&groupId=${item.groupId}&isGroupBuy=true',
+                              );
+                            }
+                          : null,
                       child: Container(
-                        padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 4.h),
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 14.w,
+                          vertical: 4.h,
+                        ),
                         decoration: BoxDecoration(
-                          color: btnColor, //  动态颜色
+                          color: btnColor,
                           borderRadius: BorderRadius.circular(14.r),
                         ),
                         child: Text(
-                          btnText, //  动态文案
-                          style: TextStyle(color: Colors.white, fontSize: 11.sp, fontWeight: FontWeight.bold),
+                          btnText,
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 11.sp,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
-                    )
+                    ),
                   ],
                 );
               },
             ),
-          )
+          ),
         ],
       ),
     );
   }
 }
-
 
 // ==========================================
 // 5. Content Details (Details / Rules Tabs)
@@ -665,13 +774,15 @@ class _GroupSectionState extends ConsumerState<GroupSection> {
 class DetailContentSection extends StatefulWidget {
   final String? ruleContent;
   final String? desc;
+
   const DetailContentSection({super.key, this.ruleContent, this.desc});
 
   @override
   State<DetailContentSection> createState() => _DetailContentSectionState();
 }
 
-class _DetailContentSectionState extends State<DetailContentSection> with SingleTickerProviderStateMixin {
+class _DetailContentSectionState extends State<DetailContentSection>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
   int _currentIndex = 0;
 
@@ -679,8 +790,6 @@ class _DetailContentSectionState extends State<DetailContentSection> with Single
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-
-    // 监听 Tab 切换，动态控制下方 HTML 渲染
     _tabController.addListener(() {
       if (_tabController.index != _currentIndex) {
         setState(() {
@@ -714,35 +823,35 @@ class _DetailContentSectionState extends State<DetailContentSection> with Single
               labelColor: const Color(0xFFFF4D4F),
               unselectedLabelColor: Colors.grey,
               indicatorColor: const Color(0xFFFF4D4F),
-              labelStyle: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.bold),
+              labelStyle: TextStyle(
+                fontSize: 14.sp,
+                fontWeight: FontWeight.bold,
+              ),
               tabs: [
                 Tab(text: 'product_detail.tab_desc'.tr()),
-                Tab(text: 'product_detail.tab_rules'.tr())
+                Tab(text: 'product_detail.tab_rules'.tr()),
               ],
             ),
             SizedBox(height: 16.h),
-
-            // Banners 核心优化 2：彻底干掉高度写死的 SizedBox(height: 400) 和会截断内容的 TabBarView！
-            // 使用 AnimatedSize，让巨型图文详情可以根据真实内容向下完美撑开，无需二次滚动嵌套
             AnimatedSize(
               duration: const Duration(milliseconds: 300),
               curve: Curves.easeInOutCubic,
               alignment: Alignment.topCenter,
               child: _currentIndex == 0
-                  ? RepaintBoundary( // Banners 隔离昂贵的 HTML 图层
-                child: HtmlWidget(
-                  widget.desc ?? 'common.no_data'.tr(),
-                  textStyle: TextStyle(fontSize: 13.sp),
-                  buildAsync: true, // Banners 核心优化 3：开启异步解析，滑动切入详情页时绝对不会掉帧！
-                ),
-              )
+                  ? RepaintBoundary(
+                      child: HtmlWidget(
+                        widget.desc ?? 'common.no_data'.tr(),
+                        textStyle: TextStyle(fontSize: 13.sp),
+                        buildAsync: true,
+                      ),
+                    )
                   : RepaintBoundary(
-                child: HtmlWidget(
-                  widget.ruleContent ?? 'common.no_data'.tr(),
-                  textStyle: TextStyle(fontSize: 13.sp),
-                  buildAsync: true,
-                ),
-              ),
+                      child: HtmlWidget(
+                        widget.ruleContent ?? 'common.no_data'.tr(),
+                        textStyle: TextStyle(fontSize: 13.sp),
+                        buildAsync: true,
+                      ),
+                    ),
             ),
           ],
         ),

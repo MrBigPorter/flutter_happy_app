@@ -15,18 +15,20 @@ class GlobalUploadService {
   static final Dio _s3Dio = _createS3Dio();
 
   static Dio _createS3Dio() {
-    final dio = Dio(BaseOptions(
-      // 1. 连接超时 (30秒足够)
-      connectTimeout: const Duration(seconds: 30),
+    final dio = Dio(
+      BaseOptions(
+        // 1. 连接超时 (30秒足够)
+        connectTimeout: const Duration(seconds: 30),
 
-      // 2. 发送超时 (上传大文件必须长！建议 20-30 分钟)
-      // 这是指发送数据的过程，如果你传 500MB 视频，15秒肯定不够
-      sendTimeout: const Duration(minutes: 30),
+        // 2. 发送超时 (上传大文件必须长！建议 20-30 分钟)
+        // 这是指发送数据的过程，如果你传 500MB 视频，15秒肯定不够
+        sendTimeout: const Duration(minutes: 30),
 
-      // 3. 接收超时 (等待服务器响应的时间)
-      // 上传完成后，S3/后端 处理可能需要几秒
-      receiveTimeout: const Duration(minutes: 30),
-    ));
+        // 3. 接收超时 (等待服务器响应的时间)
+        // 上传完成后，S3/后端 处理可能需要几秒
+        receiveTimeout: const Duration(minutes: 30),
+      ),
+    );
 
     //  Safe Adapter Assignment
     final adapter = getNativeAdapter();
@@ -51,7 +53,8 @@ class GlobalUploadService {
       // Mobile 图片压缩逻辑 (仅对图片生效)
       if (!kIsWeb) {
         final lowerPath = file.path.toLowerCase();
-        final isImage = lowerPath.endsWith(".jpg") ||
+        final isImage =
+            lowerPath.endsWith(".jpg") ||
             lowerPath.endsWith(".jpeg") ||
             lowerPath.endsWith(".png") ||
             lowerPath.endsWith(".heic");
@@ -74,7 +77,8 @@ class GlobalUploadService {
       if (fileToUpload.mimeType != null && fileToUpload.mimeType!.isNotEmpty) {
         mimeType = fileToUpload.mimeType!;
       } else {
-        mimeType = lookupMimeType(fileName) ??
+        mimeType =
+            lookupMimeType(fileName) ??
             lookupMimeType(fileToUpload.path) ??
             "application/octet-stream";
       }
@@ -83,7 +87,8 @@ class GlobalUploadService {
       // 这一步是为了防止 lookupMimeType 识别失败 fallback 成 image/jpeg
       if (fileName.toLowerCase().endsWith(".mp4")) {
         mimeType = "video/mp4";
-      } else if (fileName.toLowerCase().endsWith(".jpg") || fileName.toLowerCase().endsWith(".jpeg")) {
+      } else if (fileName.toLowerCase().endsWith(".jpg") ||
+          fileName.toLowerCase().endsWith(".jpeg")) {
         if (mimeType == "application/octet-stream") mimeType = "image/jpeg";
       }
 
@@ -96,11 +101,14 @@ class GlobalUploadService {
       final fileSize = await fileToUpload.length();
 
       // 申请凭证
-      final urlRes = await Http.post(module.apiPath, data: {
-        "fileName": fileName,
-        "fileType": mimeType, // 告诉后端
-        if (module == UploadModule.common) "common": "",
-      });
+      final urlRes = await Http.post(
+        module.apiPath,
+        data: {
+          "fileName": fileName,
+          "fileType": mimeType, // 告诉后端
+          if (module == UploadModule.common) "common": "",
+        },
+      );
 
       final String uploadUrl = urlRes['url'];
       final String finalResultKey = urlRes['key'];
@@ -112,17 +120,14 @@ class GlobalUploadService {
         uploadData = fileToUpload.openRead();
       }
 
-
       try {
         await _s3Dio.put(
           uploadUrl,
           data: uploadData,
           cancelToken: cancelToken,
           options: Options(
-              contentType: mimeType, // 告诉 S3/R2
-              headers: {
-                "Content-Length": fileSize,
-              }
+            contentType: mimeType, // 告诉 S3/R2
+            headers: {"Content-Length": fileSize},
           ),
           onSendProgress: (count, total) {
             if (total <= 0) return;
@@ -131,7 +136,6 @@ class GlobalUploadService {
           },
         );
         return finalResultKey;
-
       } on DioException catch (e) {
         if (CancelToken.isCancel(e)) throw Exception("Cancelled");
         final s3Error = e.response?.data?.toString() ?? e.message;
@@ -141,7 +145,9 @@ class GlobalUploadService {
       throw Exception("Upload failed: $e");
     } finally {
       if (!kIsWeb && tempCompressedPath != null) {
-        try { File(tempCompressedPath).delete(); } catch (_) {}
+        try {
+          File(tempCompressedPath).delete();
+        } catch (_) {}
       }
     }
   }
@@ -169,17 +175,39 @@ class GlobalUploadService {
         }
       }
       late MultipartFile mf;
-      final fileName = fileToSend.name;
+
+      //  加个兜底：如果是在 Web 端，且名字里没有后缀，强行给它捏造一个 .jpg 后缀！
+      String fileName = fileToSend.name;
+      if (kIsWeb && !fileName.contains('.')) {
+        fileName =
+            'kyc_web_upload_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      }
+
       if (kIsWeb) {
         final bytes = await fileToSend.readAsBytes();
-        final mime = lookupMimeType(fileName, headerBytes: bytes) ?? "application/octet-stream";
-        mf = MultipartFile.fromBytes(bytes, filename: fileName, contentType: DioMediaType.parse(mime));
+        final mime =
+            lookupMimeType(fileName, headerBytes: bytes) ??
+            "image/jpeg"; // 改用 image/jpeg 兜底更安全
+        mf = MultipartFile.fromBytes(
+          bytes,
+          filename: fileName,
+          contentType: DioMediaType.parse(mime),
+        );
       } else {
-        final mime = lookupMimeType(fileToSend.path) ?? "application/octet-stream";
-        mf = await MultipartFile.fromFile(fileToSend.path, filename: fileName, contentType: DioMediaType.parse(mime));
+        final mime = lookupMimeType(fileToSend.path) ?? "image/jpeg";
+        mf = await MultipartFile.fromFile(
+          fileToSend.path,
+          filename: fileName,
+          contentType: DioMediaType.parse(mime),
+        );
       }
       final form = FormData.fromMap({"file": mf});
-      final resp = await Http.post(module.apiPath, data: form, cancelToken: cancelToken, options: Options(sendTimeout: const Duration(minutes: 2)));
+      final resp = await Http.post(
+        module.apiPath,
+        data: form,
+        cancelToken: cancelToken,
+        options: Options(sendTimeout: const Duration(minutes: 2)),
+      );
       final dynamic raw = (resp is Response) ? resp.data : resp;
       final map = (raw as Map).cast<String, dynamic>();
       final dynamic dataAny = map['data'] ?? map;
@@ -188,7 +216,10 @@ class GlobalUploadService {
     } catch (e) {
       throw Exception("ocr failed: $e");
     } finally {
-      if (!kIsWeb && tempCompressedPath != null) try { File(tempCompressedPath).delete(); } catch (_) {}
+      if (!kIsWeb && tempCompressedPath != null)
+        try {
+          File(tempCompressedPath).delete();
+        } catch (_) {}
     }
   }
 
@@ -202,14 +233,24 @@ class GlobalUploadService {
       if (kIsWeb) {
         final bytes = await f.readAsBytes();
         final mime = lookupMimeType(f.name, headerBytes: bytes) ?? "image/jpeg";
-        return MultipartFile.fromBytes(bytes, filename: f.name, contentType: DioMediaType.parse(mime));
+        return MultipartFile.fromBytes(
+          bytes,
+          filename: f.name,
+          contentType: DioMediaType.parse(mime),
+        );
       } else {
         final mime = lookupMimeType(f.path) ?? "image/jpeg";
-        return MultipartFile.fromFile(f.path, filename: f.name, contentType: DioMediaType.parse(mime));
+        return MultipartFile.fromFile(
+          f.path,
+          filename: f.name,
+          contentType: DioMediaType.parse(mime),
+        );
       }
     }
+
     map['idCardFront'] = await xFileToMultipart(frontImage);
-    if (backImage != null) map['idCardBack'] = await xFileToMultipart(backImage);
+    if (backImage != null)
+      map['idCardBack'] = await xFileToMultipart(backImage);
     final form = FormData.fromMap(map);
     return Http.post('/api/v1/kyc/submit', data: form);
   }
