@@ -2,11 +2,11 @@ part of 'global_handler.dart';
 
 // 职责：专注于“样式呈现与交互”的逻辑分层
 extension GlobalHandlerUIExtension on _GlobalHandlerState {
-
   /// 1. 交互式好友申请通知 (使用 RadixToast 核心逻辑)
   void _showContactApplyNotification(Map<String, dynamic> data) {
     // 数据预处理
-    final String nickname = data['nickname'] ?? data['applicantId'] ?? 'Someone';
+    final String nickname =
+        data['nickname'] ?? data['applicantId'] ?? 'Someone';
     final String reason = data['reason'] ?? 'Wants to add you';
 
     //  改动：使用自定义 Notification 构建，但保持 RadixToast 的现代感设计
@@ -20,7 +20,11 @@ extension GlobalHandlerUIExtension on _GlobalHandlerState {
           leading: CircleAvatar(
             radius: 18.r,
             backgroundColor: context.bgBrandSecondary,
-            child: Icon(Icons.person_add_rounded, color: context.utilityBrand500, size: 20.sp),
+            child: Icon(
+              Icons.person_add_rounded,
+              color: context.utilityBrand500,
+              size: 20.sp,
+            ),
           ),
           onTap: () {
             cancelFunc(); // 点击后关闭通知
@@ -80,24 +84,56 @@ extension GlobalHandlerUIExtension on _GlobalHandlerState {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.lock_person_rounded, size: 48.w, color: context.textPrimary900),
+                Icon(
+                  Icons.lock_person_rounded,
+                  size: 48.w,
+                  color: context.textPrimary900,
+                ),
                 SizedBox(height: 16.h),
-                Text('security.device_banned_title'.tr(), textAlign: TextAlign.center, style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.w700, color: context.textPrimary900)),
+                Text(
+                  'security.device_banned_title'.tr(),
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 18.sp,
+                    fontWeight: FontWeight.w700,
+                    color: context.textPrimary900,
+                  ),
+                ),
                 SizedBox(height: 8.h),
-                Text('security.device_banned_desc'.tr(), textAlign: TextAlign.center, style: TextStyle(fontSize: 14.sp, color: context.textSecondary700)),
+                Text(
+                  'security.device_banned_desc'.tr(),
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 14.sp,
+                    color: context.textSecondary700,
+                  ),
+                ),
                 SizedBox(height: 24.h),
-                Button(onPressed: () {}, child: Text('security.btn_contact_support'.tr())),
+                Button(
+                  onPressed: () {
+                    CustomerServiceHelper.startChat();
+                  },
+                  child: Text('security.btn_contact_support'.tr()),
+                ),
                 SizedBox(height: 12.h),
                 GestureDetector(
-                  onTap: () => Platform.isAndroid ? SystemNavigator.pop() : exit(0),
-                  child: Padding(padding: EdgeInsets.symmetric(vertical: 8.h), child: Text('security.btn_exit_app'.tr(), style: TextStyle(color: context.textSecondary700))),
+                  onTap: () =>
+                      Platform.isAndroid ? SystemNavigator.pop() : exit(0),
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(vertical: 8.h),
+                    child: Text(
+                      'security.btn_exit_app'.tr(),
+                      style: TextStyle(color: context.textSecondary700),
+                    ),
+                  ),
                 ),
               ],
             ),
           ),
         );
       },
-      confirmText: '', cancelText: '',
+      confirmText: '',
+      cancelText: '',
     );
   }
 
@@ -116,7 +152,11 @@ extension GlobalHandlerUIExtension on _GlobalHandlerState {
         color: context.bgPrimary,
         borderRadius: BorderRadius.circular(16.r),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 15, offset: const Offset(0, 8)),
+          BoxShadow(
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 15,
+            offset: const Offset(0, 8),
+          ),
         ],
         border: Border.all(color: context.bgSecondary, width: 0.5),
       ),
@@ -136,13 +176,32 @@ extension GlobalHandlerUIExtension on _GlobalHandlerState {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(title, style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.bold, color: context.textPrimary900)),
+                      Text(
+                        title,
+                        style: TextStyle(
+                          fontSize: 14.sp,
+                          fontWeight: FontWeight.bold,
+                          color: context.textPrimary900,
+                        ),
+                      ),
                       SizedBox(height: 2.h),
-                      Text(message, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 13.sp, color: context.textSecondary700)),
+                      Text(
+                        message,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 13.sp,
+                          color: context.textSecondary700,
+                        ),
+                      ),
                     ],
                   ),
                 ),
-                Icon(Icons.chevron_right_rounded, color: context.textSecondary700, size: 20.sp),
+                Icon(
+                  Icons.chevron_right_rounded,
+                  color: context.textSecondary700,
+                  size: 20.sp,
+                ),
               ],
             ),
           ),

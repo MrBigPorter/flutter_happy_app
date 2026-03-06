@@ -45,6 +45,7 @@ import 'package:flutter_app/ui/chat/group/group_request_list/group_request_list_
 import 'package:flutter_app/ui/chat/group/group_profile/group_profile_page.dart';
 import '../../ui/chat/group/group_search/group_search_page.dart';
 import '../page/deposit/deposit_result_page.dart';
+import '../page/liveness_debug_page.dart';
 import '../page/my_vouchers_page.dart';
 import 'extra_codec.dart';
 import 'package:flutter_app/ui/chat/direct_chat_settings_page.dart';
@@ -393,6 +394,11 @@ class AppRouter {
             name: 'withdraw',
             path: '/me/wallet/withdraw',
             builder: (context, state) => WithdrawPage()
+        ),
+        GoRoute(
+            name: 'debug-liveness',
+            path: '/me/kyc/debug-liveness',
+            builder: (context, state) => LivenessDebugPage()
         ),
         GoRoute(
           name: 'product-groups-detail',

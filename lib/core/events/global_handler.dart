@@ -33,6 +33,7 @@ import '../../ui/modal/base/nav_hub.dart';
 import '../../ui/toast/radix_toast.dart';
 import '../constants/socket_events.dart';
 import '../providers/socket_provider.dart';
+import '../services/customer_service/customer_service_helper.dart';
 import '../services/socket/session_manager.dart';
 import '../services/socket/socket_service.dart';
 import '../store/user_store.dart';
