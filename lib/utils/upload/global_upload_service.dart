@@ -228,29 +228,55 @@ class GlobalUploadService {
     required XFile? backImage,
     required Map<String, dynamic> bodyData,
   }) async {
+    // 拷贝一份数据
     final Map<String, dynamic> map = Map.from(bodyData);
-    Future<MultipartFile> xFileToMultipart(XFile f) async {
+
+    // 内部转换方法
+    Future<MultipartFile> xFileToMultipart(
+      XFile f,
+      String defaultPrefix,
+    ) async {
+      String fileName = f.name;
+
+      //  核心防爆盾：Web 端强制赋予合法的文件名和后缀！
+      // 只要有了 .jpg，后端的 Multer 就绝对会乖乖把它当成文件放进 req.files！
+      if (kIsWeb && (fileName.isEmpty || !fileName.contains('.'))) {
+        fileName =
+            'kyc_${defaultPrefix}_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      }
+
       if (kIsWeb) {
         final bytes = await f.readAsBytes();
-        final mime = lookupMimeType(f.name, headerBytes: bytes) ?? "image/jpeg";
+        final mime =
+            lookupMimeType(fileName, headerBytes: bytes) ?? "image/jpeg";
         return MultipartFile.fromBytes(
           bytes,
-          filename: f.name,
+          filename: fileName,
           contentType: DioMediaType.parse(mime),
         );
       } else {
         final mime = lookupMimeType(f.path) ?? "image/jpeg";
         return MultipartFile.fromFile(
           f.path,
-          filename: f.name,
+          filename: fileName,
           contentType: DioMediaType.parse(mime),
         );
       }
     }
 
-    map['idCardFront'] = await xFileToMultipart(frontImage);
-    if (backImage != null)
-      map['idCardBack'] = await xFileToMultipart(backImage);
+    // 1. 转换正面照
+    map['idCardFront'] = await xFileToMultipart(frontImage, 'front');
+
+    // 2. 转换背面照（如果有）
+    if (backImage != null) {
+      map['idCardBack'] = await xFileToMultipart(backImage, 'back');
+    } else {
+      //  关键防御：如果没传背面照，一定要从 map 里删掉！
+      // 否则 OCR 结果里带过来的 null 会被转换成字符串 "null" 发送，引发同样的后端报错
+      map.remove('idCardBack');
+    }
+
+    // 发起最终请求
     final form = FormData.fromMap(map);
     return Http.post('/api/v1/kyc/submit', data: form);
   }
