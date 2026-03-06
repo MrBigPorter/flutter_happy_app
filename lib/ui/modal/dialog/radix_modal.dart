@@ -1,4 +1,4 @@
-import 'dart:async'; //  1. 必须引入，用于 FutureOr
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_app/ui/modal/base/animation_effects.dart';
 import 'package:flutter_app/ui/modal/dialog/modal_dialog_config.dart';
@@ -10,10 +10,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import '../base/animation_policy_resolver.dart';
 
-//  2. 修改定义：允许返回 FutureOr<void>
-// 这样外部调用时可以是 async 函数，从而触发 Loading 状态
 typedef ModalAction<T> = FutureOr<void> Function(void Function([T? result]) close);
-
 
 /// Modal
 /// ------------------------------------------------------------------
@@ -42,7 +39,6 @@ class RadixModal {
       globalPolicy: null,
     );
 
-
     final allowBgClose =
         (config.allowBackgroundCloseOverride ?? policy.allowBackgroundClose) &&
             clickBgToClose;
@@ -70,9 +66,22 @@ class RadixModal {
         );
       },
       pageBuilder: (ctx, anima1, anima2) {
+
+        bool isPopping = false;
+
         void finish([T? res]) {
-          if (Navigator.of(ctx).canPop()) {
-            Navigator.of(ctx).pop(res);
+          if (isPopping) return;
+
+          // 终极修复：严格检测当前弹窗是否为栈顶！
+          // 如果上面还有别的弹窗，或者别的弹窗正在退出，一律忽略点击，保护 isPopping 不被错误锁死！
+          final route = ModalRoute.of(ctx);
+          if (route == null || !route.isCurrent) return;
+
+          isPopping = true;
+
+          if (ctx.mounted) {
+            // 既然确定了我们在栈顶，直接用强杀 pop，不再给 maybePop 拒绝的机会！
+            Navigator.pop(ctx, res);
           }
         }
 
@@ -94,13 +103,10 @@ class RadixModal {
                   ),
                 ],
               ),
-              // ModalDialogSurface 已经是 Stateful 并支持 FutureOr 了
-              // 这里的 lambda 会自动透传 Future 给 Surface 处理 Loading
               child: ModalDialogSurface<T>(
                 title: title,
                 config: config,
                 onClose: finish,
-                //  3. 这里的逻辑没变，但含义变了：如果 onConfirm 是 async，这里返回的就是 Future
                 onConfirm: ()=> onConfirm != null ? onConfirm(finish) : finish(),
                 onCancel: ()=> onCancel != null ? onCancel(finish) : finish(),
                 confirmText: confirmText,

@@ -35,8 +35,6 @@ class ModalSheetService {
     Widget? Function(BuildContext)? headerBuilder,
     bool enableShrink = true,
   }) async {
-    // 1. 关键修复：如果有弹窗正在显示，等待它完全关闭
-    // 这里的 close() 现在会 await 直到上一个弹窗彻底销毁
     if (isShowing) {
       await close();
     }
@@ -73,9 +71,20 @@ class ModalSheetService {
         builder: (modalContext) {
           _sheetContext = modalContext;
 
+          bool isPopping = false;
+
           void finish([dynamic res]) {
-            if (Navigator.of(modalContext).canPop()) {
-              Navigator.of(modalContext).pop<T>(res);
+            if (isPopping) return;
+
+            // 同样增加栈顶校验，保护底部弹窗
+            final route = ModalRoute.of(modalContext);
+            if (route == null || !route.isCurrent) return;
+
+            isPopping = true;
+
+            if (modalContext.mounted) {
+              // 直接 pop
+              Navigator.pop(modalContext, res);
             }
           }
 
@@ -116,24 +125,16 @@ class ModalSheetService {
             ),
           );
 
-          final Widget content = Stack(
-            children: [
-              Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Expanded(
-                    child: GestureDetector(
-                      behavior: HitTestBehavior.translucent,
-                      onTap: allowBgClose ? () => finish() : null,
-                      child: const SizedBox.expand(),
-                    ),
-                  ),
-                  if (headerBuilder != null)
-                    headerBuilder(modalContext) ?? const SizedBox.shrink(),
-                  sheetPanel,
-                ],
-              )
-            ],
+          final Widget content = Align(
+            alignment: Alignment.bottomCenter,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (headerBuilder != null)
+                  headerBuilder(modalContext) ?? const SizedBox.shrink(),
+                sheetPanel,
+              ],
+            ),
           );
 
           if (enableShrink) {
@@ -149,8 +150,6 @@ class ModalSheetService {
     } catch (error) {
       return null;
     } finally {
-      // 2. 只有在这里才真正的清空引用
-      // 这保证了上一个弹窗的生命周期完全结束
       _sheetFuture = null;
       _sheetContext = null;
 
@@ -164,18 +163,14 @@ class ModalSheetService {
     }
   }
 
-  // 3. 关键修复：close 方法
   Future<void> close<T>([T? value]) async {
     if (!isShowing) return;
 
-    // 触发关闭动画
-    if (_sheetContext != null && _sheetContext!.mounted && Navigator.of(_sheetContext!).canPop()) {
-      Navigator.of(_sheetContext!).pop<T>(value);
+    if (_sheetContext != null && _sheetContext!.mounted) {
+      // 同样换回 pop，拒绝静默失败
+      Navigator.pop(_sheetContext!, value);
     }
 
-    // 4. 重要：等待 Future 完成
-    // 不要在这里手动置空 _sheetFuture = null
-    // 等待 showModalBottomSheet 内部流程走完（动画结束 -> finally 块执行）
     if (_sheetFuture != null) {
       await _sheetFuture;
     }
