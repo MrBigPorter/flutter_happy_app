@@ -4,7 +4,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter_app/app/page/deposit_page.dart';
 import 'package:flutter_app/app/page/group_member_page.dart';
 import 'package:flutter_app/app/page/group_room_page.dart';
-import 'package:flutter_app/app/page/kyc_verify_page.dart';
+import 'package:flutter_app/app/page/kyc_verify/kyc_verify_page.dart';
 import 'package:flutter_app/app/page/order_list_page.dart';
 import 'package:flutter_app/app/page/page_404.dart';
 import 'package:flutter_app/app/page/payment/payment_page.dart';
