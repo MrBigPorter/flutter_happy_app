@@ -349,27 +349,47 @@ class CallStateMachine extends StateNotifier<CallState>
       );
     };
 
+    //  核心防御 1：静默废弃 onAddStream，防止与 onTrack 发生并发抢占！
     _webrtc.onAddStream = (stream) {
-      if (!mounted) return;
-      debugPrint("[WebRTC] Received remote stream. Track count: ${stream.getTracks().length}");
-      state.remoteRenderer?.srcObject = stream;
-      state = state.copyWith(duration: "00:00 ");
+      debugPrint("[WebRTC] Received onAddStream (Ignored to prevent WASM DOM conflict)");
     };
 
-    _webrtc.onTrack = (event) {
+    _webrtc.onTrack = (event) async {
       if (!mounted) return;
       debugPrint("[WebRTC] Received remote track. Type: ${event.track.kind}");
 
-      if (event.streams.isNotEmpty) {
-        state.remoteRenderer?.srcObject = event.streams[0];
-      } else {
-        MediaStream? currentStream = state.remoteRenderer?.srcObject;
-        if (currentStream != null) {
-          currentStream.addTrack(event.track);
-          state.remoteRenderer?.srcObject = currentStream;
+      //  核心防御 2：让子弹飞一会儿。
+      // 等待 150 毫秒，让 Audio 和 Video 两个轨道都在底层准备好，避开密集触发期
+      await Future.delayed(const Duration(milliseconds: 150));
+      if (!mounted) return;
+
+      try {
+        if (event.streams.isNotEmpty) {
+          final stream = event.streams[0];
+
+          //  核心防御 3：绝对单例校验！
+          // 如果现在的流和要赋值的流是同一个 ID，绝对绝对不要再去碰 DOM！
+          if (state.remoteRenderer?.srcObject?.id != stream.id) {
+            debugPrint("[WebRTC] Executing DOM Assignment for stream: ${stream.id}");
+            state.remoteRenderer?.srcObject = stream;
+            state = state.copyWith(duration: "00:00  ");
+          }
+        } else {
+          // 如果轨道没有绑定 Stream，手动把轨道加到现有的流里
+          MediaStream? currentStream = state.remoteRenderer?.srcObject;
+          if (currentStream != null) {
+            // 确保轨道不在流里面才添加，且【坚决不要重新赋值 srcObject】
+            if (!currentStream.getTracks().any((t) => t.id == event.track.id)) {
+              currentStream.addTrack(event.track);
+              debugPrint("[WebRTC] Track appended manually without triggering DOM load.");
+            }
+          }
         }
+      } catch (e) {
+        //  核心防御 4：Wasm 异常隔离
+        // 哪怕 JS 层面报了错，也全部吃掉，绝不让它抛出炸毁应用！
+        debugPrint("[WebRTC] Safe handled render error: $e");
       }
-      state = state.copyWith(duration: "00:00  ");
     };
 
     _webrtc.onIceConnectionState = (iceState) {

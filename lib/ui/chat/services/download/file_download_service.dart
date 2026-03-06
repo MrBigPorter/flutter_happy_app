@@ -3,8 +3,7 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 
-// Optimization: Replaced universal_html with package:web for WASM compatibility
-import 'package:web/web.dart' as web;
+import 'web_download_helper.dart';
 
 import 'package:open_filex/open_filex.dart';
 import 'package:path_provider/path_provider.dart';
@@ -22,21 +21,17 @@ class FileDownloadService {
   late final Dio _dio;
 
   FileDownloadService() {
-    // 1. Initialize BaseOptions with standardized timeouts
     _dio = Dio(BaseOptions(
       connectTimeout: const Duration(seconds: 30),
       receiveTimeout: const Duration(minutes: 30),
     ));
 
-    // 2. Platform-Specific Adapter Configuration:
-    // Safely assign the NativeAdapter only if it is not null (Native platforms).
     final adapter = getNativeAdapter();
     if (adapter != null) {
       _dio.httpClientAdapter = adapter;
     }
   }
 
-  /// Main Entry Point: Downloads or opens the specified file message.
   Future<String?> downloadOrOpen(
       ChatUiModel message, {
         Function(int, int)? onProgress,
@@ -45,40 +40,36 @@ class FileDownloadService {
     final rawContent = message.content;
     if (rawContent == '[File]') return null;
 
-    // Resolve the full URL using UrlResolver to handle relative paths and domains.
     final String fullUrl = UrlResolver.resolveFile(rawContent);
 
     if (fullUrl.isEmpty) return null;
 
-    // --- Web Strategy: Trigger Browser-Native Download ---
+    // --- Web Strategy ---
     if (kIsWeb) {
-      _downloadWeb(fullUrl, fileName: message.fileName);
-      return null; // Web platforms do not use local path concepts.
+      // 🚀 核心改动：调用被隔离的安全方法！
+      downloadFileWeb(fullUrl, fileName: message.fileName);
+      return null;
     }
 
-    // --- Native Strategy: Download to Application Sandbox ---
+    // --- Native Strategy ---
     try {
-      // 1. Prepare storage directory
       final dir = await getApplicationDocumentsDirectory();
       final saveDir = Directory('${dir.path}/chat_files');
       if (!saveDir.existsSync()) {
         await saveDir.create(recursive: true);
       }
 
-      // 2. Prepare destination filename
       final String fileName = message.fileName ??
           message.meta?['fileName'] ??
           "file_${message.id}.bin";
       final String savePath = "${saveDir.path}/$fileName";
 
-      // 3. Cache Check: Return existing path if file is valid and non-empty
       if (File(savePath).existsSync()) {
         if (await File(savePath).length() > 0) {
           return savePath;
         }
       }
 
-      // 4. Execute Download via Dio
       await _dio.download(
         fullUrl,
         savePath,
@@ -86,7 +77,6 @@ class FileDownloadService {
         onReceiveProgress: onProgress,
       );
 
-      // 5. Update local database with the new local file path
       await LocalDatabaseService().updateMessage(message.id, {
         'localPath': savePath
       });
@@ -98,41 +88,10 @@ class FileDownloadService {
     }
   }
 
-  /// Handles Web platform file downloads by creating a virtual HTML anchor element.
-  /// Fully WASM compatible using package:web.
-  void _downloadWeb(String url, {String? fileName}) {
-    // Safely cast the created element to HTMLAnchorElement
-    final anchor = web.document.createElement('a') as web.HTMLAnchorElement;
-    anchor.href = url;
-
-    // Open in a new tab for Blobs or PDFs to prevent immediate UI navigation.
-    anchor.target = '_blank';
-
-    // Set the 'download' attribute to force the browser to treat the response as a file.
-    String finalName = fileName ?? '';
-
-    if (finalName.isEmpty) {
-      if (url.startsWith('http')) {
-        finalName = url.split('/').last;
-      }
-      if (finalName.isEmpty || finalName.contains('?')) {
-        finalName = "download_file.pdf";
-      }
-    }
-
-    anchor.download = finalName;
-
-    // WASM Best Practice: Temporarily append to DOM to ensure the click event
-    // is registered properly by strict browsers, then remove it.
-    web.document.body?.appendChild(anchor);
-    anchor.click();
-    anchor.remove();
-  }
-
-  /// Opens a local file using system-default applications (Native platforms).
   Future<void> openLocalFile(String path) async {
     if (kIsWeb) {
-      _downloadWeb(path);
+      // 🚀 核心改动
+      downloadFileWeb(path);
       return;
     }
 
@@ -144,17 +103,14 @@ class FileDownloadService {
     }
   }
 
-  /// Checks if the local file exists at the given path.
   Future<String?> checkLocalFile(String? rawPath) async {
     if (rawPath == null) return null;
 
-    // Web: Treat Blobs and HTTP URLs as existing resources.
     if (kIsWeb) {
       if (rawPath.startsWith('blob:') || rawPath.startsWith('http')) return rawPath;
       return null;
     }
 
-    // Native: Physical file system verification.
     String? resolvedPath;
     if (rawPath.startsWith('/') || rawPath.contains(Platform.pathSeparator)) {
       resolvedPath = rawPath;
