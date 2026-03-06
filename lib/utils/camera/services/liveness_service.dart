@@ -7,11 +7,38 @@ import 'package:google_api_availability/google_api_availability.dart';
 import '../../../app/page/id_scan_page.dart';
 import '../camera_helper.dart';
 
+import 'web_liveness_iframe_stub.dart'
+if (dart.library.html) 'web_liveness_iframe.dart';
+
 class LivenessService {
   static const MethodChannel _channel = MethodChannel('com.porter.joyminis/liveness');
 
   static Future<bool?> start(BuildContext context, String sessionId) async {
-    if (kIsWeb) return true; //  Web 端直接假装活体通过
+    // -----------------------------------------------------------
+    //  Web logic is completely separate and self-contained, using a dialog with an iframe to host the React app. This avoids any Platform checks or native code execution in the web environment, preventing crashes and ensuring a smooth user experience.
+    // -----------------------------------------------------------
+    if (kIsWeb) {
+      debugPrint(" Web invironment: Launching web-based liveness check UI...");
+
+      final result = await showDialog<bool>(
+        context: context,
+        barrierDismissible: false, //  force user to complete or fail the check before closing
+        builder: (ctx) => Dialog(
+          backgroundColor: Colors.black,
+          insetPadding: EdgeInsets.zero,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: SizedBox(
+              width: 450,
+              height: 700,
+              child: WebLivenessIframe(sessionId: sessionId),
+            ),
+          ),
+        ),
+      );
+
+      return result ?? false;
+    }
 
     if (kDebugMode && !await _isPhysicalDevice()) return true;
     if (!await CameraHelper.ensureCameraPermission(context)) return false;
