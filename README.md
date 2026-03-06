@@ -26,6 +26,7 @@ Web 打包不需要签名，只要确保 API 地址正确。
 * **打包命令**：
 ```bash
 flutter build web --release --wasm --dart-define-from-file=lib/core/config/env/prod.json
+flutter build web --release --dart-define-from-file=lib/core/config/env/prod.json
 ```
 
 

@@ -32,6 +32,8 @@ class MediaManager {
       bool isVideo,
       bool Function() getIsMuted,
       ) async {
+    //  核心修复：H5 浏览器直接跳过硬件配置，防止初始化挂起
+    if (kIsWeb) return;
     final session = await AudioSession.instance;
     await session.configure(
       AudioSessionConfiguration(

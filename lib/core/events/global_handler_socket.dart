@@ -155,6 +155,7 @@ extension GlobalHandlerSocketExtension on _GlobalHandlerState {
     _initCallKitListener();
 
     service.socket?.on(SocketEvents.callInvite, (data) async {
+      debugPrint(" [SOCKET_RAW] 收到原始呼叫信令: $data");
       if (!mounted) return;
       if (data is Map) data['type'] = SocketEvents.callInvite;
 
