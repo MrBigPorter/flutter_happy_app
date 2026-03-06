@@ -71,18 +71,14 @@ class RadixModal {
 
         void finish([T? res]) {
           if (isPopping) return;
+          if (!ctx.mounted) return;
 
-          // 终极修复：严格检测当前弹窗是否为栈顶！
-          // 如果上面还有别的弹窗，或者别的弹窗正在退出，一律忽略点击，保护 isPopping 不被错误锁死！
           final route = ModalRoute.of(ctx);
-          if (route == null || !route.isCurrent) return;
+          //同步添加 isActive 防御！
+          if (route == null || !route.isCurrent || !route.isActive) return;
 
           isPopping = true;
-
-          if (ctx.mounted) {
-            // 既然确定了我们在栈顶，直接用强杀 pop，不再给 maybePop 拒绝的机会！
-            Navigator.pop(ctx, res);
-          }
+          Navigator.pop(ctx, res);
         }
 
         ModalManager.instance.bind(()=> finish());

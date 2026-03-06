@@ -29,7 +29,9 @@ import 'package:flutter_app/ui/button/variant.dart';
 import 'package:flutter_app/ui/modal/sheet/radix_sheet.dart';
 import 'package:flutter_app/ui/toast/radix_toast.dart';
 
-import '../../../core/store/auth/auth_provider.dart';
+import 'package:flutter_app/core/store/auth/auth_provider.dart';
+import 'package:flutter_app/features/share/models/share_content.dart';
+import 'package:flutter_app/features/share/services/app_share_manager.dart';
 
 // ==========================================
 // 1. Banner Section (Image Carousel)
@@ -407,8 +409,19 @@ class TopTreasureSection extends StatelessWidget {
                   ),
                 ),
                 SizedBox(width: 8.w),
+                //  核心修复 1：激活商品分享按钮
                 GestureDetector(
-                  onTap: () {},
+                  onTap: () {
+                    ShareManager.startShare(
+                      context,
+                      ShareContent.product(
+                        id: item.treasureId,
+                        title: item.treasureName ?? '',
+                        imageUrl: item.treasureCoverImg ?? '',
+                        desc: 'Check out this amazing product!',
+                      ),
+                    );
+                  },
                   child: Padding(
                     padding: EdgeInsets.only(top: 2.w),
                     child: SvgPicture.asset(
@@ -626,14 +639,20 @@ class _GroupSectionState extends ConsumerState<GroupSection> {
   }
 
   Widget _buildActiveGroupItem(
-    BuildContext context,
-    GroupForTreasureItem item,
-    bool isOffline,
-    bool isSoldOut,
-    bool isExpired,
-  ) {
+      BuildContext context,
+      GroupForTreasureItem item,
+      bool isOffline,
+      bool isSoldOut,
+      bool isExpired,
+      ) {
     final int endTime = item.expireAt;
     final bool canBuyGlobally = !isOffline && !isSoldOut && !isExpired;
+
+    //  核心修复 2：判断当前用户是否已经加入了这个团
+    bool isJoined = false;
+    try {
+      isJoined = (item as dynamic).isJoined == true;
+    } catch (_) {}
 
     return Container(
       key: ValueKey(item.groupId),
@@ -690,8 +709,9 @@ class _GroupSectionState extends ConsumerState<GroupSection> {
               endTime: endTime,
               widgetBuilder: (_, time) {
                 final bool isLocallyExpired = time == null;
-                final bool canJoin = canBuyGlobally && !isLocallyExpired;
+                final bool canAction = canBuyGlobally && !isLocallyExpired;
 
+                // 🚀 核心逻辑 3：动态按钮文案和颜色
                 String btnText = 'product_detail.btn_join'.tr();
                 Color btnColor = const Color(0xFFFF4D4F);
 
@@ -704,6 +724,10 @@ class _GroupSectionState extends ConsumerState<GroupSection> {
                 } else if (isExpired || isLocallyExpired) {
                   btnText = 'Ended';
                   btnColor = Colors.grey[400]!;
+                } else if (isJoined) {
+                  // 如果已经在团里，变成橘色的分享邀请按钮
+                  btnText = 'Invite';
+                  btnColor = const Color(0xFFFF8C00);
                 }
 
                 String pad(int? n) => (n ?? 0).toString().padLeft(2, '0');
@@ -731,12 +755,27 @@ class _GroupSectionState extends ConsumerState<GroupSection> {
                     SizedBox(height: 2.h),
                     GestureDetector(
                       behavior: HitTestBehavior.opaque,
-                      onTap: canJoin
+                      onTap: canAction
                           ? () {
-                              appRouter.push(
-                                '/payment?treasureId=${item.treasureId}&groupId=${item.groupId}&isGroupBuy=true',
-                              );
-                            }
+                        if (isJoined) {
+                          // 🚀 已参团：不跳支付页，直接拉起邀请分享卡片
+                          ShareManager.startShare(
+                            context,
+                            ShareContent.group(
+                              id: widget.treasureId,
+                              groupId: item.groupId,
+                              title: widget.item.treasureName ?? '',
+                              imageUrl: widget.item.treasureCoverImg ?? '',
+                              desc: "Join my team for [${widget.item.treasureName}]! We only need ${item.maxMembers - item.currentMembers} more people to succeed!",
+                            ),
+                          );
+                        } else {
+                          // 🚀 未参团：正常跳转去支付参团
+                          appRouter.push(
+                            '/payment?treasureId=${widget.treasureId}&groupId=${item.groupId}&isGroupBuy=true',
+                          );
+                        }
+                      }
                           : null,
                       child: Container(
                         padding: EdgeInsets.symmetric(

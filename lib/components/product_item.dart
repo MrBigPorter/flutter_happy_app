@@ -80,6 +80,23 @@ class ProductItem extends StatelessWidget {
                         data.treasureCoverImg ?? '',
                       ),
                       fit: BoxFit.cover,
+
+                      //  核心修复 1：骨架屏无缝接力！
+                      // 在图片下载的那几百毫秒里，继续显示骨架屏动画，消灭死白空隙！
+                      placeholder: Skeleton.react(
+                        width: 166,
+                        height: 166,
+                        borderRadius: const BorderRadius.vertical(
+                          top: Radius.circular(8),
+                        ),
+                      ),
+
+                      //  核心修复 2：错误兜底
+                      // 如果图片 URL 挂了，显示一个灰色的破损图标，而不是整块白掉
+                      error: Container(
+                        color: Colors.grey[100],
+                        child: Icon(Icons.broken_image, color: Colors.grey[300], size: 40),
+                      ),
                     ),
                   ),
                   if (data.groupSize != null && data.groupSize! > 1)
@@ -182,11 +199,11 @@ class ProductItem extends StatelessWidget {
                         radius: 8,
                         // 纯数值圆角
                         backgroundColor:
-                            (isWaitingSale || isSoldOut || isExpired)
+                        (isWaitingSale || isSoldOut || isExpired)
                             ? context.buttonSecondaryBg
                             : context.utilityBrand500,
                         foregroundColor:
-                            (isWaitingSale || isSoldOut || isExpired)
+                        (isWaitingSale || isSoldOut || isExpired)
                             ? context.textPrimary900
                             : context.textWhite,
                         onPressed: () {
@@ -223,13 +240,13 @@ class ProductItem extends StatelessWidget {
   }
 
   Widget _buildCountdownSection(
-    BuildContext context,
-    bool isWaitingSale,
-    bool isSoldOut,
-    bool isExpired,
-    int start,
-    int end,
-  ) {
+      BuildContext context,
+      bool isWaitingSale,
+      bool isSoldOut,
+      bool isExpired,
+      int start,
+      int end,
+      ) {
     if (isSoldOut)
       return _statusText('common.status'.tr(), 'common.sold_out'.tr());
     if (isExpired)

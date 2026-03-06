@@ -70,10 +70,10 @@ class AddressSection extends ConsumerWidget {
 
   /// Determines which state UI to display (Loading, Selected, or Empty/Add)
   Widget _buildContent(
-      BuildContext context,
-      AsyncValue<dynamic> listAsync,
-      AddressRes? address
-      ) {
+    BuildContext context,
+    AsyncValue<dynamic> listAsync,
+    AddressRes? address,
+  ) {
     if (listAsync.isLoading && !listAsync.hasValue) {
       return _buildLoadingState(context);
     }
@@ -99,13 +99,25 @@ class AddressSection extends ConsumerWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Skeleton.react(width: 120.w, height: 16.h, borderRadius: BorderRadius.circular(4.r)),
+              Skeleton.react(
+                width: 120.w,
+                height: 16.h,
+                borderRadius: BorderRadius.circular(4.r),
+              ),
               SizedBox(height: 8.h),
-              Skeleton.react(width: 200.w, height: 14.h, borderRadius: BorderRadius.circular(4.r)),
+              Skeleton.react(
+                width: 200.w,
+                height: 14.h,
+                borderRadius: BorderRadius.circular(4.r),
+              ),
             ],
           ),
           const Spacer(),
-          Skeleton.react(width: 16.w, height: 16.w, borderRadius: BorderRadius.circular(4.r)),
+          Skeleton.react(
+            width: 16.w,
+            height: 16.w,
+            borderRadius: BorderRadius.circular(4.r),
+          ),
         ],
       ),
     );
@@ -116,7 +128,11 @@ class AddressSection extends ConsumerWidget {
     return Row(
       children: [
         // Log/Ticket icons removed for cleaner look
-        Icon(CupertinoIcons.location_solid, color: context.buttonPrimaryBg, size: 24.w),
+        Icon(
+          CupertinoIcons.location_solid,
+          color: context.buttonPrimaryBg,
+          size: 24.w,
+        ),
         SizedBox(width: 10.w),
         Expanded(
           child: Text(
@@ -131,7 +147,11 @@ class AddressSection extends ConsumerWidget {
             ),
           ),
         ),
-        Icon(CupertinoIcons.chevron_right, color: context.textQuaternary500, size: 16.w),
+        Icon(
+          CupertinoIcons.chevron_right,
+          color: context.textQuaternary500,
+          size: 16.w,
+        ),
       ],
     );
   }
@@ -140,7 +160,11 @@ class AddressSection extends ConsumerWidget {
   Widget _buildSelectedState(BuildContext context, AddressRes address) {
     return Row(
       children: [
-        Icon(CupertinoIcons.location_solid, color: context.textPrimary900, size: 24.w),
+        Icon(
+          CupertinoIcons.location_solid,
+          color: context.textPrimary900,
+          size: 24.w,
+        ),
         SizedBox(width: 10.w),
         Expanded(
           child: Column(
@@ -151,12 +175,20 @@ class AddressSection extends ConsumerWidget {
                 children: [
                   Text(
                     address.contactName ?? '',
-                    style: TextStyle(color: context.textPrimary900, fontSize: context.textSm, fontWeight: FontWeight.w700),
+                    style: TextStyle(
+                      color: context.textPrimary900,
+                      fontSize: context.textSm,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                   SizedBox(width: 8.w),
                   Text(
                     address.phone,
-                    style: TextStyle(color: context.textSecondary700, fontSize: context.textSm, fontWeight: FontWeight.w500),
+                    style: TextStyle(
+                      color: context.textSecondary700,
+                      fontSize: context.textSm,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                 ],
               ),
@@ -165,13 +197,21 @@ class AddressSection extends ConsumerWidget {
                 address.fullAddress,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: TextStyle(color: context.textSecondary700, fontSize: 13.sp, height: 1.4),
+                style: TextStyle(
+                  color: context.textSecondary700,
+                  fontSize: 13.sp,
+                  height: 1.4,
+                ),
               ),
             ],
           ),
         ),
         SizedBox(width: 8.w),
-        Icon(CupertinoIcons.chevron_right, color: context.textQuaternary500, size: 16.w),
+        Icon(
+          CupertinoIcons.chevron_right,
+          color: context.textQuaternary500,
+          size: 16.w,
+        ),
       ],
     );
   }
@@ -205,7 +245,12 @@ class ProductSection extends ConsumerWidget {
               children: [
                 ClipRRect(
                   borderRadius: BorderRadius.circular(context.radiusLg),
-                  child: AppCachedImage(detail.treasureCoverImg, width: 80.w, height: 80.w, fit: BoxFit.cover),
+                  child: AppCachedImage(
+                    detail.treasureCoverImg,
+                    width: 80.w,
+                    height: 80.w,
+                    fit: BoxFit.cover,
+                  ),
                 ),
                 SizedBox(width: 12.w),
                 Expanded(
@@ -245,7 +290,11 @@ class ProductSection extends ConsumerWidget {
                 Text(
                   // 这里改为动态取价！如果是 Solo Buy，这里就会跟着变成 1000.00
                   FormatHelper.formatCurrency(purchaseState.unitAmount),
-                  style: TextStyle(color: context.textPrimary900, fontSize: context.textXs, fontWeight: FontWeight.w800),
+                  style: TextStyle(
+                    color: context.textPrimary900,
+                    fontSize: context.textXs,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
               ],
             ),
@@ -260,6 +309,7 @@ class ProductSection extends ConsumerWidget {
 /// Stepper component to increase or decrease the purchase quantity
 class QuantityControl extends ConsumerStatefulWidget {
   final String treasureId;
+
   const QuantityControl({super.key, required this.treasureId});
 
   @override
@@ -286,7 +336,9 @@ class QuantityControlState extends ConsumerState<QuantityControl> {
 
   @override
   Widget build(BuildContext context) {
-    final entries = ref.watch(purchaseProvider(widget.treasureId).select((s) => s.entries));
+    final entries = ref.watch(
+      purchaseProvider(widget.treasureId).select((s) => s.entries),
+    );
     final action = ref.read(purchaseProvider(widget.treasureId).notifier);
 
     // Sync provider state to text controller only when not focused to prevent cursor jumping
@@ -315,14 +367,26 @@ class QuantityControlState extends ConsumerState<QuantityControl> {
                 variant: ButtonVariant.text,
                 width: 44.w,
                 height: 38.w,
-                onPressed: () => action.dec((v) => _textEditingController.text = v.toString()),
-                child: Icon(CupertinoIcons.minus, color: context.textPrimary900, size: 16.w),
+                onPressed: () => action.dec(
+                  (v) => _textEditingController.text = v.toString(),
+                ),
+                child: Icon(
+                  CupertinoIcons.minus,
+                  color: context.textPrimary900,
+                  size: 16.w,
+                ),
               ),
               Container(
                 decoration: BoxDecoration(
                   border: Border(
-                    right: BorderSide(color: context.borderSecondary, width: 1.w),
-                    left: BorderSide(color: context.borderSecondary, width: 1.w),
+                    right: BorderSide(
+                      color: context.borderSecondary,
+                      width: 1.w,
+                    ),
+                    left: BorderSide(
+                      color: context.borderSecondary,
+                      width: 1.w,
+                    ),
                   ),
                 ),
                 child: TextField(
@@ -331,8 +395,16 @@ class QuantityControlState extends ConsumerState<QuantityControl> {
                   keyboardType: TextInputType.number,
                   inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: context.textPrimary900, fontSize: context.textMd, fontWeight: FontWeight.w600),
-                  decoration: InputDecoration(isDense: true, border: InputBorder.none, constraints: BoxConstraints(minWidth: 40.w, maxWidth: 80.w)),
+                  style: TextStyle(
+                    color: context.textPrimary900,
+                    fontSize: context.textMd,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  decoration: InputDecoration(
+                    isDense: true,
+                    border: InputBorder.none,
+                    constraints: BoxConstraints(minWidth: 40.w, maxWidth: 80.w),
+                  ),
                   onChanged: (v) => action.setEntriesFromText(v),
                 ),
               ),
@@ -340,8 +412,14 @@ class QuantityControlState extends ConsumerState<QuantityControl> {
                 variant: ButtonVariant.text,
                 width: 44.w,
                 height: 38.w,
-                onPressed: () => action.inc((v) => _textEditingController.text = v.toString()),
-                child: Icon(CupertinoIcons.add, color: context.textPrimary900, size: 16.w),
+                onPressed: () => action.inc(
+                  (v) => _textEditingController.text = v.toString(),
+                ),
+                child: Icon(
+                  CupertinoIcons.add,
+                  color: context.textPrimary900,
+                  size: 16.w,
+                ),
               ),
             ],
           ),
@@ -355,7 +433,12 @@ class QuantityControlState extends ConsumerState<QuantityControl> {
 class InfoSection extends ConsumerWidget {
   final ProductListItem detail;
   final String treasureId;
-  const InfoSection({super.key, required this.detail, required this.treasureId});
+
+  const InfoSection({
+    super.key,
+    required this.detail,
+    required this.treasureId,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -365,16 +448,28 @@ class InfoSection extends ConsumerWidget {
       child: Container(
         width: double.infinity,
         padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 12.w),
-        decoration: BoxDecoration(color: context.bgPrimary, borderRadius: BorderRadius.circular(context.radiusXl)),
+        decoration: BoxDecoration(
+          color: context.bgPrimary,
+          borderRadius: BorderRadius.circular(context.radiusXl),
+        ),
         child: Column(
           children: [
             InfoRow(label: 'common.price.detail'.tr(), value: ''),
             SizedBox(height: 12.w),
-            InfoRow(label: 'common.ticket.price'.tr(), value: FormatHelper.formatCurrency(purchaseState.unitAmount)),
+            InfoRow(
+              label: 'common.ticket.price'.tr(),
+              value: FormatHelper.formatCurrency(purchaseState.unitAmount),
+            ),
             SizedBox(height: 12.w),
-            InfoRow(label: 'common.tickets.number'.tr(), value: '${purchaseState.entries}'),
+            InfoRow(
+              label: 'common.tickets.number'.tr(),
+              value: '${purchaseState.entries}',
+            ),
             SizedBox(height: 12.w),
-            InfoRow(label: 'common.total.price'.tr(), value: FormatHelper.formatCurrency(purchaseState.subtotal)),
+            InfoRow(
+              label: 'common.total.price'.tr(),
+              value: FormatHelper.formatCurrency(purchaseState.subtotal),
+            ),
           ],
         ),
       ),
@@ -385,6 +480,7 @@ class InfoSection extends ConsumerWidget {
 class InfoRow extends StatelessWidget {
   final String label;
   final String value;
+
   const InfoRow({super.key, required this.label, required this.value});
 
   @override
@@ -392,8 +488,22 @@ class InfoRow extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label, style: TextStyle(color: context.textPrimary900, fontSize: context.textSm, fontWeight: FontWeight.w600)),
-        Text(value, style: TextStyle(color: context.textPrimary900, fontSize: context.textSm, fontWeight: FontWeight.w800)),
+        Text(
+          label,
+          style: TextStyle(
+            color: context.textPrimary900,
+            fontSize: context.textSm,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        Text(
+          value,
+          style: TextStyle(
+            color: context.textPrimary900,
+            fontSize: context.textSm,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
       ],
     );
   }
@@ -402,6 +512,7 @@ class InfoRow extends StatelessWidget {
 /// Section to manage Treasure Coin discounts and check availability
 class VoucherSection extends ConsumerWidget {
   final String treasureId;
+
   const VoucherSection({super.key, required this.treasureId});
 
   @override
@@ -415,23 +526,44 @@ class VoucherSection extends ConsumerWidget {
       child: Container(
         width: double.infinity,
         padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 16.w),
-        decoration: BoxDecoration(color: context.bgPrimary, borderRadius: BorderRadius.circular(context.radiusXl)),
+        decoration: BoxDecoration(
+          color: context.bgPrimary,
+          borderRadius: BorderRadius.circular(context.radiusXl),
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Standard Voucher/Coupon label
-            Text('coupon.coupon'.tr(), style: TextStyle(color: context.textPrimary900, fontSize: context.textSm, fontWeight: FontWeight.w600)),
+            Text(
+              'coupon.coupon'.tr(),
+              style: TextStyle(
+                color: context.textPrimary900,
+                fontSize: context.textSm,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
             SizedBox(height: 12.w),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('common.treasureCoins'.tr(), style: TextStyle(color: context.textPrimary900, fontSize: context.textSm, fontWeight: FontWeight.w600)),
+                Text(
+                  'common.treasureCoins'.tr(),
+                  style: TextStyle(
+                    color: context.textPrimary900,
+                    fontSize: context.textSm,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
                 Row(
                   children: [
                     if (purchase.useDiscountCoins)
                       Text(
                         '(${FormatHelper.formatCompactDecimal(notifier.coinsCanUse)} coins)=${FormatHelper.formatCurrency(notifier.coinAmount)}',
-                        style: TextStyle(color: context.textErrorPrimary600, fontSize: context.textSm, fontWeight: FontWeight.w600),
+                        style: TextStyle(
+                          color: context.textErrorPrimary600,
+                          fontSize: context.textSm,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     Transform.scale(
                       scale: 0.7,
@@ -445,7 +577,10 @@ class VoucherSection extends ConsumerWidget {
                 ),
               ],
             ),
-            Text('${'common.balance'.tr()}: ${FormatHelper.formatCompactDecimal(coinsBalance)} ${'common.coins'.tr()}', style: TextStyle(color: context.textQuaternary500)),
+            Text(
+              '${'common.balance'.tr()}: ${FormatHelper.formatCompactDecimal(coinsBalance)} ${'common.coins'.tr()}',
+              style: TextStyle(color: context.textQuaternary500),
+            ),
           ],
         ),
       ),
@@ -466,25 +601,60 @@ class PaymentMethodSection extends ConsumerWidget {
       child: Container(
         width: double.infinity,
         padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 12.w),
-        decoration: BoxDecoration(color: context.bgPrimary, borderRadius: BorderRadius.circular(context.radiusXl)),
+        decoration: BoxDecoration(
+          color: context.bgPrimary,
+          borderRadius: BorderRadius.circular(context.radiusXl),
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('common.select'.tr(), style: TextStyle(color: context.textPrimary900, fontSize: context.textSm, fontWeight: FontWeight.w800)),
+            Text(
+              'common.select'.tr(),
+              style: TextStyle(
+                color: context.textPrimary900,
+                fontSize: context.textSm,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
             SizedBox(height: 12.w),
             Row(
               children: [
-                SvgPicture.asset('assets/images/payment/wallet-icon.svg', width: 20.w, colorFilter: ColorFilter.mode(context.textPrimary900, BlendMode.srcIn)),
+                SvgPicture.asset(
+                  'assets/images/payment/wallet-icon.svg',
+                  width: 20.w,
+                  colorFilter: ColorFilter.mode(
+                    context.textPrimary900,
+                    BlendMode.srcIn,
+                  ),
+                ),
                 SizedBox(width: 12.w),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('common.wallet'.tr(), style: TextStyle(color: context.textPrimary900, fontSize: context.textSm, fontWeight: FontWeight.w800)),
-                    Text('${'common.balance'.tr()}:${FormatHelper.formatCurrency(realBalance)}', style: TextStyle(color: context.textQuaternary500, fontSize: context.textXs, fontWeight: FontWeight.w600)),
+                    Text(
+                      'common.wallet'.tr(),
+                      style: TextStyle(
+                        color: context.textPrimary900,
+                        fontSize: context.textSm,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    Text(
+                      '${'common.balance'.tr()}:${FormatHelper.formatCurrency(realBalance)}',
+                      style: TextStyle(
+                        color: context.textQuaternary500,
+                        fontSize: context.textXs,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ],
                 ),
                 const Spacer(),
-                const Radio(groupValue: 'wallet', value: 'wallet', onChanged: null),
+                const Radio(
+                  groupValue: 'wallet',
+                  value: 'wallet',
+                  onChanged: null,
+                ),
               ],
             ),
           ],

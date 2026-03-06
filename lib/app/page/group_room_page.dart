@@ -72,29 +72,49 @@ class _GroupRoomPageState extends ConsumerState<GroupRoomPage> {
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (err, stack) => Center(child: Text('Error: $err')),
         data: (group) {
-          return ConstrainedBox(
-            constraints: BoxConstraints(minHeight: 1.sh - 100.h),
-            child: Padding(
-              padding: EdgeInsets.all(16.w),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  _buildStatusCard(context, group),
-                  SizedBox(height: 24.h),
-                  Text(
-                    "Members (${group.members.length}/${group.maxMembers})",
-                    style: TextStyle(
-                      fontSize: 16.sp,
-                      fontWeight: FontWeight.bold,
-                    ),
+          // 🚀 核心修复：使用 CustomScrollView 完美解决底部截断问题
+          return CustomScrollView(
+            physics: const AlwaysScrollableScrollPhysics(), // 始终允许滑动回弹，手感更好
+            slivers: [
+              SliverFillRemaining(
+                hasScrollBody: false, // 魔法开关：告诉系统里面不是另一个 ListView
+                child: Padding(
+                  padding: EdgeInsets.all(16.w),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // 1. 状态卡片
+                      _buildStatusCard(context, group),
+                      SizedBox(height: 24.h),
+
+                      // 2. 成员标题
+                      Text(
+                        "Members (${group.members.length}/${group.maxMembers})",
+                        style: TextStyle(
+                          fontSize: 16.sp,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      SizedBox(height: 20.h),
+
+                      // 3. 头像坑位列表
+                      _buildMemberSlots(context, group),
+
+                      //  魔法组件：Spacer 会把剩余所有的屏幕空间撑开，把下面的按钮硬生生推到屏幕最底部！
+                      // 如果屏幕已经满了，它会自动收缩为 0。
+                      const Spacer(),
+
+                      // 4. 底部操作按钮区域
+                      SizedBox(height: 30.h),
+                      _buildActionButtons(context, group),
+
+                      //  增加底部安全区距离，防止 iOS 的底部小白条或者全面屏手势区遮挡按钮
+                      SizedBox(height: MediaQuery.of(context).padding.bottom + 10.h),
+                    ],
                   ),
-                  SizedBox(height: 20.h),
-                  _buildMemberSlots(context, group),
-                  SizedBox(height: 30.h,),
-                  _buildActionButtons(context, group),
-                ],
+                ),
               ),
-            ),
+            ],
           );
         },
       ),
@@ -207,21 +227,21 @@ class _GroupRoomPageState extends ConsumerState<GroupRoomPage> {
             ),
           ),
           child: isEmpty
-              // 情况 A: 空位
+          // 情况 A: 空位
               ? Icon(Icons.question_mark, color: Colors.grey[300], size: 24.w)
               : AppCachedImage(
-                  avatarUrl,
-                  fit: BoxFit.cover,
-                  width: 32.w,
-                  height: 32.w,
-                  radius: BorderRadius.circular(28.w),
-                  placeholder: Icon(
-                    Icons.person,
-                    size: 32.w,
-                    color: Colors.grey[300],
-                  ),
-                  error: Icon(Icons.person, size: 32.w, color: Colors.grey),
-                ),
+            avatarUrl,
+            fit: BoxFit.cover,
+            width: 32.w,
+            height: 32.w,
+            radius: BorderRadius.circular(28.w),
+            placeholder: Icon(
+              Icons.person,
+              size: 32.w,
+              color: Colors.grey[300],
+            ),
+            error: Icon(Icons.person, size: 32.w, color: Colors.grey),
+          ),
         ),
         SizedBox(height: 8.w),
         Container(
@@ -263,44 +283,40 @@ class _GroupRoomPageState extends ConsumerState<GroupRoomPage> {
     String treasureId = group.treasure?.treasureId ?? '';
     final int remain = group.maxMembers - group.members.length;
 
-    //  核心新增：判断当前登录用户是否已经在团里
-
-    bool isMember = true;
-
     // 1. 进行中 (Ongoing)
     if (group.groupStatus == 1) {
-        // 1.1 已经在团里 -> 邀请别人
-        return Column(
-          children: [
-            Button(
-              width: double.infinity,
-              onPressed: () {
-                ShareManager.startShare(
-                  context,
-                  ShareContent.group(
-                    id: treasureId,
-                    groupId: group.groupId,
-                    title: treasureName,
-                    imageUrl: treasureImg,
-                    desc: "Join my team for [$treasureName]! We only need $remain more people to succeed!",
-                  ),
-                );
-              },
-              child: Text(
-                "Invite Friends",
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
+      // 1.1 已经在团里 -> 邀请别人
+      return Column(
+        children: [
+          Button(
+            width: double.infinity,
+            onPressed: () {
+              ShareManager.startShare(
+                context,
+                ShareContent.group(
+                  id: treasureId,
+                  groupId: group.groupId,
+                  title: treasureName,
+                  imageUrl: treasureImg,
+                  desc: "Join my team for [$treasureName]! We only need $remain more people to succeed!",
                 ),
+              );
+            },
+            child: Text(
+              "Invite Friends",
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
               ),
             ),
-            SizedBox(height: 12.w),
-            Text(
-              "Share link to your friends to join faster!",
-              style: TextStyle(color: Colors.grey, fontSize: 12.sp),
-            ),
-          ],
-        );
+          ),
+          SizedBox(height: 12.w),
+          Text(
+            "Share link to your friends to join faster!",
+            style: TextStyle(color: Colors.grey, fontSize: 12.sp),
+          ),
+        ],
+      );
     }
 
     // 2. 成功 -> 查看订单 (Success -> View Order)

@@ -14,19 +14,16 @@ import 'sheet_surface.dart';
 
 class ModalSheetService {
   ModalSheetService._();
-
   static final ModalSheetService instance = ModalSheetService._();
 
   AnimationPolicyConfig? globalPolicy;
-
   GlobalKey<NavigatorState> get navigatorKey => NavHub.key;
-
   final routeObserver = RouteObserver<ModalRoute>();
 
-  Future<dynamic>? _sheetFuture;
-  BuildContext? _sheetContext;
+  //  核心重构：用 List 追踪所有弹窗，允许它们自然堆叠！
+  final List<BuildContext> _activeContexts = [];
 
-  bool get isShowing => _sheetFuture != null;
+  bool get isShowing => _activeContexts.isNotEmpty;
 
   Future<T?> showSheet<T>({
     required Widget Function(BuildContext, void Function([T? res])) builder,
@@ -35,9 +32,8 @@ class ModalSheetService {
     Widget? Function(BuildContext)? headerBuilder,
     bool enableShrink = true,
   }) async {
-    if (isShowing) {
-      await close();
-    }
+    //  移除了 `if (isShowing) await close();` 的霸道逻辑
+    // 现在弹窗 1 和弹窗 2 可以完美叠加了！
 
     final policy = AnimationPolicyResolver.resolve(
       businessStyle: config.animationStyleConfig,
@@ -45,22 +41,17 @@ class ModalSheetService {
     );
 
     final nav = navigatorKey.currentState;
-    if (nav == null) {
-      throw Exception('ModalSheetService: Navigator not ready.');
-    }
-
-    if (!nav.mounted) return null;
+    if (nav == null || !nav.mounted) return null;
 
     final ctx = nav.context;
     final theme = Theme.of(ctx);
 
     final allowBgClose = (config.allowBackgroundCloseOverride ?? policy.allowBackgroundClose) && clickBgToClose;
     final enableDrag = config.enableDragToClose ?? policy.enableDragToClose;
-
     final _ = config.theme.barrierColor ?? theme.colorScheme.scrim.withValues(alpha: 0.45);
 
     try {
-      _sheetFuture = showModalBottomSheet<T>(
+      final future = showModalBottomSheet<T>(
         context: ctx,
         useRootNavigator: true,
         isScrollControlled: true,
@@ -69,23 +60,22 @@ class ModalSheetService {
         isDismissible: allowBgClose,
         enableDrag: enableDrag,
         builder: (modalContext) {
-          _sheetContext = modalContext;
+          // 记录当前新开的弹窗
+          _activeContexts.add(modalContext);
 
           bool isPopping = false;
 
           void finish([dynamic res]) {
             if (isPopping) return;
+            if (!modalContext.mounted) return;
 
-            // 同样增加栈顶校验，保护底部弹窗
             final route = ModalRoute.of(modalContext);
-            if (route == null || !route.isCurrent) return;
+            //  终极防御：增加了 `!route.isActive` 检测
+            // 如果用户点了灰色背景，系统原生已经在关它了，我们绝不再发 pop！
+            if (route == null || !route.isCurrent || !route.isActive) return;
 
             isPopping = true;
-
-            if (modalContext.mounted) {
-              // 直接 pop
-              Navigator.pop(modalContext, res);
-            }
+            Navigator.pop(modalContext, res);
           }
 
           ModalManager.instance.bind(() => finish());
@@ -145,34 +135,38 @@ class ModalSheetService {
         },
       );
 
-      final result = await _sheetFuture;
+      final result = await future;
       return result;
     } catch (error) {
       return null;
     } finally {
-      _sheetFuture = null;
-      _sheetContext = null;
+      //  精确清理：当前弹窗彻底关闭后，把它从记录中移除
+      // 绝对不会误伤到底层还在显示的弹窗
+      _activeContexts.removeWhere((c) => c == null || !c.mounted);
 
       try {
-        final currentContext = navigatorKey.currentContext;
-        if (currentContext != null && currentContext.mounted) {
-          ProviderScope.containerOf(currentContext, listen: false)
-              .read(overlayProgressProvider.notifier).state = 0.0;
+        // 只有所有弹窗都关完了，才恢复底层页面进度
+        if (_activeContexts.isEmpty) {
+          final currentContext = navigatorKey.currentContext;
+          if (currentContext != null && currentContext.mounted) {
+            ProviderScope.containerOf(currentContext, listen: false)
+                .read(overlayProgressProvider.notifier).state = 0.0;
+          }
         }
       } catch (_) {}
     }
   }
 
+  // 代码触发的全局关闭，永远只关掉处于最顶层的一个弹窗
   Future<void> close<T>([T? value]) async {
-    if (!isShowing) return;
+    if (_activeContexts.isEmpty) return;
 
-    if (_sheetContext != null && _sheetContext!.mounted) {
-      // 同样换回 pop，拒绝静默失败
-      Navigator.pop(_sheetContext!, value);
-    }
-
-    if (_sheetFuture != null) {
-      await _sheetFuture;
+    final topContext = _activeContexts.last;
+    if (topContext.mounted) {
+      final route = ModalRoute.of(topContext);
+      if (route != null && route.isActive) {
+        Navigator.maybePop(topContext, value);
+      }
     }
   }
 }

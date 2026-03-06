@@ -436,7 +436,8 @@ class _CouponSelectorBottomSheet extends ConsumerWidget {
             onClose();
           },
           child: const Text('Do not use voucher'),
-        )
+        ),
+        SizedBox(height: 20.h,)
       ],
     );
   }
