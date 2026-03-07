@@ -14,12 +14,18 @@ import 'package:reactive_forms/reactive_forms.dart';
 import '../../core/models/region_providers.dart';
 import '../../core/providers/liveness_provider.dart';
 import '../../utils/form/validation/k_kyc_validation_messages.dart';
+import '../routes/app_router.dart';
 import 'kyc_status_page.dart';
 
 class KycInformationConfirmPage extends ConsumerStatefulWidget {
   final KycOcrResult kycOcrResult;
+  final VoidCallback? onDiscard;
 
-  const KycInformationConfirmPage({super.key, required this.kycOcrResult});
+  const KycInformationConfirmPage({
+    super.key,
+    required this.kycOcrResult,
+    this.onDiscard,
+  });
 
   @override
   ConsumerState<KycInformationConfirmPage> createState() =>
@@ -178,11 +184,7 @@ class _KycInformationConfirmPageState
       await Api.kycSubmitApi(dto);
 
       if (!mounted) return;
-
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (context) => const KycStatusPage()),
-            (route) => false,
-      );
+      appRouter.go('/me/kyc/status');
     } catch (e) {
       debugPrint("KYC Submit Error: $e");
       if (mounted) {
@@ -217,7 +219,12 @@ class _KycInformationConfirmPageState
       confirmText: 'Discard',
       onConfirm: (close) {
         close();
-        Navigator.of(context).pop();
+
+        if (widget.onDiscard != null) {
+          widget.onDiscard!();
+        } else {
+          Navigator.of(context).pop();
+        }
       },
     );
   }
@@ -241,6 +248,11 @@ class _KycInformationConfirmPageState
 
     return PopScope(
       canPop: false,
+      onPopInvoked: (didPop) {
+        if (!didPop) {
+          _handlePopInvocation(false, null);
+        }
+      },
       child: BaseScaffold(
         title: 'Information Confirm',
         showBack: false,

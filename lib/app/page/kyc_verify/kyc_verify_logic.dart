@@ -6,6 +6,8 @@ mixin KycVerifyLogic on ConsumerState<KycVerifyPage> {
   static const double kFraudBlockScore = 60.0;
   static const double kFraudWarnScore = 30.0;
 
+  KycOcrResult? scannedData;
+
   @override
   void initState() {
     super.initState();
@@ -13,6 +15,23 @@ mixin KycVerifyLogic on ConsumerState<KycVerifyPage> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _checkStatusAndShowDialog();
     });
+  }
+
+  Future<void> _navigateToConfirm(KycOcrResult data) async {
+    if (mounted) {
+      setState(() {
+        scannedData = data;
+      });
+    }
+  }
+
+  //  3. 新增：如果用户在确认页点“放弃”，让他回到扫码页
+  void resetToScan() {
+    if (mounted) {
+      setState(() {
+        scannedData = null;
+      });
+    }
   }
 
   void _checkStatusAndShowDialog() {
@@ -144,15 +163,6 @@ mixin KycVerifyLogic on ConsumerState<KycVerifyPage> {
       return await _showFraudWarningDialog(r);
     }
     return true;
-  }
-
-  Future<void> _navigateToConfirm(KycOcrResult data) async {
-    await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => KycInformationConfirmPage(kycOcrResult: data),
-      ),
-    );
   }
 
   void _handleUploadSpecificError(Object error) {

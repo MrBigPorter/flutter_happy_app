@@ -26,13 +26,22 @@ class LivenessService {
         builder: (ctx) => Dialog(
           backgroundColor: Colors.black,
           insetPadding: EdgeInsets.zero,
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(12),
-            child: SizedBox(
-              width: 450,
-              height: 700,
-              child: WebLivenessIframe(sessionId: sessionId),
-            ),
+          child: SizedBox(
+            width: MediaQuery.of(context).size.width,
+            height: MediaQuery.of(context).size.height,
+            child: Stack(
+              children: [
+                WebLivenessIframe(sessionId: sessionId),
+                Positioned(
+                  top: 40,
+                  right: 20,
+                  child: IconButton(
+                    icon: const Icon(Icons.close, color: Colors.white, size: 30),
+                    onPressed: () => Navigator.of(ctx).pop(false), //  用户主动关闭视图，视为验证失败
+                  ),
+                ),
+              ],
+            )
           ),
         ),
       );

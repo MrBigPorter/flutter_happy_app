@@ -36,6 +36,16 @@ class KycVerifyPage extends ConsumerStatefulWidget {
 class _KycVerifyPageState extends ConsumerState<KycVerifyPage> with KycVerifyLogic {
   @override
   Widget build(BuildContext context) {
+
+    // 核心改动：如果有数据，直接返回确认页！它会占满整个屏幕，完美覆盖当前页。
+    if (scannedData != null) {
+      return KycInformationConfirmPage(
+        kycOcrResult: scannedData!,
+        onDiscard: resetToScan, // 把重置方法传过去
+      );
+    }
+
+    // 下面是你原本的代码（一字不改，当 scannedData 为 null 时显示扫码按钮）
     return BaseScaffold(
       title: 'kyc-verify'.tr(),
       body: SingleChildScrollView(

@@ -20,6 +20,7 @@ class KycStatusPage extends ConsumerStatefulWidget {
 class _KycStatusPageState extends ConsumerState<KycStatusPage> {
   void _onPopInvoked(bool didPop) {
     if (didPop) return;
+    _goHome();
   }
 
   void _goHome() => appRouter.go('/home');

@@ -45,6 +45,7 @@ import 'package:flutter_app/ui/chat/group/group_request_list/group_request_list_
 import 'package:flutter_app/ui/chat/group/group_profile/group_profile_page.dart';
 import '../../ui/chat/group/group_search/group_search_page.dart';
 import '../page/deposit/deposit_result_page.dart';
+import '../page/kyc_status_page.dart';
 import '../page/liveness_debug_page.dart';
 import '../page/my_vouchers_page.dart';
 import 'extra_codec.dart';
@@ -354,6 +355,11 @@ class AppRouter {
             name: 'setting',
             path: '/setting',
             builder: (context, state) => SettingPage()
+        ),
+        GoRoute(
+          name: 'kycStatus',
+          path: '/me/kyc/status',
+          builder: (context, state) => const KycStatusPage(),
         ),
         GoRoute(
             name: 'kycVerify',
