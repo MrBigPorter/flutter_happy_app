@@ -2,6 +2,8 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_app/app/page/transaction/transaction_ui_model.dart';
+import 'package:flutter_app/app/page/transaction_record_page.dart';
 import 'package:flutter_app/components/skeleton.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -85,6 +87,9 @@ class _DepositPageState extends ConsumerState<DepositPage> {
 
         if (response != null && response.payUrl.isNotEmpty) {
           if (!mounted) return;
+
+          ref.read(transactionDirtyProvider(UiTransactionType.deposit).notifier).state = true;
+
           // 跳转 Webview 支付
           Navigator.of(context).push(
             MaterialPageRoute(

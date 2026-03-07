@@ -21,39 +21,46 @@ required int pageSize
 // 定义入参
 typedef TransactionListParams = ({UiTransactionType type});
 
+// 1. 全局内存缓存：保住第一页的命，消灭骨架屏！
+final _transactionCache = <String, PageResult<TransactionUiModel>>{};
+
+// 2. 脏标记 (Dirty Flag)：记录某个类型的交易是否需要强刷
+final transactionDirtyProvider = StateProvider.family<bool, UiTransactionType>((ref, type) => false);
+
 // 2. Provider 定义 (明确返回 TransactionRequestFunc)
 final transactionListProvider = Provider.family<TransactionRequestFunc, TransactionListParams>((ref, params) {
-
-  // 返回一个符合定义的函数
   return ({required int page, required int pageSize}) async {
+    final cacheKey = 'transaction_list_${params.type.name}';
 
-    if (params.type == UiTransactionType.deposit) {
-      final dto = WalletRechargeHistoryDto(page: page, pageSize: pageSize);
-      final res = await Api.walletRechargeHistoryApi(dto);
+    //  看看有没有人贴了“脏标记”
+    final isDirty = ref.read(transactionDirtyProvider(params.type));
 
-      return PageResult(
-        list: res.list
-            .map((e) => e.toUiModel())
-            .toList(),
-        total: res.total,
-        count: res.count,
-        page: res.page,
-        pageSize: res.pageSize,
-      );
-    } else {
-      final dto = WalletWithdrawHistoryDto(page: page, pageSize: pageSize);
-
-      final res = await Api.walletWithdrawHistory(dto);
-      return PageResult(
-        list: res.list
-            .map((e) => e.toUiModel())
-            .toList(),
-        total: res.total,
-        count: res.count,
-        page: res.page,
-        pageSize: res.pageSize,
-      );
+    // 核心逻辑：如果是第一页、且数据没脏、且有缓存 -> 瞬间秒开！
+    if (page == 1 && !isDirty && _transactionCache.containsKey(cacheKey)) {
+      // (可选) 可以在这里静默拉取新数据更新缓存，或者干脆啥都不做，完全依赖脏标记
+      return _transactionCache[cacheKey]!;
     }
+
+    // ============ 走真实的真实网络请求 ============
+    PageResult<TransactionUiModel> result;
+    if (params.type == UiTransactionType.deposit) {
+      final res = await Api.walletRechargeHistoryApi(WalletRechargeHistoryDto(page: page, pageSize: pageSize));
+      result = PageResult(list: res.list.map((e) => e.toUiModel()).toList(), total: res.total, count: res.count, page: res.page, pageSize: res.pageSize);
+    } else {
+      final res = await Api.walletWithdrawHistory(WalletWithdrawHistoryDto(page: page, pageSize: pageSize));
+      result = PageResult(list: res.list.map((e) => e.toUiModel()).toList(), total: res.total, count: res.count, page: res.page, pageSize: res.pageSize);
+    }
+
+    // 更新缓存并销毁标记
+    if (page == 1) {
+      _transactionCache[cacheKey] = result; // 存入缓存
+      if (isDirty) {
+        // 数据已经最新了，把脏标记洗白，下次进来继续秒开！
+        ref.read(transactionDirtyProvider(params.type).notifier).state = false;
+      }
+    }
+
+    return result;
   };
 });
 
@@ -225,7 +232,13 @@ class _TransactionListViewState extends ConsumerState<TransactionListView>
           onRefresh: () async {
             // 调用控制器的刷新方法，它会重置 page=1 并重新请求数据
              HapticFeedback.mediumImpact(); // 如果想要震动反馈可以解注这一行
-            await _ctl.refresh();
+             if(widget.type.name == UiTransactionType.deposit.name){
+               ref.read(transactionDirtyProvider(UiTransactionType.deposit).notifier).state = true;
+             } else {
+               ref.read(transactionDirtyProvider(UiTransactionType.withdraw).notifier).state = true;
+             }
+
+            await _ctl.refresh(clearList: false);
           },
 
           // 2. 样式配置 (可选，根据你的 UI 规范调整)

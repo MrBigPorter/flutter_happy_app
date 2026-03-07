@@ -13,6 +13,9 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../theme/design_tokens.g.dart';
 
 
+final _orderListCache = <String, PageResult<OrderItem>>{};
+final orderListDirtyProvider = StateProvider.family<bool, String>((ref, status) => false);
+
 class OrderList extends ConsumerStatefulWidget {
   final String status;
   const OrderList({super.key,required this.status});
@@ -33,12 +36,43 @@ class _OrderListState extends ConsumerState<OrderList> with AutomaticKeepAliveCl
 
     _ctl = PageListController<OrderItem>(
       requestKey: widget.status,
-      request: ({required int pageSize, required int page}) {
-        //  用入参 status，不依赖外部 provider no rely on external provider
-        return ref.read(orderListProvider((status: widget.status, treasureId: null)))(
-          pageSize: pageSize,
-          page: page,
-        );
+      request: ({required int pageSize, required int page}) async {
+        final cacheKey = 'order_list_${widget.status}';
+        final fetchApi = ref.read(orderListProvider((status: widget.status, treasureId: null)));
+
+        if (page == 1) {
+          final isDirty = ref.read(orderListDirtyProvider(widget.status));
+
+          //  2. 真·SWR 拦截：有缓存且客户端没标记脏
+          if (!isDirty && _orderListCache.containsKey(cacheKey)) {
+
+            // ① 派小弟去后台拉取最新数据（对齐服务器端的发货/取消状态）
+            fetchApi(pageSize: pageSize, page: 1).then((freshData) {
+              if (mounted && _ctl.value.currentPage <= 1) {
+                _orderListCache[cacheKey] = freshData;
+                // ② 数据回来后，【绕过 Controller，直接修改底层 ValueNotifier】！
+                // 这会让 UI 瞬间热更新，已经发货的商品会无缝消失，完全不闪屏！
+                _ctl.value = _ctl.value.copyWith(
+                  items: freshData.list,
+                  hasMore: freshData.list.length < freshData.total,
+                  status: freshData.list.isEmpty ? PageStatus.empty : PageStatus.success,
+                );
+              }
+            }).catchError((_) {});
+
+            // ③ 0 毫秒瞬间返回内存里的缓存，消灭一切骨架屏！
+            return _orderListCache[cacheKey]!;
+          }
+
+          // ============ 正常走网络请求（冷启动或被客户端标记脏了） ============
+          final res = await fetchApi(pageSize: pageSize, page: 1);
+          _orderListCache[cacheKey] = res;
+          if (isDirty) ref.read(orderListDirtyProvider(widget.status).notifier).state = false;
+          return res;
+        }
+
+        // 第 2 页之后正常加载更多
+        return await fetchApi(pageSize: pageSize, page: page);
       },
     );
   }
@@ -63,6 +97,14 @@ class _OrderListState extends ConsumerState<OrderList> with AutomaticKeepAliveCl
       }
     });
 
+    ref.listen(activeOrderTabProvider, (previous, next) {
+      // 只要用户肉眼切到了这个 Tab，不管三七二十一，触发一次静默刷新！
+      // 此时它会命中上面的 SWR 拦截，瞬间出图 + 后台对齐服务器！
+      if (next.key == widget.status && previous?.key != next.key) {
+        _ctl.refresh(clearList: false);
+      }
+    });
+
 
     return _ctl.wrapWithNotification(
       child: ExtendedVisibilityDetector(
@@ -70,7 +112,8 @@ class _OrderListState extends ConsumerState<OrderList> with AutomaticKeepAliveCl
         child: RefreshIndicator(
           onRefresh: () async {
             HapticFeedback.mediumImpact(); // 震动反馈 vibration feedback
-            await _ctl.refresh();
+            ref.read(orderListDirtyProvider(widget.status).notifier).state = true;
+            await _ctl.refresh(clearList: false);
           },
           // 2. 样式配置 (可选，根据你的 UI 规范调整)
           color: context.textBrandPrimary900, // loading 转圈的颜色

@@ -2,6 +2,7 @@ import 'package:flutter_app/common.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/order_item.dart';
+import '../models/page_request.dart';
 
 /// Coupon threshold list provider
 final thresholdListProvider = FutureProvider((ref) async {
@@ -11,8 +12,10 @@ final thresholdListProvider = FutureProvider((ref) async {
 /// Order list request provider with pagination and status filter
  typedef OrderProviderParam = ({String status,String? treasureId});
 final orderListProvider = Provider.family((ref, OrderProviderParam params) {
-  return ({required int pageSize, required int page}) {
-    return Api.orderListApi(
+  return ({required int pageSize, required int page}) async {
+
+    // ============ 正常走网络请求 ============
+    final res = await Api.orderListApi(
       OrderListParams(
         status: params.status,
         treasureId: params.treasureId,
@@ -20,6 +23,8 @@ final orderListProvider = Provider.family((ref, OrderProviderParam params) {
         pageSize: pageSize,
       ),
     );
+
+    return res;
   };
 });
 

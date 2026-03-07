@@ -2,6 +2,8 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_app/app/page/transaction/transaction_ui_model.dart';
+import 'package:flutter_app/app/page/transaction_record_page.dart';
 import 'package:flutter_app/core/store/user_store.dart';
 import 'package:flutter_app/core/store/wallet_store.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -152,14 +154,14 @@ class _WithdrawPageState extends ConsumerState<WithdrawPage> {
                       SizedBox(height: 20.h),
 
                       // 3. 渠道选择
-                      // 🌐 国际化
+                      //  国际化
                       Text('withdraw.method_title'.tr(), style: _headerStyle),
                       SizedBox(height: 12.h),
                       _buildChannelList(channelsAsync.value ?? []),
                       SizedBox(height: 20.h),
 
                       // 4. 账号信息表单
-                      // 🌐 国际化
+                      //  国际化
                       Text('withdraw.account_details_title'.tr(), style: _headerStyle),
                       SizedBox(height: 12.h),
                       _buildAccountForm(),
@@ -292,7 +294,7 @@ class _WithdrawPageState extends ConsumerState<WithdrawPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 🌐 国际化
+          //  国际化
           Text(
             'withdraw.balance_label'.tr(),
             style: TextStyle(color: Colors.white70, fontSize: 13.sp),
@@ -324,7 +326,7 @@ class _WithdrawPageState extends ConsumerState<WithdrawPage> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              // 🌐 国际化
+              //  国际化
               Text('withdraw.amount_label'.tr(), style: const TextStyle(fontWeight: FontWeight.bold)),
               GestureDetector(
                 onTap: () {
@@ -334,7 +336,7 @@ class _WithdrawPageState extends ConsumerState<WithdrawPage> {
                   _form.amountControl.value = smartMax.toStringAsFixed(2);
                 },
                 child: Text(
-                  // 🌐 国际化
+                  //  国际化
                   'withdraw.withdraw_all'.tr(),
                   style: TextStyle(
                     color: context.textBrandPrimary900,
@@ -382,10 +384,10 @@ class _WithdrawPageState extends ConsumerState<WithdrawPage> {
 
               return Column(
                 children: [
-                  // 🌐 国际化
+                  //  国际化
                   _buildDetailRow('withdraw.fee_label'.tr(), '- ${FormatHelper.formatCurrency(fee)}'),
                   SizedBox(height: 4.h),
-                  // 🌐 国际化
+                  //  国际化
                   _buildDetailRow(
                     'withdraw.actual_received_label'.tr(),
                     FormatHelper.formatCurrency(actual),
@@ -401,7 +403,7 @@ class _WithdrawPageState extends ConsumerState<WithdrawPage> {
   }
 
   Widget _buildChannelList(List<PaymentChannelConfigItem> channels) {
-    // 🌐 国际化
+    //  国际化
     if (channels.isEmpty) return Text("withdraw.no_methods".tr());
 
     return ListView.separated(
@@ -484,13 +486,13 @@ class _WithdrawPageState extends ConsumerState<WithdrawPage> {
               color: context.textPrimary900,
             ),
             decoration: InputDecoration(
-              // 🌐 国际化
+              //  国际化
               labelText: 'withdraw.label_account_name'.tr(),
               labelStyle: TextStyle(
                 color: context.textTertiary600,
                 fontSize: 14.sp,
               ),
-              // 🌐 国际化
+              //  国际化
               hintText: 'withdraw.hint_account_name'.tr(),
               hintStyle: TextStyle(color: context.utilityGray300),
               border: InputBorder.none,
@@ -507,7 +509,7 @@ class _WithdrawPageState extends ConsumerState<WithdrawPage> {
               contentPadding: EdgeInsets.symmetric(vertical: 12.h),
             ),
             validationMessages: {
-              // 🌐 国际化
+              //  国际化
               ValidationMessage.required: (_) => 'withdraw.error_account_name_required'.tr(),
             },
           ),
@@ -524,13 +526,13 @@ class _WithdrawPageState extends ConsumerState<WithdrawPage> {
               fontFamily: 'Monospace',
             ),
             decoration: InputDecoration(
-              // 🌐 国际化
+              //  国际化
               labelText: 'withdraw.label_account_number'.tr(),
               labelStyle: TextStyle(
                 color: context.textTertiary600,
                 fontSize: 14.sp,
               ),
-              // 🌐 国际化
+              //  国际化
               hintText: 'withdraw.hint_account_number'.tr(),
               hintStyle: TextStyle(color: context.utilityGray300),
               border: InputBorder.none,
@@ -547,7 +549,7 @@ class _WithdrawPageState extends ConsumerState<WithdrawPage> {
               contentPadding: EdgeInsets.symmetric(vertical: 12.h),
             ),
             validationMessages: {
-              // 🌐 国际化
+              //  国际化
               ValidationMessage.required: (_) => 'withdraw.error_account_number_required'.tr(),
             },
           ),
@@ -574,7 +576,7 @@ class _WithdrawPageState extends ConsumerState<WithdrawPage> {
             width: double.infinity,
             height: 52.h,
             onPressed: isDisabled ? null : _handleWithdraw,
-            // 🌐 国际化
+            //  国际化
             child: Text('withdraw.btn_confirm_withdrawal'.tr()),
           );
         },
@@ -595,9 +597,9 @@ class _WithdrawPageState extends ConsumerState<WithdrawPage> {
     final amount = _form.amountControl.value;
 
     RadixModal.show(
-      // 🌐 国际化
+      //  国际化
       title: 'withdraw.dialog_confirm_title'.tr(),
-      // 🌐 国际化 (使用命名参数动态替换)
+      //  国际化 (使用命名参数动态替换)
       builder: (context, close) => Text(
         'withdraw.dialog_confirm_content'.tr(
           namedArgs: {
@@ -606,7 +608,7 @@ class _WithdrawPageState extends ConsumerState<WithdrawPage> {
           },
         ),
       ),
-      // 🌐 国际化
+      //  国际化
       confirmText: 'common.confirm'.tr(),
       cancelText: 'common.cancel'.tr(),
       onConfirm: (finish) {
@@ -636,6 +638,7 @@ class _WithdrawPageState extends ConsumerState<WithdrawPage> {
     );
 
     if (result != null) {
+      ref.read(transactionDirtyProvider(UiTransactionType.withdraw).notifier).state = true;
       ref.read(walletProvider.notifier).fetchBalance();
       final channelName = _selectedChannel?.name ?? 'Wallet';
       final account = _form.accountNumberControl.value ?? '';
@@ -665,7 +668,7 @@ class _WithdrawPageState extends ConsumerState<WithdrawPage> {
         children: [
           Icon(Icons.info_outline, size: 16.sp, color: context.textSecondary700),
           SizedBox(width: 8.w),
-          // 🌐 国际化
+          //  国际化
           Expanded(child: Text('withdraw.safety_notice'.tr(), style: TextStyle(fontSize: 11.sp, color: context.textSecondary700))),
         ],
       ),
@@ -682,7 +685,7 @@ class _WithdrawPageState extends ConsumerState<WithdrawPage> {
     );
   }
 
-  // 🌐 国际化
+  //  国际化
   Widget _buildErrorState() => SizedBox(height: 100.h, child: Center(child: Text("withdraw.error_load_methods".tr())));
 
   TextStyle get _headerStyle => TextStyle(fontSize: 16.sp, fontWeight: FontWeight.bold, color: context.textSecondary700);

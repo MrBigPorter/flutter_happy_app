@@ -80,7 +80,7 @@ class _Avatar extends ConsumerWidget {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        "ID: ${userId.substring(0, 10).toUpperCase()}",
+                        "ID: ${displayId.toUpperCase()}",
                         style: TextStyle(
                           fontSize: 12.sp,
                           color: context.textSecondary700,
