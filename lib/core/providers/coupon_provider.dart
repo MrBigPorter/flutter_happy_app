@@ -3,6 +3,8 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:flutter_app/common.dart';
 import 'package:flutter_app/core/models/user_coupon.dart';
 
+import '../store/auth/auth_provider.dart';
+
 part 'coupon_provider.g.dart';
 
 // =========================================================================
@@ -12,6 +14,12 @@ part 'coupon_provider.g.dart';
 /// 加上 keepAlive: true，让它在切换 Tab 和页面时共享同一个缓存
 @Riverpod(keepAlive: true)
 Future<List<UserCoupon>> myCouponsByStatus(Ref ref, int status) async {
+
+  //直接让底层数据源监听登录状态！
+  final isAuthenticated = ref.watch(authProvider.select((s) => s.isAuthenticated));
+  // 如果没登录，直接拦截！返回空数组，绝对不浪费网络请求去报错
+  if (!isAuthenticated) return [];
+
   final res = await Api.myCouponsApi(status: status, page: 1, pageSize: 100);
   return res.list;
 }

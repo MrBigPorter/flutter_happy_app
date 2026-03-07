@@ -46,7 +46,7 @@ class _MePageState extends ConsumerState<MePage> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (ref.read(authProvider).isAuthenticated) {
-        _onRefresh();
+        ref.read(walletProvider.notifier).fetchBalance();
       }
     });
   }
@@ -63,12 +63,16 @@ class _MePageState extends ConsumerState<MePage> {
   @override
   Widget build(BuildContext context) {
 
+
+
     // Check if user is authenticated
     final isAuthenticated = ref.watch(
       authProvider.select((s) => s.isAuthenticated),
     );
     // Watch wallet balance state
     final balance = ref.watch(walletProvider);
+
+
 
     return BaseScaffold(
       showBack: false,

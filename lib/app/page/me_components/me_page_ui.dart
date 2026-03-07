@@ -21,7 +21,9 @@ class _Avatar extends ConsumerWidget {
     final String displayNickname = nickname.length > 15
         ? "${nickname.substring(0, 15)}..."
         : nickname;
+
     final String userId = user?.id ?? "---";
+    final String displayId = userId.length > 10 ? userId.substring(0, 10) : userId;
 
     return Row(
       children: [
