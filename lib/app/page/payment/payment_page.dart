@@ -26,6 +26,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_app/core/providers/coupon_provider.dart';
 import 'package:flutter_app/core/guards/kyc_guard.dart';
 
+
 // Logic is separated using 'part' to maintain clean UI code
 part 'payment_page_logic.dart';
 

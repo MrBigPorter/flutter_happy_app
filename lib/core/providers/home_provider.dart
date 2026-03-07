@@ -5,6 +5,9 @@ import 'package:flutter_app/common.dart';
 import 'package:flutter_app/core/models/index.dart';
 import 'package:flutter_app/core/cache/api_cache_manager.dart';
 
+// add a global provider to trigger home refresh when returning from other pages
+final homeNeedsRefreshProvider = StateProvider<bool>((ref) => false);
+
 // ==============================================================================
 // 1. Banner SWR Provider (首页轮播图)
 // ==============================================================================
