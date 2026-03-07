@@ -67,6 +67,9 @@ final activeCategoryProvider = StateProvider<ProductCategoryItem>((ref) {
   return ProductCategoryItem(name: "all", id: 0);
 });
 
+//  1. 新增：记录对应分类 ID 是否处于“强刷模式”的标记
+final forceRefreshListProvider = StateProvider.family<bool, int>((ref, id) => false);
+
 // ==============================================================================
 // 2. 核心列表 Provider (拦截 page == 1 实现列表首屏秒开)
 // ==============================================================================
@@ -78,8 +81,12 @@ final productListProvider = Provider.family<PageRequest<ProductListItem>, int>((
     // 为每个分类的“第一页”生成独立的 Cache Key
     final String cacheKey = 'product_list_category_${id}_page_1';
 
+    // 2. 在请求发出的瞬间，读取一下“强刷标记”
+    final isForceRefresh = ref.read(forceRefreshListProvider(id));
+
+    //// 如果是第一页，且【不是强刷模式】，才允许走缓存秒开！
     // Banners 核心优化：拦截第一页请求，尝试瞬间返回缓存
-    if (page == 1) {
+    if (page == 1 && !isForceRefresh) {
       final cachedData = ApiCacheManager.getCache(cacheKey);
 
       if (cachedData != null) {
@@ -111,7 +118,7 @@ final productListProvider = Provider.family<PageRequest<ProductListItem>, int>((
             } catch (_) {}
           });
 
-          return cachedResult; // ⚡ 瞬间出图！没有任何骨架屏等待！
+          return cachedResult; //  瞬间出图！没有任何骨架屏等待！
         } catch (e) {
           debugPrint('列表缓存解析失败，降级网络请求: $e');
         }
@@ -128,6 +135,12 @@ final productListProvider = Provider.family<PageRequest<ProductListItem>, int>((
       ApiCacheManager.setCache(cacheKey, {
         'list': res.list.map((e) => e.toJson()).toList(),
       });
+
+      //  4. 如果本次是强刷，既然拿到了新数据，记得把金牌“没收”（重置为 false）
+      // 这样用户下次切换 Tab 回来时，依然能享受缓存秒开的快感！
+      if (isForceRefresh) {
+        ref.read(forceRefreshListProvider(id).notifier).state = false;
+      }
     }
 
     return res;

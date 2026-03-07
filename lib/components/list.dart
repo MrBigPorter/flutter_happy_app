@@ -163,7 +163,8 @@ class PageListController<T> extends ValueNotifier<PageListState<T>> {
     loadFirst();
   }
 
-  Future<void> loadFirst() async {
+  // 1. 增加 {bool clearList = true} 参数
+  Future<void> loadFirst({bool clearList = true}) async {
     if (_pending) return;
     _pending = true;
     _ticket++;
@@ -171,9 +172,10 @@ class PageListController<T> extends ValueNotifier<PageListState<T>> {
 
     if (_isDisposed) return;
 
+    //  2. 根据 clearList 决定是否清空数据和展示骨架屏
     value = value.copyWith(
-      status: PageStatus.loading,
-      items: <T>[],
+      status: clearList ? PageStatus.loading : PageStatus.refreshing,
+      items: clearList ? <T>[] : value.items, // 核心：不清空旧数据！
       currentPage: 0,
       hasMore: true,
       error: null,
@@ -196,6 +198,8 @@ class PageListController<T> extends ValueNotifier<PageListState<T>> {
       _noMoreFallback = _noMoreFallback || (totalItems <= 0 && noMoreBySize);
 
       if (_isDisposed) return;
+
+      //  这里新数据 data 会直接覆盖掉旧的 value.items，实现无缝替换！
       value = value.copyWith(
         items: data,
         status: data.isEmpty ? PageStatus.empty : PageStatus.success,
@@ -274,7 +278,7 @@ class PageListController<T> extends ValueNotifier<PageListState<T>> {
     }
   }
 
-  Future<void> refresh() => loadFirst();
+  Future<void> refresh({bool clearList = false}) => loadFirst(clearList: clearList);
 
   @override
   void dispose() {

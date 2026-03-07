@@ -15,6 +15,8 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import 'package:nested_scroll_view_plus/nested_scroll_view_plus.dart';
 
+final productListRefreshEventProvider = StateProvider.family<int, int>((ref, categoryId) => 0);
+
 /// 商品页状态 Product Page State
 class ProductPage extends ConsumerWidget {
   const ProductPage({super.key});
@@ -121,8 +123,12 @@ class _ProductContentState extends ConsumerState<_ProductContent>
       try {
         final currentCatId = widget.categories[_tabController.index].id;
 
-        // 1. 刷新当前选中分类的列表数据
-        ref.invalidate(productListProvider(currentCatId));
+        //  1. 挂上“强制刷新”的免死金牌！告诉底层 Provider：“这次不要给我看缓存，去拿真数据！”
+        ref.read(forceRefreshListProvider(currentCatId).notifier).state = true;
+
+
+        // 2. 开枪发送信号：让内层 _ListState 里的 Controller 执行刷新
+        ref.read(productListRefreshEventProvider(currentCatId).notifier).state++;
 
         // 2.  使用 forceRefresh 强制且静默更新顶部分类栏，不闪白屏
         ref.read(categoryProvider.notifier).forceRefresh();
@@ -209,6 +215,12 @@ class _ListState extends ConsumerState<_List>
   @override
   Widget build(BuildContext context) {
     super.build(context);
+
+    ref.listen(productListRefreshEventProvider(widget.categoryId), (previous, next) {
+      if (next > (previous ?? 0)) {
+        _ctl.refresh(); // 这才是真正让你的 PageListController 清空旧数据、去拉新数据的指令！
+      }
+    });
 
     return CustomScrollView(
       physics: platformScrollPhysics(),
