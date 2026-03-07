@@ -43,8 +43,16 @@ class _DepositPageState extends ConsumerState<DepositPage> {
   @override
   void initState() {
     super.initState();
-    // 页面初始化时刷新数据
-    Future.microtask(() => ref.refresh(clientPaymentChannelsRechargeProvider));
+
+    WidgetsBinding.instance.addPostFrameCallback((_){
+      final state = ref.read(clientPaymentChannelsRechargeProvider);
+
+      // only invalidate if we have data and it's not currently loading, to avoid disrupting an in-progress fetch
+      //first load will be triggered by the page build, so this is mainly for when user returns to this page and we want to refresh the channels
+      if(state.hasValue && !state.isLoading){
+        ref.invalidate(clientPaymentChannelsRechargeProvider);
+      }
+    });
   }
 
   // 更新表单校验规则 (Min/Max)

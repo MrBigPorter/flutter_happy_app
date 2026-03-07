@@ -23,8 +23,29 @@ class HomePage extends ConsumerStatefulWidget {
 }
 
 // Use RouteAware to detect when the user pops back to this screen
-class _HomePageState extends ConsumerState<HomePage> {
+class _HomePageState extends ConsumerState<HomePage> with WidgetsBindingObserver {
 
+  @override
+  void initState() {
+    super.initState();
+    // register this widget as an observer to app lifecycle events
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    // unregister the observer when the widget is disposed
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // When the app is resumed (e.g., user returns to this page), trigger a refresh
+    if (state == AppLifecycleState.resumed) {
+      _silentRefresh();
+    }
+  }
 
   Future<void> _silentRefresh() async {
     await Future.wait([

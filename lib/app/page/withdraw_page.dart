@@ -52,7 +52,12 @@ class _WithdrawPageState extends ConsumerState<WithdrawPage> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(walletProvider.notifier).fetchBalance();
       ref.read(userProvider.notifier).fetchProfile();
-      ref.refresh(clientPaymentChannelsWithdrawProvider);
+
+      final state = ref.read(clientPaymentChannelsWithdrawProvider);
+      if(state.hasValue && !state.isLoading){
+        ref.invalidate(clientPaymentChannelsWithdrawProvider);
+      }
+
     });
   }
 
