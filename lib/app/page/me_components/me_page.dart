@@ -41,13 +41,28 @@ class MePage extends ConsumerStatefulWidget {
 
 class _MePageState extends ConsumerState<MePage> {
 
-  /// Pull-to-refresh action: Fetches the latest wallet balance
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (ref.read(authProvider).isAuthenticated) {
+        _onRefresh();
+      }
+    });
+  }
+
+  /// Pull-to-refresh action: Fetches all the latest user data
   Future<void> _onRefresh() async {
+    if (!ref.read(authProvider).isAuthenticated) return;
+
     await ref.read(walletProvider.notifier).fetchBalance();
+    await ref.refresh(myCouponsByStatusProvider(0).future);
+
   }
 
   @override
   Widget build(BuildContext context) {
+
     // Check if user is authenticated
     final isAuthenticated = ref.watch(
       authProvider.select((s) => s.isAuthenticated),
@@ -64,6 +79,7 @@ class _MePageState extends ConsumerState<MePage> {
         child: CustomScrollView(
           physics: platformScrollPhysics(),
           slivers: [
+            // ... 这里保留你原来的 slivers 代码完全不变 ...
             // 1. Top Area: Avatar & Basic Info
             SliverToBoxAdapter(
               child: RepaintBoundary(
@@ -109,7 +125,7 @@ class _MePageState extends ConsumerState<MePage> {
               child: RepaintBoundary(
                 child: Padding(
                   padding: EdgeInsets.symmetric(horizontal: 16.w),
-                  child: _MenuArea(isAuthenticated:isAuthenticated),
+                  child: _MenuArea(isAuthenticated: isAuthenticated),
                 ),
               ),
             ),

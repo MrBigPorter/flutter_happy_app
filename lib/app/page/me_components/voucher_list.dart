@@ -21,34 +21,38 @@ class _VoucherListState extends ConsumerState<VoucherList> {
   Widget build(BuildContext context) {
     final couponListAsync = ref.watch(myValidCouponsProvider);
 
-    return Container(
-      width: double.infinity,
-      margin: EdgeInsets.only(top: 8.w),
-      padding: EdgeInsets.symmetric(vertical: 12.w), // 调整了上下 padding 让卡片居中更美观
-      decoration: BoxDecoration(
-        color: context.bgPrimaryAlt,
-        borderRadius: BorderRadius.all(Radius.circular(12.w)), // 改为全圆角更协调
-      ),
-      child: couponListAsync.when(
-        data: (list) {
-          if (list.isEmpty) {
-            return Padding(
-              padding: EdgeInsets.symmetric(vertical: 24.w),
-              child: Center(
-                child: Text(
-                  "No available vouchers",
-                  style: TextStyle(color: context.textSecondary700),
-                ),
-              ),
-            );
-          }
-          return _CouponListView(list: list);
-        },
-        error: (error, stackTrace) => Padding(
-          padding: EdgeInsets.all(16.w),
-          child: Text('Error loading vouchers', style: const TextStyle(color: Colors.red)),
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: 12.w),
+      child: Container(
+        width: double.infinity,
+        padding: EdgeInsets.only(top: 12.h,bottom: 6.h),
+        decoration: BoxDecoration(
+          color: context.bgPrimary,
+          borderRadius: BorderRadius.all(Radius.circular(12.w)), // 改为全圆角更协调
         ),
-        loading: () => const _SkeletonListView(),
+        child: couponListAsync.when(
+          skipLoadingOnReload: true,
+          skipLoadingOnRefresh: true,
+          data: (list) {
+            if (list.isEmpty) {
+              return Padding(
+                padding: EdgeInsets.symmetric(vertical: 24.w),
+                child: Center(
+                  child: Text(
+                    "No available vouchers",
+                    style: TextStyle(color: context.textSecondary700),
+                  ),
+                ),
+              );
+            }
+            return _CouponListView(list: list);
+          },
+          error: (error, stackTrace) => Padding(
+            padding: EdgeInsets.all(16.w),
+            child: Text('Error loading vouchers', style: const TextStyle(color: Colors.red)),
+          ),
+          loading: () => const _SkeletonListView(),
+        ),
       ),
     );
   }
