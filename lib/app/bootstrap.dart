@@ -30,8 +30,9 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 }
 
 class AppBootstrap {
-  /// 1. 系统级初始化 (System Level)
-  /// 处理所有不需要 Riverpod 参与的基础设施
+  /// 1a. 系统级初始化 — 非 Firebase 部分 (System Level)
+  /// 处理所有不需要 Riverpod 参与的基础设施。
+  /// Firebase 初始化已分离到 [initFirebaseAsync] 中，不阻塞首帧。
   static Future<void> initSystem() async {
     // 同步配置（顺序无关，毫秒级）
     if (kIsWeb) usePathUrlStrategy();
@@ -41,19 +42,25 @@ class AppBootstrap {
     // 先设置错误处理器，确保后续并行任务中的错误都能被捕获
     _setupErrorHandlers();
 
-    // 并行异步初始化 — 五项核心任务相互独立，同时启动
-    // Firebase 必须与其他服务并行等待完成，否则 runApp 后 fcmInitProvider
-    // 访问 FirebaseMessaging.instance 会触发 [core/no-app] 崩溃。
+    // 并行异步初始化 — 四项核心任务相互独立，同时启动
+    // Firebase 已分离到 initFirebaseAsync()，runApp 后异步执行。
     await Future.wait([
       AssetManager.init(),
       EasyLocalization.ensureInitialized(),
       ApiCacheManager.init(),
       Http.init(),
-      _setupFirebase(), // 与其他服务并行，不增加串行时间；runApp 前 Firebase 必须就绪
     ]);
 
     // DeepLink 初始化依赖其他服务就绪，放并行任务完成后（fire-and-forget）
     DeepLinkService().init();
+  }
+
+  /// 1b. Firebase 异步初始化（runApp 后 fire-and-forget）
+  /// 不阻塞首帧渲染。Firebase SDK 脚本下载（~165ms）在后台完成。
+  /// fcmInitProvider 通过 firebaseInitProvider 依赖链保证 Firebase 就绪后
+  /// 才访问 FirebaseMessaging.instance，避免 [core/no-app] 崩溃。
+  static Future<void> initFirebaseAsync() async {
+    await _setupFirebase();
   }
 
   /// 2. 数据级初始化 (Data Level)

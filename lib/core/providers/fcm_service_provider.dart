@@ -1,11 +1,18 @@
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter_app/app/bootstrap.dart';
 import 'package:flutter_app/common.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/fcm_notification.dart';
 import '../services/fcm/fcm_service.dart';
+
+/// Ensures Firebase is initialized before any Firebase-dependent provider runs.
+/// This is a FutureProvider so dependents can await it.
+final firebaseInitProvider = FutureProvider<void>((ref) async {
+  await AppBootstrap.initFirebaseAsync();
+});
 
 //  修改这里：把 FutureProvider 改成 Provider
 // 因为创建 Service 实例本身是瞬间完成的，不需要 Future
@@ -15,6 +22,10 @@ final fcmServiceProvider = Provider<FcmService>((ref) {
 });
 
 final fcmInitProvider = FutureProvider<void>((ref) async {
+  // 0. 等待 Firebase 初始化完成（runApp 后异步执行，但 fcmInitProvider 被
+  //    AuthAwareServiceManager 在用户登录后 lazy 创建，Firebase 早已就绪）
+  await ref.watch(firebaseInitProvider.future);
+
   // A. 拿到工具人
   // 现在 watch 拿到的直接就是 FcmService 实例了
   final fcmService = ref.watch(fcmServiceProvider);

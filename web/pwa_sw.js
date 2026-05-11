@@ -13,6 +13,15 @@ const API_HOSTS = ['api.joyminis.com'];
 const IMAGE_CACHE_NAME = 'joymini-image-cache-v1';
 const IMAGE_HOSTS = [self.location.hostname, 'cdn.joyminis.com'];
 const IMAGE_CACHE_MAX_ENTRIES = 200;
+const API_CACHE_NAME = 'joymini-api-cache-v1';
+const API_CACHE_MAX_ENTRIES = 50;
+
+// API paths safe for stale-while-revalidate caching (read-only home page data).
+// Business/order/user-state APIs must remain network-only.
+const SAFE_API_PREFIXES = [
+    '/api/v1/home',
+    '/api/v1/banner',
+];
 
 // App shell resources to pre-cache on install
 const PRECACHE_URLS = [
@@ -99,7 +108,47 @@ self.addEventListener('fetch', (event) => {
     // Only handle GET requests
     if (event.request.method !== 'GET') return;
 
-    // API must stay network-only to avoid stale business/order/user-state payloads.
+    // Safe home page APIs: stale-while-revalidate for instant second-visit data load.
+    if (url.hostname === self.location.hostname && !url.pathname.startsWith('/api/v1/auth') &&
+        SAFE_API_PREFIXES.some((prefix) => url.pathname.startsWith(prefix))) {
+        event.respondWith((async () => {
+            const cache = await caches.open(API_CACHE_NAME);
+            const cached = await cache.match(event.request);
+
+            // Return cached response immediately if available (stale is fine for home page data).
+            if (cached) {
+                // Fire-and-forget fetch to update cache for next visit.
+                fetch(event.request).then((response) => {
+                    if (response && response.ok) {
+                        cache.put(event.request, response.clone());
+                        trimCache(API_CACHE_NAME, API_CACHE_MAX_ENTRIES);
+                    }
+                }).catch(() => {});
+                return cached;
+            }
+
+            // No cache yet (first visit): fetch from network, cache the response.
+            return fetch(event.request).then((response) => {
+                if (response && response.ok) {
+                    const clone = response.clone();
+                    cache.put(event.request, clone);
+                    trimCache(API_CACHE_NAME, API_CACHE_MAX_ENTRIES);
+                }
+                return response;
+            }).catch(() => {
+                return new Response(
+                    JSON.stringify({ code: -1, message: 'offline' }),
+                    {
+                        status: 503,
+                        headers: { 'Content-Type': 'application/json' },
+                    }
+                );
+            });
+        })());
+        return;
+    }
+
+    // Business/order/user-state APIs must stay network-only.
     if (url.pathname.startsWith('/api/') || API_HOSTS.includes(url.hostname)) {
         event.respondWith(
             fetch(event.request, { cache: 'no-store' }).catch(() => {

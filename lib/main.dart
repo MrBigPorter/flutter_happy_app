@@ -60,6 +60,7 @@ void main() {
     );
 
     // 4. 启动 UI：runApp 前移，首帧立即可见，消除启动白屏。
+    //    Firebase 异步初始化（不阻塞 runApp），节省 ~165ms 首帧延迟。
     runApp(
       UncontrolledProviderScope(
         container: container,
@@ -77,6 +78,11 @@ void main() {
         ),
       ),
     );
+
+    // 5. Firebase 异步初始化（runApp 后 fire-and-forget）
+    //    Firebase SDK 脚本下载（~165ms）不再阻塞首帧。
+    unawaited(AppBootstrap.initFirebaseAsync());
+
   }, (error, stackTrace) {
     debugPrint(' [全局拦截到的崩溃异常]: $error');
     debugPrint(' [异常堆栈]: $stackTrace');
