@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_app/common.dart';
 import 'package:flutter_app/components/base_scaffold.dart';
 import 'package:flutter_app/ui/button/button.dart';
-import 'package:flutter_app/ui/chat/components/user_search_dialog.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
@@ -174,8 +173,8 @@ class _AddMenuButton extends StatelessWidget {
               context.push('/chat/group/search');
               break;
             case 'add_friend':
-            // 添加好友 (搜索用户)
-              showDialog(context: context, builder: (_) => const UserSearchDialog());
+            // 添加好友 (搜索用户) — 跳转到全局搜索页代替本地弹窗
+              context.push('/contact/search');
               break;
             case 'contacts':
             // 通讯录

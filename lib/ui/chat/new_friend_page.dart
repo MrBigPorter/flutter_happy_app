@@ -89,6 +89,7 @@ class _RequestItem extends ConsumerStatefulWidget {
 
 class _RequestItemState extends ConsumerState<_RequestItem> {
   bool _isAccepted = false;
+  bool _isRejected = false;
 
   @override
   Widget build(BuildContext context) {
@@ -140,6 +141,12 @@ class _RequestItemState extends ConsumerState<_RequestItem> {
         style: TextStyle(color: context.textSecondary700, fontSize: 14.sp, fontWeight: FontWeight.w500),
       );
     }
+    if (_isRejected) {
+      return Text(
+        "Rejected",
+        style: TextStyle(color: Colors.red[300], fontSize: 14.sp, fontWeight: FontWeight.w500),
+      );
+    }
 
     return Row(
       mainAxisSize: MainAxisSize.min,
@@ -150,6 +157,14 @@ class _RequestItemState extends ConsumerState<_RequestItem> {
           width: 60.w,
           onPressed: _handleAccept,
           child: Text("Accept", style: TextStyle(fontSize: 12.sp)),
+        ),
+        SizedBox(width: 8.w),
+        Button(
+          variant: ButtonVariant.outline,
+          height: 30.h,
+          width: 60.w,
+          onPressed: _handleReject,
+          child: Text("Reject", style: TextStyle(fontSize: 12.sp)),
         ),
       ],
     );
@@ -171,12 +186,32 @@ class _RequestItemState extends ConsumerState<_RequestItem> {
         RadixToast.error("Operation failed");
       }
     } else {
-      //  修改标注：双重失效联动
-      // 1. 刷新好友列表 (让通讯录出现新朋友)
+      // Dual invalidation linkage:
+      // 1. Refresh contact list so the new friend appears
       ref.invalidate(contactListProvider);
 
-      // 2. 刷新申请列表 (让已处理的消息消失，从而让通讯录红点归零)
+      // 2. Refresh request list so the processed item disappears (zeroing the badge)
       ref.invalidate(friendRequestListProvider);
     }
+  }
+
+  Future<void> _handleReject() async {
+    setState(() => _isRejected = true);
+
+    final success = await ref
+        .read(handleRequestControllerProvider.notifier)
+        .execute(
+      userId: widget.request.id,
+      action: FriendRequestAction.rejected,
+    );
+
+    if (!success) {
+      if (mounted) {
+        setState(() => _isRejected = false);
+        RadixToast.error("Operation failed");
+      }
+    }
+    // No need to invalidate contactListProvider — rejection doesn't add a contact.
+    // The request list is refreshed internally by handleRequestControllerProvider.
   }
 }

@@ -526,7 +526,7 @@ await apiCall().withRetry(maxRetries: 3, context: 'Upload file');
 - [x] **Cleanup**: Removed temporary `debugPrint` logs from [`conversation_list_page.dart`](lib/ui/chat/conversation_list_page.dart:288-294)
 - [x] **Verification**: `fvm flutter analyze` ✅ (0 errors) | `fvm flutter test` (75/75) ✅
 
-## 🎯 Current Task — UI Polish: Emoji Picker Theme & Swipe Actions Style (2026-05-11)
+## 🎯 Previous Task — UI Polish: Emoji Picker Theme & Swipe Actions Style (2026-05-11)
 
 **Phase**: Phase F1 — UI Polish
 **Last Stop**: Two UI polish tasks completed
@@ -534,3 +534,15 @@ await apiCall().withRetry(maxRetries: 3, context: 'Upload file');
 - [x] **Task A — Emoji Picker Theme Support**: Updated [`modern_chat_input_bar.dart`](lib/ui/chat/components/chat_input/modern_chat_input_bar.dart) `_showEmojiPicker()` — replaced `const Config()` with theme-aware `Config()` using `ctx.bgPrimary`, `ctx.bgSecondary`, `ctx.textSecondary700`, `ctx.textBrandPrimary900`, `ctx.borderSecondary` via `EmojiViewConfig.backgroundColor`, `CategoryViewConfig` (backgroundColor/iconColor/iconColorSelected/backspaceColor/dividerColor), and `BottomActionBarConfig`.
 - [x] **Task B — Apple iOS Style Swipe Actions**: Updated [`conversation_item.dart`](lib/ui/chat/components/conversation_item.dart) — replaced hardcoded colors with design tokens (`utilityBrand50`/`utilityBrand500` for pin, `bgWarningPrimary`/`textWarningPrimary600` for mute, `bgErrorPrimary`/`textErrorPrimary600` for delete); removed `borderRadius: BorderRadius.circular(12.r)` → `BorderRadius.zero` on all `SlidableAction`s for flat Apple-style edges; eliminated double-rounded-corner issue.
 - [x] **Verification**: `fvm flutter analyze` ✅ (0 new errors/warnings) | `fvm flutter test` (75/75) ✅
+
+## 🎯 Current Task — Contact Group UX Optimization Phase 1 (2026-05-11)
+
+**Phase**: Chat UX — Contact/Group Experience
+**Last Stop**: 4 Phase 1 tasks completed
+
+- [x] **Task 1 — Unify friend search entry**: [`conversation_list_page.dart`](lib/ui/chat/conversation_list_page.dart:178) — Changed `showDialog(UserSearchDialog)` → `context.push('/contact/search')`, removing local-only search dialog in favor of full API-based `ContactSearchPage`.
+- [x] **Task 2 — Auto-search with debounce for group search**: [`group_search_page.dart`](lib/ui/chat/group/group_search/group_search_page.dart) — Added `onChanged` handler with `EasyDebounce` (500ms) to auto-trigger `GroupSearchController.search()` on text input, alongside existing manual "Search" button.
+- [x] **Task 3 — Search bar in contact selection tabs**: [`contact_selection_page.dart`](lib/ui/chat/selector/contact_selection_page.dart) — Added search `TextField` above `TabBar`; passed `searchKeyword` to both `_RecentList` and `_ContactList`; applied local name filtering in each tab.
+- [x] **Task 4 — Reject button for friend requests**: [`new_friend_page.dart`](lib/ui/chat/new_friend_page.dart) — Added `_isRejected` state, "Reject" `ButtonVariant.outline` button, and `_handleReject()` method that calls `HandleRequestController.execute(action: FriendRequestAction.rejected)`.
+- [x] **Verification**: `fvm flutter analyze` ✅ (0 new errors) | `fvm flutter test` (75/75) ✅
+- [ ] **Phase 2 (Next)**: Navigation consistency, create group feedback, join request preview

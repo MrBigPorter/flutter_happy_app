@@ -2,6 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:easy_debounce/easy_debounce.dart';
 
 import 'package:flutter_app/common.dart';
 import 'package:flutter_app/ui/button/button.dart';
@@ -28,10 +29,26 @@ class _GroupSearchPageState extends ConsumerState<GroupSearchPage> {
   // UI State: Tracks if a search has been executed to control initial placeholder visibility
   bool _hasSearched = false;
 
+  static const String _debounceTag = 'group_search_debounce';
+
   @override
   void dispose() {
     _controller.dispose();
+    EasyDebounce.cancel(_debounceTag);
     super.dispose();
+  }
+
+  void _onSearchChanged(String value) {
+    EasyDebounce.debounce(
+      _debounceTag,
+      const Duration(milliseconds: 500),
+      () => _GroupSearchLogic.handleSearch(
+        context: context,
+        ref: ref,
+        controller: _controller,
+        onSearchStateChanged: () => setState(() => _hasSearched = true),
+      ),
+    );
   }
 
   @override
@@ -68,7 +85,9 @@ class _GroupSearchPageState extends ConsumerState<GroupSearchPage> {
                   controller: _controller,
                   autofocus: true,
                   textInputAction: TextInputAction.search,
-                  // Delegate search execution to Logic layer
+                  // Auto-search with debounce on text change
+                  onChanged: _onSearchChanged,
+                  // Delegate search execution to Logic layer (manual trigger via keyboard)
                   onSubmitted: (_) => _GroupSearchLogic.handleSearch(
                     context: context,
                     ref: ref,

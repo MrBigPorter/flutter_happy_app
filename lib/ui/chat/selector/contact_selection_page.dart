@@ -29,6 +29,10 @@ class _ContactSelectionPageState extends ConsumerState<ContactSelectionPage>
   /// Internal state to track if the UI is currently in multiple selection mode
   late bool _isMultiSelectMode;
 
+  final _searchCtl = TextEditingController();
+  final _focusNode = FocusNode();
+  String _searchKeyword = '';
+
   @override
   void initState() {
     super.initState();
@@ -36,6 +40,13 @@ class _ContactSelectionPageState extends ConsumerState<ContactSelectionPage>
 
     // Default to multiple selection if specified by arguments; otherwise start in single mode.
     _isMultiSelectMode = widget.args.mode == SelectionMode.multiple;
+  }
+
+  @override
+  void dispose() {
+    _searchCtl.dispose();
+    _focusNode.dispose();
+    super.dispose();
   }
 
   /// Toggles between single and multiple selection modes and clears state if needed.
@@ -83,9 +94,41 @@ class _ContactSelectionPageState extends ConsumerState<ContactSelectionPage>
       // 2. Main Content Body with Floating Confirmation Button overlay
       body: Stack(
         children: [
-          // Bottom Layer: Tabs and Entity Lists
+          // Bottom Layer: Search Bar, Tabs and Entity Lists
           Column(
             children: [
+              // Search Text Field
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
+                color: context.bgPrimary,
+                child: TextField(
+                  controller: _searchCtl,
+                  focusNode: _focusNode,
+                  onChanged: (v) => setState(() => _searchKeyword = v.trim().toLowerCase()),
+                  style: TextStyle(fontSize: 14.sp, color: context.textPrimary900),
+                  decoration: InputDecoration(
+                    hintText: "Search",
+                    hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14.sp),
+                    prefixIcon: Icon(Icons.search, size: 20.r, color: context.textSecondary700),
+                    filled: true,
+                    fillColor: context.bgSecondary,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8.r),
+                      borderSide: BorderSide.none,
+                    ),
+                    contentPadding: EdgeInsets.symmetric(vertical: 0, horizontal: 12.w),
+                    suffixIcon: _searchKeyword.isNotEmpty
+                        ? GestureDetector(
+                      onTap: () {
+                        _searchCtl.clear();
+                        setState(() => _searchKeyword = '');
+                      },
+                      child: Icon(Icons.clear, size: 18.r, color: Colors.grey),
+                    )
+                        : null,
+                  ),
+                ),
+              ),
               Container(
                 color: context.bgPrimary,
                 child: TabBar(
@@ -103,8 +146,16 @@ class _ContactSelectionPageState extends ConsumerState<ContactSelectionPage>
                 child: TabBarView(
                   controller: _tabController,
                   children: [
-                    _RecentList(args: widget.args, isMultiSelectMode: _isMultiSelectMode),
-                    _ContactList(args: widget.args, isMultiSelectMode: _isMultiSelectMode),
+                    _RecentList(
+                      args: widget.args,
+                      isMultiSelectMode: _isMultiSelectMode,
+                      searchKeyword: _searchKeyword,
+                    ),
+                    _ContactList(
+                      args: widget.args,
+                      isMultiSelectMode: _isMultiSelectMode,
+                      searchKeyword: _searchKeyword,
+                    ),
                   ],
                 ),
               ),
@@ -139,11 +190,13 @@ class _ContactSelectionPageState extends ConsumerState<ContactSelectionPage>
 class _RecentList extends ConsumerStatefulWidget {
   final ContactSelectionArgs args;
   final bool isMultiSelectMode;
+  final String searchKeyword;
 
   const _RecentList({
     super.key,
     required this.args,
-    required this.isMultiSelectMode
+    required this.isMultiSelectMode,
+    required this.searchKeyword,
   });
 
   @override
@@ -164,13 +217,19 @@ class _RecentListState extends ConsumerState<_RecentList> with AutomaticKeepAliv
     return listAsync.when(
       data: (list) {
         // Map conversation items to unified SelectionEntities
-        final entities = list.map((c) => SelectionEntity(
+        var entities = list.map((c) => SelectionEntity(
           id: c.id,
           name: c.name,
           avatar: c.avatar,
           type: c.type == ConversationType.group ? EntityType.group : EntityType.user,
           desc: c.type == ConversationType.group ? "Group" : "Recent",
         )).where((e) => !widget.args.excludeIds.contains(e.id)).toList();
+
+        // Apply local search filter
+        if (widget.searchKeyword.isNotEmpty) {
+          entities = entities.where((e) =>
+              e.name.toLowerCase().contains(widget.searchKeyword)).toList();
+        }
 
         return _SelectionListView(
             entities: entities,
@@ -190,11 +249,13 @@ class _RecentListState extends ConsumerState<_RecentList> with AutomaticKeepAliv
 class _ContactList extends ConsumerStatefulWidget {
   final ContactSelectionArgs args;
   final bool isMultiSelectMode;
+  final String searchKeyword;
 
   const _ContactList({
     super.key,
     required this.args,
-    required this.isMultiSelectMode
+    required this.isMultiSelectMode,
+    required this.searchKeyword,
   });
 
   @override
@@ -213,13 +274,19 @@ class _ContactListState extends ConsumerState<_ContactList> with AutomaticKeepAl
 
     return contactsAsync.when(
       data: (contacts) {
-        final entities = contacts.map((u) => SelectionEntity(
+        var entities = contacts.map((u) => SelectionEntity(
           id: u.id,
           name: u.nickname,
           avatar: u.avatar,
           type: EntityType.user,
           desc: "Contact",
         )).where((e) => !widget.args.excludeIds.contains(e.id)).toList();
+
+        // Apply local search filter
+        if (widget.searchKeyword.isNotEmpty) {
+          entities = entities.where((e) =>
+              e.name.toLowerCase().contains(widget.searchKeyword)).toList();
+        }
 
         return _SelectionListView(
             entities: entities,
