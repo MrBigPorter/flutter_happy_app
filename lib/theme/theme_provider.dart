@@ -4,8 +4,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 final initialThemeModeProvider = Provider<ThemeMode>((ref) {
   // Here you can read from persistent storage to get the saved theme mode
-  // For simplicity, we'll return ThemeMode.system
-  return ThemeMode.system;
+  // Default to dark mode
+  return ThemeMode.dark;
 });
 
 class ThemeModeNotifier extends Notifier<ThemeMode> {

@@ -22,6 +22,7 @@ class SwiperBanner<T> extends StatelessWidget {
   final Function(T item)? onTapItem;
   final Widget Function(T item)? itemBuilder;
   final ScrollPhysics? physics;
+  final String? blurhash;
 
   // dots
   final double dotSize;
@@ -57,6 +58,7 @@ class SwiperBanner<T> extends StatelessWidget {
     this.storageKey,
     this.onIndexChanged,
     this.physics,
+    this.blurhash,
   });
 
 
@@ -100,6 +102,7 @@ class SwiperBanner<T> extends StatelessWidget {
                 width: width,
                 height: height,
                 itemBuilder: itemBuilder,
+                blurhash: blurhash,
               ),
             ),
           );
@@ -200,13 +203,15 @@ class ImageWidget<T> extends StatelessWidget {
   final double width;
   final double height;
   final Widget Function(T item)? itemBuilder;
+  final String? blurhash;
 
   const ImageWidget({
     super.key,
     this.item,
     required this.width,
     required this.height,
-    this.itemBuilder
+    this.itemBuilder,
+    this.blurhash,
   });
 
   @override
@@ -230,6 +235,7 @@ class ImageWidget<T> extends StatelessWidget {
       width: width,
       height: height,
       borderRadius: BorderRadius.circular(8.0),
+      blurhash: blurhash,
     );
   }
 }

@@ -62,6 +62,7 @@ ProductListItem _$ProductListItemFromJson(Map<String, dynamic> json) =>
               'seqShelvesQuantity', (v) => (v as num?)?.toInt()),
           treasureCoverImg:
               $checkedConvert('treasureCoverImg', (v) => v as String?),
+          blurhash: $checkedConvert('blurhash', (v) => v as String?),
           ruleContent: $checkedConvert('ruleContent', (v) => v as String?),
           desc: $checkedConvert('desc', (v) => v as String?),
           maxUnitCoins: $checkedConvert(
@@ -114,6 +115,7 @@ Map<String, dynamic> _$ProductListItemToJson(ProductListItem instance) =>
       'seqBuyQuantity': instance.seqBuyQuantity,
       'seqShelvesQuantity': instance.seqShelvesQuantity,
       'treasureCoverImg': instance.treasureCoverImg,
+      'blurhash': instance.blurhash,
       'ruleContent': instance.ruleContent,
       'desc': instance.desc,
       'recentJoinAvatars': instance.recentJoinAvatars,

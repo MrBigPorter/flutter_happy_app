@@ -9,10 +9,10 @@ import 'package:flutter_app/components/product_item.dart';
 import 'package:flutter_app/components/safe_tab_bar_view.dart';
 import 'package:flutter_app/components/skeleton.dart';
 import 'package:flutter_app/core/providers/index.dart';
+import 'package:flutter_app/core/providers/network_status_provider.dart';
 import 'package:flutter_app/core/models/index.dart';
 import 'package:flutter_app/ui/animated_list_item.dart';
 import 'package:flutter_app/ui/lucky_tab_bar_delegate.dart';
-import 'package:flutter_app/utils/helper.dart';
 import 'package:flutter_app/utils/image/image_optimization_init.dart';
 import 'package:flutter_app/utils/media/url_resolver.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -303,10 +303,11 @@ class _ListState extends ConsumerState<_List>
       }
     });
 
+    // Fix 8: 监听设备尺寸，实现设备感知的卡片缩放
+    final deviceInfo = ref.watch(deviceSizeProvider);
+
     return CustomScrollView(
-      physics: platformScrollPhysics(),
-       // 增加预渲染区域：向下滑动方向预留 1000 像素
-       // 这样当用户滑到一半时，底下的图已经在内存里解码完成了
+      physics: const ClampingScrollPhysics(),
       cacheExtent: 1000,
       key: PageStorageKey<String>('product_list_${widget.categoryId}'),
       slivers: [
@@ -317,19 +318,22 @@ class _ListState extends ConsumerState<_List>
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 2,
             mainAxisSpacing: 22.w,
-            crossAxisSpacing: 16.w,
+            crossAxisSpacing: 6.w,
             childAspectRatio: 166 / 365,
           ),
           itemBuilder: (context, item, index, isLast) {
-            return RepaintBoundary(
-              child: AnimatedListItem(
-                index: index,
-                child: ProductItem(data: item, imgHeight: 166, imgWidth: 166),
+            return AnimatedListItem(
+              index: index,
+              child: ProductItem(
+                data: item,
+                imgHeight: 166,
+                imgWidth: 166,
+                deviceCategory: deviceInfo.category,
               ),
             );
           },
           skeletonBuilder: (context, {bool isLast = false}) {
-            return RepaintBoundary(child: const ProductItemSkeleton());
+            return const ProductItemSkeleton();
           },
         ),
       ],
@@ -380,7 +384,7 @@ class _ProductLoadingSkeleton extends StatelessWidget {
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 2,
                 mainAxisSpacing: 22,
-                crossAxisSpacing: 16,
+                crossAxisSpacing: 6,
                 childAspectRatio: 166 / 365,
               ),
             ),

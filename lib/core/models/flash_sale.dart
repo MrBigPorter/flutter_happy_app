@@ -37,6 +37,7 @@ class FlashSaleTreasureSummary {
   final String treasureName;
   final String? productName;
   final String? treasureCoverImg;
+  final String? blurhash;
   final String unitAmount;
   final String? marketAmount;
 
@@ -45,6 +46,7 @@ class FlashSaleTreasureSummary {
     required this.treasureName,
     this.productName,
     this.treasureCoverImg,
+    this.blurhash,
     required this.unitAmount,
     this.marketAmount,
   });
@@ -55,6 +57,7 @@ class FlashSaleTreasureSummary {
       treasureName: (json['treasureName'] ?? '').toString(),
       productName: json['productName']?.toString(),
       treasureCoverImg: json['treasureCoverImg']?.toString(),
+      blurhash: json['blurhash']?.toString(),
       unitAmount: (json['unitAmount'] ?? '0').toString(),
       marketAmount: json['marketAmount']?.toString(),
     );

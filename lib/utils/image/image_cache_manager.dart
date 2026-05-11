@@ -18,9 +18,9 @@ class ImageCacheManager {
         repo: JsonCacheInfoRepository(databaseName: _diskCacheKey),
         fileService: HttpFileService(),
       ));
-      debugPrint('[ImageCacheManager] L2 Disk Cache Initialized (Native)');
+      //debugPrint('[ImageCacheManager] L2 Disk Cache Initialized (Native)');
     } else {
-      debugPrint('[ImageCacheManager] Running on Web, L2 Disk Cache disabled');
+      //debugPrint('[ImageCacheManager] Running on Web, L2 Disk Cache disabled');
     }
   }
 

@@ -1,6 +1,7 @@
 import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
+import 'package:flutter_app/core/providers/network_status_provider.dart';
 import 'package:flutter_app/utils/media/remote_url_builder.dart';
 
 class ResponsiveImageService {
@@ -22,10 +23,10 @@ class ResponsiveImageService {
     String? qualityPreset = 'medium',
     bool allowUpscaling = false,
     Map<String, String>? additionalParams,
+    DeviceCategory? deviceCategory, // NEW: 设备感知的宽度阶梯
   }) {
     if (originalUrl.isEmpty) return originalUrl;
 
-    // 【核心修复】: 增强CDN前缀检测，支持多种可能的格式
     // 检查URL是否已经包含CDN处理参数
     if (_isAlreadyOptimized(originalUrl)) {
       debugPrint('[ResponsiveImageService] URL already optimized, returning as-is: $originalUrl');
@@ -38,11 +39,9 @@ class ResponsiveImageService {
       return originalUrl;
     }
 
-    // 逻辑宽度阶梯化 - 避免生成过多不同尺寸
-    double targetW = logicalWidth;
-    if (logicalWidth > 0 && logicalWidth <= 200) targetW = 240;
-    else if (logicalWidth > 200 && logicalWidth <= 400) targetW = 480;
-    else if (logicalWidth > 400) targetW = 720;
+    // 设备感知的宽度阶梯（Fix 7）
+    // 不同设备类别使用不同的宽度阶梯，避免手机请求过大图片、桌面请求过小图片
+    double targetW = _computeTargetWidth(logicalWidth, deviceCategory);
 
     final dpr = _devicePixelRatio ?? 2.0;
 
@@ -50,12 +49,12 @@ class ResponsiveImageService {
     int finalW = (targetW * dpr).toInt();
     int finalH = (logicalHeight * dpr).toInt();
 
-    // 限制最小尺寸，避免请求过小的图片
+    // 限制最小尺寸
     if (finalW < 100) finalW = 100;
     if (finalH > 0 && finalH < 100) finalH = 100;
 
     // 根据qualityPreset调整质量参数
-    String quality = '80'; // 默认质量
+    String quality = '80';
     if (qualityPreset == 'high') quality = '90';
     else if (qualityPreset == 'low') quality = '60';
     else if (qualityPreset == 'original') quality = '100';
@@ -73,23 +72,39 @@ class ResponsiveImageService {
 
     final optimizedUrl = '${uri.scheme}://${uri.host}${RemoteUrlBuilder.cdnPrefix}$optionsStr$path';
     
-    /*debugPrint('[ResponsiveImageService] Generated optimized URL:');
-    debugPrint('  Original: $originalUrl');
-    debugPrint('  Optimized: $optimizedUrl');
-    debugPrint('  Dimensions: ${finalW}x${finalH} (logical: ${logicalWidth}x${logicalHeight})');
-    debugPrint('  Quality: $quality, DPR: $dpr');*/
-    
     return optimizedUrl;
+  }
+
+  /// 根据设备分类计算目标宽度（逻辑像素上限）
+  /// 返回 capped 后的 logicalWidth，后续会乘以 DPR 得到物理像素
+  /// 不同设备类别有不同的上限，避免手机请求过大图片
+  double _computeTargetWidth(double logicalWidth, DeviceCategory? deviceCategory) {
+    final category = deviceCategory ?? DeviceCategory.phone;
+
+    // 各设备类别的逻辑像素宽度上限
+    // 这些值会被乘以 DPR 得到最终的 CDN width 参数
+    double maxLogicalWidth;
+    switch (category) {
+      case DeviceCategory.phone:
+        maxLogicalWidth = 480; // 手机最大 480 逻辑像素（3x DPR = 1440 物理像素）
+        break;
+      case DeviceCategory.tablet:
+        maxLogicalWidth = 720; // 平板最大 720 逻辑像素
+        break;
+      case DeviceCategory.desktop:
+        maxLogicalWidth = 1080; // 桌面最大 1080 逻辑像素
+        break;
+    }
+
+    return min(logicalWidth, maxLogicalWidth);
   }
 
   /// 检查URL是否已经被优化处理过
   bool _isAlreadyOptimized(String url) {
-    // 检查是否包含CDN前缀
     if (url.contains(RemoteUrlBuilder.cdnPrefix)) {
       return true;
     }
     
-    // 检查是否包含常见的CDN处理参数模式
     final cdnPatterns = [
       '/cdn-cgi/image/',
       'cdn-cgi/image/',
@@ -107,7 +122,6 @@ class ResponsiveImageService {
       }
     }
     
-    // 如果包含多个CDN处理参数，则认为已经优化过
     return patternCount >= 2;
   }
 }

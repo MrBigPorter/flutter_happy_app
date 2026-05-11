@@ -31,10 +31,7 @@ class ImagePreloader {
           // 直接写入 ImageCacheManager —— OptimizedImage 读的就是这套缓存
           await cacheManager.getImageData(url);
           _preloadedUrls.add(url);
-          debugPrint('[ImagePreloader] ✅ Preloaded into ImageCacheManager: $url');
-        } catch (e) {
-          debugPrint('[ImagePreloader] ❌ Failed: $url — $e');
-        }
+        } catch (_) {}
       }));
     }
     await Future.wait(futures);

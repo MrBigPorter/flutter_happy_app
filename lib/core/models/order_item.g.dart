@@ -185,6 +185,7 @@ Treasure _$TreasureFromJson(Map<String, dynamic> json) => $checkedCreate(
           treasureCoverImg:
               $checkedConvert('treasureCoverImg', (v) => v as String),
           productName: $checkedConvert('productName', (v) => v as String?),
+          blurhash: $checkedConvert('blurhash', (v) => v as String?),
           virtual: $checkedConvert('virtual', (v) => (v as num).toInt()),
           cashAmount: $checkedConvert('cashAmount', (v) => v as String?),
           cashState: $checkedConvert('cashState', (v) => (v as num?)?.toInt()),
@@ -200,6 +201,7 @@ Map<String, dynamic> _$TreasureToJson(Treasure instance) => <String, dynamic>{
       'treasureName': instance.treasureName,
       'treasureCoverImg': instance.treasureCoverImg,
       'productName': instance.productName,
+      'blurhash': instance.blurhash,
       'virtual': instance.virtual,
       'cashAmount': instance.cashAmount,
       'cashState': instance.cashState,

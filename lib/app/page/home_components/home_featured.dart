@@ -7,10 +7,10 @@ import 'package:flutter_app/components/render_countdown.dart';
 import 'package:flutter_app/core/models/index.dart';
 import 'package:flutter_app/ui/bubble_progress.dart';
 import 'package:flutter_app/ui/button/index.dart';
-import 'package:flutter_app/ui/img/app_image.dart';
+import 'package:flutter_app/ui/img/optimized_image.dart';
 import 'package:flutter_app/utils/format_helper.dart';
+import 'package:flutter_app/utils/media/url_resolver.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:flutter_app/utils/media/remote_url_builder.dart';
 
 /// Home Featured / Future Section (Vertical Product List)
 /// Optimized: Removed VisibilityDetector & GPU-heavy BackdropFilter
@@ -100,12 +100,19 @@ class ProductCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(8.r),
           child: Stack(
             children: [
-              // Main Product Image
-              AppCachedImage(
-                RemoteUrlBuilder.fitAbsoluteUrl(item.treasureCoverImg!),
+              // Main Product Image — 使用 OptimizedImageFactory 统一图片加载
+              // 自带 blurhash overlay（front_blog 风格）、响应式 CDN 尺寸、网络质量适配
+              // 【修复】保持正方形 1:1 比例，避免 1024×1024 图片被裁剪
+              OptimizedImageFactory.product(
+                url: UrlResolver.resolveImage(
+                  context,
+                  item.treasureCoverImg,
+                  logicalWidth: 343.w,
+                ),
                 width: 343.w,
-                height: 288.w,
-                fit: BoxFit.cover,
+                height: 343.w,
+                borderRadius: BorderRadius.zero,
+                blurhash: item.blurhash,
               ),
 
               // Top-left business tags

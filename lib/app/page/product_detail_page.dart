@@ -121,6 +121,7 @@ class _ProductDetailPageState extends ConsumerState<ProductDetailPage>
                     banners: [detail.treasureCoverImg ?? ''],
                     storageKey: _bannerStorageKey,
                     height: expandedHeight,
+                    blurhash: detail.blurhash,
                   ),
                 ),
               ),

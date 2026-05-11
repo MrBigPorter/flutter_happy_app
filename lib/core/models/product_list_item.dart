@@ -57,6 +57,7 @@ class ProductListItem {
   final int? seqBuyQuantity;
   final int? seqShelvesQuantity;
   final String? treasureCoverImg;
+  final String? blurhash;
   final String? ruleContent;
   final String? desc;
   final List<String>? recentJoinAvatars;
@@ -105,6 +106,7 @@ class ProductListItem {
     this.seqBuyQuantity,
     this.seqShelvesQuantity,
     this.treasureCoverImg,
+    this.blurhash,
     this.ruleContent,
     this.desc,
     this.maxUnitCoins,

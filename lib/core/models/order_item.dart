@@ -139,6 +139,7 @@ class Treasure {
   final String treasureName;
   final String treasureCoverImg;
   final String? productName;
+  final String? blurhash;
   final int virtual;
   final String? cashAmount;
   final int? cashState;
@@ -151,6 +152,7 @@ class Treasure {
     required this.treasureName,
     required this.treasureCoverImg,
     this.productName,
+    this.blurhash,
     required this.virtual,
     this.cashAmount,
     this.cashState,

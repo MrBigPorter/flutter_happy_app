@@ -91,6 +91,8 @@
 - [x] **OAuth Platform SDK Integration**: Google/Facebook/Apple (displayed conditionally by platform).
 - [x] **OAuth Minimal Testing**: Added Provider failure states + Login page Widget branching.
 - [x] **Auth Field Alignment & Cleanup**: Resolved `avatar/avartar` typos and aligned `Profile.lastLoginAt` types with the backend.
+- [x] **PWA Update Fix**: Implemented build-time version injection (`{{SW_VERSION}}`) into `web/pwa_sw.js`. Modified `Makefile` dev target + `build-web` target. Added CI/CD injection step in `full_deploy.yml`. Added Flutter SW update listener in `index.html`.
+- [x] **PWA Dev Environment Fix**: Dev SW now skips all interception on `localhost`. `make dev` simplified to pure `fvm flutter run $(DEV)` — no version injection, no file pollution. Production build (`build-web`) retains version injection.
 
 **Current Iteration — Lucky Draw UI Closure (2026-03-24)**:
 - [x] **Lucky Draw Result Dialog**: Implemented `LuckyDrawResultDialog` with 4 prize-specific styles (Coupons/Coins/Balance/Better Luck Next Time).
@@ -100,6 +102,7 @@
 - [x] **Order Success Banner**: Displayed "Ticket Earned" banner on the order results page with navigation to the Draw page.
 - [x] **Socket Push Loop**: Handled `lucky_draw_ticket_issued` events (Badge +1, notification card, deep-linking); implemented `group_success` fallback refresh; configured FCM `lucky_draw` cold-start routing; added red dot badge to Me page menu.
 - [x] **Lucky Wheel UX Optimization**: Added entry instructions card / Drawing-in-progress layered states / Post-draw result actions / Success callback refresh / Small screen adaptation / Minimal Provider+Widget tests.
+- [x] **Home Featured Image Fix**: Fixed image cropping in `home_featured.dart` — changed container from 343×288 (landscape) to 343×343 (square 1:1) to match 1024×1024 source images; added `UrlResolver.resolveImage()` for consistent URL pre-processing.
 - [x] **Fixed Result Dialog Visibility**: Fixed `LuckyDrawActionResult.fromJson` to handle `isWin` field; added debug logs to track dialog display flow.
 - [x] **Fixed Lucky Wheel Animation Stuck Issue**: Fixed `_LuckyWheelState._onResult` controller logic to ensure dialog appears upon animation completion.
 - [x] **Fixed Animation Not Running**: Resolved vsync issues by creating a local animation controller within `_LuckyWheelState`.
@@ -325,7 +328,78 @@ await apiCall().withRetry(maxRetries: 3, context: 'Upload file');
 
 ---
 
-## 🎯 Current Task — API 503 & Dev Environment Fix (2026-05-04)
+## 🎯 Current Task — Web Startup Phase 4 (2026-05-05)
+
+**Phase**: Performance — Web First Load Optimization
+**Last Stop**: Phase 1-4 已完成
+**Accomplishments (Phase 1-4)**:
+- [x] **Phase 1** — 移除 `runApp` 前数据屏障（`main.dart` 改为 `unawaited`）
+- [x] **Phase 2** — 精简 `app_startup.dart` 职责（删除重复 DB 初始化和脆弱 JSON 解析）
+- [x] **Phase 3** — Firebase Web 超时从 10s 降至 5s（`bootstrap.dart` 1行改动）
+- [x] **Phase 4** — 重服务 Provider 从首帧剥离
+  - 新建 `lib/app/widgets/auth_aware_service_manager.dart` — 条件性初始化 Socket/FCM/ChatEventProcessor
+  - 重构 `lib/app/app.dart` — 删除 3 行无条件 `ref.watch()`，builder 内包裹 `AuthAwareServiceManager`
+  - 未登录用户不再触发无用重服务初始化
+  - 登录/登出自动跟随 auth 状态启停
+  - 通过 `fvm flutter analyze` ✅
+- [ ] **Phase 5** — Web 包体瘦身（独立专项，1-2周，待排期）
+- [x] **CORS Preflight Redirect Fix**: Changed [`dev.json`](lib/core/config/env/dev.json:3) `API_BASE_URL` from `http://dev-api.joyminis.com` to `https://dev-api.joyminis.com`. Browser HSTS cache internally redirects HTTP→HTTPS with 307 before sending, causing CORS preflight (OPTIONS) failure. HTTPS avoids the redirect entirely.
+- [x] **PWA "New Version" False Detection in Dev**: Added `kReleaseMode` check in [`PwaUpdateBanner.initState()`](lib/components/pwa_banners.dart:171) — banner only checks for updates in release mode. Also wrapped both SW registration scripts in [`index.html`](web/index.html:283) with localhost skip to prevent false "new version" detection on every hot-reload/rebuild. Removed invalid `--web-disable-service-worker` flag from [`Makefile`](Makefile:5) (doesn't exist in Flutter 3.41.6).
+- [x] **Dark Theme Default**: Changed `initialThemeModeProvider` default from `ThemeMode.system` to `ThemeMode.dark`.
+- [x] **Bootstrap Migration**: Added one-time migration in `loadInitialOverrides()` to clear old `'light'` saved preference, so existing users also see dark mode on first launch after update.
+- [x] **Toggle Persistence**: User's future toggle choices (via settings page) are still saved and respected on subsequent restarts.
+
+---
+
+## 🎯 Current Task — Product Page Scroll Performance Optimization (2026-05-11)
+
+**Phase**: Performance — Product Page Scrolling & Image Loading Optimization
+**Last Stop**: Product page scrolling felt "difficult" (滑动困难) — stuttery/janky scroll experience
+**Root Causes Identified**:
+1. **FittedBox two-pass layout** in `ProductItem` — each card triggers two layout passes
+2. **Per-item AnimationController** in `AnimatedListItem` — 20+ active controllers competing for vsync
+3. **`addRepaintBoundaries: false`** on grid delegate — no repaint isolation between items
+4. **No BlurHash overlay** — placeholder→image flash on every load
+5. **No network-aware quality** — always loads high-quality images regardless of connection
+6. **NestedScrollViewPlus physics conflict** — `platformScrollPhysics()` vs `ClampingScrollPhysics()`
+7. **No device-size-aware quality** — phone loads same image dimensions as desktop
+8. **Fixed card dimensions** — 166x365 regardless of viewport size
+
+**Fixes Applied**:
+- [x] **Fix 1 (FittedBox→LayoutBuilder)**: Replaced `FittedBox` with `LayoutBuilder` + `Transform.scale` in [`ProductItem`](lib/components/product_item.dart:77) — eliminates two-pass layout overhead
+- [x] **Fix 2 (Fast-scroll animation skip)**: Added static `_isScrollingFast` flag + `updateScrollSpeed()` in [`AnimatedListItem`](lib/ui/animated_list_item.dart) — skips AnimationController during active scroll
+- [x] **Fix 3 (addRepaintBoundaries)**: Changed `addRepaintBoundaries: false` → `true` in [`PageListViewPro` grid delegate](lib/components/list.dart:497) — enables repaint isolation
+- [x] **Fix 4 (BlurHash overlay)**: Adopted front_blog BlurHash overlay pattern in [`OptimizedImage`](lib/ui/img/optimized_image.dart:331) — image at full opacity on bottom, BlurHash on top as overlay, 300ms fade-out on load
+- [x] **Fix 5 (Network-aware quality)**: Added [`networkQualityProvider`](lib/core/providers/network_status_provider.dart:35) — defaults to quality=75, ready for Web Network Information API
+- [x] **Fix 6 (Scroll physics)**: Changed `platformScrollPhysics()` to `const ClampingScrollPhysics()` in both [`NestedScrollViewPlus`](lib/app/page/product_page.dart:182) and [`CustomScrollView`](lib/app/page/product_page.dart:306)
+- [x] **Fix 7 (Device-size-aware quality)**: Added [`deviceSizeProvider`](lib/core/providers/network_status_provider.dart:66) + device-aware width ladder in [`ResponsiveImageService._computeTargetWidth()`](lib/utils/image/responsive_image_service.dart:81) — phone/tablet/desktop width tiers
+- [x] **Fix 8 (Viewport-aware card scaling)**: Added `DeviceCategory`-based `_baseWidth`/`_baseHeight` in [`ProductItem`](lib/components/product_item.dart:40) — phone=166x365, tablet=200x440, desktop=240x528; wired from `deviceSizeProvider` in [`product_page.dart`](lib/app/page/product_page.dart:298)
+- [x] **Cleanup**: Removed duplicate `DeviceCategory` enum definitions from [`optimized_image.dart`](lib/ui/img/optimized_image.dart), [`responsive_image_service.dart`](lib/utils/image/responsive_image_service.dart), and [`product_item.dart`](lib/components/product_item.dart) — canonical source is [`network_status_provider.dart`](lib/core/providers/network_status_provider.dart:45)
+- [x] **Fix 9 (Product detail image size)**: Fixed [`_computeTargetWidth()`](lib/utils/image/responsive_image_service.dart:81) — changed from returning inflated ladder values (480→1440px with 3x DPR) to capping `logicalWidth` at device-specific maximums (phone=480, tablet=720, desktop=1080). Changed [`OptimizedImageFactory.banner()`](lib/ui/img/optimized_image.dart) quality from `'high'` (90) to `'medium'` (80). Result: phone with 375 logical width now requests `width=1125, quality=80` instead of `width=1440, quality=90`.
+- [x] **Fix 10 (RemoteUrlBuilder.imageCdn second path)**: Fixed [`RemoteUrlBuilder.imageCdn()`](lib/utils/media/remote_url_builder.dart:59) — replaced hardcoded binary 240/480 logic with device-aware capping (phone max 480, tablet 720, desktop 1080 logical pixels). This path is used by [`ProductItem`](lib/components/product_item.dart:113) via `UrlResolver.resolveImage()` and the preloader. Now `logicalWidth=166` on phone produces `width=498` instead of `width=720`.
+- [x] **Fix 11 (Detail page blurhash)**: Added blurhash support to detail page banner chain — [`OptimizedImageFactory.banner()`](lib/ui/img/optimized_image.dart:412) now accepts `blurhash` parameter; passed through [`SwiperBanner`](lib/components/swiper_banner.dart:38) → [`ImageWidget`](lib/components/swiper_banner.dart:198) → [`BannerSection`](lib/app/page/product_detail/detail_sections.dart:37) → [`product_detail_page.dart`](lib/app/page/product_detail_page.dart:120) (from `detail.blurhash`)
+- [x] **Fix 12 (home_featured image not covering card)**: Replaced [`AppCachedImage`](lib/ui/img/app_image.dart) with [`OptimizedImageFactory.product()`](lib/ui/img/optimized_image.dart:412) in [`home_featured.dart`](lib/app/page/home_components/home_featured.dart:103) — `AppCachedImage` uses `CachedNetworkImage` which may not consistently fill container, and image URL goes through `fitAbsoluteUrl()` (no width params) → `resolveImage()` (returns early due to existing CDN prefix), so images load at full resolution without proper CDN sizing. `OptimizedImageFactory.product()` uses custom `ImageCacheManager` + `Image.memory` with proper CDN sizing and blurhash overlay.
+- [x] **Verification**: Passed `fvm flutter analyze` (0 errors) ✅ and `fvm flutter test` (75/75) ✅
+
+---
+
+## 🎯 Previous Task — API 503 Triple Fix (2026-05-05)
+
+**Phase**: DevOps — Service Worker 503 (HSTS + COOP Headers)
+**Last Stop**: API requests returning 503 from Service Worker, persistent even after nginx reload
+**Root Cause (tiered)**:
+1. **Tier 1 (COOP conflict)**: Backend NestJS sends `Cross-Origin-Opener-Policy: same-origin`, nginx adds `Cross-Origin-Opener-Policy: unsafe-none` → browser sees two conflicting values → SW fetch may fail.
+2. **Tier 2 (HSTS hijack — THE REAL BLOCKER)**: Backend NestJS sends `Strict-Transport-Security: max-age=31536000; includeSubDomains`. Browser cached this HSTS entry, so even HTTP API requests to `dev-api.joyminis.com` get internally upgraded to HTTPS → no valid SSL cert → fetch fails → SW catch → 503. This is why incognito worked (no HSTS cache) but normal mode didn't.
+3. **Tier 3 (Stale SW)**: Even after server fixes, old SW (v1) remained registered in browser until browser restart.
+
+**Fixes Applied**:
+- [x] **Fix A (COOP)**: Added `proxy_hide_header Cross-Origin-Opener-Policy;` to both `/api/` blocks in [`nginx.dev.conf`](../../Volumes/mySSD/work/JoyMini_Nest_Monorepo/nginx/nginx.dev.conf:140) — hides backend's conflicting `same-origin`.
+- [x] **Fix B (HSTS)**: Added `proxy_hide_header Strict-Transport-Security;` to both `/api/` blocks in [`nginx.dev.conf`](../../Volumes/mySSD/work/JoyMini_Nest_Monorepo/nginx/nginx.dev.conf:141) — prevents future HSTS caching.
+- [x] **Fix C (SW cache)**: Bumped `CACHE_NAME` from `joymini-shell-v1` to `joymini-shell-v2` in [`web/pwa_sw.js:7`](web/pwa_sw.js:7).
+- [x] **All nginx fixes verified**: syntax ok, reloaded, curl shows clean headers ✅
+- [x] **User confirmed**: Restart browser → API works, no more 503 ✅
+
+## 🎯 Previous Task — API 503 & Dev Environment Fix (2026-05-04)
 
 **Phase**: DevOps — Infrastructure Debugging & CORS Fix
 **Last Stop**: All API requests returning 503 (Service Worker) / Network errors resolved

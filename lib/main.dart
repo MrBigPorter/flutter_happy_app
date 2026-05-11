@@ -48,16 +48,18 @@ void main() {
     // Deep Link OAuth 不需要 Web 重定向恢复逻辑
     // 所有 OAuth 状态由后端管理，前端只需等待 Deep Link 回调
 
-    //  核心架构升级：数据屏障！
-    // 在这里强制阻断，通过 container.read 手动触发并等待 startup 逻辑跑完。
-    try {
-      await container.read(appStartupProvider.future);
-      debugPrint(' [架构日志] 所有底层数据预热完毕，准备渲染 UI！');
-    } catch (e, stackTrace) {
-      debugPrint(' [架构日志] AppStartup 初始化出现异常: $e');
-    }
 
-    // 4. 启动 UI：直接渲染 MyApp，零白屏，零中间态！
+    // [Phase 1 优化] 数据预热改为后台运行，不再阻塞 runApp。
+    // 安全保障：authProvider 已在 ProviderContainer 创建时同步读取 initialTokensProvider，
+    // isAuthenticated 在第一帧即正确；GoRouter redirect 守卫（app_router.dart:607）兜底鉴权跳转。
+    // 副作用：认证用户首次进入聊天模块时可能有 200-500ms Loading，属于可接受取舍。
+    unawaited(
+      container.read(appStartupProvider.future).catchError((e) {
+        debugPrint(' [架构日志] AppStartup 后台初始化异常: $e');
+      }),
+    );
+
+    // 4. 启动 UI：runApp 前移，首帧立即可见，消除启动白屏。
     runApp(
       UncontrolledProviderScope(
         container: container,

@@ -276,7 +276,13 @@
 
 <!-- ===== PWA: Custom Service Worker Registration ===== -->
 <script>
-    if ('serviceWorker' in navigator) {
+    // Dev environment (localhost): skip SW registration entirely.
+    // The SW itself skips fetch handling for localhost, but reg.update()
+    // and flutter_service_worker.js registration still trigger false
+    // "new version" detection on every rebuild.
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+        console.log('[PWA] Dev mode detected, skipping SW registration');
+    } else if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
             navigator.serviceWorker.register('/pwa_sw.js', { scope: '/' })
                 .then((reg) => {
@@ -316,5 +322,23 @@
     }
 </script>
 
+<!-- ===== PWA: Flutter SW Update Listener (supplement) ===== -->
+<script>
+    // Also listen for Flutter's built-in service worker updates.
+    // This ensures we catch updates even if the custom SW doesn't change.
+    // Skip in dev mode (localhost) to avoid false "new version" detection.
+    if (!(window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') && 'serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/flutter_service_worker.js', { scope: '/' })
+            .then((reg) => {
+                reg.addEventListener('updatefound', () => {
+                    window.__pwaUpdateReady = true;
+                    console.log('[PWA] Flutter SW update detected');
+                });
+            })
+            .catch(() => {
+                // Flutter SW may not exist in dev mode (flutter run), that's fine.
+            });
+    }
+</script>
 
 </body></html>

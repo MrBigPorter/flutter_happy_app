@@ -239,6 +239,7 @@ class _OrderItemHeader extends StatelessWidget {
             width: 80.w,
             height: 80.w,
             fit: BoxFit.cover,
+            metadata: {'blurHash': item.treasure.blurhash},
           ),
         ),
         SizedBox(width: 12.w),

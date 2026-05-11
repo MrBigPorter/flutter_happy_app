@@ -6,13 +6,11 @@ import 'package:flutter_app/common.dart';
 import 'package:flutter_app/components/pwa_banners.dart';
 import 'package:flutter_app/core/events/global_handler.dart';
 import 'package:flutter_app/core/providers/app_router_provider.dart';
-import 'package:flutter_app/core/providers/fcm_service_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:easy_localization/easy_localization.dart';
 
 import '../../theme/theme_provider.dart';
-import '../core/providers/socket_provider.dart';
-import '../ui/chat/services/chat_event_processor.dart';
+import 'widgets/auth_aware_service_manager.dart';
 
 class MyApp extends ConsumerStatefulWidget {
   const MyApp({super.key});
@@ -34,28 +32,13 @@ class _MyAppState extends ConsumerState<MyApp> {
     super.dispose();
   }
 
-
   @override
   Widget build(BuildContext context) {
-
-
     final router = ref.watch(appRouterProvider);
     final themeMode = ref.watch(themeModeProvider);
 
-    //watch 它，让 SocketService 实例保持存活，并开始监听 Auth 变化。
-    // 我们不需要用它的返回值，只需要它活着。
-     ref.watch(socketServiceProvider);
-
-    // 2. 启动 Socket 事件处理器 (指挥官)
-    // 只要这一行在，ChatEventProcessor 就开始工作，
-    // 无论用户在哪个页面，它都会在后台监听并更新数据库。
-    ref.watch(chatEventProcessorProvider);
-
-    // 初始化 FCM 服务
-     ref.watch(fcmInitProvider);
-
-
-
+    // [Phase 4 优化] 重服务 Provider（Socket、FCM、ChatEventProcessor）
+    // 已移至 AuthAwareServiceManager，仅在认证用户时初始化。
     return MaterialApp.router(
       title: 'JoyMini',
       routerConfig: router,
@@ -91,9 +74,12 @@ class _MyAppState extends ConsumerState<MyApp> {
           ],
         );
 
-        // 4. 最外层包裹 BotToastInit
+        // 4. 包裹 AuthAwareServiceManager (条件性初始化重服务)
+        // 5. 最外层包裹 BotToastInit
         // 这样 BotToast 才能覆盖在所有页面(包括 GlobalHandler)之上
-        return BotToastInit()(context, child);
+        return AuthAwareServiceManager(
+          child: BotToastInit()(context, child),
+        );
       },
     );
   }

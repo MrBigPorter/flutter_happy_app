@@ -38,12 +38,14 @@ class BannerSection extends StatelessWidget {
   final List<String>? banners;
   final PageStorageKey? storageKey;
   final double? height;
+  final String? blurhash;
 
   const BannerSection({
     super.key,
     required this.banners,
     this.storageKey,
     this.height,
+    this.blurhash,
   });
 
   @override
@@ -61,6 +63,7 @@ class BannerSection extends StatelessWidget {
       borderRadius: 0,
       banners: banners!,
       storageKey: storageKey,
+      blurhash: blurhash,
     );
   }
 }

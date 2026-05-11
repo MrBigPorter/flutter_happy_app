@@ -75,17 +75,30 @@ class RemoteUrlBuilder {
       dpr = 2.0;
     }
 
-    // 2. 核心：不论 UI 传什么，宽度强行锁定为 240 或 480
-    // 这样 Preloader 和 UI 就再也不可能产生第三种宽度参数了
-    int targetW = (logicalWidth != null && logicalWidth > 300) ? 480 : 240;
+    // 2. 设备感知的宽度上限：手机最大 480 逻辑像素，平板 720，桌面 1080
+    // 避免手机请求 1440px 的大图
+    double maxLogicalWidth = 480; // 默认手机上限
+    if (logicalWidth != null) {
+      // 根据 logicalWidth 粗略判断设备类别
+      if (logicalWidth > 1024) {
+        maxLogicalWidth = 1080; // 桌面
+      } else if (logicalWidth > 600) {
+        maxLogicalWidth = 720; // 平板
+      }
+      // 取 logicalWidth 和设备上限中较小的值
+      logicalWidth = min(logicalWidth, maxLogicalWidth);
+    } else {
+      logicalWidth = maxLogicalWidth;
+    }
 
-    // 3. 最终物理像素：240*3=720 或 480*3=1440
-    int finalW = (targetW * dpr).toInt();
+    // 3. 最终物理像素
+    int finalW = (logicalWidth! * dpr).toInt();
+    if (finalW < 100) finalW = 100;
 
-    // 4. 强制 Fit 模式 (这个不对齐也必死)
+    // 4. 强制 Fit 模式
     String fitParam = (fit == BoxFit.contain) ? "contain" : "scale-down";
 
-    final params = 'width=$finalW,quality=75,f=auto,fit=$fitParam';
+    final params = 'width=$finalW,quality=$quality,f=auto,fit=$fitParam';
     return '${AppConfig.imgBaseUrl}${RemoteUrlBuilder.cdnPrefix}$params/$key';
   }
 }

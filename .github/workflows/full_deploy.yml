@@ -122,6 +122,13 @@ jobs:
             --reporter=github \
             --no-pub
 
+      # ── Phase 4.5c: Inject PWA SW Version ──────────────────────
+      - name: 🔖 4.5c. Inject PWA SW Version
+        run: |
+          SW_VERSION="${{ steps.meta.outputs.app_version }}-${{ steps.meta.outputs.short_sha }}"
+          sed -i "s/{{SW_VERSION}}/$SW_VERSION/g" web/pwa_sw.js
+          echo "✅ SW_VERSION injected: $SW_VERSION"
+
       # ── Phase 5: Web ───────────────────────────────────────────
       - name: 🚀 5. Build Web (H5)
         run: |

@@ -114,6 +114,7 @@ class SpecialArea extends StatelessWidget {
               width: 80.w,
               height: 80.w,
               borderRadius: BorderRadius.circular(8.r),
+              blurhash: item.blurhash,
             ),
             SizedBox(width: 10.w),
             Expanded(

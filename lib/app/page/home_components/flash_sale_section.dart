@@ -297,6 +297,7 @@ class _MiniProductCard extends ConsumerWidget {
                       width: 115.w,
                       height: 115.w, // 正方形图片
                       borderRadius:  BorderRadius.vertical(top: Radius.circular(10.r)),
+                      blurhash: item.product.blurhash,
                     ),
                   ),
                   if (isUnavailable)

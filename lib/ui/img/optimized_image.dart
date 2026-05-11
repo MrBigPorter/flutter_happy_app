@@ -2,12 +2,35 @@ import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_blurhash/flutter_blurhash.dart';
+import 'package:flutter_app/core/providers/network_status_provider.dart';
 import 'package:flutter_app/utils/image/image_cache_manager.dart';
 import 'package:flutter_app/utils/image/performance_monitor.dart';
 import 'package:flutter_app/utils/image/responsive_image_service.dart';
 
+/// 全局 LRU 缓存：解码后的 blurhash data URL
+/// 避免在 Tab 切换时重复解码（灵感来自 front_blog 的 blurhashCache）
+final Map<String, String> _blurhashCache = {};
+const int _blurhashCacheMax = 100;
+
+String? _getCachedBlurhash(String hash) => _blurhashCache[hash];
+void _setCachedBlurhash(String hash, String dataUrl) {
+  if (_blurhashCache.length >= _blurhashCacheMax) {
+    // LRU eviction: remove first entry
+    final key = _blurhashCache.keys.first;
+    _blurhashCache.remove(key);
+  }
+  _blurhashCache[hash] = dataUrl;
+}
+
 /// 优化图片组件 - 封装新的图片缓存系统
 /// 功能：集成四级缓存、性能监控、响应式图片服务
+///
+/// BlurHash 渲染模式（灵感来自 front_blog）：
+/// - BlurHash 作为 overlay 渲染在图片之上（不是 placeholder）
+/// - 图片始终以全透明度渲染在底层
+/// - 图片加载完成后，BlurHash overlay 以 300ms 淡出
+/// - 消除 placeholder → 图片切换时的闪烁
 class OptimizedImage extends StatefulWidget {
   final String url;
   final double? width;
@@ -21,6 +44,9 @@ class OptimizedImage extends StatefulWidget {
   final String? qualityPreset;
   final bool enableResponsive;
   final Map<String, dynamic>? metadata;
+  final String? blurhash;
+  final int? networkQuality; // 0-100, from networkQualityProvider (Fix 5)
+  final DeviceCategory? deviceCategory; // from deviceSizeProvider (Fix 7)
 
   const OptimizedImage({
     super.key,
@@ -36,6 +62,9 @@ class OptimizedImage extends StatefulWidget {
     this.qualityPreset = 'medium',
     this.enableResponsive = true,
     this.metadata,
+    this.blurhash,
+    this.networkQuality,
+    this.deviceCategory,
   });
 
   @override
@@ -48,8 +77,9 @@ class _OptimizedImageState extends State<OptimizedImage> {
   late ImagePerformanceMonitor _performanceMonitor;
   String? _eventId;
   DateTime? _startTime;
-  bool _isLoading = false;
+  bool _isLoading = true;
   bool _hasError = false;
+  bool _isImageLoaded = false; // NEW: for blurhash overlay fade-out
   Uint8List? _imageData;
 
   @override
@@ -60,8 +90,6 @@ class _OptimizedImageState extends State<OptimizedImage> {
     _setupAndLoad(widget.url);
   }
 
-  /// 【修复 P1】当父 Widget rebuild 并传入不同的 url 时，重新加载新 URL。
-  /// 没有这个，列表滚动复用或数据刷新会导致显示错误的旧图片。
   @override
   void didUpdateWidget(OptimizedImage oldWidget) {
     super.didUpdateWidget(oldWidget);
@@ -72,28 +100,39 @@ class _OptimizedImageState extends State<OptimizedImage> {
     }
   }
 
-  /// 生成优化 URL 并开始加载，可安全被 initState / didUpdateWidget 重复调用。
+  /// 生成优化 URL 并开始加载
   void _setupAndLoad(String url) {
     // 生成优化后的URL
     _optimizedUrl = url;
     if (widget.enableResponsive && widget.width != null && widget.width! > 0) {
       try {
+        // 计算最终 quality：结合 qualityPreset、networkQuality、deviceCategory
+        String effectiveQuality = widget.qualityPreset ?? 'medium';
+        if (widget.networkQuality != null || widget.deviceCategory != null) {
+          effectiveQuality = _computeEffectiveQuality(
+            preset: effectiveQuality,
+            networkQuality: widget.networkQuality,
+            deviceCategory: widget.deviceCategory,
+          );
+        }
+
         _optimizedUrl = ResponsiveImageService().generateImageUrl(
           originalUrl: url,
           logicalWidth: widget.width!,
           logicalHeight: widget.height ?? widget.width! * 0.75,
-          qualityPreset: widget.qualityPreset,
+          qualityPreset: effectiveQuality,
           allowUpscaling: false,
+          deviceCategory: widget.deviceCategory,
         );
       } catch (e) {
         debugPrint('[OptimizedImage] Responsive URL generation failed: $e');
       }
     }
 
-    // 重置状态（didUpdateWidget 时清除旧图片）
+    // 重置状态
     _imageData = null;
     _hasError = false;
-    _isLoading = false;
+    _isImageLoaded = false;
 
     // 开始性能监控
     if (widget.enableMonitoring) {
@@ -115,8 +154,64 @@ class _OptimizedImageState extends State<OptimizedImage> {
     _loadImage();
   }
 
+  /// 计算最终质量：取 networkQuality 和 deviceCategory 中更保守的值
+  String _computeEffectiveQuality({
+    required String preset,
+    int? networkQuality,
+    DeviceCategory? deviceCategory,
+  }) {
+    // 预设基础值
+    int baseQuality;
+    switch (preset) {
+      case 'high':
+        baseQuality = 90;
+        break;
+      case 'low':
+        baseQuality = 60;
+        break;
+      case 'original':
+        baseQuality = 100;
+        break;
+      case 'medium':
+      default:
+        baseQuality = 80;
+        break;
+    }
+
+    // 设备分类限制
+    int deviceLimit = 100;
+    if (deviceCategory != null) {
+      switch (deviceCategory) {
+        case DeviceCategory.phone:
+          deviceLimit = 80;
+          break;
+        case DeviceCategory.tablet:
+          deviceLimit = 85;
+          break;
+        case DeviceCategory.desktop:
+          deviceLimit = 90;
+          break;
+      }
+    }
+
+    // 网络质量限制
+    final int networkLimit = networkQuality ?? 100;
+
+    // 取三者中最保守的
+    final int finalQuality = [
+      baseQuality,
+      deviceLimit,
+      networkLimit,
+    ].reduce(min);
+
+    // 映射回 qualityPreset 字符串
+    if (finalQuality >= 90) return 'high';
+    if (finalQuality >= 70) return 'medium';
+    return 'low';
+  }
+
   Future<void> _loadImage() async {
-    if (_isLoading || _optimizedUrl.isEmpty) return;
+    if (_optimizedUrl.isEmpty) return;
     
     setState(() {
       _isLoading = true;
@@ -134,6 +229,8 @@ class _OptimizedImageState extends State<OptimizedImage> {
         setState(() {
           _imageData = imageData;
           _isLoading = false;
+          // 标记图片已加载，触发 blurhash overlay 淡出
+          _isImageLoaded = true;
         });
         
         // 记录成功
@@ -143,28 +240,24 @@ class _OptimizedImageState extends State<OptimizedImage> {
             eventId: _eventId!,
             loadDuration: duration,
             byteSize: imageData.length,
-            cacheLevel: ImageCacheLevel.memory, // 假设是内存缓存
+            cacheLevel: ImageCacheLevel.memory,
           );
         }
       }
     } catch (e) {
-      // 详细记录错误信息
       debugPrint('[OptimizedImage] Failed to load image:');
       debugPrint('  URL: $_optimizedUrl');
       debugPrint('  Original URL: ${widget.url}');
       debugPrint('  Error: $e');
-      debugPrint('  StackTrace: ${e is Error ? (e as Error).stackTrace : ''}');
-      debugPrint('  EnableResponsive: ${widget.enableResponsive}');
-      debugPrint('  Component: ${widget.componentName}');
-      debugPrint('  ImageData length: ${_imageData?.length}');
       
       if (mounted) {
         setState(() {
           _hasError = true;
           _isLoading = false;
+          // 即使加载失败，也标记为已加载（隐藏 blurhash overlay）
+          _isImageLoaded = true;
         });
         
-        // 记录失败
         if (widget.enableMonitoring && _eventId != null && _startTime != null) {
           final duration = DateTime.now().difference(_startTime!);
           _performanceMonitor.recordLoadFailure(
@@ -179,7 +272,6 @@ class _OptimizedImageState extends State<OptimizedImage> {
 
   @override
   Widget build(BuildContext context) {
-    // 构建容器
     Widget container = Container(
       width: widget.width,
       height: widget.height,
@@ -191,7 +283,6 @@ class _OptimizedImageState extends State<OptimizedImage> {
       child: _buildContent(),
     );
     
-    // 应用圆角裁剪
     if (widget.borderRadius != null) {
       container = ClipRRect(
         borderRadius: widget.borderRadius!,
@@ -203,6 +294,12 @@ class _OptimizedImageState extends State<OptimizedImage> {
   }
 
   Widget _buildContent() {
+    // 如果有 blurhash，使用 overlay 模式（front_blog 风格）
+    if (widget.blurhash != null && widget.blurhash!.isNotEmpty) {
+      return _buildBlurhashOverlayContent();
+    }
+
+    // 无 blurhash：传统模式
     if (_isLoading) {
       return widget.placeholder ?? _buildDefaultPlaceholder();
     }
@@ -219,20 +316,56 @@ class _OptimizedImageState extends State<OptimizedImage> {
         fit: widget.fit,
         errorBuilder: (context, error, stackTrace) {
           debugPrint('[OptimizedImage] Image decode error: $error');
-          // 解码失败时回退到错误组件
           return widget.errorWidget ?? _buildDefaultErrorWidget();
         },
       );
     }
     
-    // 默认返回占位符
     return widget.placeholder ?? _buildDefaultPlaceholder();
   }
 
+  /// front_blog 风格的 BlurHash overlay 模式
+  /// - 图片始终渲染在底层（全透明度）
+  /// - BlurHash 作为 overlay 渲染在图片之上
+  /// - 图片加载完成后，BlurHash 以 300ms 淡出
+  Widget _buildBlurhashOverlayContent() {
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        // 底层：始终渲染图片（如果有）
+        // 注意：不传 width/height，因为 Stack(fit: StackFit.expand) 已强制约束
+        if (_imageData != null)
+          Image.memory(
+            _imageData!,
+            fit: widget.fit,
+            errorBuilder: (context, error, stackTrace) {
+              return const SizedBox.shrink();
+            },
+          )
+        else
+          // 图片未加载时显示灰色背景
+          Container(color: Colors.grey[200]),
+
+        // 上层：BlurHash overlay（淡出效果）
+        if (!_isImageLoaded)
+          AnimatedOpacity(
+            opacity: _isImageLoaded ? 0.0 : 1.0,
+            duration: const Duration(milliseconds: 300),
+            onEnd: () {
+              // 淡出完成后，可以移除 blurhash widget（可选）
+              if (mounted) setState(() {});
+            },
+            child: BlurHash(
+              hash: widget.blurhash!,
+              imageFit: widget.fit,
+              color: Colors.grey.shade200,
+            ),
+          ),
+      ],
+    );
+  }
+
   /// 默认占位符
-  /// 【修复 P3】原来用 CircularProgressIndicator（动画，GPU开销），
-  /// 现改为静态灰色容器，与 AppCachedImage 的 Shimmer 风格保持一致，
-  /// 瀑布流中 10+ 个同时渲染时不再各自跑独立动画。
   Widget _buildDefaultPlaceholder() {
     return Container(
       width: widget.width,
@@ -257,7 +390,6 @@ class _OptimizedImageState extends State<OptimizedImage> {
 
   @override
   void dispose() {
-    // 如果图片加载超时（假设10秒），记录为失败
     if (widget.enableMonitoring && _eventId != null && _startTime != null) {
       final duration = DateTime.now().difference(_startTime!);
       if (duration > const Duration(seconds: 10) && _isLoading) {
@@ -281,6 +413,9 @@ class OptimizedImageFactory {
     required double width,
     required double height,
     BorderRadius borderRadius = const BorderRadius.all(Radius.circular(8.0)),
+    String? blurhash,
+    int? networkQuality,
+    DeviceCategory? deviceCategory,
   }) {
     return OptimizedImage(
       url: url,
@@ -289,8 +424,11 @@ class OptimizedImageFactory {
       fit: BoxFit.cover,
       borderRadius: borderRadius,
       componentName: 'SwiperBanner',
-      qualityPreset: 'high', // 轮播图使用高质量
+      qualityPreset: 'medium',
       enableResponsive: true,
+      blurhash: blurhash,
+      networkQuality: networkQuality,
+      deviceCategory: deviceCategory,
     );
   }
 
@@ -300,6 +438,9 @@ class OptimizedImageFactory {
     required double width,
     double? height,
     BorderRadius borderRadius = const BorderRadius.all(Radius.circular(4.0)),
+    String? blurhash,
+    int? networkQuality,
+    DeviceCategory? deviceCategory,
   }) {
     return OptimizedImage(
       url: url,
@@ -308,8 +449,11 @@ class OptimizedImageFactory {
       fit: BoxFit.cover,
       borderRadius: borderRadius,
       componentName: 'ProductImage',
-      qualityPreset: 'medium', // 商品图片使用中等质量
+      qualityPreset: 'medium',
       enableResponsive: true,
+      blurhash: blurhash,
+      networkQuality: networkQuality,
+      deviceCategory: deviceCategory,
     );
   }
 
@@ -317,6 +461,8 @@ class OptimizedImageFactory {
   static Widget avatar({
     required String url,
     required double size,
+    int? networkQuality,
+    DeviceCategory? deviceCategory,
   }) {
     return ClipOval(
       child: OptimizedImage(
@@ -325,8 +471,10 @@ class OptimizedImageFactory {
         height: size,
         fit: BoxFit.cover,
         componentName: 'Avatar',
-        qualityPreset: 'low', // 头像使用低质量
+        qualityPreset: 'low',
         enableResponsive: true,
+        networkQuality: networkQuality,
+        deviceCategory: deviceCategory,
       ),
     );
   }
@@ -347,8 +495,8 @@ class OptimizedImageFactory {
         height: size,
         fit: BoxFit.contain,
         componentName: 'Icon',
-        qualityPreset: 'original', // 图标使用原始质量
-        enableResponsive: false, // 图标不需要响应式
+        qualityPreset: 'original',
+        enableResponsive: false,
       ),
     );
   }
@@ -356,14 +504,12 @@ class OptimizedImageFactory {
 
 /// 优化图片组件的配置
 class OptimizedImageConfig {
-  // 默认配置
   static const BoxFit defaultFit = BoxFit.cover;
   static const String defaultComponentName = 'OptimizedImage';
   static const String defaultQualityPreset = 'medium';
   static const bool defaultEnableMonitoring = true;
   static const bool defaultEnableResponsive = true;
 
-  // 组件类型特定的配置
   static const Map<String, OptimizedImageTypeConfig> typeConfigs = {
     'banner': OptimizedImageTypeConfig(
       qualityPreset: 'high',

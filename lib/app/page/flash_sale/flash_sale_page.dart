@@ -326,6 +326,7 @@ class _ProductCard extends ConsumerWidget {
                       url: item.product.treasureCoverImg ?? '',
                       width: (1.sw / 2) - 22.w,
                       borderRadius: BorderRadius.vertical(top: Radius.circular(10.r)),
+                      blurhash: item.product.blurhash,
                     ),
                   ),
                   if (isUnavailable)

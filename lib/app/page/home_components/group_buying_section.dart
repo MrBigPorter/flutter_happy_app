@@ -259,6 +259,7 @@ class GroupBuyingCard extends ConsumerWidget {
         width: 90.w,
         height: 110.w,
         borderRadius: BorderRadius.circular(12.r),
+        blurhash: item.blurhash,
       ),
     );
   }

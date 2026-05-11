@@ -164,11 +164,17 @@ class _PwaUpdateBannerState extends State<PwaUpdateBanner> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (kIsWeb && PwaHelper.updateAvailable) {
-        setState(() => _visible = true);
-      }
-    });
+    // Dev mode (kDebugMode): never show update banner.
+    // Flutter's web engine may auto-register flutter_service_worker.js in dev,
+    // causing false "new version" detection on every hot-reload/rebuild.
+    // Production builds (kReleaseMode) use the real SW and should show updates.
+    if (kReleaseMode) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (kIsWeb && PwaHelper.updateAvailable) {
+          setState(() => _visible = true);
+        }
+      });
+    }
   }
 
   @override

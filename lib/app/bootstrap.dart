@@ -61,11 +61,19 @@ class AppBootstrap {
   static Future<List<Override>> loadInitialOverrides() async {
     final prefs = await SharedPreferences.getInstance();
 
-    // A. 主题处理
+    // A. 主题处理 — 默认黑色主题
+    // 迁移：首次升级后清除旧版 'light' 偏好，让新 dark 默认值生效
+    // 后续用户手动切换（设置页）仍会保存偏好，重启后恢复
+    const migrationKey = 'theme_migration_v1_dark';
+    if (!(prefs.getBool(migrationKey) ?? false)) {
+      await prefs.remove('app_theme_mode');
+      await prefs.setBool(migrationKey, true);
+    }
+
     final savedThemeMode = prefs.getString('app_theme_mode');
     final initialThemeMode = ThemeMode.values.firstWhere(
           (mode) => mode.name == savedThemeMode,
-      orElse: () => ThemeMode.system,
+      orElse: () => ThemeMode.dark,
     );
 
     // B. Token 脏数据清洗逻辑 (你原来的核心逻辑)
@@ -119,9 +127,10 @@ class AppBootstrap {
 
   static Future<void> _setupFirebase() async {
     try {
-      // 加 10 秒超时：弱网/离线时 Firebase init 可能无限挂起，导致 Splash 卡死
+      // [Phase 3 优化] Web 端超时缩短至 5s（弱网最多节省 5s），Native 保持 10s。
+      // 超时后 Firebase 降级运行（已有 catch 兜底），不影响业务主流程。
       await FirebaseService.initialize()
-          .timeout(const Duration(seconds: 10));
+          .timeout(kIsWeb ? const Duration(seconds: 5) : const Duration(seconds: 10));
 
       //  核心修改：只有在【非 Web】平台才注册这个后台处理函数
       if (!kIsWeb) {

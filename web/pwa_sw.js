@@ -4,7 +4,10 @@
 //       This SW handles the offline fallback page & app shell caching.
 //       Firebase messaging uses its own scope: /firebase-cloud-messaging-push-scope
 
-const CACHE_NAME = 'joymini-shell-v1';
+// 构建时自动注入 — 不要手动修改
+// 默认值 'dev' 在未注入时也能工作
+const SW_VERSION = '{{SW_VERSION}}';
+const CACHE_NAME = 'joymini-shell-' + SW_VERSION;
 const OFFLINE_URL = '/offline.html';
 const API_HOSTS = ['api.joyminis.com'];
 const IMAGE_CACHE_NAME = 'joymini-image-cache-v1';
@@ -26,6 +29,7 @@ const PRECACHE_URLS = [
 
 // ── Install: pre-cache app shell ──────────────────────────────────────────────
 self.addEventListener('install', (event) => {
+    console.log('[SW] Installing version:', SW_VERSION);
     event.waitUntil(
         caches.open(CACHE_NAME).then((cache) => {
             console.log('[SW] Pre-caching app shell');
@@ -79,10 +83,17 @@ async function trimCache(cacheName, maxEntries) {
 
 // ── Fetch: Network-first with offline fallback ────────────────────────────────
 self.addEventListener('fetch', (event) => {
+    const url = new URL(event.request.url);
+
+    // Dev environment (localhost): skip ALL custom SW handling.
+    // Check self.location.hostname (the SW's own origin), not the request URL,
+    // because dev API requests go to dev-api.joyminis.com (not localhost).
+    if (self.location.hostname === 'localhost' || self.location.hostname === '127.0.0.1') {
+        return;
+    }
+
     // Only handle GET requests
     if (event.request.method !== 'GET') return;
-
-    const url = new URL(event.request.url);
 
     // API must stay network-only to avoid stale business/order/user-state payloads.
     if (url.pathname.startsWith('/api/') || API_HOSTS.includes(url.hostname)) {

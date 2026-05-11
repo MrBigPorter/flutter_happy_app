@@ -1,4 +1,7 @@
 # ─── 环境变量 ──────────────────────────────────────────────────────────────────
+# Note: Flutter 3.41.6 does not support --web-disable-service-worker.
+# PWA update detection is suppressed in dev mode via kReleaseMode check in
+# PwaUpdateBanner (lib/components/pwa_banners.dart).
 DEV  := --dart-define-from-file=lib/core/config/env/dev.json --web-port=4000
 TEST := --dart-define-from-file=lib/core/config/env/test.json
 PROD := --dart-define-from-file=lib/core/config/env/prod.json
@@ -50,6 +53,9 @@ help:
 # ══════════════════════════════════════════════════════════════════════════════
 # 🚀  正常运行（增量构建，速度快）
 # ══════════════════════════════════════════════════════════════════════════════
+## 开发运行（纯 flutter run，不涉及 PWA 版本注入）
+## 注意：dev 环境已在 pwa_sw.js 中跳过所有 Service Worker 拦截，
+##       因此不需要版本注入。生产构建（make build-web）仍保留注入。
 dev:
 	fvm flutter run $(DEV)
 
@@ -156,3 +162,35 @@ dev-fix: ios-fix
 
 test-fix: ios-fix
 	fvm flutter run $(TEST)
+
+# ══════════════════════════════════════════════════════════════════════════════
+# 🌐 Web 构建（自动注入 PWA 版本号）
+# ══════════════════════════════════════════════════════════════════════════════
+
+## 生产构建 Web（自动注入 PWA 版本号，构建后自动恢复占位符）
+build-web:
+	@echo "🔖 Injecting production SW version..."
+	SW_VERSION=$$(grep '^version: ' pubspec.yaml | sed 's/version: //g' | tr -d ' \n')-$$(git rev-parse --short HEAD); \
+	sed -i '' "s/{{SW_VERSION}}/$$SW_VERSION/g" web/pwa_sw.js; \
+	fvm flutter build web --release $(PROD); \
+	git checkout web/pwa_sw.js
+	@echo "✅ Web build complete (SW_VERSION: $$SW_VERSION)"
+
+# ══════════════════════════════════════════════════════════════════════════════
+# 🤖 CI/CD Runner 工具
+# ══════════════════════════════════════════════════════════════════════════════
+
+## 启动本地 GitHub Actions Runner（处理 JoyMini 的自动部署任务）
+runner-start:
+	@echo "🚀 正在启动 GitHub Actions Runner..."
+	cd ~/actions-runner && ./run.sh
+
+## 以服务模式启动 Runner（后台常驻，重启不丢）
+runner-service:
+	@echo "📦 以系统服务模式启动 Runner..."
+	cd ~/actions-runner && sudo ./svc.sh start
+
+## 检查 Runner 运行状态
+runner-status:
+	cd ~/actions-runner && ./config.sh --version
+	ps aux | grep Runner.Listener | grep -v grep

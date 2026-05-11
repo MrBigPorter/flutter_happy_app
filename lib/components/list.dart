@@ -494,7 +494,7 @@ class PageListViewPro<T> extends StatelessWidget {
           },
           childCount: list.length,
           addAutomaticKeepAlives: false,
-          addRepaintBoundaries: false,
+          addRepaintBoundaries: true,
           addSemanticIndexes: false,
         ),
       );
@@ -558,7 +558,7 @@ class PageListViewPro<T> extends StatelessWidget {
       },
       childCount: totalCount,
       addAutomaticKeepAlives: false,
-      addRepaintBoundaries: false,
+      addRepaintBoundaries: true,
       addSemanticIndexes: false,
     );
 
