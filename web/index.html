@@ -20,6 +20,14 @@
     <title>JoyMini</title>
     <link rel="manifest" href="manifest.json">
 
+    <!-- ===== Resource Hints (Preload for faster first paint) ===== -->
+    <link rel="preload" href="flutter.js" as="script" crossorigin>
+    <link rel="preload" href="flutter_bootstrap.js" as="script" crossorigin>
+    <link rel="dns-prefetch" href="//api.joyminis.com">
+    <link rel="preconnect" href="https://api.joyminis.com">
+    <link rel="dns-prefetch" href="//cdn.joyminis.com">
+    <link rel="preconnect" href="https://cdn.joyminis.com">
+
     <style>
         body {
             background-color: #F8F9FA;
@@ -27,10 +35,13 @@
             padding: 0;
             overflow: hidden;
         }
+        /* Dark mode (Flutter app theme) via data-theme attribute set by inline script */
+        html[data-theme="dark"] body {
+            background-color: #13161B;
+        }
         .joymini-loader-wrapper {
             display: flex;
             flex-direction: column;
-            justify-content: center;
             align-items: center;
             height: 100vh;
             width: 100vw;
@@ -38,147 +49,445 @@
             top: 0;
             left: 0;
             z-index: 9999;
-        }
-        .app-icon-anim {
-            width: 100px;
-            height: 100px;
-            background-image: url("app_icon.png");
-            background-size: contain;
-            background-repeat: no-repeat;
-            background-position: center;
-            animation: breath 2s ease-in-out infinite;
-        }
-        .loading-text {
-            margin-top: 24px;
-            color: #FF5722;
-            font-family: 'Inter', sans-serif;
-            font-size: 16px;
-            font-weight: 600;
-            letter-spacing: 1px;
-            animation: pulse 1.5s ease-in-out infinite;
+            overflow-y: auto;
         }
 
-        @keyframes breath {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.15); }
+        /* ===== App Shell (H1): static home page preview while Flutter loads ===== */
+        .app-shell {
+            width: 100%;
+            max-width: 480px;
+            padding: 40px 16px 100px;
+            box-sizing: border-box;
         }
-        @keyframes pulse {
-            0%, 100% { opacity: 0.5; }
-            50% { opacity: 1; }
+
+        /* ===== Shimmer animation for all skeleton elements ===== */
+        @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+        .app-shell-shimmer {
+            position: relative;
+            overflow: hidden;
+        }
+        .app-shell-shimmer::after {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: linear-gradient(90deg, transparent 25%, rgba(255,255,255,0.4) 50%, transparent 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s ease-in-out infinite;
+            pointer-events: none;
+        }
+        html[data-theme="dark"] .app-shell-shimmer::after {
+            background: linear-gradient(90deg, transparent 25%, rgba(255,255,255,0.07) 50%, transparent 75%);
+            background-size: 200% 100%;
+        }
+
+        /* ===== Banner ===== */
+        .app-shell-banner {
+            width: 100%;
+            height: 160px;
+            border-radius: 16px;
+            background: linear-gradient(135deg, #FF5722, #FF8A65);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-family: 'Inter', -apple-system, sans-serif;
+            font-size: 18px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* ===== Category pills ===== */
+        .app-shell-categories {
+            display: flex;
+            gap: 8px;
+            margin-top: 16px;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+        }
+        .app-shell-categories::-webkit-scrollbar { display: none; }
+        .app-shell-category {
+            flex-shrink: 0;
+            height: 32px;
+            width: 80px;
+            border-radius: 16px;
+            background: #fff;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+        }
+        html[data-theme="dark"] .app-shell-category {
+            background: #1e1e1e;
+        }
+
+        /* ===== Section headers ===== */
+        .app-shell-section-header {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-top: 20px;
+            margin-bottom: 10px;
+        }
+        .app-shell-section-header-icon {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+            background: #FF5722;
+        }
+        .app-shell-section-header-text {
+            height: 16px;
+            width: 120px;
+            border-radius: 8px;
+            background: #e0e0e0;
+        }
+        html[data-theme="dark"] .app-shell-section-header-text {
+            background: #333;
+        }
+
+        /* ===== 3-column grid (Hot Items) ===== */
+        .app-shell-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin-top: 0;
+        }
+        .app-shell-item {
+            background: #fff;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            position: relative;
+        }
+        .app-shell-item-img {
+            width: 100%;
+            padding-bottom: 100%;
+            background: linear-gradient(135deg, #FFE0B2, #FFCC80);
+        }
+        .app-shell-item-title {
+            height: 12px;
+            background: #f0f0f0;
+            margin: 10px 10px 6px;
+            border-radius: 6px;
+        }
+        .app-shell-item-price {
+            height: 10px;
+            width: 55%;
+            background: rgba(255,87,34,0.25);
+            margin: 0 10px 12px;
+            border-radius: 6px;
+        }
+        .app-shell-item:nth-child(2) .app-shell-item-img {
+            background: linear-gradient(135deg, #C8E6C9, #A5D6A7);
+        }
+        .app-shell-item:nth-child(3) .app-shell-item-img {
+            background: linear-gradient(135deg, #BBDEFB, #90CAF9);
+        }
+        html[data-theme="dark"] .app-shell-item {
+            background: #1e1e1e;
+        }
+        html[data-theme="dark"] .app-shell-item-title {
+            background: #333;
+        }
+        html[data-theme="dark"] .app-shell-item-price {
+            background: rgba(255,87,34,0.35);
+        }
+
+        /* ===== 2-column wide cards (Flash Deals) ===== */
+        .app-shell-row {
+            display: flex;
+            gap: 12px;
+        }
+        .app-shell-wide-card {
+            flex: 1;
+            background: #fff;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            position: relative;
+        }
+        .app-shell-wide-card-img {
+            width: 100%;
+            padding-bottom: 60%;
+            background: linear-gradient(135deg, #F8BBD0, #F48FB1);
+        }
+        .app-shell-wide-card-title {
+            height: 12px;
+            background: #f0f0f0;
+            margin: 10px 10px 6px;
+            border-radius: 6px;
+        }
+        .app-shell-wide-card-price {
+            height: 10px;
+            width: 50%;
+            background: rgba(255,87,34,0.25);
+            margin: 0 10px 12px;
+            border-radius: 6px;
+        }
+        .app-shell-wide-card:nth-child(2) .app-shell-wide-card-img {
+            background: linear-gradient(135deg, #C8E6C9, #A5D6A7);
+        }
+        html[data-theme="dark"] .app-shell-wide-card {
+            background: #1e1e1e;
+        }
+        html[data-theme="dark"] .app-shell-wide-card-title {
+            background: #333;
+        }
+        html[data-theme="dark"] .app-shell-wide-card-price {
+            background: rgba(255,87,34,0.35);
+        }
+
+        /* ===== Bottom navigation bar ===== */
+        .app-shell-bottom-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 64px;
+            background: #fff;
+            border-top: 1px solid #eee;
+            display: flex;
+            align-items: center;
+            justify-content: space-around;
+            z-index: 10000;
+            max-width: 480px;
+            margin: 0 auto;
+            padding-bottom: env(safe-area-inset-bottom, 0);
+        }
+        .app-shell-bottom-bar-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+        }
+        .app-shell-bottom-bar-icon {
+            width: 24px;
+            height: 24px;
+            border-radius: 6px;
+            background: #ddd;
+        }
+        .app-shell-bottom-bar-label {
+            width: 36px;
+            height: 8px;
+            border-radius: 4px;
+            background: #e0e0e0;
+        }
+        .app-shell-bottom-bar-item.active .app-shell-bottom-bar-icon {
+            background: #FF5722;
+        }
+        .app-shell-bottom-bar-item.active .app-shell-bottom-bar-label {
+            background: #FF5722;
+            width: 28px;
+        }
+        html[data-theme="dark"] .app-shell-bottom-bar {
+            background: #1a1a1a;
+            border-top: 1px solid #333;
+        }
+        html[data-theme="dark"] .app-shell-bottom-bar-icon {
+            background: #444;
+        }
+        html[data-theme="dark"] .app-shell-bottom-bar-label {
+            background: #444;
         }
     </style>
-  <style id="splash-screen-style">
-    html {
-      height: 100%
-    }
-
-    body {
-      margin: 0;
-      min-height: 100%;
-      background-color: #f5f5f5;
-          background-size: 100% 100%;
-    }
-
-    .center {
-      margin: 0;
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      -ms-transform: translate(-50%, -50%);
-      transform: translate(-50%, -50%);
-    }
-
-    .contain {
-      display:block;
-      width:100%; height:100%;
-      object-fit: contain;
-    }
-
-    .stretch {
-      display:block;
-      width:100%; height:100%;
-    }
-
-    .cover {
-      display:block;
-      width:100%; height:100%;
-      object-fit: cover;
-    }
-
-    .bottom {
-      position: absolute;
-      bottom: 0;
-      left: 50%;
-      -ms-transform: translate(-50%, 0);
-      transform: translate(-50%, 0);
-    }
-
-    .bottomLeft {
-      position: absolute;
-      bottom: 0;
-      left: 0;
-    }
-
-    .bottomRight {
-      position: absolute;
-      bottom: 0;
-      right: 0;
-    }
-
-    @media (prefers-color-scheme: dark) {
-      body {
-        background-color: #13161b;
-          }
-    }
-  </style>
+  <script id="theme-init-script">
+    // Read Flutter app's saved theme from localStorage BEFORE anything renders.
+    // Key: 'app_theme_mode' — set by theme_provider.dart / bootstrap.dart
+    // Default: dark (用户要求黑色)
+    (function() {
+      try {
+        var theme = localStorage.getItem('app_theme_mode');
+        var isDark = theme !== 'light'; // default to dark if unset
+        document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+      } catch(e) {
+        document.documentElement.setAttribute('data-theme', 'dark');
+      }
+    })();
+  </script>
   <script id="splash-screen-script">
     function removeSplashFromWeb() {
-      document.getElementById("splash")?.remove();
-      document.getElementById("splash-branding")?.remove();
-      document.body.style.background = "transparent";
+      // Splash was removed from HTML (App Shell replaces it).
+      // Keep this function as no-op so Dart JS interop calls don't error.
     }
   </script>
   <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport">
 </head>
 <body>
-  <picture id="splash">
-      <source srcset="splash/img/light-1x.png 1x, splash/img/light-2x.png 2x, splash/img/light-3x.png 3x, splash/img/light-4x.png 4x" media="(prefers-color-scheme: light)">
-      <source srcset="splash/img/dark-1x.png 1x, splash/img/dark-2x.png 2x, splash/img/dark-3x.png 3x, splash/img/dark-4x.png 4x" media="(prefers-color-scheme: dark)">
-      <img class="center" aria-hidden="true" src="splash/img/light-1x.png" alt="">
-  </picture>
 
+  <!-- ===== H1: App Shell — static home page preview while Flutter engine loads ===== -->
+  <div id="joymini-loader">
+    <div class="joymini-loader-wrapper">
+      <div class="app-shell">
+        <!-- Banner -->
+        <div class="app-shell-banner app-shell-shimmer">🔥 Flash Sale · Up to 50% OFF</div>
 
+        <!-- Category pills -->
+        <div class="app-shell-categories">
+          <div class="app-shell-category app-shell-shimmer"></div>
+          <div class="app-shell-category app-shell-shimmer"></div>
+          <div class="app-shell-category app-shell-shimmer"></div>
+          <div class="app-shell-category app-shell-shimmer"></div>
+        </div>
+
+        <!-- Section: ⭐ Hot Items -->
+        <div class="app-shell-section-header">
+          <div class="app-shell-section-header-icon"></div>
+          <div class="app-shell-section-header-text app-shell-shimmer"></div>
+        </div>
+
+        <div class="app-shell-grid">
+          <div class="app-shell-item app-shell-shimmer">
+            <div class="app-shell-item-img"></div>
+            <div class="app-shell-item-title app-shell-shimmer"></div>
+            <div class="app-shell-item-price app-shell-shimmer"></div>
+          </div>
+          <div class="app-shell-item app-shell-shimmer">
+            <div class="app-shell-item-img"></div>
+            <div class="app-shell-item-title app-shell-shimmer"></div>
+            <div class="app-shell-item-price app-shell-shimmer"></div>
+          </div>
+          <div class="app-shell-item app-shell-shimmer">
+            <div class="app-shell-item-img"></div>
+            <div class="app-shell-item-title app-shell-shimmer"></div>
+            <div class="app-shell-item-price app-shell-shimmer"></div>
+          </div>
+        </div>
+
+        <!-- Section: ⚡ Flash Deals -->
+        <div class="app-shell-section-header" style="margin-top: 24px;">
+          <div class="app-shell-section-header-icon" style="background: #FF9800;"></div>
+          <div class="app-shell-section-header-text app-shell-shimmer" style="width: 140px;"></div>
+        </div>
+
+        <div class="app-shell-row">
+          <div class="app-shell-wide-card app-shell-shimmer">
+            <div class="app-shell-wide-card-img"></div>
+            <div class="app-shell-wide-card-title app-shell-shimmer"></div>
+            <div class="app-shell-wide-card-price app-shell-shimmer"></div>
+          </div>
+          <div class="app-shell-wide-card app-shell-shimmer">
+            <div class="app-shell-wide-card-img"></div>
+            <div class="app-shell-wide-card-title app-shell-shimmer"></div>
+            <div class="app-shell-wide-card-price app-shell-shimmer"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bottom tab bar -->
+      <div class="app-shell-bottom-bar">
+        <div class="app-shell-bottom-bar-item active">
+          <div class="app-shell-bottom-bar-icon app-shell-shimmer"></div>
+          <div class="app-shell-bottom-bar-label app-shell-shimmer"></div>
+        </div>
+        <div class="app-shell-bottom-bar-item">
+          <div class="app-shell-bottom-bar-icon app-shell-shimmer"></div>
+          <div class="app-shell-bottom-bar-label app-shell-shimmer"></div>
+        </div>
+        <div class="app-shell-bottom-bar-item">
+          <div class="app-shell-bottom-bar-icon app-shell-shimmer"></div>
+          <div class="app-shell-bottom-bar-label app-shell-shimmer"></div>
+        </div>
+        <div class="app-shell-bottom-bar-item">
+          <div class="app-shell-bottom-bar-icon app-shell-shimmer"></div>
+          <div class="app-shell-bottom-bar-label app-shell-shimmer"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== H2: JS Pre-fetch API data to localStorage before Flutter boots ===== -->
+  <script>
+    (function prefetchHomeData() {
+      // ApiCacheManager key prefix (see api_cache_manager.dart:63)
+      var PREFIX = 'app_api_cache_box_';
+      // Default TTL is 3 minutes (180000ms)
+      var TTL = 3 * 60 * 1000;
+      var endpoints = [
+        { url: 'https://api.joyminis.com/api/v1/banners?bannerCate=1&limit=10', key: 'home_banners_cache_v1' },
+        { url: 'https://api.joyminis.com/api/v1/home/sections?limit=10',        key: 'home_treasures_cache_v1' },
+        { url: 'https://api.joyminis.com/api/v1/treasure/hot-groups?limit=10',   key: 'home_group_buying_cache_v1' },
+      ];
+
+      // Fire-and-forget: data lands in localStorage before Flutter boots.
+      // If fetches fail, normal SWR cache-miss path takes over — no harm done.
+      endpoints.forEach(function(ep) {
+        fetch(ep.url, { cache: 'no-store' })
+          .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+          .then(function(data) {
+            var now = Date.now();
+            var envelope = JSON.stringify({
+              data: data,
+              cachedAt: now,
+              expiresAt: now + TTL,
+            });
+            try { localStorage.setItem(PREFIX + ep.key, envelope); } catch (e) {}
+          })
+          .catch(function() {});
+      });
+    })();
+  </script>
 
 <script src="flutter_bootstrap.js" async=""></script>
-
 <script>
+    // ===== App Shell Removal Strategy =====
+    //
+    // Problem: FLUTTER-VIEW appears in DOM before Flutter has actually rendered
+    // content (Firebase init, runApp, providers all need time). Polling for
+    // canvas/renderer elements is unreliable across Flutter Web rendering modes.
+    //
+    // Solution: Show App Shell for a generous fixed duration (4s from page load)
+    // which covers typical Flutter engine initialization (WASM download + Firebase
+    // + first frame). Also expose __removeAppShell() so Flutter can call it
+    // precisely via JS interop when truly ready — eliminating the gap entirely.
+
+    var _appShellStart = Date.now();
+
+    // Exposed for Flutter JS interop: call window.__removeAppShell() from Dart
+    // (e.g., in HomePage's first frame) for gap-free transition.
+    window.__removeAppShell = function() {
+        var loader = document.getElementById('joymini-loader');
+        if (loader) {
+            loader.style.transition = "opacity 0.5s ease-out";
+            loader.style.opacity = "0";
+            setTimeout(function() { if (loader.parentNode) loader.remove(); }, 500);
+        }
+    };
+
+    // Fallback: watch for Flutter engine DOM nodes, then wait a fixed duration
+    // before removing App Shell. No polling — just a reliable timer.
     const observer = new MutationObserver(function(mutations) {
         for (let mutation of mutations) {
             if (mutation.addedNodes.length > 0) {
                 for (let node of mutation.addedNodes) {
-                    //  关键修复：加入对最新 <flutter-view> 标签的捕获！
                     if (node.tagName === 'FLUTTER-VIEW' ||
                         node.tagName === 'FLT-GLASS-PANE' ||
                         node.tagName === 'FLT-SCENE-HOST') {
 
-                        let loader = document.getElementById('joymini-loader');
-                        if (loader) {
-                            // 给 0.5 秒的渐隐过度，掩盖 Flutter 引擎初始化的微小闪烁
-                            loader.style.transition = "opacity 0.5s ease-out";
-                            loader.style.opacity = "0";
-                            setTimeout(() => {
-                                loader.remove(); // 彻底从内存中铲除！
-                            }, 500);
-                        }
-                        observer.disconnect(); // 任务完成，停止监控
+                        observer.disconnect();
+
+                        // Keep App Shell visible for at least 4s from page load.
+                        // This gives Flutter time to finish engine init + first frame.
+                        var elapsed = Date.now() - _appShellStart;
+                        var delay = Math.max(0, 4000 - elapsed);
+
+                        setTimeout(function() {
+                            window.__removeAppShell();
+                        }, delay);
+
                         return;
                     }
                 }
             }
         }
     });
-    // 让监控器盯紧 <body> 标签
     observer.observe(document.body, { childList: true, subtree: true });
+
+    // Absolute safety: remove after 10s regardless of Flutter state.
+    setTimeout(function() {
+        window.__removeAppShell();
+    }, 10000);
 </script>
 
 <!-- ===== PWA: Install Prompt ===== -->

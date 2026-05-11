@@ -25,6 +25,10 @@ const PRECACHE_URLS = [
     '/icons/Icon-maskable-192.png',
     '/icons/Icon-maskable-512.png',
     '/app_icon.png',
+    // Flutter engine assets — pre-cache on SW install for faster second-visit cold start
+    '/flutter.js',
+    '/flutter_bootstrap.js',
+    '/main.dart.js',
 ];
 
 // ── Install: pre-cache app shell ──────────────────────────────────────────────

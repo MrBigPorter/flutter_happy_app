@@ -39,6 +39,15 @@ abstract class PwaHelper {
     if (!kIsWeb) return false;
     return PwaHelperPlatform.instance.isInstalledPwa;
   }
+
+  /// Removes the App Shell overlay from the DOM (web only).
+  /// Call from a post-frame callback after Flutter's first frame is painted
+  /// so there is zero blank gap between App Shell disappearance and Flutter
+  /// content becoming visible.
+  static void removeAppShell() {
+    if (!kIsWeb) return;
+    PwaHelperPlatform.instance.removeAppShell();
+  }
 }
 
 /// Platform interface — replaced by [PwaHelperWeb] on web builds.
@@ -54,4 +63,5 @@ class PwaHelperPlatform {
   void applyUpdate() {}
   Future<void> checkForUpdate() async {}
   bool get isInstalledPwa => false;
+  void removeAppShell() {}
 }

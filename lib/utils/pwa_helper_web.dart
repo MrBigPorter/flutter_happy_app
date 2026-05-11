@@ -47,6 +47,13 @@ class PwaHelperWeb extends PwaHelperPlatform {
   }
 
   @override
+  void removeAppShell() {
+    try {
+      (web.window as JSObject).callMethod<JSAny?>('__removeAppShell'.toJS);
+    } catch (_) {}
+  }
+
+  @override
   void applyUpdate() {
     try {
       final hasHook = (web.window as JSObject)

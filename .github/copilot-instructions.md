@@ -546,3 +546,17 @@ await apiCall().withRetry(maxRetries: 3, context: 'Upload file');
 - [x] **Task 4 — Reject button for friend requests**: [`new_friend_page.dart`](lib/ui/chat/new_friend_page.dart) — Added `_isRejected` state, "Reject" `ButtonVariant.outline` button, and `_handleReject()` method that calls `HandleRequestController.execute(action: FriendRequestAction.rejected)`.
 - [x] **Verification**: `fvm flutter analyze` ✅ (0 new errors) | `fvm flutter test` (75/75) ✅
 - [ ] **Phase 2 (Next)**: Navigation consistency, create group feedback, join request preview
+
+---
+
+## 🎯 Current Task — Web Startup App Shell Enrichment & Blank Gap Fix (2026-05-11)
+
+**Phase**: Performance — Web First Load Optimization (Phase 5)
+**Last Stop**: App Shell (H1) implemented but too simple; blank gap after App Shell disappears
+
+**Accomplishments**:
+- [x] **Richer App Shell Content**: Updated [`web/index.html`](web/index.html) — added shimmer animations on all skeleton elements, category pills row, section headers ("⭐ Hot Items" / "⚡ Flash Deals"), 2-column wide cards (Flash Deals section), and bottom navigation tab bar with active state.
+- [x] **JS timer approach attempted but insufficient**: Replaced immediate-removal MutationObserver with delayed polling approach (2.5s min + content polling), then 4s fixed timer. Both failed — user confirmed "还是有1s的空白" because no JS-side timer can synchronize with Flutter's paint cycle.
+- [x] **Ultimate fix: Flutter-controlled App Shell removal via Dart JS interop**: Added [`PwaHelper.removeAppShell()`](lib/utils/pwa_helper.dart:45) static method + [`PwaHelperWeb.removeAppShell()`](lib/utils/pwa_helper_web.dart:47) JS interop impl calling `window.__removeAppShell()` + called from [`_MyAppState.initState()`](lib/app/app.dart:28) via `WidgetsBinding.instance.addPostFrameCallback()` — fires precisely after Flutter's first frame is painted, eliminating the blank gap entirely.
+- [x] **All styles dark-mode aware**: New sections use `html[data-theme="dark"]` selectors driven by localStorage `app_theme_mode`.
+- [x] **Verification**: `fvm flutter analyze` ✅ (pre-existing issues only) | `fvm flutter test` (75/75) ✅
