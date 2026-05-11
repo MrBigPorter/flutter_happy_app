@@ -286,12 +286,24 @@ class _ConversationListViewState extends ConsumerState<_ConversationListView> {
         ),
       ),
       data: (list) {
-        // Apply local filtering by conversation name
+        // [DEBUG] Log conversation list data to check what's stored in IndexedDB
+        debugPrint('[_ConversationListView] conversation list (${list.length} items):');
+        for (final c in list) {
+          debugPrint('  [${c.id}] type=${c.type} name="${c.name}" lastMsg="${c.lastMsgContent ?? ''}"');
+        }
+
+        // Apply local filtering by conversation name and last message content
         final filtered = query.isEmpty
             ? list
-            : list.where((c) =>
-                c.name.toLowerCase().contains(query.toLowerCase())
-              ).toList();
+            : list.where((c) {
+                final q = query.toLowerCase().trim();
+                // Search by conversation display name
+                if (c.name.toLowerCase().contains(q)) return true;
+                // Also search by last message content for convenience
+                if (c.lastMsgContent != null &&
+                    c.lastMsgContent!.toLowerCase().contains(q)) return true;
+                return false;
+              }).toList();
 
         if (filtered.isEmpty) {
           return Center(

@@ -205,17 +205,6 @@ PreferredSizeWidget _buildAppBar(
         ),
       ],
 
-      // 3. Search messages
-      IconButton(
-        icon: Icon(
-          Icons.search,
-          color: context.textPrimary900,
-          size: 24.sp,
-        ),
-        onPressed: () => appRouter.push(
-          '/chat/search?conversationId=$conversationId',
-        ),
-      ),
 
       // 4. More Actions (Profile/Settings)
       IconButton(

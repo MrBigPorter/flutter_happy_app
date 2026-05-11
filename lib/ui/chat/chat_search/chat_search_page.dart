@@ -145,7 +145,7 @@ class _ChatSearchPageState extends ConsumerState<ChatSearchPage> {
   Widget _buildResultItem(BuildContext context, ChatUiModel msg) {
     return InkWell(
       onTap: () {
-        // 🚀 核心：点击后关掉搜索页，并把 seqId 返回给聊天页！
+        //  核心：点击后关掉搜索页，并把 seqId 返回给聊天页！
         // 聊天页接收到这个返回值后，就可以控制 ListView 滚动到这个位置
         Navigator.pop(context, msg.seqId);
       },
