@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_app/app/routes/app_router.dart';
 import 'package:flutter_app/common.dart';
 import 'package:flutter_app/components/base_scaffold.dart';
 import 'package:flutter_app/ui/button/button.dart';
@@ -16,11 +15,51 @@ import '../../components/skeleton.dart';
 import '../button/variant.dart';
 import 'components/conversation_item.dart';
 
-class ConversationListPage extends ConsumerWidget {
+class ConversationListPage extends ConsumerStatefulWidget {
   const ConversationListPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ConversationListPage> createState() => _ConversationListPageState();
+}
+
+class _ConversationListPageState extends ConsumerState<ConversationListPage> {
+  bool _isSearching = false;
+  String _searchQuery = '';
+  final TextEditingController _searchController = TextEditingController();
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _enterSearch() {
+    setState(() {
+      _isSearching = true;
+      _searchQuery = '';
+      _searchController.clear();
+    });
+  }
+
+  void _exitSearch() {
+    setState(() {
+      _isSearching = false;
+      _searchQuery = '';
+      _searchController.clear();
+    });
+  }
+
+  void _onSearchChanged(String value) {
+    setState(() => _searchQuery = value);
+  }
+
+  void _clearSearch() {
+    _searchController.clear();
+    setState(() => _searchQuery = '');
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final isLoggedIn = ref.watch(authProvider.select((s) => s.isAuthenticated));
     final isSyncing = ref.watch(globalSyncStateProvider);
 
@@ -32,9 +71,66 @@ class ConversationListPage extends ConsumerWidget {
       });
     }
 
+    if (_isSearching) {
+      return Scaffold(
+        backgroundColor: context.bgPrimary,
+        appBar: AppBar(
+          backgroundColor: context.bgPrimary,
+          elevation: 0,
+          leading: IconButton(
+            icon: Icon(Icons.chevron_left, size: 30.h, color: context.fgPrimary900),
+            onPressed: _exitSearch,
+          ),
+          title: TextField(
+            controller: _searchController,
+            autofocus: true,
+            onChanged: _onSearchChanged,
+            style: TextStyle(
+              fontSize: 18.w,
+              fontWeight: FontWeight.w900,
+              color: context.textPrimary900,
+              letterSpacing: -0.5,
+            ),
+            decoration: InputDecoration(
+              hintText: 'Search conversations...',
+              hintStyle: TextStyle(
+                fontSize: 16.sp,
+                fontWeight: FontWeight.bold,
+                color: context.textPrimary900.withValues(alpha: 0.4),
+                letterSpacing: -0.5,
+              ),
+              border: InputBorder.none,
+              contentPadding: EdgeInsets.zero,
+              isDense: true,
+              suffixIcon: _searchQuery.isNotEmpty
+                  ? IconButton(
+                      icon: Icon(Icons.close, color: context.fgPrimary900),
+                      onPressed: _clearSearch,
+                    )
+                  : null,
+            ),
+          ),
+        ),
+        body: Column(
+          children: [
+            const NetworkStatusBar(),
+            Expanded(
+              child: isLoggedIn
+                  ? _ConversationListView(searchQuery: _searchQuery)
+                  : const _GuestView(),
+            ),
+          ],
+        ),
+      );
+    }
+
     return BaseScaffold(
       title: isSyncing ? 'Updating...' : 'Chats',
       actions: [
+        IconButton(
+          icon: Icon(Icons.search, color: context.fgPrimary900),
+          onPressed: _enterSearch,
+        ),
         const _AddMenuButton(),
       ],
       body: Column(
@@ -44,7 +140,7 @@ class ConversationListPage extends ConsumerWidget {
 
           // B. 会话列表
           Expanded(
-            child: isLoggedIn ? const _ConversationListView() : const _GuestView(),
+            child: isLoggedIn ? _ConversationListView(searchQuery: '') : const _GuestView(),
           ),
         ],
       ),
@@ -148,7 +244,9 @@ class _GuestView extends StatelessWidget {
 // 组件 3: 已登录列表视图 ( 核心修改处)
 // ------------------------------------------------------
 class _ConversationListView extends ConsumerStatefulWidget {
-  const _ConversationListView();
+  final String searchQuery;
+
+  const _ConversationListView({required this.searchQuery});
 
   @override
   ConsumerState<_ConversationListView> createState() => _ConversationListViewState();
@@ -158,7 +256,7 @@ class _ConversationListViewState extends ConsumerState<_ConversationListView> {
   @override
   void initState() {
     super.initState();
-    //  核心修复：初始化时主动刷新一次数据 
+    //  核心修复：初始化时主动刷新一次数据
     // 解决新安装 App 数据库为空时，界面一片白且不发网络请求的问题
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(conversationListProvider.notifier).refresh();
@@ -168,6 +266,10 @@ class _ConversationListViewState extends ConsumerState<_ConversationListView> {
   @override
   Widget build(BuildContext context) {
     final conversationState = ref.watch(conversationListProvider);
+    final query = widget.searchQuery;
+
+    // [DEBUG] Always print to verify build() is called with correct query
+    debugPrint('[_ConversationListView] build() called, query="$query"');
 
     return conversationState.when(
       loading: () => _buildSkeletonList(context),
@@ -184,24 +286,38 @@ class _ConversationListViewState extends ConsumerState<_ConversationListView> {
         ),
       ),
       data: (list) {
-        if (list.isEmpty) {
+        // Apply local filtering by conversation name
+        final filtered = query.isEmpty
+            ? list
+            : list.where((c) =>
+                c.name.toLowerCase().contains(query.toLowerCase())
+              ).toList();
+
+        if (filtered.isEmpty) {
           return Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.chat_bubble_outline, size: 48.w, color: context.textPrimary900),
+                Icon(
+                  query.isEmpty ? Icons.chat_bubble_outline : Icons.search_off,
+                  size: 48.w,
+                  color: context.textPrimary900,
+                ),
                 SizedBox(height: 10.h),
-                Text("No messages yet", style: TextStyle(color: context.textSecondary700, fontSize: 14.sp)),
+                Text(
+                  query.isEmpty ? "No messages yet" : "No conversations found",
+                  style: TextStyle(color: context.textSecondary700, fontSize: 14.sp),
+                ),
               ],
             ),
           );
         }
 
         return ListView.separated(
-          itemCount: list.length,
-          separatorBuilder: (_, __) => Divider(height: 1, indent: 72, color: context.bgPrimary),
+          itemCount: filtered.length,
+          separatorBuilder: (_, _) => Divider(height: 1, indent: 72, color: context.bgPrimary),
           itemBuilder: (context, index) {
-            return ConversationItem(item: list[index]);
+            return ConversationItem(item: filtered[index]);
           },
         );
       },

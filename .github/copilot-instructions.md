@@ -410,6 +410,43 @@ await apiCall().withRetry(maxRetries: 3, context: 'Upload file');
   - Single-image [`OptimizedImageFactory.banner`](lib/app/page/flash_sale/flash_sale_product_page.dart:131): added `blurhash: detail.product.blurhash`
 - [x] **Verification**: `fvm flutter analyze` ✅ | `fvm flutter test` (75/75) ✅
 
+## 🎯 Current Task — Chat UX Phase B: Search in Conversation List (2026-05-11)
+
+**Phase**: Performance — Chat UX Phase B
+**Last Stop**: UX6 — Search added to conversation list page
+
+**Accomplishments**:
+- [x] **UX4 — Emoji Picker**: Replaced 👍 button with emoji picker in chat input bar
+  - Added `emoji_picker_flutter` dependency (v4.4.0)
+  - Removed `_handleLike()` method and unused `_picker` field + `camera` import
+  - Right button shows emoji icon (`Icons.emoji_emotions_outlined`) when text field is empty
+  - Tapping opens modal bottom sheet with emoji grid (7 columns, 32px max size)
+  - Selecting an emoji inserts it at cursor position and closes the sheet
+  - Send button unchanged when text is present
+- [x] **Verification**: `fvm flutter analyze` ✅ (0 errors/warnings on our file) | `fvm flutter test` (75/75) ✅
+
+- [x] **UX6 — Search in Conversation List**: Added search functionality to [`conversation_list_page.dart`](lib/ui/chat/conversation_list_page.dart)
+  - Converted `ConversationListPage` from `ConsumerWidget` to `ConsumerStatefulWidget` with search state management
+  - Added search `IconButton` in AppBar actions — tapping enters search mode
+  - Search mode replaces AppBar with a custom `Scaffold` + `AppBar` showing chevron back button + `TextField` title
+  - Real-time local filtering by conversation name via `conversation.name.toLowerCase().contains(query.toLowerCase())`
+  - Clear (X) button visible when search has text — tapping clears query
+  - Back button (chevron) exits search mode and restores full list
+  - Empty search results show "No conversations found" with `Icons.search_off`
+  - Purely local filtering — no network requests
+  - No files other than `conversation_list_page.dart` were modified
+  - No changes to existing conversation list logic or provider
+- [x] **Verification**: `fvm flutter analyze` ✅ (0 issues on modified file) | `fvm flutter test` (75/75) ✅
+
+- [x] **PF2 — Optimize Conversation List Rebuild**: Added `key: ValueKey(item.id)` to `Slidable` root widget in [`conversation_item.dart`](lib/ui/chat/components/conversation_item.dart:32)
+  - Verified [`conversation_item.dart`](lib/ui/chat/components/conversation_item.dart:32) — root widget (`Slidable`) already had `key: ValueKey(item.id)` ✅
+  - Verified [`conversation_list_page.dart`](lib/ui/chat/conversation_list_page.dart:317) — `ConversationItem` built as `ConversationItem(item: filtered[index])` — no external key needed, handled inside widget ✅
+  - No code changes required — optimization was already in place
+  - `fvm flutter analyze` ✅ (pre-existing issues only, no new issues introduced)
+  - `fvm flutter test` ✅ (75/75 passed)
+
+---
+
 ### Enhancement — Payment Page Blurhash
 
 - [x] **Investigated** [`payment_page.dart`](lib/app/page/payment/payment_page.dart) and [`payment_section.dart`](lib/app/page/payment/payment_section.dart): Only one image on the page — the 80×80 product thumbnail in `ProductSection`.
@@ -464,4 +501,36 @@ await apiCall().withRetry(maxRetries: 3, context: 'Upload file');
 - [x] **Documents Created**:
   - [`plans/home_page_database_driven_analysis.md`](plans/home_page_database_driven_analysis.md) — Root cause analysis & solution comparison (Option A vs B)
   - [`plans/graphql_architecture_proposal.md`](plans/graphql_architecture_proposal.md) — GraphQL migration proposal (future reference)
-- [x] **Verification**: `fvm flutter analyze` passed with zero new issues.
+- [x] **Chat UX/Performance Optimization — Phase A (2026-05-11)**: Completed all 7 high-priority items
+  - [x] **UX1** — Conversation list swipe actions: Pin/Unpin, Mute/Unmute, Delete (Slidable + confirm dialog)
+  - [x] **UX2** — Search button in AppBar actions (direct route to `/chat/search`)
+  - [x] **UX3** — Scroll-to-bottom FAB with position tracking (`ItemPositionsListener` + `AnimatedOpacity`)
+  - [x] **PF1** — `saveBatch` transaction optimization: serial loop → single `_db.saveMessages()` call
+  - [x] **PF4** — `ChatActionSheet` GridView.builder+shrinkWrap → `Wrap` layout
+  - [x] **PF5** — `ImagePicker` extracted to singleton member variable
+  - [x] **PF6** — `ScrollAwarePreloader` debounce + increased threshold (150ms Timer + 30px gap)
+  - [x] **Verification**: `fvm flutter analyze` ✅ (0 errors) | `fvm flutter test` (75/75) ✅
+  - [x] **Chat UX/Performance Optimization — Phase B (2026-05-11)**: Completed all 4 medium-priority items
+    - [x] **UX4** — Emoji picker in input bar (`emoji_picker_flutter` package + `modern_chat_input_bar.dart`)
+    - [x] **UX6** — Conversation list search (AppBar search icon + local filtering)
+    - [x] **PF3** — ScrollAwarePreloader simplification (removed redundant manual preloading, 130→31 lines)
+    - [x] **PF2** — Conversation list rebuild optimization (already had `ValueKey(item.id)`, verified)
+    - [x] **Verification**: `fvm flutter analyze` ✅ (0 new errors) | `fvm flutter test` (75/75) ✅
+
+### Bug Fix — Chat Room Message Search Always Returns "No Results" (2026-05-11)
+
+- [x] **Root Cause**: [`local_database_service.dart:413`](lib/ui/chat/services/database/local_database_service.dart:413) used `Filter.equals('type', MessageType.text.name)` (returns string `"text"`), but [`chat_ui_model.dart:107`](lib/ui/chat/models/chat_ui_model.dart:107) serializes type as integer `type.value` (`0`) — type mismatch caused Sembast query to never match any records.
+- [x] **Fix Applied** ([`local_database_service.dart`](lib/ui/chat/services/database/local_database_service.dart:401-425)):
+  - Changed `Filter.equals('type', MessageType.text.name)` → `Filter.equals('type', MessageType.text.value)`
+  - Removed `Filter.matchesRegExp('content', regex)` (fragile cross-platform) → in-memory `.where((msg) => regex.hasMatch(msg.content))`
+- [x] **Cleanup**: Removed temporary `debugPrint` logs from [`conversation_list_page.dart`](lib/ui/chat/conversation_list_page.dart:288-294)
+- [x] **Verification**: `fvm flutter analyze` ✅ (0 errors) | `fvm flutter test` (75/75) ✅
+
+## 🎯 Current Task — UI Polish: Emoji Picker Theme & Swipe Actions Style (2026-05-11)
+
+**Phase**: Phase F1 — UI Polish
+**Last Stop**: Two UI polish tasks completed
+
+- [x] **Task A — Emoji Picker Theme Support**: Updated [`modern_chat_input_bar.dart`](lib/ui/chat/components/chat_input/modern_chat_input_bar.dart) `_showEmojiPicker()` — replaced `const Config()` with theme-aware `Config()` using `ctx.bgPrimary`, `ctx.bgSecondary`, `ctx.textSecondary700`, `ctx.textBrandPrimary900`, `ctx.borderSecondary` via `EmojiViewConfig.backgroundColor`, `CategoryViewConfig` (backgroundColor/iconColor/iconColorSelected/backspaceColor/dividerColor), and `BottomActionBarConfig`.
+- [x] **Task B — Apple iOS Style Swipe Actions**: Updated [`conversation_item.dart`](lib/ui/chat/components/conversation_item.dart) — replaced hardcoded colors with design tokens (`utilityBrand50`/`utilityBrand500` for pin, `bgWarningPrimary`/`textWarningPrimary600` for mute, `bgErrorPrimary`/`textErrorPrimary600` for delete); removed `borderRadius: BorderRadius.circular(12.r)` → `BorderRadius.zero` on all `SlidableAction`s for flat Apple-style edges; eliminated double-rounded-corner issue.
+- [x] **Verification**: `fvm flutter analyze` ✅ (0 new errors/warnings) | `fvm flutter test` (75/75) ✅

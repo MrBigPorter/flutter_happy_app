@@ -61,6 +61,7 @@ PreferredSizeWidget _buildAppBar(
     ConversationDetail? detail,
     bool isGroup,
     WidgetRef ref, {
+      required String conversationId,
       VoidCallback? onSettingsTap,
       bool isSyncing = false, // <-- Added syncing flag for header loader
     }) {
@@ -204,7 +205,19 @@ PreferredSizeWidget _buildAppBar(
         ),
       ],
 
-      // 3. More Actions (Profile/Settings)
+      // 3. Search messages
+      IconButton(
+        icon: Icon(
+          Icons.search,
+          color: context.textPrimary900,
+          size: 24.sp,
+        ),
+        onPressed: () => appRouter.push(
+          '/chat/search?conversationId=$conversationId',
+        ),
+      ),
+
+      // 4. More Actions (Profile/Settings)
       IconButton(
         icon: Icon(
           Icons.more_horiz,

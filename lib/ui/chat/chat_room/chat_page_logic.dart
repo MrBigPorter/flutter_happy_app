@@ -5,7 +5,12 @@ mixin ChatPageLogic on ConsumerState<ChatPage> {
   final ItemScrollController itemScrollController = ItemScrollController();
   final ItemPositionsListener itemPositionsListener = ItemPositionsListener.create();
 
+  // --- Reusable instances ---
+  final ImagePicker _picker = ImagePicker();
+
   bool isPanelOpen = false;
+  bool _isAtBottom = true;
+  bool get isAtBottom => _isAtBottom;
 
   void initLogic() {
     // Listen to visible items to handle pagination (load more)
@@ -16,13 +21,21 @@ mixin ChatPageLogic on ConsumerState<ChatPage> {
     itemPositionsListener.itemPositions.removeListener(_onScrollPositionChanged);
   }
 
-  // --- Pagination Logic (Replaces previous NotificationListener) ---
+  // --- Pagination & Scroll Position Logic ---
   void _onScrollPositionChanged() {
     final positions = itemPositionsListener.itemPositions.value;
     if (positions.isEmpty) return;
 
     // Since reverse: true, the "oldest" visible message has the highest index
     final maxVisibleIndex = positions.map((e) => e.index).reduce((a, b) => a > b ? a : b);
+    final minVisibleIndex = positions.map((e) => e.index).reduce((a, b) => a < b ? a : b);
+
+    // Track whether user is at the bottom (first visible item is near index 0)
+    final atBottom = minVisibleIndex <= 1;
+    if (_isAtBottom != atBottom) {
+      _isAtBottom = atBottom;
+      if (mounted) setState(() {});
+    }
 
     final chatState = ref.read(chatViewModelProvider(widget.conversationId));
     final viewModel = ref.read(chatViewModelProvider(widget.conversationId).notifier);
@@ -33,6 +46,15 @@ mixin ChatPageLogic on ConsumerState<ChatPage> {
         viewModel.loadMore();
       }
     }
+  }
+
+  /// Scroll to the bottom (newest message)
+  void scrollToBottom() {
+    itemScrollController.scrollTo(
+      index: 0,
+      duration: const Duration(milliseconds: 250),
+      curve: Curves.easeOutQuad,
+    );
   }
 
   // --- Search & Jump Logic ---
@@ -254,24 +276,21 @@ mixin ChatPageLogic on ConsumerState<ChatPage> {
   }
 
   void handlePickImage() async {
-    final picker = ImagePicker();
-    final image = await picker.pickImage(source: ImageSource.gallery);
+    final image = await _picker.pickImage(source: ImageSource.gallery);
     if (image != null) {
       ref.read(chatActionServiceProvider(widget.conversationId)).sendImage(image);
     }
   }
 
   void handleTakePhoto() async {
-    final picker = ImagePicker();
-    final image = await picker.pickImage(source: ImageSource.camera);
+    final image = await _picker.pickImage(source: ImageSource.camera);
     if (image != null) {
       ref.read(chatActionServiceProvider(widget.conversationId)).sendImage(image);
     }
   }
 
   void handlePickVideo() async {
-    final picker = ImagePicker();
-    final video = await picker.pickVideo(source: ImageSource.gallery);
+    final video = await _picker.pickVideo(source: ImageSource.gallery);
     if (video != null) {
       ref.read(chatActionServiceProvider(widget.conversationId)).sendVideo(video);
     }

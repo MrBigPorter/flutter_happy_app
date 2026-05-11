@@ -49,49 +49,51 @@ class ChatActionSheet extends StatelessWidget {
       decoration: BoxDecoration(
         color: context.bgPrimary,
       ),
-      // Grid height is usually fixed or constrained by parent in this mode
-      child: GridView.builder(
-        physics: const NeverScrollableScrollPhysics(),
-        shrinkWrap: true, // Adaptive height
-        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 4,
-          mainAxisSpacing: 20.h,
-          crossAxisSpacing: 16.w,
-          childAspectRatio: 0.75,
-        ),
-        itemCount: actions.length,
-        itemBuilder: (context, index) {
-          final item = actions[index];
-          return GestureDetector(
-            onTap: item.onTap,
-            behavior: HitTestBehavior.opaque,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 60.w,
-                  height: 60.w,
-                  decoration: BoxDecoration(
-                    color: context.bgSecondary,
-                    borderRadius: BorderRadius.circular(16.r),
-                  ),
-                  child: Icon(
-                    item.icon,
-                    size: 28.sp,
-                    color: context.textBrandPrimary900,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          // Calculate item width to fit 4 per row accounting for spacing
+          final spacing = 16.w;
+          const itemsPerRow = 4;
+          final itemWidth = (constraints.maxWidth - spacing * (itemsPerRow - 1)) / itemsPerRow;
+          return Wrap(
+            spacing: spacing,
+            runSpacing: 20.h,
+            children: actions.map((item) {
+              return SizedBox(
+                width: itemWidth,
+                child: GestureDetector(
+                  onTap: item.onTap,
+                  behavior: HitTestBehavior.opaque,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 60.w,
+                        height: 60.w,
+                        decoration: BoxDecoration(
+                          color: context.bgSecondary,
+                          borderRadius: BorderRadius.circular(16.r),
+                        ),
+                        child: Icon(
+                          item.icon,
+                          size: 28.sp,
+                          color: context.textBrandPrimary900,
+                        ),
+                      ),
+                      SizedBox(height: 8.h),
+                      Text(
+                        item.label,
+                        style: TextStyle(
+                          fontSize: 12.sp,
+                          color: context.textPrimary900,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
                   ),
                 ),
-                SizedBox(height: 8.h),
-                Text(
-                  item.label,
-                  style: TextStyle(
-                    fontSize: 12.sp,
-                    color: context.textPrimary900,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ],
-            ),
+              );
+            }).toList(),
           );
         },
       ),

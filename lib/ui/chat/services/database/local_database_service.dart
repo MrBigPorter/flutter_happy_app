@@ -405,24 +405,23 @@ class LocalDatabaseService {
     // For simplicity, this is a basic implementation. In production, consider using a full-text search index.
     final regex = RegExp(keyword.trim(), caseSensitive: false);
 
+    // Fetch only text-type messages for this conversation via Sembast index
     final finder = Finder(
       filter: Filter.and([
-        // Basic text search on content field
         Filter.equals('conversationId', conversationId),
-        // text search with regex (inefficient for large datasets, consider indexing in production)
-        Filter.equals('type', MessageType.text.name),
-        // Note: Sembast doesn't support regex directly, so we fetch candidates and filter in memory
-        Filter.matchesRegExp('content', regex),
+        // NOTE: type is stored as integer (MessageType.value) in DB via ChatUiModel.toJson()
+        Filter.equals('type', MessageType.text.value),
       ]),
       // Sort by createdAt desc to get recent matches first
       sortOrders: [SortOrder('createdAt', false)],
     );
 
-    // Fetch candidates and filter in memory due to Sembast limitations
+    // Fetch candidates and filter with regex in-memory for cross-platform safety
     final records = await _messageStore.find(db, finder: finder);
-    return records.map((snapshot) {
-      return ChatUiModel.fromJson(snapshot.value);
-    }).toList();
+    return records
+        .map((snapshot) => ChatUiModel.fromJson(snapshot.value))
+        .where((msg) => regex.hasMatch(msg.content))
+        .toList();
   }
 
   Future<void> patchFields(String id, Map<String, dynamic> updates) async {

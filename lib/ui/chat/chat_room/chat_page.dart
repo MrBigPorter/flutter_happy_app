@@ -105,6 +105,7 @@ class _ChatPageState extends ConsumerState<ChatPage> with ChatPageLogic {
             detail,
             isGroup,
             ref,
+            conversationId: widget.conversationId,
             // Show AppBar spinner whenever syncing, even when messages are visible.
             // This is WeChat/Telegram style: content shows instantly, spinner signals background sync.
             isSyncing: chatState.isInitializing,
@@ -132,40 +133,65 @@ class _ChatPageState extends ConsumerState<ChatPage> with ChatPageLogic {
                     return Center(child: Text("No messages yet", style: TextStyle(color: Colors.grey[400])));
                   }
 
-                  return GestureDetector(
-                    onTap: () {
-                      FocusScope.of(context).unfocus();
-                      closePanel();
-                    },
-                    child: ScrollAwarePreloader(
-                      items: messages,
-                      itemAverageHeight: 300.0,
-                      preloadWindow: 30,
-                      predictWidth: 240.0,
-                      // ScrollablePositionedList replaces standard ListView
-                      child: ScrollablePositionedList.builder(
-                        itemScrollController: itemScrollController,
-                        itemPositionsListener: itemPositionsListener,
-                        reverse: true, // Newer messages at the bottom
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                        itemCount: messages.length + 1,
-                        itemBuilder: (context, index) {
-                          if (index == messages.length) {
-                            return _buildLoadingIndicator(context, chatState.hasMore);
-                          }
-                          final msg = messages[index];
-                          return ChatBubble(
-                            key: ValueKey(msg.id),
-                            isGroup: isGroup,
-                            message: msg,
-                            showReadStatus: msg.isMe && msg.status == MessageStatus.read && index == 0,
-                            onRetry: () => actionService.resend(msg.id),
-                            // Forward long press events to the logic layer handler
-                            onLongPress: (m) => onMessageLongPress(context, m),
-                          );
+                  return Stack(
+                    children: [
+                      GestureDetector(
+                        onTap: () {
+                          FocusScope.of(context).unfocus();
+                          closePanel();
                         },
+                        child: ScrollAwarePreloader(
+                          items: messages,
+                          itemAverageHeight: 300.0,
+                          preloadWindow: 30,
+                          predictWidth: 240.0,
+                          // ScrollablePositionedList replaces standard ListView
+                          child: ScrollablePositionedList.builder(
+                            itemScrollController: itemScrollController,
+                            itemPositionsListener: itemPositionsListener,
+                            reverse: true, // Newer messages at the bottom
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                            itemCount: messages.length + 1,
+                            itemBuilder: (context, index) {
+                              if (index == messages.length) {
+                                return _buildLoadingIndicator(context, chatState.hasMore);
+                              }
+                              final msg = messages[index];
+                              return ChatBubble(
+                                key: ValueKey(msg.id),
+                                isGroup: isGroup,
+                                message: msg,
+                                showReadStatus: msg.isMe && msg.status == MessageStatus.read && index == 0,
+                                onRetry: () => actionService.resend(msg.id),
+                                // Forward long press events to the logic layer handler
+                                onLongPress: (m) => onMessageLongPress(context, m),
+                              );
+                            },
+                          ),
+                        ),
                       ),
-                    ),
+
+                      // Scroll-to-bottom FAB (visible when not at bottom)
+                      if (!isAtBottom)
+                        Positioned(
+                          right: 8.w,
+                          bottom: 8.h,
+                          child: AnimatedOpacity(
+                            duration: const Duration(milliseconds: 200),
+                            opacity: isAtBottom ? 0.0 : 1.0,
+                            child: FloatingActionButton.small(
+                              heroTag: 'scroll_to_bottom',
+                              backgroundColor: context.bgPrimary,
+                              elevation: 3,
+                              onPressed: scrollToBottom,
+                              child: Icon(
+                                Icons.arrow_downward,
+                                color: context.textBrandPrimary900,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
                   );
                 },
               ),

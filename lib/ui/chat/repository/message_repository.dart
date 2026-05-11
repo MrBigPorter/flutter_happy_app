@@ -215,10 +215,11 @@ class MessageRepository {
   }
 
   /// Batch persistence logic for initial sync or history loading
+  /// Uses transaction-based batch write to reduce N DB transactions → 1
+  /// [LocalDatabaseService.saveMessages] handles merge conflict defense internally
   Future<void> saveBatch(List<ChatUiModel> msgs) async {
-    for (var msg in msgs) {
-      await saveOrUpdate(msg);
-    }
+    if (msgs.isEmpty) return;
+    await _db.saveMessages(msgs);
   }
 
   /// Incremental Field Patching (Update specific fields).

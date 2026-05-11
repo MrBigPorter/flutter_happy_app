@@ -1,7 +1,7 @@
-import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:emoji_picker_flutter/emoji_picker_flutter.dart';
 
 import 'package:flutter_app/ui/chat/components/chat_input/voice_button.dart';
 import '../../../../theme/design_tokens.g.dart';
@@ -36,8 +36,6 @@ class ModernChatInputBar extends StatefulWidget {
 
 class _ModernChatInputBarState extends State<ModernChatInputBar> {
   final TextEditingController _controller = TextEditingController();
-  final ImagePicker _picker = ImagePicker();
-
   bool _hasText = false;
   bool _isVoiceMode = false;
   bool _isRecording = false;
@@ -66,17 +64,12 @@ class _ModernChatInputBarState extends State<ModernChatInputBar> {
     _controller.clear();
   }
 
-  void _handleLike() {
-    widget.onSend("👍");
-  }
-
-
   @override
   Widget build(BuildContext context) {
     return Container(
         decoration: BoxDecoration(
           color: context.bgPrimary,
-          border: Border(top: BorderSide(color: Colors.grey.withOpacity(0.1))),
+          border: Border(top: BorderSide(color: Colors.grey.withValues(alpha: 0.1))),
         ),
         child: SafeArea(
           top: false,
@@ -207,15 +200,56 @@ class _ModernChatInputBarState extends State<ModernChatInputBar> {
         constraints: const BoxConstraints(),
       )
           : IconButton(
-        key: const ValueKey('like'),
-        onPressed: _handleLike,
+        key: const ValueKey('emoji'),
+        onPressed: _showEmojiPicker,
         icon: Icon(
-          Icons.thumb_up_rounded,
+          Icons.emoji_emotions_outlined,
           color: context.textBrandPrimary900,
           size: 28.sp,
         ),
         padding: EdgeInsets.zero,
         constraints: const BoxConstraints(),
+      ),
+    );
+  }
+
+  void _showEmojiPicker() {
+    showModalBottomSheet(
+      context: context,
+      builder: (ctx) => EmojiPicker(
+        onEmojiSelected: (Category? category, Emoji emoji) {
+          final text = _controller.text;
+          final selection = _controller.selection;
+          final cursorPos = selection.baseOffset;
+          if (cursorPos < 0) {
+            _controller.text = text + emoji.emoji;
+          } else {
+            _controller.text = text.substring(0, cursorPos) + emoji.emoji + text.substring(selection.extentOffset);
+            _controller.selection = TextSelection.collapsed(offset: cursorPos + emoji.emoji.length);
+          }
+          Navigator.pop(ctx);
+        },
+        config: Config(
+          categoryViewConfig: CategoryViewConfig(
+            backgroundColor: ctx.bgSecondary,
+            iconColor: ctx.textSecondary700,
+            iconColorSelected: ctx.textBrandPrimary900,
+            backspaceColor: ctx.textBrandPrimary900,
+            dividerColor: ctx.borderSecondary,
+            extraTab: CategoryExtraTab.SEARCH,
+          ),
+          emojiViewConfig: EmojiViewConfig(
+            backgroundColor: ctx.bgPrimary,
+            columns: 7,
+            emojiSizeMax: 32.0,
+          ),
+          bottomActionBarConfig: BottomActionBarConfig(
+            backgroundColor: ctx.bgSecondary,
+            buttonColor: ctx.textPrimary900,
+            buttonIconColor: ctx.textBrandPrimary900,
+            showSearchViewButton: false,
+          ),
+        ),
       ),
     );
   }
