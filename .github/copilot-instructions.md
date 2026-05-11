@@ -74,8 +74,8 @@
 
 ## 🎯 Current Task (Start every conversation here)
 
-**Phase**: Phase F1 — Flutter Commercial Loop Closure  
-**Last Stop**: Lucky Wheel UX Optimization Completed (2026-03-25)  
+**Phase**: Phase F1 — Flutter Commercial Loop Closure
+**Last Stop**: Home Page Flash Fix — forceRefresh() SWR Cache Recovery (2026-05-11)
 **Accomplishments**:
 - [x] **Customer Service Shunting Parameterization**: `CustomerServiceHelper.startChat()` now supports `support/business` scenarios with configurable `businessId`.
 - [x] **Lucky Draw API Integration**: `my-tickets` / `draw` / `my-results`.
@@ -383,6 +383,44 @@ await apiCall().withRetry(maxRetries: 3, context: 'Upload file');
 
 ---
 
+## 🎯 Current Task — Payment Page Blurhash Fix (2026-05-11)
+
+**Phase**: Phase F1 — UI Bugfix & Blurhash Enhancement
+**Last Stop**: Home page banner now shows blurhash placeholder while images load
+
+### Fix — Product Item Overlap (Transform.scale → FittedBox)
+- [x] **Root Cause**: `Transform.scale` reports pre-transform size (166×365) to parent grid regardless of scale factor. Parent `SliverGridDelegateWithFixedCrossAxisCount` constrains to ~163.5dp per cell → Transform reports 166dp → 2.5dp overflow per item, totaling 5dp overflow that erodes the 16.w `crossAxisSpacing`.
+- [x] **Fix 1 (overlap)**: Replaced `Transform.scale` with `FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.topCenter)` in [`ProductItem.build()`](lib/components/product_item.dart:72) and [`ProductItemSkeleton.build()`](lib/components/product_item.dart:224) — `FittedBox` correctly reports constrained size to parent, eliminating overflow.
+- [x] **Fix 2 (product page spacing)**: Reduced `crossAxisSpacing` from 16.w to 6.w in [`product_page.dart`](lib/app/page/product_page.dart:321) to tighten grid gaps.
+- [x] **Fix 3 (detail page provider warm-up)**: Added `ProviderScope.containerOf(context, listen: false).read(productDetailProvider(data.treasureId))` before route push in [`ProductItem.onPressed`](lib/components/product_item.dart:156) — triggers API call during route transition animation, skipping skeleton on detail page.
+- [x] **Cleanup**: Removed unused `import 'dart:math'`, `availableWidth`, `scale` variables.
+- [x] **Verification**: `fvm flutter analyze` ✅ | `fvm flutter test` (75/75) ✅
+
+### Enhancement — Home Page Banner Blurhash
+- [x] **Model Update**: Added `final String? blurhash;` to [`Banners`](lib/core/models/banners.dart:21) model with constructor param and `this.blurhash`.
+- [x] **Codegen**: Ran `fvm dart run build_runner build --delete-conflicting-outputs` — regenerated [`banners.g.dart`](lib/core/models/banners.g.dart) and [`ad_res.g.dart`](lib/core/models/ad_res.g.dart) with blurhash serialization.
+- [x] **SwiperBanner Enhancement**: Added [`blurhashExtractor`](lib/components/swiper_banner.dart:26) callback `String? Function(T item)?` to `SwiperBanner` and [`ImageWidget`](lib/components/swiper_banner.dart:213). When set, each banner item provides its own blurhash — falls back to shared `blurhash` when not provided.
+- [x] **Home Page Integration**: Passed [`blurhashExtractor: (Banners item) => item.blurhash`](lib/app/page/home_page.dart:245) to `SwiperBanner` in home_page.dart.
+- [x] **Verification**: `fvm flutter analyze` ✅ (0 errors) | `fvm flutter test` (75/75) ✅
+
+### Enhancement — Flash Sale Product Detail Page Blurhash
+- [x] **Flash Sale List Page** (`flash_sale_page.dart`): ✅ Already had blurhash (`item.product.blurhash`) + provider warm-up — no changes needed.
+- [x] **Flash Sale Product Detail Page** (`flash_sale_product_page.dart`): ❌ Was missing blurhash. Fixed both paths:
+  - Multi-image [`SwiperBanner`](lib/app/page/flash_sale/flash_sale_product_page.dart:124): added `blurhash: detail.product.blurhash`
+  - Single-image [`OptimizedImageFactory.banner`](lib/app/page/flash_sale/flash_sale_product_page.dart:131): added `blurhash: detail.product.blurhash`
+- [x] **Verification**: `fvm flutter analyze` ✅ | `fvm flutter test` (75/75) ✅
+
+### Enhancement — Payment Page Blurhash
+
+- [x] **Investigated** [`payment_page.dart`](lib/app/page/payment/payment_page.dart) and [`payment_section.dart`](lib/app/page/payment/payment_section.dart): Only one image on the page — the 80×80 product thumbnail in `ProductSection`.
+- [x] **`ProductListItem` model** ([`product_list_item.dart:60`](lib/core/models/product_list_item.dart:60)): Already had `final String? blurhash;` — no model change needed.
+- [x] **`ProductSection`** ([`payment_section.dart:251-256`](lib/app/page/payment/payment_section.dart:251)): Was using `AppCachedImage` without blurhash ❌
+- [x] **Fix**: Added `metadata: detail.blurhash != null ? {'blurHash': detail.blurhash} : null` to `AppCachedImage` — `AppCachedImage` already reads `metadata['blurHash']` for BlurHash rendering ([`app_image.dart:144`](lib/ui/img/app_image.dart:144)).
+- [x] **Other sections** (`CheckoutVoucherSection`, `CoinsDiscountSection`, `PaymentMethodSection`): Text/UI only — no images.
+- [x] **Verification**: `fvm flutter analyze` ✅ (0 errors) | `fvm flutter test` (75/75) ✅
+
+---
+
 ## 🎯 Previous Task — API 503 Triple Fix (2026-05-05)
 
 **Phase**: DevOps — Service Worker 503 (HSTS + COOP Headers)
@@ -413,3 +451,17 @@ await apiCall().withRetry(maxRetries: 3, context: 'Upload file');
 - [x] **Nginx Reloaded**: `docker exec lucky-nginx-dev nginx -s reload` to apply CORS config changes.
 - [x] **End-to-End Verification**: User confirmed `http://localhost:4000` works after refresh — all API requests return HTTP 200.
 
+## 🎯 Previous Task — Home Page Flash Fix (2026-05-11)
+
+**Phase**: Phase F1 — Flutter Commercial Loop Closure
+**Last Stop**: forceRefresh() SWR Cache Recovery
+**Accomplishments**:
+- [x] **Root Cause Analysis**: Home page `forceRefresh()` skipped persistent cache and always went directly to network, causing skeleton flash when returning from H5 payment pages due to provider state loss.
+- [x] **Fix Applied**: Modified `forceRefresh()` in 4 providers to first recover UI from `ApiCacheManager` persistent cache (Hive/SharedPreferences) before fetching from network.
+- [x] **Files Changed**:
+  - [`lib/core/providers/home_provider.dart`](lib/core/providers/home_provider.dart) — `HomeBannerNotifier`, `HomeTreasuresNotifier`, `HomeAdNotifier`
+  - [`lib/core/providers/product_provider.dart`](lib/core/providers/product_provider.dart) — `HomeGroupBuyingNotifier`
+- [x] **Documents Created**:
+  - [`plans/home_page_database_driven_analysis.md`](plans/home_page_database_driven_analysis.md) — Root cause analysis & solution comparison (Option A vs B)
+  - [`plans/graphql_architecture_proposal.md`](plans/graphql_architecture_proposal.md) — GraphQL migration proposal (future reference)
+- [x] **Verification**: `fvm flutter analyze` passed with zero new issues.

@@ -17,6 +17,7 @@ class Banners implements ClickableResource {
   final int sortOrder;
   @override
   final String? jumpUrl;
+  final String? blurhash;
 
    Banners({
     required this.id,
@@ -28,6 +29,7 @@ class Banners implements ClickableResource {
     required this.state,
     required this.sortOrder,
     required this.jumpUrl,
+    this.blurhash,
   });
 
    factory Banners.fromJson(Map<String, dynamic> json) => _$BannersFromJson(json);

@@ -4,7 +4,9 @@ import 'package:flutter_app/app/routes/app_router.dart';
 import 'package:flutter_app/common.dart';
 import 'package:flutter_app/components/render_countdown.dart';
 import 'package:flutter_app/components/skeleton.dart';
+import 'package:flutter_app/core/providers/index.dart';
 import 'package:flutter_app/core/providers/network_status_provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_app/ui/bubble_progress.dart';
 import 'package:flutter_app/ui/button/index.dart';
 import 'package:flutter_app/ui/img/optimized_image.dart';
@@ -227,10 +229,14 @@ class ProductItem extends StatelessWidget {
                                 product: data,
                                 groups: null,
                               );
-                              
+
+                              // 🔥 Pre-warm the detail provider so the API call is in-flight during route transition
+                              ProviderScope.containerOf(context, listen: false)
+                                  .read(productDetailProvider(data.treasureId));
+
                               appRouter.pushNamed(
                                 'productDetail',
-                                pathParameters: {'id': data.treasureId ?? ''},
+                                pathParameters: {'id': data.treasureId},
                               );
                             },
                             child: FittedBox(

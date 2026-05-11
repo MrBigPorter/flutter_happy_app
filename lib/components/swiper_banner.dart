@@ -23,6 +23,8 @@ class SwiperBanner<T> extends StatelessWidget {
   final Widget Function(T item)? itemBuilder;
   final ScrollPhysics? physics;
   final String? blurhash;
+  /// 从每个 item 中提取 blurhash 的回调，优先级高于 blurhash
+  final String? Function(T item)? blurhashExtractor;
 
   // dots
   final double dotSize;
@@ -59,6 +61,7 @@ class SwiperBanner<T> extends StatelessWidget {
     this.onIndexChanged,
     this.physics,
     this.blurhash,
+    this.blurhashExtractor,
   });
 
 
@@ -77,7 +80,7 @@ class SwiperBanner<T> extends StatelessWidget {
       width:width,
       height: height,
       decoration: BoxDecoration(borderRadius: BorderRadius.circular(borderRadius)),
-      //  给 Swiper 一个稳定的 key，避免被当成“新对象”
+      //  给 Swiper 一个稳定的 key，避免被当成"新对象"
       child: Swiper(
         key: storageKey,
         controller: controller,
@@ -103,6 +106,7 @@ class SwiperBanner<T> extends StatelessWidget {
                 height: height,
                 itemBuilder: itemBuilder,
                 blurhash: blurhash,
+                blurhashExtractor: blurhashExtractor,
               ),
             ),
           );
@@ -204,6 +208,7 @@ class ImageWidget<T> extends StatelessWidget {
   final double height;
   final Widget Function(T item)? itemBuilder;
   final String? blurhash;
+  final String? Function(T item)? blurhashExtractor;
 
   const ImageWidget({
     super.key,
@@ -212,6 +217,7 @@ class ImageWidget<T> extends StatelessWidget {
     required this.height,
     this.itemBuilder,
     this.blurhash,
+    this.blurhashExtractor,
   });
 
   @override
@@ -228,6 +234,9 @@ class ImageWidget<T> extends StatelessWidget {
       url = item?.bannerImgUrl;
     }
 
+    // 🔥 优先使用每个 item 的 blurhash，回退到共享 blurhash
+    final effectiveBlurhash = blurhashExtractor?.call(item) ?? blurhash;
+
     // 使用优化的图片组件 - 直接传递原始 URL，让 OptimizedImage 内部处理 CDN 转换
     // 注意：RemoteUrlBuilder.fitAbsoluteUrl 已经被 OptimizedImage 内部的 ResponsiveImageService 替代
     return OptimizedImageFactory.banner(
@@ -235,7 +244,7 @@ class ImageWidget<T> extends StatelessWidget {
       width: width,
       height: height,
       borderRadius: BorderRadius.circular(8.0),
-      blurhash: blurhash,
+      blurhash: effectiveBlurhash,
     );
   }
 }

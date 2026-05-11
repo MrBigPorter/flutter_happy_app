@@ -22,6 +22,7 @@ Banners _$BannersFromJson(Map<String, dynamic> json) => $checkedCreate(
           state: $checkedConvert('state', (v) => (v as num).toInt()),
           sortOrder: $checkedConvert('sortOrder', (v) => (v as num).toInt()),
           jumpUrl: $checkedConvert('jumpUrl', (v) => v as String?),
+          blurhash: $checkedConvert('blurhash', (v) => v as String?),
         );
         return val;
       },
@@ -37,4 +38,5 @@ Map<String, dynamic> _$BannersToJson(Banners instance) => <String, dynamic>{
       'state': instance.state,
       'sortOrder': instance.sortOrder,
       'jumpUrl': instance.jumpUrl,
+      'blurhash': instance.blurhash,
     };

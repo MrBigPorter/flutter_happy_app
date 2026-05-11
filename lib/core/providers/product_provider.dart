@@ -265,7 +265,21 @@ class HomeGroupBuyingNotifier extends AsyncNotifier<List<ProductListItem>> {
     }
   }
 
-  Future<void> forceRefresh() async => await _fetchAndCache();
+  Future<void> forceRefresh() async {
+    // 应急恢复：如果 state 已丢失，优先从持久化缓存恢复 UI
+    if (!state.hasValue) {
+      final cacheEntry = ApiCacheManager.getCacheEntry(_cacheKey);
+      if (cacheEntry.hasData) {
+        try {
+          final list = (cacheEntry.data as List)
+              .map((e) => ProductListItem.fromJson(e))
+              .toList();
+          state = AsyncData(list);
+        } catch (_) {}
+      }
+    }
+    await _fetchAndCache();
+  }
 }
 
 final homeGroupBuyingProvider =

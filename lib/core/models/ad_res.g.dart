@@ -72,6 +72,7 @@ BannerItem _$BannerItemFromJson(Map<String, dynamic> json) => $checkedCreate(
           title: $checkedConvert('title', (v) => AdRes._stringFromAny(v)),
           validState:
               $checkedConvert('validState', (v) => (v as num?)?.toInt()),
+          blurhash: $checkedConvert('blurhash', (v) => v as String?),
         );
         return val;
       },
@@ -92,4 +93,5 @@ Map<String, dynamic> _$BannerItemToJson(BannerItem instance) =>
       'status': instance.status,
       'title': instance.title,
       'validState': instance.validState,
+      'blurhash': instance.blurhash,
     };

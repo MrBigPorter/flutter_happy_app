@@ -91,6 +91,7 @@ class BannerItem {
   @JsonKey(fromJson: AdRes._stringFromAny)
   final String title;
   final int? validState;
+  final String? blurhash;
 
   BannerItem({
     this.gridId,
@@ -106,6 +107,7 @@ class BannerItem {
     this.status,
     required this.title,
     this.validState,
+    this.blurhash,
   });
 
   factory BannerItem.fromJson(Map<String, dynamic> json) =>

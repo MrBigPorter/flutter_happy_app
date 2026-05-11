@@ -253,6 +253,7 @@ class ProductSection extends ConsumerWidget {
                     width: 80.w,
                     height: 80.w,
                     fit: BoxFit.cover,
+                    metadata: detail.blurhash != null ? {'blurHash': detail.blurhash} : null,
                   ),
                 ),
                 SizedBox(width: 12.w),

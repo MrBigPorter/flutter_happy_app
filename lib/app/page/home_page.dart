@@ -11,6 +11,7 @@ import 'package:flutter_app/utils/image/image_preloader.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_app/core/providers/index.dart';
+import 'package:flutter_app/core/models/index.dart';
 
 import '../../utils/image/image_optimization_init.dart';
 import 'home_components/group_buying_section.dart';
@@ -240,7 +241,10 @@ class _HomePageState extends ConsumerState<HomePage> with WidgetsBindingObserver
               data: (list) => SliverToBoxAdapter(
                 child: Padding(
                   padding: EdgeInsets.all(16.w),
-                  child: SwiperBanner(banners: list),
+                  child: SwiperBanner(
+                    banners: list,
+                    blurhashExtractor: (Banners item) => item.blurhash,
+                  ),
                 ),
               ),
               error: (_, __) => const HomeBannerSkeleton(),

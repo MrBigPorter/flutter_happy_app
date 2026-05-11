@@ -48,7 +48,21 @@ class HomeBannerNotifier extends AsyncNotifier<List<Banners>> {
     }
   }
 
-  Future<void> forceRefresh() async => await _fetchAndCache();
+  Future<void> forceRefresh() async {
+    // 应急恢复：如果 state 已丢失，优先从持久化缓存恢复 UI
+    if (!state.hasValue) {
+      final cacheEntry = ApiCacheManager.getCacheEntry(_cacheKey);
+      if (cacheEntry.hasData) {
+        try {
+          final list = (cacheEntry.data as List)
+              .map((e) => Banners.fromJson(e))
+              .toList();
+          state = AsyncData(list);
+        } catch (_) {}
+      }
+    }
+    await _fetchAndCache();
+  }
 }
 
 final homeBannerProvider =
@@ -94,7 +108,21 @@ class HomeTreasuresNotifier extends AsyncNotifier<List<IndexTreasureItem>> {
     }
   }
 
-  Future<void> forceRefresh() async => await _fetchAndCache();
+  Future<void> forceRefresh() async {
+    // 应急恢复：如果 state 已丢失，优先从持久化缓存恢复 UI
+    if (!state.hasValue) {
+      final cacheEntry = ApiCacheManager.getCacheEntry(_cacheKey);
+      if (cacheEntry.hasData) {
+        try {
+          final list = (cacheEntry.data as List)
+              .map((e) => IndexTreasureItem.fromJson(e))
+              .toList();
+          state = AsyncData(list);
+        } catch (_) {}
+      }
+    }
+    await _fetchAndCache();
+  }
 }
 
 final homeTreasuresProvider =
@@ -143,7 +171,22 @@ class HomeAdNotifier extends FamilyAsyncNotifier<List<AdRes>, int> {
     }
   }
 
-  Future<void> forceRefresh() async => await _fetchAndCache(arg);
+  Future<void> forceRefresh() async {
+    // 应急恢复：如果 state 已丢失，优先从持久化缓存恢复 UI
+    final cacheKey = _cacheKeyOf(arg);
+    if (!state.hasValue) {
+      final cacheEntry = ApiCacheManager.getCacheEntry(cacheKey);
+      if (cacheEntry.hasData) {
+        try {
+          final list = (cacheEntry.data as List)
+              .map((e) => AdRes.fromJson(e))
+              .toList();
+          state = AsyncData(list);
+        } catch (_) {}
+      }
+    }
+    await _fetchAndCache(arg);
+  }
 }
 
 final homeAdProvider =

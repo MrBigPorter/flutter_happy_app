@@ -121,6 +121,7 @@ class _DetailBodyState extends State<_DetailBody> {
                 height: 280.w,
                 borderRadius: 0,
                 banners: images,
+                blurhash: detail.product.blurhash,
               )
             else
               OptimizedImageFactory.banner(
@@ -128,6 +129,7 @@ class _DetailBodyState extends State<_DetailBody> {
                 width: 1.sw,
                 height: 280.w,
                 borderRadius: BorderRadius.zero,
+                blurhash: detail.product.blurhash,
               ),
             SizedBox(height: 12.h),
             Padding(
