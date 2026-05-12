@@ -626,3 +626,15 @@ await apiCall().withRetry(maxRetries: 3, context: 'Upload file');
 - [x] [`.github/workflows/full_deploy.yml:139`](.github/workflows/full_deploy.yml:139): Removed `--web-renderer html` from CI/CD web build step
 - [x] [`.github/workflows/web_rollback.yml:121`](.github/workflows/web_rollback.yml:121): Removed `--web-renderer html` from rollback build step
 - [x] **Verification**: `fvm flutter analyze` ✅ (no new issues) | `fvm flutter test` ✅ (83/83 all passed)
+
+## 🎯 Current Task — PWA Update Banner False Detection on Deposit Redirect (2026-05-12)
+
+**Phase**: Bug Fix — PWA UX
+**Last Stop**: "A new version is available" banner appearing at the top of deposit success page after payment redirect
+
+**Root Cause**: When the payment gateway redirects back to the deposit success URL after successful payment, it is a fresh page load. The SW registration code in `index.html` immediately called `syncUpdateReady()` (checking for leftover waiting worker) and `reg.update()` (checking for new server version), both of which could set `window.__pwaUpdateReady = true`. Then `PwaUpdateBanner` checked `PwaHelper.updateAvailable` on first frame and showed the banner, interrupting the payment result flow.
+
+**Fixes Applied**:
+- [x] **Fix 1** ([`web/index.html`](web/index.html:598)): Removed immediate `syncUpdateReady()` call; deferred `reg.update()` to 30 seconds after page load via `setTimeout`. Prevents update detection on fresh page loads from external redirects.
+- [x] **Fix 2** ([`lib/components/pwa_banners.dart`](lib/components/pwa_banners.dart:161)): Added 15-second minimum page visit duration check before showing the banner. Uses `DateTime.now()` tracking and a deferred `Timer` for delayed recheck.
+- [x] **Verification**: `fvm flutter analyze` ✅ (no new issues) | `fvm flutter test` ✅ (83/83 all passed)

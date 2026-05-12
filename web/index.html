@@ -611,8 +611,7 @@
                         }
                     };
 
-                    // Keep flag in sync with real SW lifecycle.
-                    syncUpdateReady();
+                    // Listen for SW lifecycle changes during this session.
                     reg.addEventListener('updatefound', () => {
                         const newWorker = reg.installing;
                         if (!newWorker) return;
@@ -625,8 +624,14 @@
                         });
                     });
 
-                    // Force one update check so first paint can discover waiting updates quickly.
-                    reg.update().catch(() => {});
+                    // Defer background update check by 30 seconds.
+                    // This prevents false "new version" detection on fresh page loads
+                    // from external redirects (e.g. payment gateway return), where
+                    // a leftover waiting worker or cache discrepancy would immediately
+                    // trigger the banner on the deposit result page.
+                    setTimeout(function() {
+                        reg.update().catch(() => {});
+                    }, 30000);
 
                     navigator.serviceWorker.addEventListener('controllerchange', () => {
                         window.__pwaUpdateReady = false;

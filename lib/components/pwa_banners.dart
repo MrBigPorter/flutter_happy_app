@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_app/utils/pwa_helper.dart';
@@ -160,17 +161,51 @@ class PwaUpdateBanner extends StatefulWidget {
 
 class _PwaUpdateBannerState extends State<PwaUpdateBanner> {
   bool _visible = false;
+  DateTime? _pageLoadTime;
+  Timer? _deferredCheck;
+
+  /// Minimum page visit duration before showing the update banner.
+  /// Prevents the banner from appearing immediately on fresh page loads
+  /// from external redirects (e.g. payment gateway return), so the
+  /// user can see the deposit result without interruption.
+  static const Duration _minPageLoadDuration = Duration(seconds: 15);
 
   @override
   void initState() {
     super.initState();
+    _pageLoadTime = DateTime.now();
+
     // Dev mode (kDebugMode): never show update banner.
     // Flutter's web engine may auto-register flutter_service_worker.js in dev,
     // causing false "new version" detection on every hot-reload/rebuild.
     // Production builds (kReleaseMode) use the real SW and should show updates.
     if (kReleaseMode) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (kIsWeb && PwaHelper.updateAvailable) {
+        _checkUpdateWithDelay();
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _deferredCheck?.cancel();
+    super.dispose();
+  }
+
+  /// Checks if the update is available and enough time has passed since page load.
+  /// If update is ready but page is too fresh, schedules a deferred check.
+  void _checkUpdateWithDelay() {
+    if (!kIsWeb || !mounted) return;
+    if (!PwaHelper.updateAvailable) return;
+
+    final elapsed = DateTime.now().difference(_pageLoadTime!);
+    if (elapsed >= _minPageLoadDuration) {
+      setState(() => _visible = true);
+    } else {
+      // Page just loaded — defer the check until minimum duration is met.
+      final remaining = _minPageLoadDuration - elapsed;
+      _deferredCheck = Timer(remaining, () {
+        if (mounted && PwaHelper.updateAvailable) {
           setState(() => _visible = true);
         }
       });
