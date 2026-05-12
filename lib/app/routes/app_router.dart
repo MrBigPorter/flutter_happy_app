@@ -48,7 +48,7 @@ import 'package:flutter_app/app/page/transaction_record_page.dart' deferred as _
 import 'package:flutter_app/app/page/me_components/me_page.dart' deferred as _me;
 import 'package:flutter_app/app/page/login_page/login_page.dart';
 import 'package:flutter_app/app/page/lucky_draw/lucky_draw_page.dart' deferred as _lucky_draw;
-import 'package:flutter_app/app/page/oauth_processing_page/oauth_processing_page.dart';
+import 'package:flutter_app/app/page/oauth_processing_page/oauth_processing_page.dart' deferred as _oauth;
 import 'package:flutter_app/app/page/pwa_debug_page.dart' deferred as _pwa_debug;
 import 'package:flutter_app/app/page/product_detail_page.dart' deferred as _product_detail;
 import 'package:flutter_app/app/page/withdraw/withdraw_page.dart' deferred as _withdraw hide WithdrawPageUI;
@@ -279,13 +279,16 @@ class AppRouter {
         GoRoute(
           name: "login",
           path: '/login',
-          builder: (context, state) => LoginPage(),
+          builder: (context, state) => const LoginPage(),
         ),
 
         GoRoute(
           name: 'oauthProcessing',
           path: '/oauth/processing',
-          builder: (context, state) => const OauthProcessingPage(),
+          builder: (context, state) => DeferredPage(
+            loadLibrary: _oauth.loadLibrary,
+            builder: () => _oauth.OauthProcessingPage(),
+          ),
         ),
 
         // Deep Link OAuth callback route - handles token from backend

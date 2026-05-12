@@ -120,8 +120,10 @@ jobs:
           echo "✅ SW_VERSION injected: $SW_VERSION"
 
       # ── Phase 5: Build Web ────────────────────────────────────
-      # renderer: 'html' is set in index.html (not via CLI flag, which
-      # was removed in Flutter 3.22+). Cache-Control is in web/_headers.
+      # Note: In Flutter 3.22+, --web-renderer CLI flag was removed.
+      #       The renderer is determined by the build config (canvaskit default).
+      #       CanvasKit WASM is loaded from gstatic CDN (~2-3MB).
+      #       Cache-Control is set in web/_headers.
       - name: 🚀 5. Build Web (H5)
         run: |
           rm -rf build/web

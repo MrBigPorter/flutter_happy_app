@@ -42,17 +42,22 @@ class AppBootstrap {
     // 先设置错误处理器，确保后续并行任务中的错误都能被捕获
     _setupErrorHandlers();
 
-    // 并行异步初始化 — 四项核心任务相互独立，同时启动
-    // Firebase 已分离到 initFirebaseAsync()，runApp 后异步执行。
+    // EasyLocalization 是唯一 blocking 首帧的依赖（文本渲染）
+    // AssetManager / ApiCacheManager / Http 已移到 initNonCriticalAsync()
+    await EasyLocalization.ensureInitialized();
+
+    // DeepLink 初始化依赖其他服务就绪，放初始化完成后（fire-and-forget）
+    DeepLinkService().init();
+  }
+
+  /// 1c. 非关键异步初始化 — runApp 后 fire-and-forget
+  /// 不阻塞首帧渲染。AssetManager / ApiCacheManager / Http 在后台完成。
+  static Future<void> initNonCriticalAsync() async {
     await Future.wait([
       AssetManager.init(),
-      EasyLocalization.ensureInitialized(),
       ApiCacheManager.init(),
       Http.init(),
     ]);
-
-    // DeepLink 初始化依赖其他服务就绪，放并行任务完成后（fire-and-forget）
-    DeepLinkService().init();
   }
 
   /// 1b. Firebase 异步初始化（runApp 后 fire-and-forget）

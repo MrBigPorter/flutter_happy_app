@@ -130,7 +130,9 @@ jobs:
           echo "✅ SW_VERSION injected: $SW_VERSION"
 
       # ── Phase 5: Web ───────────────────────────────────────────
-      # Note: --web-renderer html avoids CanvasKit wasm download (-2-5MB).
+      # Note: In Flutter 3.22+, --web-renderer CLI flag was removed.
+      #       The renderer is determined by the build config (canvaskit default).
+      #       CanvasKit WASM is loaded from gstatic CDN (~2-3MB).
       #       web/_headers with Cache-Control is deployed automatically by CF Pages.
       - name: 🚀 5. Build Web (H5)
         run: |

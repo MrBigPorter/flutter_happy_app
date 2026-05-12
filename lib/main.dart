@@ -83,7 +83,11 @@ void main() {
       ),
     );
 
-    // 5. Firebase 异步初始化（runApp 后 fire-and-forget）
+    // 5. 非关键基础设施初始化（runApp 后 fire-and-forget）
+    //    AssetManager / ApiCacheManager / Http 不阻塞首帧。
+    unawaited(AppBootstrap.initNonCriticalAsync());
+
+    // 6. Firebase 异步初始化（runApp 后 fire-and-forget）
     //    Firebase SDK 脚本下载（~165ms）不再阻塞首帧。
     unawaited(AppBootstrap.initFirebaseAsync());
 
