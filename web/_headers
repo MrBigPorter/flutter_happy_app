@@ -1,3 +1,46 @@
+# JoyMini Web _headers — Cloudflare Pages / Netlify
+# https://developers.cloudflare.com/pages/configuration/headers/
+
+# ── Default: Security Headers ──────────────────────────────────────────────────
 /*
   Cross-Origin-Embedder-Policy: credentialless
   Cross-Origin-Opener-Policy: same-origin
+
+# ── HTML: Always fresh (PWA needs SW to check for updates) ────────────────────
+/index.html
+  Cache-Control: public, no-cache, must-revalidate
+  Content-Type: text/html; charset=utf-8
+
+# ── Service Worker: MUST NOT be cached (browser checks SW on every navigation) ─
+/pwa_sw.js
+  Cache-Control: public, no-cache, must-revalidate
+/flutter_service_worker.js
+  Cache-Control: public, no-cache, must-revalidate
+
+# ── Flutter Engine Assets: Content-hashed filenames (immutable) ───────────────
+# main.dart.js has a unique hash per build (e.g., main.dart.js?hash=abc123)
+# flutter.js and flutter_bootstrap.js are versioned by Flutter SDK
+*.js
+  Cache-Control: public, max-age=31536000, immutable
+  Content-Type: application/javascript; charset=utf-8
+
+# ── WebAssembly (canvaskit.wasm etc.): Immutable ──────────────────────────────
+*.wasm
+  Cache-Control: public, max-age=31536000, immutable
+  Content-Type: application/wasm
+
+# ── Fonts: Immutable ──────────────────────────────────────────────────────────
+*.ttf
+*.woff
+*.woff2
+  Cache-Control: public, max-age=31536000, immutable
+
+# ── Static Icons: Versioned in manifest, safe to cache long-term ──────────────
+/icons/*
+/favicon.png
+/app_icon.png
+  Cache-Control: public, max-age=31536000, immutable
+
+# ── API Responses: Never cache in browser (SW handles API caching) ────────────
+/api/*
+  Cache-Control: public, no-cache, must-revalidate

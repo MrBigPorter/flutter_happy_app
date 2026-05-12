@@ -130,10 +130,13 @@ jobs:
           echo "✅ SW_VERSION injected: $SW_VERSION"
 
       # ── Phase 5: Web ───────────────────────────────────────────
+      # Note: --web-renderer html avoids CanvasKit wasm download (-2-5MB).
+      #       web/_headers with Cache-Control is deployed automatically by CF Pages.
       - name: 🚀 5. Build Web (H5)
         run: |
           rm -rf build/web
           flutter build web --release --no-wasm-dry-run \
+            --web-renderer html \
             --dart-define-from-file=${{ env.env_file }}
 
       - name: ☁️ Deploy to Cloudflare Pages

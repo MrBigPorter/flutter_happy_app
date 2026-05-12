@@ -118,7 +118,7 @@ jobs:
 
       - name: 7. Build Web (Rollback)
         run: |
-          fvm flutter build web --release --dart-define-from-file=${{ env.ENV_FILE }}
+          fvm flutter build web --release --web-renderer html --dart-define-from-file=${{ env.ENV_FILE }}
 
       - name: 8. Redeploy Web to Cloudflare Pages
         id: cf_deploy

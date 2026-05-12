@@ -342,7 +342,17 @@ await apiCall().withRetry(maxRetries: 3, context: 'Upload file');
   - 未登录用户不再触发无用重服务初始化
   - 登录/登出自动跟随 auth 状态启停
   - 通过 `fvm flutter analyze` ✅
-- [ ] **Phase 5** — Web 包体瘦身（独立专项，1-2周，待排期）
+- [x] **Phase 5** — Web 包体瘦身 & 缓存策略优化
+  - [x] **5a. 生产构建强制 HTML 渲染器**:
+    - `build-web` Makefile target 添加 `--web-renderer html`
+    - CI/CD `full_deploy.yml` Web 构建步骤添加 `--web-renderer html`
+    - 回滚 `web_rollback.yml` 构建步骤添加 `--web-renderer html`
+    - 去除 CanvasKit wasm 下载（首屏减少 2-5MB 下载量）
+  - [x] **5b. Cache-Control 头策略**: `web/_headers` 新增分层缓存策略:
+    - `main.dart.js` / `.wasm` / 字体: `max-age=31536000, immutable`
+    - `index.html` / SW 文件: `no-cache, must-revalidate`
+    - API 路径: `no-cache`（SW 层管理 API 缓存）
+  - [x] **5c. Brotli/Gzip 压缩提示**: Makefile 头部添加服务器端压缩配置说明（Nginx/Cloudflare）
 - [x] **CORS Preflight Redirect Fix**: Changed [`dev.json`](lib/core/config/env/dev.json:3) `API_BASE_URL` from `http://dev-api.joyminis.com` to `https://dev-api.joyminis.com`. Browser HSTS cache internally redirects HTTP→HTTPS with 307 before sending, causing CORS preflight (OPTIONS) failure. HTTPS avoids the redirect entirely.
 - [x] **PWA "New Version" False Detection in Dev**: Added `kReleaseMode` check in [`PwaUpdateBanner.initState()`](lib/components/pwa_banners.dart:171) — banner only checks for updates in release mode. Also wrapped both SW registration scripts in [`index.html`](web/index.html:283) with localhost skip to prevent false "new version" detection on every hot-reload/rebuild. Removed invalid `--web-disable-service-worker` flag from [`Makefile`](Makefile:5) (doesn't exist in Flutter 3.41.6).
 - [x] **Dark Theme Default**: Changed `initialThemeModeProvider` default from `ThemeMode.system` to `ThemeMode.dark`.

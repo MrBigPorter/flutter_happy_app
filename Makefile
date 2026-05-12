@@ -166,15 +166,31 @@ test-fix: ios-fix
 # ══════════════════════════════════════════════════════════════════════════════
 # 🌐 Web 构建（自动注入 PWA 版本号）
 # ══════════════════════════════════════════════════════════════════════════════
+#
+# 🔑 关键性能配置说明（服务器端）：
+#
+# 1. Brotli / Gzip 压缩（必须）
+#    2.6MB 的 main.dart.js 若启用 Brotli 可压缩至 600-800KB。
+#    Nginx: brotli on; brotli_types application/javascript;
+#    Cloudflare: 在 Dashboard → Speed → Optimization 开启 Brotli
+#
+# 2. Cache-Control (已在 web/_headers 配置)
+#    静态资源（main.dart.js, .wasm）设为 max-age=31536000, immutable
+#    使浏览器/CDN 长期缓存，第二次访问零等待。
+#
+# 3. 103 Early Hints（可选，CDN 级优化）
+#    Cloudflare 支持 103 Early Hints，可在 HTML 响应前推送关键资源。
+#    配置: Cloudflare Dashboard → Speed → Optimization → Early Hints
 
 ## 生产构建 Web（自动注入 PWA 版本号，构建后自动恢复占位符）
+## 使用 --web-renderer html 避免 CanvasKit（减少 wasm 下载，首屏更快）
 build-web:
 	@echo "🔖 Injecting production SW version..."
 	SW_VERSION=$$(grep '^version: ' pubspec.yaml | sed 's/version: //g' | tr -d ' \n')-$$(git rev-parse --short HEAD); \
 	sed -i '' "s/{{SW_VERSION}}/$$SW_VERSION/g" web/pwa_sw.js; \
-	fvm flutter build web --release $(PROD); \
+	fvm flutter build web --release $(PROD) --web-renderer html; \
 	git checkout web/pwa_sw.js
-	@echo "✅ Web build complete (SW_VERSION: $$SW_VERSION)"
+	@echo "✅ Web build complete (SW_VERSION: $$SW_VERSION, renderer: html)"
 
 # ══════════════════════════════════════════════════════════════════════════════
 # 🤖 CI/CD Runner 工具
