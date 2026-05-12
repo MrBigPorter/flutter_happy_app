@@ -645,10 +645,10 @@ await apiCall().withRetry(maxRetries: 3, context: 'Upload file');
   - No Android/iOS/Shorebird/Firebase/Telegram — pure H5 deploy
   - Estimated runtime: ~5-8 minutes
 
-## 🎯 Current Task — H5 Deferred Loading Complete (All Modules) (2026-05-12)
+## 🎯 Previous Task — H5 Deferred Loading Complete (All Modules + P5 Remaining 9) (2026-05-12)
 
-**Phase**: H5 Code Splitting — P0~P4 All Done ✅
-**Last Stop**: All 5 planned modules (27 routes total) converted to deferred loading, verified.
+**Phase**: H5 Code Splitting — P0~P5 All Done ✅
+**Last Stop**: All 36 routes converted to deferred loading, verified.
 
 ### Summary
 
@@ -659,7 +659,21 @@ await apiCall().withRetry(maxRetries: 3, context: 'Upload file');
 | P2 Flash Sale | 2 | ✅ Done | Only `isFlashSale` field name |
 | P3 Lucky Draw | 2 | ✅ Done | Only `LuckyDrawPrizeType` model enum |
 | P4 KYC | 3 | ✅ Done | Only types/enums, no page code |
-| **Total** | **27** | **✅ All Verified** | **~6.6MB main → split into part files** |
+| P5 Remaining (补全) | 9 | ✅ Done | 0 page code in main |
+| **Total** | **36** | **✅ All Verified** | **~5.5MB main → split into 120+ part files** |
+
+**P5 — 9 Newly Deferred Routes** ([`app_router.dart`](lib/app/routes/app_router.dart)):
+| Route | Page | Import alias |
+|-------|------|-------------|
+| `/group-room` | `GroupRoomPage` | `_group_room` |
+| `/order/list` | `OrderListPage` | `_order_list` |
+| `/setting` | `SettingPage` | `_setting` |
+| `/product-detail/:id` | `ProductDetailPage` | `_product_detail` |
+| `/product-groups` | `GroupLobbyPage` | `_group_lobby` |
+| `/product/:id/group` | `ProductGroupPage` | `_product_group` |
+| `/me/voucher` | `MyVouchersPage` | `_my_vouchers` |
+| `/group-member` | `GroupMemberPage` | `_group_member` |
+| `/debug/pwa` | `PwaDebugPage` | `_pwa_debug` |
 
 **Key Implementation Details**:
 - **Wrapper**: [`DeferredPage`](lib/app/routes/deferred_page.dart) — StatefulWidget calling `loadLibrary()` in `initState`, shows loading indicator, renders page when loaded
@@ -667,11 +681,12 @@ await apiCall().withRetry(maxRetries: 3, context: 'Upload file');
 - **builder pattern**: Directly return `DeferredPage` without pre-trigger
 - **Extension handling**: Used `hide ExtensionName` or `show ClassName` on deferred imports to comply with Dart restriction on deferred-imported extensions
 - **CI/CD**: [`web_deploy.yml`](.github/workflows/web_deploy.yml) created for H5 independent deployment
+- **Must stay eager (8)**: `home_page`, `product_page`, `me_page`, `login_page`, `oauth_processing_page`, `page_404`, `transaction_ui_model`, `deposit_detail_page` (stub)
 
 **Verification (All Passed)**:
 - [x] `fvm flutter analyze` ✅ (0 errors across all changes)
 - [x] `fvm flutter test` ✅ (83/83 all passed)
-- [x] `fvm flutter build web --release` ✅ (main.dart.js verified: zero page widget code from deferred modules)
+- [x] `fvm flutter build web --release` ✅ (main.dart.js verified: zero page widget code from all 36 deferred routes)
 
 **Background Preload** ([`lib/main.dart`](lib/main.dart)):
 - Chat module preloaded eagerly on app start via `unawaited(_chat.loadLibrary())`

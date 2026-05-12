@@ -3,14 +3,14 @@ import 'dart:async';
 import 'package:bot_toast/bot_toast.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_app/app/page/group_member_page.dart';
-import 'package:flutter_app/app/page/group_room_page.dart';
+import 'package:flutter_app/app/page/group_member_page.dart' deferred as _group_member;
+import 'package:flutter_app/app/page/group_room_page.dart' deferred as _group_room;
 import 'package:flutter_app/app/page/kyc_verify/kyc_verify_page.dart' deferred as _kyc_verify;
-import 'package:flutter_app/app/page/order_list_page.dart';
+import 'package:flutter_app/app/page/order_list_page.dart' deferred as _order_list;
 import 'package:flutter_app/app/page/page_404.dart';
 import 'package:flutter_app/app/page/payment/payment_page.dart' deferred as _payment hide PagePaymentParamsExt;
-import 'package:flutter_app/app/page/product_group_page.dart';
-import 'package:flutter_app/app/page/setting_page.dart';
+import 'package:flutter_app/app/page/product_group_page.dart' deferred as _product_group;
+import 'package:flutter_app/app/page/setting_page.dart' deferred as _setting;
 import 'package:flutter_app/app/page/treasure_coins_page.dart' deferred as _treasure_coins;
 import 'package:flutter_app/app/routes/route_auth_config.dart';
 import 'package:flutter_app/app/routes/transitions.dart';
@@ -36,7 +36,7 @@ import 'package:flutter_app/ui/chat/group/group_member_select_page.dart' deferre
 import 'package:flutter_app/ui/chat/new_friend_page.dart' deferred as _new_friend;
 import 'package:flutter_app/app/page/deposit/deposit_page.dart' deferred as _deposit show DepositPage;
 import 'package:flutter_app/app/page/deposit_detail_page.dart';
-import 'package:flutter_app/app/page/group_lobby/group_lobby_page.dart';
+import 'package:flutter_app/app/page/group_lobby/group_lobby_page.dart' deferred as _group_lobby;
 import 'package:flutter_app/app/page/guide_page.dart';
 import 'package:flutter_app/app/page/home_page.dart';
 import 'package:flutter_app/app/page/product_page.dart';
@@ -46,8 +46,8 @@ import 'package:flutter_app/app/page/me_components/me_page.dart';
 import 'package:flutter_app/app/page/login_page/login_page.dart';
 import 'package:flutter_app/app/page/lucky_draw/lucky_draw_page.dart' deferred as _lucky_draw;
 import 'package:flutter_app/app/page/oauth_processing_page/oauth_processing_page.dart';
-import 'package:flutter_app/app/page/pwa_debug_page.dart';
-import 'package:flutter_app/app/page/product_detail_page.dart';
+import 'package:flutter_app/app/page/pwa_debug_page.dart' deferred as _pwa_debug;
+import 'package:flutter_app/app/page/product_detail_page.dart' deferred as _product_detail;
 import 'package:flutter_app/app/page/withdraw/withdraw_page.dart' deferred as _withdraw hide WithdrawPageUI;
 import 'package:flutter_app/app/page/lucky_draw/lucky_draw_wheel_page.dart' deferred as _lucky_draw_wheel;
 import 'package:flutter_app/ui/chat/group/group_request_list/group_request_list_page.dart' deferred as _group_request;
@@ -57,7 +57,7 @@ import '../page/deposit/deposit_result_page.dart' deferred as _deposit_result;
 import '../page/deposit/web_popup_auto_close.dart' deferred as _web_popup_auto_close;
 import '../page/kyc_status_page.dart' deferred as _kyc_status;
 import '../page/liveness_debug_page.dart' deferred as _liveness_debug;
-import '../page/my_vouchers_page.dart';
+import '../page/my_vouchers_page.dart' deferred as _my_vouchers;
 import '../page/flash_sale/flash_sale_page.dart' deferred as _flash_sale;
 import '../page/flash_sale/flash_sale_product_page.dart' deferred as _flash_sale_product;
 import 'extra_codec.dart';
@@ -366,11 +366,15 @@ class AppRouter {
           path: '/product-detail/:id',
           parentNavigatorKey: NavHub.key,
           pageBuilder: (ctx, state) {
+            unawaited(_product_detail.loadLibrary());
             final id = state.pathParameters['id']!;
             final queryParams = state.uri.queryParameters;
             return fxPage(
               key: state.pageKey,
-              child: ProductDetailPage(productId: id, queryParams: queryParams),
+              child: DeferredPage(
+                loadLibrary: _product_detail.loadLibrary,
+                builder: () => _product_detail.ProductDetailPage(productId: id, queryParams: queryParams),
+              ),
               fx: RouteFx.zoomIn,
             );
           },
@@ -422,10 +426,14 @@ class AppRouter {
           name: 'productGroup',
           path: '/product/:id/group',
           pageBuilder: (ctx, state) {
+            unawaited(_product_group.loadLibrary());
             final id = state.pathParameters['id'] ?? '';
             return fxPage(
               key: state.pageKey,
-              child: ProductGroupPage(treasureId: id),
+              child: DeferredPage(
+                loadLibrary: _product_group.loadLibrary,
+                builder: () => _product_group.ProductGroupPage(treasureId: id),
+              ),
               fx: RouteFx.slideUp,
             );
           },
@@ -434,9 +442,13 @@ class AppRouter {
           name: 'meVoucher',
           path: '/me/voucher',
           pageBuilder: (ctx, state) {
+            unawaited(_my_vouchers.loadLibrary());
             return fxPage(
               key: state.pageKey,
-              child: MyVouchersPage(),
+              child: DeferredPage(
+                loadLibrary: _my_vouchers.loadLibrary,
+                builder: () => _my_vouchers.MyVouchersPage(),
+              ),
               fx: RouteFx.slideUp,
             );
           },
@@ -445,10 +457,14 @@ class AppRouter {
           name: 'groupRoom',
           path: '/group-room',
           pageBuilder: (ctx, state) {
+            unawaited(_group_room.loadLibrary());
             final id = state.uri.queryParameters['groupId'];
             return fxPage(
               key: state.pageKey,
-              child: GroupRoomPage(groupId: id ?? ''),
+              child: DeferredPage(
+                loadLibrary: _group_room.loadLibrary,
+                builder: () => _group_room.GroupRoomPage(groupId: id ?? ''),
+              ),
               fx: RouteFx.slideUp,
             );
           },
@@ -457,10 +473,14 @@ class AppRouter {
           name: 'groupMember',
           path: '/group-member',
           pageBuilder: (ctx, state) {
+            unawaited(_group_member.loadLibrary());
             final id = state.uri.queryParameters['groupId'] ?? '';
             return fxPage(
               key: state.pageKey,
-              child: GroupMemberPage(groupId: id),
+              child: DeferredPage(
+                loadLibrary: _group_member.loadLibrary,
+                builder: () => _group_member.GroupMemberPage(groupId: id),
+              ),
               fx: RouteFx.slideUp,
             );
           },
@@ -498,7 +518,10 @@ class AppRouter {
           path: '/order/list',
           builder: (context, state) {
             final queryParams = state.uri.queryParameters;
-            return OrderListPage(args: queryParams);
+            return DeferredPage(
+              loadLibrary: _order_list.loadLibrary,
+              builder: () => _order_list.OrderListPage(args: queryParams),
+            );
           },
         ),
         GoRoute(
@@ -509,12 +532,18 @@ class AppRouter {
         GoRoute(
           name: 'setting',
           path: '/setting',
-          builder: (context, state) => SettingPage(),
+          builder: (context, state) => DeferredPage(
+            loadLibrary: _setting.loadLibrary,
+            builder: () => _setting.SettingPage(),
+          ),
         ),
         GoRoute(
           name: 'pwaDebug',
           path: '/debug/pwa',
-          builder: (context, state) => const PwaDebugPage(),
+          builder: (context, state) => DeferredPage(
+            loadLibrary: _pwa_debug.loadLibrary,
+            builder: () => _pwa_debug.PwaDebugPage(),
+          ),
         ),
         GoRoute(
           name: 'luckyDraw',
@@ -667,10 +696,14 @@ class AppRouter {
           name: 'product-groups-detail',
           path: '/product-groups',
           pageBuilder: (ctx, state) {
+            unawaited(_group_lobby.loadLibrary());
             String? id = state.uri.queryParameters['treasureId'];
             return fxPage(
               key: state.pageKey,
-              child: GroupLobbyPage(treasureId: id),
+              child: DeferredPage(
+                loadLibrary: _group_lobby.loadLibrary,
+                builder: () => _group_lobby.GroupLobbyPage(treasureId: id),
+              ),
               fx: RouteFx.slideUp,
             );
           },
