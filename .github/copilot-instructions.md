@@ -771,3 +771,27 @@ await apiCall().withRetry(maxRetries: 3, context: 'Upload file');
 - [x] **Fix 1** ([`web/index.html`](web/index.html:598)): Removed immediate `syncUpdateReady()` call; deferred `reg.update()` to 30 seconds after page load via `setTimeout`. Prevents update detection on fresh page loads from external redirects.
 - [x] **Fix 2** ([`lib/components/pwa_banners.dart`](lib/components/pwa_banners.dart:161)): Added 15-second minimum page visit duration check before showing the banner. Uses `DateTime.now()` tracking and a deferred `Timer` for delayed recheck.
 - [x] **Verification**: `fvm flutter analyze` ✅ (no new issues) | `fvm flutter test` ✅ (83/83 all passed)
+
+## 🎯 Current Task — Market & Me Deferred Loading with Skeleton Transition (2026-05-12)
+
+**Phase**: Deferred Loading Enhancement — Web Performance
+**Goal**: Convert ProductPage (Market tab) and MePage (Profile tab) from eager imports to deferred imports with skeleton placeholders and fade-in transitions.
+
+### Changes Made
+
+- [x] **Skeleton theme-aware colors** ([`lib/components/skeleton.dart`](lib/components/skeleton.dart)): Replaced hardcoded `Colors.grey.shade300` with dynamic colors derived from `context.bgPrimary` design token, blended with lighter/darker shades for shimmer effect. Light mode: white-based; dark mode: subtle white overlay. Matches the index.html app shell style.
+- [x] **DeferredPage skeleton support** ([`lib/app/routes/deferred_page.dart`](lib/app/routes/deferred_page.dart)): Added optional `skeletonBuilder` parameter. When provided, shows custom skeleton during chunk loading instead of `CircularProgressIndicator`. Added `_FadeIn` widget (300ms easeInOut fade transition) for smooth chunk-to-page transition.
+- [x] **ProductPageSkeleton** ([`lib/app/page/product_page_skeleton.dart`](lib/app/page/product_page_skeleton.dart)): NEW — Public skeleton widget matching Market tab layout: 4 category pill skeletons + 10 product grid item skeletons using `ProductItemSkeleton`.
+- [x] **MePageSkeleton** ([`lib/app/page/me_components/me_page_skeleton.dart`](lib/app/page/me_components/me_page_skeleton.dart)): NEW — Public skeleton widget matching Profile tab layout: avatar circle + user info row, order management card (4 items), wallet card (3 items), menu grid (2×4 items). Uses `Skeleton.react()` with theme-aware colors.
+- [x] **Deferred imports** ([`lib/app/routes/app_router.dart`](lib/app/routes/app_router.dart)):
+  - Converted `product_page.dart` → `deferred as _product` with `ProductPageSkeleton` skeleton
+  - Converted `me_page.dart` → `deferred as _me` with `MePageSkeleton` skeleton
+  - Both routes use `DeferredPage(skeletonBuilder: ...)` for loading state + fadeIn transition
+- [x] **Verification**: `fvm flutter analyze` ✅ (no new errors/warnings from modified files) | `fvm flutter test` ✅ (83/83 all passed)
+
+### How it works
+
+1. When user switches to Market or Profile tab, `DeferredPage` immediately shows the corresponding skeleton (same visual layout as the real page, but with shimmer placeholders).
+2. Meanwhile, the `.part.js` chunk downloads in the background via `loadLibrary()`.
+3. Once the chunk is ready (typically 100-300ms), `DeferredPage` swaps the skeleton with the real page using a 300ms easeInOut fade animation — no layout shift, no flash.
+4. The skeleton colors automatically adapt to light/dark mode via design tokens.

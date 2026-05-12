@@ -18,6 +18,8 @@ import 'package:flutter_app/core/models/payment.dart';
 import 'package:flutter_app/core/services/auth/global_oauth_handler.dart';
 import 'package:flutter_app/core/store/auth/auth_provider.dart';
 import 'package:flutter_app/app/routes/deferred_page.dart';
+import 'package:flutter_app/app/page/product_page_skeleton.dart';
+import 'package:flutter_app/app/page/me_components/me_page_skeleton.dart';
 import 'package:flutter_app/ui/chat/chat_search/chat_search_page.dart' deferred as _chat_search;
 import 'package:flutter_app/ui/chat/conversation_list_page.dart' deferred as _chat;
 import 'package:flutter_app/ui/chat/models/conversation.dart';
@@ -39,10 +41,10 @@ import 'package:flutter_app/app/page/deposit_detail_page.dart';
 import 'package:flutter_app/app/page/group_lobby/group_lobby_page.dart' deferred as _group_lobby;
 import 'package:flutter_app/app/page/guide_page.dart';
 import 'package:flutter_app/app/page/home_page.dart';
-import 'package:flutter_app/app/page/product_page.dart';
+import 'package:flutter_app/app/page/product_page.dart' deferred as _product;
 import 'package:flutter_app/app/page/transaction/transaction_ui_model.dart';
 import 'package:flutter_app/app/page/transaction_record_page.dart' deferred as _transaction_record;
-import 'package:flutter_app/app/page/me_components/me_page.dart';
+import 'package:flutter_app/app/page/me_components/me_page.dart' deferred as _me;
 import 'package:flutter_app/app/page/login_page/login_page.dart';
 import 'package:flutter_app/app/page/lucky_draw/lucky_draw_page.dart' deferred as _lucky_draw;
 import 'package:flutter_app/app/page/oauth_processing_page/oauth_processing_page.dart';
@@ -393,7 +395,11 @@ class AppRouter {
             GoRoute(
               name: 'product',
               path: '/product',
-              builder: (context, state) => ProductPage(),
+              builder: (context, state) => DeferredPage(
+                loadLibrary: _product.loadLibrary,
+                skeletonBuilder: () => const ProductPageSkeleton(),
+                builder: () => _product.ProductPage(),
+              ),
             ),
             GoRoute(
               name: 'conversations',
@@ -406,7 +412,11 @@ class AppRouter {
             GoRoute(
               name: 'me',
               path: '/me',
-              builder: (context, state) => const MePage(),
+              builder: (context, state) => DeferredPage(
+                loadLibrary: _me.loadLibrary,
+                skeletonBuilder: () => const MePageSkeleton(),
+                builder: () => _me.MePage(),
+              ),
             ),
           ],
         ),
