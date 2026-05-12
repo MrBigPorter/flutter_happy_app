@@ -692,6 +692,33 @@ await apiCall().withRetry(maxRetries: 3, context: 'Upload file');
 - Chat module preloaded eagerly on app start via `unawaited(_chat.loadLibrary())`
 - Other modules loaded on-demand when user navigates to their routes
 
+## 🎯 Current Task — PWA SW Pre-caching of Deferred .part.js Files (2026-05-12)
+
+**Phase**: H5 Loading Speed Optimization — Phase A ✅
+**Last Stop**: All 180 deferred `.part.js` files pre-cached in PWA Service Worker.
+
+### Changes Made
+
+| File | Change |
+|------|--------|
+| [`tool/inject_part_files.sh`](tool/inject_part_files.sh) | **NEW** — Build-time script that scans `build/web/` for `main.dart.js_*.part.js` files and injects them into SW PRECACHE_URLS. Uses Python for cross-platform compat (macOS + Linux CI). |
+| [`web/pwa_sw.js`](web/pwa_sw.js:42) | Added `{{PART_FILES}}` placeholder in `PRECACHE_URLS` array (line 42), with comments explaining injection mechanism |
+| [`.github/workflows/web_deploy.yml`](.github/workflows/web_deploy.yml:133) | Added **Phase 5.5** step after build: runs `bash tool/inject_part_files.sh` |
+| [`.github/workflows/full_deploy.yml`](.github/workflows/full_deploy.yml:142) | Added **Phase 5.5** step after build: runs `bash tool/inject_part_files.sh` |
+
+### Verification
+- ✅ Script injects all 180 part files correctly (192 total PRECACHE_URLS entries)
+- ✅ Script is idempotent — skips if placeholder already replaced
+- ✅ PRECACHE_URLS array parses as valid JS
+
+### How it works
+1. CI runs `flutter build web --release` → generates `main.dart.js_*.part.js` files
+2. Phase 5.5 runs `bash tool/inject_part_files.sh` → scans `build/web/`, generates JS array, replaces `{{PART_FILES}}` in `build/web/pwa_sw.js`
+3. Cloudflare Pages deploys `build/web/` → users get SW that pre-caches all deferred chunks on install
+4. **Result**: Second visit+ navigation to deferred routes is instant (no network fetch for `.part.js`)
+
+---
+
 ## 🎯 Current Task — PWA Update Banner False Detection on Deposit Redirect (2026-05-12)
 
 **Phase**: Bug Fix — PWA UX

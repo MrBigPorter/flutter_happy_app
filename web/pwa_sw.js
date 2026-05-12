@@ -23,7 +23,7 @@ const SAFE_API_PREFIXES = [
     '/api/v1/banner',
 ];
 
-// App shell resources to pre-cache on install
+// App shell resources to pre-cache on SW install
 const PRECACHE_URLS = [
     '/',
     '/offline.html',
@@ -38,6 +38,7 @@ const PRECACHE_URLS = [
     '/flutter.js',
     '/flutter_bootstrap.js',
     '/main.dart.js',
+    // DEFERRED_PART_FILES_INJECT_HERE — injected by tool/inject_part_files.sh after build
 ];
 
 // ── Install: pre-cache app shell ──────────────────────────────────────────────
@@ -230,4 +231,3 @@ self.addEventListener('fetch', (event) => {
 
 // ── Push Notifications (delegate to Firebase SW) ─────────────────────────────
 // Firebase messaging is registered at its own scope, no handling needed here.
-

@@ -128,6 +128,12 @@ jobs:
           flutter build web --release \
             --dart-define-from-file=${{ env.env_file }}
 
+      # ── Phase 5.5: Inject Deferred Part Files into SW ─────────
+      - name: 📦 5.5. Inject Deferred Part Files into PWA SW
+        run: |
+          bash tool/inject_part_files.sh
+          echo "✅ .part.js files injected into build/web/pwa_sw.js"
+
       # ── Phase 6: Deploy to Cloudflare Pages ────────────────────
       - name: ☁️ 6. Deploy to Cloudflare Pages
         uses: cloudflare/pages-action@v1
