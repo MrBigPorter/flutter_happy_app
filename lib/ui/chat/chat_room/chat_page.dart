@@ -130,7 +130,30 @@ class _ChatPageState extends ConsumerState<ChatPage> with ChatPageLogic {
                 builder: (context) {
                   // Empty state: Only display this when initialization is completely done
                   if (messages.isEmpty && !chatState.isInitializing) {
-                    return Center(child: Text("No messages yet", style: TextStyle(color: Colors.grey[400])));
+                    return Center(
+                      child: GestureDetector(
+                        onTap: () {
+                          final notifier = ref.read(chatViewModelProvider(widget.conversationId).notifier);
+                          notifier.performIncrementalSync();
+                        },
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.inbox_outlined, size: 48, color: Colors.grey[400]),
+                            SizedBox(height: 12),
+                            Text(
+                              "No messages yet",
+                              style: TextStyle(color: Colors.grey[400], fontSize: 15),
+                            ),
+                            SizedBox(height: 8),
+                            Text(
+                              "Tap to retry",
+                              style: TextStyle(color: Colors.grey[500], fontSize: 13),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
                   }
 
                   return Stack(

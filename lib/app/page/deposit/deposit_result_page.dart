@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_app/common.dart';
 import 'package:flutter_app/core/providers/wallet_provider.dart';
+import 'package:flutter_app/core/services/customer_service/customer_service_helper.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -346,7 +347,7 @@ class _DepositResultPageState extends ConsumerState<DepositResultPage> {
         ),
         SizedBox(height: 12.h),
         TextButton(
-          onPressed: _onExit,
+          onPressed: () => CustomerServiceHelper.startChat(),
           child: Text(
             "deposit_result_contact_support".tr(),
             style: TextStyle(color: context.textSecondary700),

@@ -205,6 +205,21 @@ PreferredSizeWidget _buildAppBar(
         ),
       ],
 
+      // 3. Refresh / Re-Sync Button (shown when not actively syncing)
+      if (!isSyncing)
+        IconButton(
+          icon: Icon(
+            Icons.refresh,
+            color: context.textPrimary900,
+            size: 22.sp,
+          ),
+          tooltip: 'Refresh',
+          onPressed: () {
+            // Read the ViewModel notifier and trigger incremental sync
+            final notifier = ref.read(chatViewModelProvider(conversationId).notifier);
+            notifier.performIncrementalSync();
+          },
+        ),
 
       // 4. More Actions (Profile/Settings)
       IconButton(

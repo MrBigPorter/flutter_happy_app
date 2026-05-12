@@ -2,9 +2,10 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_app/core/api/lucky_api.dart';
+import 'package:flutter_app/core/store/user_store.dart';
 import '../models/chat_ui_model.dart';
 import '../models/conversation.dart';
-import '../models/chat_ui_model_mapper.dart';
+import '../providers/conversation_provider.dart';
 import '../repository/message_repository.dart';
 import '../services/database/local_database_service.dart';
 
@@ -54,6 +55,17 @@ class ChatViewModel extends StateNotifier<ChatListState> {
   }
 
   void _init() async {
+    // Step 0: Ensure database is initialized before any DB operations
+    // Without this, getHistory() and performIncrementalSync() silently fail
+    // when entering ChatPage directly (e.g. via CustomerServiceHelper.startChat())
+    // without first going through ConversationList which initializes the DB.
+    try {
+      final currentUserId = ref.read(userProvider)?.id;
+      if (currentUserId != null) {
+        await _repo.initDatabase(currentUserId);
+      }
+    } catch (_) {}
+
     // Step 1: Pre-warm from local DB immediately so the first frame renders real content
     // instead of an empty skeleton. This eliminates the blank-screen-with-spinner on entry.
     try {
@@ -87,6 +99,9 @@ class ChatViewModel extends StateNotifier<ChatListState> {
   // Core: Incremental Sync Algorithm (Gap Detection & Healing)
   // ============================================================
 
+  int _syncRetryCount = 0;
+  static const int _maxSyncRetries = 3;
+
   /// Synchronizes local message history with the server, filling missing sequence gaps
   Future<void> performIncrementalSync() async {
     if (!mounted) return;
@@ -109,6 +124,23 @@ class ChatViewModel extends StateNotifier<ChatListState> {
       );
 
       if (!mounted) return;
+
+      // 2b. Retry mechanism for new conversations (server may not be ready yet)
+      // Newly created business/support conversations may have no messages on the
+      // first fetch because the server-side initialization (welcome message, etc.)
+      // hasn't completed yet. We retry with a delay to give the server time.
+      if (response.list.isEmpty && localMaxSeqId == 0 && _syncRetryCount < _maxSyncRetries) {
+        _syncRetryCount++;
+        debugPrint("[Sync] New conversation, empty response from server. "
+            "Retry $_syncRetryCount of $_maxSyncRetries in 2s...");
+        if (mounted) state = state.copyWith(isInitializing: false);
+        await Future.delayed(const Duration(seconds: 2));
+        if (!mounted) return;
+        return performIncrementalSync();
+      }
+
+      // Reset retry counter on success
+      _syncRetryCount = 0;
 
       if (response.list.isNotEmpty) {
         final firstMsg = response.list.first;
@@ -133,6 +165,16 @@ class ChatViewModel extends StateNotifier<ChatListState> {
         } else {
           // Scenario B: No gap or fresh database
           await _saveApiMessages(response.list);
+        }
+
+        // 4. Invalidate conversation list so the new conversation appears immediately
+        // when the user navigates back to the conversation list page.
+        // This handles the case where CustomerServiceHelper.startChat() creates a
+        // new business/support conversation but doesn't have ref access to invalidate.
+        try {
+          ref.invalidate(conversationListProvider);
+        } catch (_) {
+          // Safeguard: invalidation failures are non-critical
         }
       }
 

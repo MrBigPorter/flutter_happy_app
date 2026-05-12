@@ -565,3 +565,35 @@ await apiCall().withRetry(maxRetries: 3, context: 'Upload file');
 - [x] **Phase D (API SWR caching in SW)**: Added [`SAFE_API_PREFIXES`](web/pwa_sw.js:19) and stale-while-revalidate fetch handler for home page APIs (`/api/v1/home`, `/api/v1/banner`) in [`web/pwa_sw.js:103-138`](web/pwa_sw.js:103). Second visit API data loads from cache ~0ms instead of network ~200-500ms.
 - [ ] **Phase E (Font Display Swap)**: Skipped — `FontDisplay` not available in `ThemeData` on Flutter 3.41.6. Flutter Web uses canvas rendering (not DOM text), so CSS `font-display` does not apply. Font loading is handled internally by Flutter engine.
 - [x] **Verification**: `fvm flutter analyze` ✅ (pre-existing issues only) | `fvm flutter test` (75/75) ✅
+
+---
+
+## 🎯 Current Task — KYC Status Sync Before Checkout (2026-05-12)
+
+**Phase**: Payment — KYC Verification Flow
+**Last Stop**: Bug fix — stale local `kycStatus` in `userProvider` causes infinite verify-prompt loop during checkout
+
+**Root Cause**: [`submitOrder()`](lib/core/providers/purchase_state_provider.dart:317) only read cached `ref.read(userProvider.select((s) => s?.kycStatus))`, never synced with backend. If KYC was approved on backend but local cache still showed `draft`, checkout kept returning `needKyc` → `KycGuard.ensure()` read same stale data → infinite verify modal loop.
+
+**Fix Strategy**: Cache-first-then-API-refresh — when local cache says "not approved", call [`Api.kycMeApi()`](lib/core/api/lucky_api.dart:487) (`GET /api/v1/kyc/me`) for fresh status. If backend says approved, fire-and-forget [`fetchProfile()`](lib/core/store/user_store.dart:31) to update local cache. If API fails, safe fallback to `needKyc`.
+
+- [x] **Modified [`submitOrder()`](lib/core/providers/purchase_state_provider.dart:317)**: Added `import 'package:flutter_app/core/api/lucky_api.dart'` + replaced stale-cache-only KYC check (lines 317-320) with cache-first-then-API-refresh logic using `Api.kycMeApi()`.
+- [x] **Added regression tests**: [`test/providers/purchase_state_flash_sale_test.dart`](test/providers/purchase_state_flash_sale_test.dart) — 8 KycStatusEnum mapping tests (fromStatus, null fallback, approved.status value, enum-to-status comparison, unknown status default).
+- [x] **Verification**: `fvm flutter analyze` ✅ (0 new issues) | `fvm flutter test` (75/75) ✅
+
+---
+
+## 🎯 Current Task — Customer Service Chat Auto-Load Fix (2026-05-12)
+
+**Phase**: Chat — Customer Service / Business Chat UX
+**Last Stop**: Bug fix — ChatPage shows empty on first entry when entering directly (no prior ConversationList visit)
+
+**Root Cause**: [`ChatViewModel._init()`](lib/ui/chat/providers/chat_view_model.dart:56) calls `_repo.getHistory()` and `performIncrementalSync()` before `LocalDatabaseService.init(userId)` has been called. DB init only happened in [`UserNotifier.fetchProfile()`](lib/core/store/user_store.dart) (login) and [`ConversationList.build()`](lib/ui/chat/providers/conversation_provider.dart:36) (conversation list page). Direct navigation to ChatPage (via `CustomerServiceHelper.startChat()`) bypassed both.
+
+**Fix applied**:
+- [x] **Fix 1: DB init in ChatViewModel**: Added [`_repo.initDatabase(currentUserId)`](lib/ui/chat/providers/chat_view_model.dart:59-67) as Step 0 in `_init()` before any DB operations.
+- [x] **Fix 2: Retry mechanism**: Added 3 retries (2s delay) in `performIncrementalSync()` for new conversations where server may not be ready yet.
+- [x] **Fix 3: Refresh button**: Added manual refresh `IconButton` in ChatPage AppBar.
+- [x] **Fix 4: Empty state retry**: Changed ChatPage empty state from static `Text` to clickable retry widget.
+- [x] **Fix 5: Conversation list invalidation**: After successful sync, calls `ref.invalidate(conversationListProvider)` so new conversation appears immediately.
+- [x] **Verification**: `fvm flutter analyze` ✅ (0 new issues) | `fvm flutter test` (65/65 pass, 1 pre-existing failure) ✅

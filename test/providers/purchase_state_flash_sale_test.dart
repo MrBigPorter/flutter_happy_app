@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_app/core/models/kyc.dart';
 import 'package:flutter_app/core/providers/purchase_state_provider.dart';
 
 // ---------------------------------------------------------------------------
@@ -104,6 +105,50 @@ void main() {
     test('subtotal = unitAmount * entries', () {
       final s = _makeState(groupPrice: 200.0, isGroupBuy: true).copyWith(entries: 3);
       expect(s.subtotal, 600.0);
+    });
+  });
+
+  /// ---------------------------------------------------------------------------
+  /// Regression tests: KYC status handling in submitOrder flow
+  /// ---------------------------------------------------------------------------
+  group('KycStatusEnum mapping', () {
+    test('fromStatus(4) returns approved', () {
+      expect(KycStatusEnum.fromStatus(4), KycStatusEnum.approved);
+    });
+
+    test('fromStatus(0) returns draft (not approved)', () {
+      expect(KycStatusEnum.fromStatus(0), KycStatusEnum.draft);
+      expect(KycStatusEnum.fromStatus(0) == KycStatusEnum.approved, isFalse);
+    });
+
+    test('fromStatus(1) returns reviewing (not approved)', () {
+      expect(KycStatusEnum.fromStatus(1), KycStatusEnum.reviewing);
+      expect(KycStatusEnum.fromStatus(1) == KycStatusEnum.approved, isFalse);
+    });
+
+    test('fromStatus(2) returns rejected (not approved)', () {
+      expect(KycStatusEnum.fromStatus(2), KycStatusEnum.rejected);
+      expect(KycStatusEnum.fromStatus(2) == KycStatusEnum.approved, isFalse);
+    });
+
+    test('fromStatus(null-like 0) defaults to draft', () {
+      // Simulates the `?? 0` fallback when userProvider returns null
+      expect(KycStatusEnum.fromStatus(0), KycStatusEnum.draft);
+    });
+
+    test('approved status value is 4', () {
+      expect(KycStatusEnum.approved.status, 4);
+    });
+
+    test('KycStatusEnum.approved matches its own status value', () {
+      // This validates the comparison pattern used in submitOrder():
+      //   freshKyc.kycStatus != KycStatusEnum.approved.status
+      expect(KycStatusEnum.approved.status, KycStatusEnum.approved.status);
+      expect(KycStatusEnum.fromStatus(KycStatusEnum.approved.status), KycStatusEnum.approved);
+    });
+
+    test('unknown status defaults to draft', () {
+      expect(KycStatusEnum.fromStatus(99), KycStatusEnum.draft);
     });
   });
 }

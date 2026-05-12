@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_app/core/api/lucky_api.dart';
 import 'package:flutter_app/core/models/kyc.dart';
 import 'package:flutter_app/core/models/payment.dart';
 import 'package:flutter_app/core/providers/address_provider.dart';
@@ -314,9 +315,23 @@ class PurchaseNotifier extends StateNotifier<PurchaseState> {
       return PurchaseSubmitResult.error(PurchaseSubmitError.salesEnded, message: 'Sales have ended.');
     }
 
-    final kycStatus = ref.read(userProvider.select((s) => s?.kycStatus));
-    if (KycStatusEnum.fromStatus(kycStatus ?? 0) != KycStatusEnum.approved) {
-      return PurchaseSubmitResult.error(PurchaseSubmitError.needKyc);
+    // ── KYC Check: local cache first, refresh from backend if stale ──
+    final localKycStatus = ref.read(userProvider.select((s) => s?.kycStatus));
+    if (KycStatusEnum.fromStatus(localKycStatus ?? 0) == KycStatusEnum.approved) {
+      // Local cache says approved — skip API call
+    } else {
+      // Local cache is stale — fetch fresh status from backend
+      try {
+        final freshKyc = await Api.kycMeApi();
+        if (freshKyc.kycStatus != KycStatusEnum.approved.status) {
+          return PurchaseSubmitResult.error(PurchaseSubmitError.needKyc);
+        }
+        // Backend says approved — fire-and-forget profile refresh to update local cache
+        ref.read(userProvider.notifier).fetchProfile();
+      } catch (_) {
+        // API failed — safe fallback: show verify prompt
+        return PurchaseSubmitResult.error(PurchaseSubmitError.needKyc);
+      }
     }
     final address = await ref.read(selectedAddressProvider);
     if (address == null) return PurchaseSubmitResult.error(PurchaseSubmitError.noAddress);

@@ -18,23 +18,52 @@ class _PaymentWebViewWebState extends State<PaymentWebViewPage> {
   StreamSubscription<web.MessageEvent>? _messageSubscription;
 
   @override
+  void initState() {
+    super.initState();
+    // Auto-open popup on init
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _openPopup();
+    });
+  }
+
+  @override
   void dispose() {
     _checkTimer?.cancel();
     _messageSubscription?.cancel();
     super.dispose();
   }
 
+  void _openPopup() {
+    _popupWindow = web.window.open(widget.url, '_blank');
+    _startWebCheck();
+  }
+
   void _startWebCheck() {
     _checkTimer?.cancel();
     _messageSubscription?.cancel();
+
+    // Listen for structured postMessage from payment-redirect.html
     _messageSubscription = web.window.onMessage.listen((web.MessageEvent event) {
-      if (event.data?.dartify() == 'payment_success') {
-        _messageSubscription?.cancel(); _checkTimer?.cancel(); _popupWindow?.close(); _goToResult();
+      final data = event.data?.dartify();
+      if (data is Map && data['type'] == 'payment_redirect') {
+        _handlePaymentComplete();
       }
     });
+
+    // Poll: when popup is manually closed, go to result page
     _checkTimer = Timer.periodic(const Duration(seconds: 2), (timer) {
-      if (_popupWindow != null && _popupWindow!.closed) { timer.cancel(); _goToResult(); }
+      if (_popupWindow != null && _popupWindow!.closed) {
+        timer.cancel();
+        _goToResult();
+      }
     });
+  }
+
+  void _handlePaymentComplete() {
+    _messageSubscription?.cancel();
+    _checkTimer?.cancel();
+    _popupWindow?.close();
+    _goToResult();
   }
 
   void _goToResult() {
@@ -57,7 +86,7 @@ class _PaymentWebViewWebState extends State<PaymentWebViewPage> {
             const SizedBox(height: 32),
             ElevatedButton.icon(
               icon: const Icon(Icons.open_in_new),
-              onPressed: () { _popupWindow = web.window.open(widget.url, '_blank'); _startWebCheck(); },
+              onPressed: _openPopup,
               label: const Text("Re-open Payment Window"),
             ),
             TextButton(onPressed: _goToResult, child: const Text("I have paid, check status now")),
