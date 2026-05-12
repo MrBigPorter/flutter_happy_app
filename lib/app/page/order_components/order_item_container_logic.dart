@@ -40,12 +40,15 @@ class OrderItemLogic {
   }
 
   /// View Prize/Reward Details
-  static void handleViewRewardDetails(BuildContext context, OrderItem item) {
+  static void handleViewRewardDetails(BuildContext context, WidgetRef ref, OrderItem item) {
+    // 预取订单详情数据，让 60s 缓存生效，详情页打开时数据即就绪
+    ref.read(orderDetailProvider(item.orderId));
     Navigator.of(context).push(
       TransparentFadeRoute(
         child: OrderDetailPage(
           orderId: item.orderId,
           imageList: [item.treasure.treasureCoverImg],
+          blurhash: item.treasure.blurhash,
           onClose: () => Navigator.of(context).pop(),
         ),
       ),

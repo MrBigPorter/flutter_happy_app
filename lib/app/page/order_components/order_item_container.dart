@@ -105,7 +105,7 @@ class OrderItemContainer extends ConsumerWidget {
                         item: item,
                         onRequestRefund: () => OrderItemLogic.handleRequestRefund(context, ref, item, onRefresh),
                         onViewFriends: () => OrderItemLogic.handleViewFriends(item),
-                        onViewRewardDetails: () => OrderItemLogic.handleViewRewardDetails(context, item),
+                        onViewRewardDetails: () => OrderItemLogic.handleViewRewardDetails(context, ref, item),
                         onTeamUp: () => OrderItemLogic.handleTeamUp(item),
                       ),
                     ],

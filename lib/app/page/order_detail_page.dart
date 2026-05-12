@@ -28,12 +28,14 @@ class OrderDetailPage extends ConsumerStatefulWidget {
   final String orderId;
   final List<String> imageList;
   final VoidCallback onClose;
+  final String? blurhash;
 
   const OrderDetailPage({
     super.key,
     required this.orderId,
     required this.imageList,
     required this.onClose,
+    this.blurhash,
   });
 
   @override
@@ -162,6 +164,7 @@ class _OrderDetailPageState extends ConsumerState<OrderDetailPage> {
               height: 356.w,
               showIndicator: true,
               borderRadius: 0,
+              blurhash: widget.blurhash,
             ),
           ),
         );
