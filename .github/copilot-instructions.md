@@ -850,4 +850,39 @@ await apiCall().withRetry(maxRetries: 3, context: 'Upload file');
 - `fvm flutter test`: 83/83 passed
 - `flutter build web --release`: ✅ succeeded
 - `bash tool/inject_part_files.sh`: ✅ 275 .part.js files injected into pwa_sw.js
-- **Key lesson**: `window.__flutter = {renderer: 'html'}` is dead code in Flutter 3.22+. The renderer is determined by the build output (`_flutter.buildConfig.builds[]` in `flutter_bootstrap.js`), not by a JS global. To change the renderer, pass `--web-renderer=html` at **build time**, not via post-build patching.
+- **Key lesson**: `window.__flutter = {renderer: 'html'}` is dead code in Flutter 3.22+. The renderer is determined by the build output (`_flutter.buildConfig.builds[]` in `flutter_bootstrap.js`), not by a JS global. Additionally, in Flutter 3.41.6, `--web-renderer` CLI flag was completely removed — renderer is now determined internally by the build tool.
+
+## 🎯 Current Task — Web Performance Phase 2+3 (2026-05-12)
+
+### Changes Made
+
+**Phase 1 (P0) — HTML Renderer: NOT FEASIBLE**
+- `--web-renderer` CLI flag is completely removed in Flutter 3.41.6 (removed since Flutter 3.22+)
+- Renderer is now determined internally by the build tool; CanvasKit is the default
+- CI/CD workflow comments updated to document this — no `--web-renderer` flag added
+
+**Phase 2 (P1) — Deferred Pages: PARTIAL**
+- `oauth_processing_page.dart`: Successfully deferred via `deferred as _oauth` + `DeferredPage` wrapper in `app_router.dart`
+- `login_page.dart`: **Could NOT be deferred** — uses `part 'login_page_ui.dart'` which defines `extension LoginPageUI`. Dart forbids extension declarations through deferred imports
+- Only 1 eager import remains in `app_router.dart` (login_page.dart)
+- Note: `deferred` classes cannot be created with `const` — used `_oauth.OauthProcessingPage()` (no `const`)
+
+**Phase 3 (P2) — Async Init Refactoring: COMPLETE**
+- `AppBootstrap.initSystem()`: Reduced `Future.wait` from 4 items to just `EasyLocalization.ensureInitialized()` (critical for text rendering)
+- `AssetManager.init()`, `ApiCacheManager.init()`, `Http.init()` moved to new `AppBootstrap.initNonCriticalAsync()`
+- Called via `unawaited(AppBootstrap.initNonCriticalAsync())` after `runApp()` in `main.dart`
+- Numbering updated: step 5 = non-critical init, step 6 = Firebase init
+
+### Files Modified
+- `lib/app/bootstrap.dart` — refactored `initSystem()`, added `initNonCriticalAsync()`
+- `lib/main.dart` — added `unawaited(initNonCriticalAsync())` after `runApp()`
+- `lib/app/routes/app_router.dart` — oauth deferred, login kept eager
+- `.github/workflows/web_deploy.yml` — comments updated (no --web-renderer)
+- `.github/workflows/full_deploy.yml` — comments updated (no --web-renderer)
+
+### Verification
+- `fvm flutter analyze`: 593 pre-existing issues, 0 new
+- `fvm flutter test`: 83/83 passed
+- `fvm flutter build web --release`: ✅ built (49.6s)
+
+### ✅ Task Complete (2026-05-12)
