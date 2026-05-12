@@ -607,3 +607,22 @@ await apiCall().withRetry(maxRetries: 3, context: 'Upload file');
 - [x] **Fix 4: Empty state retry**: Changed ChatPage empty state from static `Text` to clickable retry widget.
 - [x] **Fix 5: Conversation list invalidation**: After successful sync, calls `ref.invalidate(conversationListProvider)` so new conversation appears immediately.
 - [x] **Verification**: `fvm flutter analyze` ✅ (0 new issues) | `fvm flutter test` (65/65 pass, 1 pre-existing failure) ✅
+
+---
+
+## 🎯 Current Task — Web Renderer Flag Removal (2026-05-12)
+
+**Phase**: DevOps — Flutter 3.41.6 Compatibility
+**Last Stop**: CI/CD failing with `Could not find an option named "--web-renderer"` (exit code 64)
+
+**Root Cause**: The `--web-renderer` CLI flag was **removed in Flutter 3.22+**. Project uses Flutter 3.41.6.
+
+**Fix Strategy**: Move renderer configuration from CLI to JS — set `window.__flutter = { renderer: 'html' }` in `web/index.html` **before** `flutter_bootstrap.js` loads. Then remove `--web-renderer html` from all build commands.
+
+**Files Changed**:
+- [x] [`web/index.html`](web/index.html:432-436): Added `window.__flutter = { renderer: 'html' }` script block before `flutter_bootstrap.js`
+- [x] [`Makefile:5`](Makefile:5): Removed `--web-renderer html` from DEV variable
+- [x] [`Makefile:191`](Makefile:191): Removed `--web-renderer html` from `build-web` target
+- [x] [`.github/workflows/full_deploy.yml:139`](.github/workflows/full_deploy.yml:139): Removed `--web-renderer html` from CI/CD web build step
+- [x] [`.github/workflows/web_rollback.yml:121`](.github/workflows/web_rollback.yml:121): Removed `--web-renderer html` from rollback build step
+- [x] **Verification**: `fvm flutter analyze` ✅ (no new issues) | `fvm flutter test` ✅ (83/83 all passed)

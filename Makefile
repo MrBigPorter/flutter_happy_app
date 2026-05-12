@@ -2,7 +2,7 @@
 # Note: Flutter 3.41.6 does not support --web-disable-service-worker.
 # PWA update detection is suppressed in dev mode via kReleaseMode check in
 # PwaUpdateBanner (lib/components/pwa_banners.dart).
-DEV  := --dart-define-from-file=lib/core/config/env/dev.json --web-port=4000 --web-renderer html
+DEV  := --dart-define-from-file=lib/core/config/env/dev.json --web-port=4000
 TEST := --dart-define-from-file=lib/core/config/env/test.json
 PROD := --dart-define-from-file=lib/core/config/env/prod.json
 
@@ -188,7 +188,7 @@ build-web:
 	@echo "🔖 Injecting production SW version..."
 	SW_VERSION=$$(grep '^version: ' pubspec.yaml | sed 's/version: //g' | tr -d ' \n')-$$(git rev-parse --short HEAD); \
 	sed -i '' "s/{{SW_VERSION}}/$$SW_VERSION/g" web/pwa_sw.js; \
-	fvm flutter build web --release $(PROD) --web-renderer html; \
+	fvm flutter build web --release $(PROD); \
 	git checkout web/pwa_sw.js
 	@echo "✅ Web build complete (SW_VERSION: $$SW_VERSION, renderer: html)"
 

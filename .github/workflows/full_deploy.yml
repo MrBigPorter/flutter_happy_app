@@ -136,7 +136,6 @@ jobs:
         run: |
           rm -rf build/web
           flutter build web --release --no-wasm-dry-run \
-            --web-renderer html \
             --dart-define-from-file=${{ env.env_file }}
 
       - name: ☁️ Deploy to Cloudflare Pages
