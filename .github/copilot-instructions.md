@@ -886,3 +886,20 @@ await apiCall().withRetry(maxRetries: 3, context: 'Upload file');
 - `fvm flutter build web --release`: ✅ built (49.6s)
 
 ### ✅ Task Complete (2026-05-12)
+
+
+## 🎯 Current Task — Cloudflare Web Analytics (2026-05-12)
+
+### Changes Made
+- Added Cloudflare Web Analytics `beacon.min.js` script to `web/index.html` at the bottom of `<head>`
+- Script loads in all environments (no environment gating required)
+- Uses `defer` attribute for non-blocking loading (analytics won't impact FCP/LCP)
+
+### Files Modified
+- `web/index.html` — added 2 comment lines + script tag before `</head>` (lines 318-320)
+
+### Verification
+- `fvm flutter analyze`: 593 pre-existing issues, 0 new
+- `fvm flutter test`: 83/83 passed
+
+### ✅ Task Complete (2026-05-12)
