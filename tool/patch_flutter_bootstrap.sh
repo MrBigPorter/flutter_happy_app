@@ -73,7 +73,7 @@ while i < len(content):
         i += 1
         continue
     
-    if ch in ("'", '"', '`'):
+    if ch in ("'", '"'):
         in_string = True
         string_char = ch
         i += 1
