@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:bot_toast/bot_toast.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -16,8 +18,9 @@ import 'package:flutter_app/app/routes/transitions.dart';
 import 'package:flutter_app/core/models/payment.dart';
 import 'package:flutter_app/core/services/auth/global_oauth_handler.dart';
 import 'package:flutter_app/core/store/auth/auth_provider.dart';
-import 'package:flutter_app/ui/chat/chat_search/chat_search_page.dart';
-import 'package:flutter_app/ui/chat/conversation_list_page.dart';
+import 'package:flutter_app/app/routes/deferred_page.dart';
+import 'package:flutter_app/ui/chat/chat_search/chat_search_page.dart' deferred as _chat_search;
+import 'package:flutter_app/ui/chat/conversation_list_page.dart' deferred as _chat;
 import 'package:flutter_app/ui/chat/models/conversation.dart';
 import 'package:flutter_app/ui/modal/base/modal_auto_close_observer.dart';
 import 'package:flutter_app/ui/modal/base/nav_hub.dart';
@@ -26,12 +29,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:flutter_app/components/lucky_tab_bar.dart';
-import 'package:flutter_app/ui/chat/chat_room/chat_page.dart';
-import 'package:flutter_app/ui/chat/contact_list/contact_list_page.dart';
-import 'package:flutter_app/ui/chat/contact_profile_page.dart';
-import 'package:flutter_app/ui/chat/contact_search_page.dart';
-import 'package:flutter_app/ui/chat/group/group_member_select_page.dart';
-import 'package:flutter_app/ui/chat/new_friend_page.dart';
+import 'package:flutter_app/ui/chat/chat_room/chat_page.dart' deferred as _chat_room;
+import 'package:flutter_app/ui/chat/contact_list/contact_list_page.dart' deferred as _contact;
+import 'package:flutter_app/ui/chat/contact_profile_page.dart' deferred as _contact_profile;
+import 'package:flutter_app/ui/chat/contact_search_page.dart' deferred as _contact_search;
+import 'package:flutter_app/ui/chat/group/group_member_select_page.dart' deferred as _group_member_select;
+import 'package:flutter_app/ui/chat/new_friend_page.dart' deferred as _new_friend;
 import 'package:flutter_app/app/page/deposit_detail_page.dart';
 import 'package:flutter_app/app/page/group_lobby/group_lobby_page.dart';
 import 'package:flutter_app/app/page/guide_page.dart';
@@ -47,9 +50,9 @@ import 'package:flutter_app/app/page/pwa_debug_page.dart';
 import 'package:flutter_app/app/page/product_detail_page.dart';
 import 'package:flutter_app/app/page/withdraw/withdraw_page.dart';
 import 'package:flutter_app/app/page/lucky_draw/lucky_draw_wheel_page.dart';
-import 'package:flutter_app/ui/chat/group/group_request_list/group_request_list_page.dart';
-import 'package:flutter_app/ui/chat/group/group_profile/group_profile_page.dart';
-import '../../ui/chat/group/group_search/group_search_page.dart';
+import 'package:flutter_app/ui/chat/group/group_request_list/group_request_list_page.dart' deferred as _group_request;
+import 'package:flutter_app/ui/chat/group/group_profile/group_profile_page.dart' deferred as _group_profile;
+import '../../ui/chat/group/group_search/group_search_page.dart' deferred as _group_search;
 import '../page/deposit/deposit_result_page.dart';
 import '../page/deposit/web_popup_auto_close.dart';
 import '../page/kyc_status_page.dart';
@@ -58,10 +61,10 @@ import '../page/my_vouchers_page.dart';
 import '../page/flash_sale/flash_sale_page.dart';
 import '../page/flash_sale/flash_sale_product_page.dart';
 import 'extra_codec.dart';
-import 'package:flutter_app/ui/chat/direct_chat_settings_page.dart';
-import 'package:flutter_app/ui/chat/local_contact_search_page.dart';
+import 'package:flutter_app/ui/chat/direct_chat_settings_page.dart' deferred as _direct_chat_settings;
+import 'package:flutter_app/ui/chat/local_contact_search_page.dart' deferred as _local_contact_search;
 import 'package:flutter_app/ui/chat/models/selection_types.dart';
-import 'package:flutter_app/ui/chat/selector/contact_selection_page.dart';
+import 'package:flutter_app/ui/chat/selector/contact_selection_page.dart' deferred as _selector;
 
 final _shellKey = GlobalKey<NavigatorState>(debugLabel: 'shell');
 // 全局路由器实例  Global router instance
@@ -122,9 +125,12 @@ class AppRouter {
           builder: (context, state) {
             final groupId = state.uri.queryParameters['groupId'];
             final preSelectedId = state.uri.queryParameters['preSelectedId'];
-            return GroupMemberSelectPage(
-              existingGroupId: groupId,
-              preSelectedId: preSelectedId,
+            return DeferredPage(
+              loadLibrary: _group_member_select.loadLibrary,
+              builder: () => _group_member_select.GroupMemberSelectPage(
+                existingGroupId: groupId,
+                preSelectedId: preSelectedId,
+              ),
             );
           },
         ),
@@ -133,39 +139,57 @@ class AppRouter {
           name: 'group_requests',
           builder: (context, state) {
             final groupId = state.pathParameters['groupId']!;
-            return GroupRequestListPage(groupId: groupId);
+            return DeferredPage(
+              loadLibrary: _group_request.loadLibrary,
+              builder: () => _group_request.GroupRequestListPage(groupId: groupId),
+            );
           },
         ),
         GoRoute(
           path: '/contact/search',
           name: 'contactSearch',
           parentNavigatorKey: NavHub.key,
-          builder: (context, state) => const ContactSearchPage(),
+          builder: (context, state) => DeferredPage(
+            loadLibrary: _contact_search.loadLibrary,
+            builder: () => _contact_search.ContactSearchPage(),
+          ),
         ),
         GoRoute(
           path: '/contact/local-search',
           name: 'contactLocalSearch',
           parentNavigatorKey: NavHub.key,
-          builder: (context, state) => const LocalContactSearchPage(),
+          builder: (context, state) => DeferredPage(
+            loadLibrary: _local_contact_search.loadLibrary,
+            builder: () => _local_contact_search.LocalContactSearchPage(),
+          ),
         ),
         GoRoute(
           path: '/contact/new-friends',
           name: 'newFriends',
           parentNavigatorKey: NavHub.key,
-          builder: (context, state) => const NewFriendPage(),
+          builder: (context, state) => DeferredPage(
+            loadLibrary: _new_friend.loadLibrary,
+            builder: () => _new_friend.NewFriendPage(),
+          ),
         ),
         GoRoute(
           path: '/chat/group/profile/:id',
           parentNavigatorKey: NavHub.key,
           builder: (context, state) {
             final cid = state.pathParameters['id']!;
-            return GroupProfilePage(conversationId: cid);
+            return DeferredPage(
+              loadLibrary: _group_profile.loadLibrary,
+              builder: () => _group_profile.GroupProfilePage(conversationId: cid),
+            );
           },
         ),
         GoRoute(
           path: '/chat/group/search',
           name: 'group_search',
-          builder: (context, state) => const GroupSearchPage(),
+          builder: (context, state) => DeferredPage(
+            loadLibrary: _group_search.loadLibrary,
+            builder: () => _group_search.GroupSearchPage(),
+          ),
         ),
         GoRoute(
           path: '/chat/search',
@@ -173,9 +197,14 @@ class AppRouter {
           pageBuilder: (context, state) {
             final conversationId =
                 state.uri.queryParameters['conversationId'] ?? '';
+            // 预加载 chunk，不等待
+            unawaited(_chat_search.loadLibrary());
             return fxPage(
               key: state.pageKey,
-              child: ChatSearchPage(conversationId: conversationId),
+              child: DeferredPage(
+                loadLibrary: () => Future<void>.value(),
+                builder: () => _chat_search.ChatSearchPage(conversationId: conversationId),
+              ),
               fx: RouteFx.slideUp,
             );
           },
@@ -183,13 +212,19 @@ class AppRouter {
         GoRoute(
           path: '/chat/contacts',
           parentNavigatorKey: NavHub.key,
-          builder: (context, state) => const ContactListPage(),
+          builder: (context, state) => DeferredPage(
+            loadLibrary: _contact.loadLibrary,
+            builder: () => _contact.ContactListPage(),
+          ),
         ),
         GoRoute(
           path: '/chat/direct/profile/:id',
           builder: (context, state) {
             final cid = state.pathParameters['id']!;
-            return DirectChatSettingsPage(conversationId: cid);
+            return DeferredPage(
+              loadLibrary: _direct_chat_settings.loadLibrary,
+              builder: () => _direct_chat_settings.DirectChatSettingsPage(conversationId: cid),
+            );
           },
         ),
         GoRoute(
@@ -201,7 +236,10 @@ class AppRouter {
                 ? state.extra as ChatUser
                 : null;
 
-            return ContactProfilePage(userId: userId, cachedUser: cachedUser);
+            return DeferredPage(
+              loadLibrary: _contact_profile.loadLibrary,
+              builder: () => _contact_profile.ContactProfilePage(userId: userId, cachedUser: cachedUser),
+            );
           },
         ),
         GoRoute(
@@ -211,9 +249,14 @@ class AppRouter {
             final args = state.extra is ContactSelectionArgs
                 ? state.extra as ContactSelectionArgs
                 : ContactSelectionArgs();
+            // 预加载 chunk，不等待
+            unawaited(_selector.loadLibrary());
             return fxPage(
               key: state.pageKey,
-              child: ContactSelectionPage(args: args),
+              child: DeferredPage(
+                loadLibrary: () => Future<void>.value(),
+                builder: () => _selector.ContactSelectionPage(args: args),
+              ),
               fx: RouteFx.slideUp,
             );
           },
@@ -222,8 +265,11 @@ class AppRouter {
           path: '/chat/room/:conversationId',
           parentNavigatorKey: NavHub.key,
           builder: (context, state) {
-            return ChatPage(
-              conversationId: state.pathParameters['conversationId']!,
+            return DeferredPage(
+              loadLibrary: _chat_room.loadLibrary,
+              builder: () => _chat_room.ChatPage(
+                conversationId: state.pathParameters['conversationId']!,
+              ),
             );
           },
         ),
@@ -348,7 +394,10 @@ class AppRouter {
             GoRoute(
               name: 'conversations',
               path: '/conversations',
-              builder: (context, state) => ConversationListPage(),
+              builder: (context, state) => DeferredPage(
+                loadLibrary: _chat.loadLibrary,
+                builder: () => _chat.ConversationListPage(),
+              ),
             ),
             GoRoute(
               name: 'me',
