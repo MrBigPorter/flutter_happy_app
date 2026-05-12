@@ -627,6 +627,24 @@ await apiCall().withRetry(maxRetries: 3, context: 'Upload file');
 - [x] [`.github/workflows/web_rollback.yml:121`](.github/workflows/web_rollback.yml:121): Removed `--web-renderer html` from rollback build step
 - [x] **Verification**: `fvm flutter analyze` ✅ (no new issues) | `fvm flutter test` ✅ (83/83 all passed)
 
+---
+
+## 🎯 Current Task — H5 Independent Deploy Workflow (2026-05-12)
+
+**Phase**: DevOps — CI/CD Optimization
+**Last Stop**: full_deploy.yml takes ~60 min including Android/iOS; need fast H5-only deploy for split-bundle iteration
+
+**Accomplishments**:
+- [x] **Analysis**: Audited existing workflows (full_deploy.yml ~60min, web_rollback.yml needs self-hosted runner, hotfix_patch.yml is Shorebird-only)
+- [x] **Plan**: Created [`plans/h5_independent_deploy_workflow.md`](plans/h5_independent_deploy_workflow.md) — design for ubuntu-latest, ~5-8 min H5-only deploy
+- [x] **Implementation**: Created [`.github/workflows/web_deploy.yml`](.github/workflows/web_deploy.yml) — new standalone H5 deployment workflow:
+  - Trigger: `workflow_dispatch` only (manual, choose test/prod) — avoids duplicate build with full_deploy.yml
+  - Runner: `ubuntu-latest` (free, fast start, no macOS dependency)
+  - Steps: Checkout → Bump → Env select → Flutter setup → analyze → test → PWA inject → build web → CF Pages deploy → cleanup
+  - QA gate: `flutter analyze` + `flutter test` block on failure
+  - No Android/iOS/Shorebird/Firebase/Telegram — pure H5 deploy
+  - Estimated runtime: ~5-8 minutes
+
 ## 🎯 Current Task — PWA Update Banner False Detection on Deposit Redirect (2026-05-12)
 
 **Phase**: Bug Fix — PWA UX

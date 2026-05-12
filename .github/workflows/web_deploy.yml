@@ -1,0 +1,148 @@
+# ─────────────────────────────────────────────────────────────────
+# 🌐 JoyMini H5 Deploy — Web Only
+# ─────────────────────────────────────────────────────────────────
+# 用途: H5 独立部署，不触发 Android/iOS/Shorebird 构建
+# 触发: push to test → 自动部署 test 环境
+#       workflow_dispatch → 手动选择 test/prod
+# 环境: ubuntu-latest（免费，启动快）
+# 耗时: ~5-8 分钟（vs full_deploy ~60 分钟）
+# ─────────────────────────────────────────────────────────────────
+
+name: "🌐 JoyMini H5 Deploy — Web Only"
+
+# 纯手动触发，避免与 full_deploy.yml 重复构建
+# push to test 已在 full_deploy.yml 中处理了 H5 部署
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "🎯 Deployment Environment"
+        required: true
+        default: "test"
+        type: choice
+        options:
+          - test
+          - prod
+
+concurrency:
+  group: web-deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  deployments: write
+
+jobs:
+  web-deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+    steps:
+      # ── Phase 1: Checkout ──────────────────────────────────────
+      - name: 1. Checkout Code
+        uses: actions/checkout@v4
+
+      # ── Phase 1.5: Auto Bump Build Number ──────────────────────
+      - name: 🤖 1.5. Auto Bump Build Number
+        run: |
+          VERSION_NAME=$(grep '^version: ' pubspec.yaml | sed 's/version: //g' | cut -d '+' -f 1)
+          NEW_VERSION="$VERSION_NAME+${{ github.run_number }}"
+          perl -pi -e "s/^version: .*/version: $NEW_VERSION/g" pubspec.yaml
+          echo "✅ Build version set to: $NEW_VERSION"
+
+      # ── Phase 2: Determine Environment ─────────────────────────
+      # 纯手动触发，环境由 workflow_dispatch 输入决定
+      - name: 2. Determine Deployment Environment
+        id: set_env
+        run: |
+          set_var() { echo "$1=$2" >> $GITHUB_ENV; echo "$1=$2" >> $GITHUB_OUTPUT; }
+
+          if [[ "${{ github.event.inputs.environment }}" == "prod" ]]; then
+            set_var env_tag    "[PROD]"
+            set_var env_file   "lib/core/config/env/prod.json"
+            set_var is_prod    "true"
+            set_var cf_branch  "main"
+            set_var cf_project "joymini-web"
+          else
+            set_var env_tag    "[TEST]"
+            set_var env_file   "lib/core/config/env/test.json"
+            set_var is_prod    "false"
+            set_var cf_branch  "test"
+            set_var cf_project "joymini-web-test"
+          fi
+
+          echo "🌐 Environment: ${{ env.env_tag }}"
+          echo "📁 CF Project:  ${{ env.cf_project }}"
+          echo "🌿 CF Branch:   ${{ env.cf_branch }}"
+
+      # ── Phase 3: Extract Metadata ──────────────────────────────
+      - name: 3. Extract Build Metadata
+        id: meta
+        run: |
+          APP_VERSION=$(grep '^version: ' pubspec.yaml | sed 's/version: //g')
+          SHORT_SHA=$(git rev-parse --short HEAD)
+          echo "APP_VERSION=$APP_VERSION" >> $GITHUB_ENV
+          echo "SHORT_SHA=$SHORT_SHA"     >> $GITHUB_ENV
+          echo "app_version=$APP_VERSION" >> $GITHUB_OUTPUT
+          echo "short_sha=$SHORT_SHA"     >> $GITHUB_OUTPUT
+          echo "📦 Version: $APP_VERSION ($SHORT_SHA)"
+
+      # ── Phase 4: Flutter Setup ─────────────────────────────────
+      - name: 🐦 4a. Setup Flutter (ubuntu, cached)
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version-file: .fvmrc
+          cache: true
+
+      - name: 📦 4b. Flutter pub get
+        run: |
+          flutter config --no-analytics
+          flutter pub get
+
+      # ── Phase 4.5: QA Gate ─────────────────────────────────────
+      - name: 🔎 4.5a. Flutter Analyze
+        run: flutter analyze --no-fatal-warnings --no-fatal-infos
+
+      - name: 🧪 4.5b. Flutter Test
+        run: |
+          flutter test \
+            --dart-define-from-file=${{ env.env_file }} \
+            --reporter=github \
+            --no-pub
+
+      # ── Phase 4.5c: Inject PWA SW Version ──────────────────────
+      - name: 🔖 4.5c. Inject PWA SW Version
+        run: |
+          SW_VERSION="${{ steps.meta.outputs.app_version }}-${{ steps.meta.outputs.short_sha }}"
+          sed -i "s/{{SW_VERSION}}/$SW_VERSION/g" web/pwa_sw.js
+          echo "✅ SW_VERSION injected: $SW_VERSION"
+
+      # ── Phase 5: Build Web ────────────────────────────────────
+      # renderer: 'html' is set in index.html (not via CLI flag, which
+      # was removed in Flutter 3.22+). Cache-Control is in web/_headers.
+      - name: 🚀 5. Build Web (H5)
+        run: |
+          rm -rf build/web
+          flutter build web --release \
+            --dart-define-from-file=${{ env.env_file }}
+
+      # ── Phase 6: Deploy to Cloudflare Pages ────────────────────
+      - name: ☁️ 6. Deploy to Cloudflare Pages
+        uses: cloudflare/pages-action@v1
+        with:
+          apiToken: ${{ secrets.CF_API_TOKEN }}
+          accountId: ${{ secrets.CF_ACCOUNT_ID }}
+          projectName: ${{ env.cf_project }}
+          directory: build/web
+          branch: ${{ env.cf_branch }}
+          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
+
+      # ── Phase 7: Cleanup ───────────────────────────────────────
+      - name: 🧹 7. Smart Cleanup
+        if: always()
+        run: |
+          git checkout -- pubspec.yaml web/pwa_sw.js
+          rm -rf build/web
+          echo "✅ Cleanup done"
