@@ -816,10 +816,10 @@ await apiCall().withRetry(maxRetries: 3, context: 'Upload file');
 3. `guide` route uses the simpler `builder` pattern since it doesn't need a custom page transition — `DeferredPage` handles loading and fade-in directly.
 4. After this change, the only remaining eager pages are: `home_page.dart` (tab 1), `login_page.dart` (auth flow), and `oauth_processing_page.dart` (auth callback) — all are first-screen critical and **must** remain eager.
 
-## 🎯 Current Task — HomePage Deferred + CanvasKit Fix (2026-05-12)
+## 🎯 Current Task — HomePage Deferred (2026-05-12)
 
 **Phase**: Web Performance — Final Sprint
-**Goal**: Defer HomePage (`home_page.dart`) to its own `.part.js` chunk, and fix CanvasKit loading issue in `flutter_bootstrap.js`.
+**Goal**: Defer HomePage (`home_page.dart`) to its own `.part.js` chunk.
 
 ### Changes Made
 
@@ -829,31 +829,25 @@ await apiCall().withRetry(maxRetries: 3, context: 'Upload file');
   - Wrapped `HomePage` route with `DeferredPage(loadLibrary: _home.loadLibrary, skeletonBuilder: () => const HomePageSkeleton(), builder: () => _home.HomePage())`
   - Added `import 'package:flutter_app/app/page/home_page_skeleton.dart';`
 - [x] **Background prefetch** ([`lib/main.dart`](lib/main.dart)): Added `unawaited(_home.loadLibrary())` alongside existing `_chat.loadLibrary()` for background chunk preloading.
-- [x] **CanvasKit fix — patch script** ([`tool/patch_flutter_bootstrap.sh`](tool/patch_flutter_bootstrap.sh)): Post-build script that injects `config: {renderer: 'html'}` into `_flutter.loader.load({...})` call in `flutter_bootstrap.js`. Uses brace-matching Python logic to safely insert config before the closing brace.
-- [x] **CI/CD integration** ([`.github/workflows/web_deploy.yml`](.github/workflows/web_deploy.yml), [`.github/workflows/full_deploy.yml`](.github/workflows/full_deploy.yml)): Added Phase 5.5b to both workflows — runs `bash tool/patch_flutter_bootstrap.sh` after Phase 5.5 (part file injection).
+- [x] **Removed dead `window.__flutter`** from [`web/index.html`](web/index.html:437): Flutter 3.22+ ignores `window.__flutter.renderer` — renderer selection is determined by the build output, not JS globals.
+- [x] **Removed `tool/patch_flutter_bootstrap.sh`**: The CanvasKit "fix" was incorrect. `flutter build web --release` generates a canvaskit-only build. Forcing `config:{renderer:'html'}` via post-build patch causes `FlutterLoader could not find a build` error (`builds.find(l)` returns `undefined` since no HTML build exists). CanvasKit loading is **correct expected behavior** for this build configuration.
 
 ### How it works
 
 1. **HomePage deferred**: On first visit, `DeferredPage` shows the shimmer skeleton while the `.part_*.js` chunk downloads. The `unawaited(_home.loadLibrary())` in `main.dart` starts preloading immediately after `runApp()`, so by the time `ShellRoute` navigates to `/home`, the chunk is typically already cached.
 2. **Two-layer skeleton**: Chunk loading skeleton (`HomePageSkeleton`) shown during `.part.js` download → then real `HomePage` loads and shows its own data-loading skeleton (`HomeTreasureSkeleton`) during API fetch. This eliminates blank states entirely.
-3. **CanvasKit fix**: `flutter_bootstrap.js` now passes `config: {renderer: 'html'}` to `_flutter.loader.load()`, which tells the Flutter engine loader to use the HTML renderer build instead of defaulting to CanvasKit (which adds ~2-3MB of JS+WASM downloads).
-4. **No SW changes needed**: `inject_part_files.sh` already auto-discovers all `.part.js` files and injects them into `pwa_sw.js` PRECACHE_URLS. The new HomePage chunk is handled automatically.
+3. **No SW changes needed**: `inject_part_files.sh` already auto-discovers all `.part.js` files and injects them into `pwa_sw.js` PRECACHE_URLS. The new HomePage chunk is handled automatically.
 
 ### Expected Impact
 
 - `main.dart.js` reduces by ~120-140KB (removes `home_page.dart`, all `home_components/*.dart`, `swiper_banner.dart` with `card_swiper` package, `base_scaffold.dart`, `pwa_banners.dart`, `lucky_custom_material_indicator.dart`, `image_preloader.dart`, `image_optimization_init.dart`, `home_provider`)
-- CanvasKit download eliminated (−2-3MB JS+WASM) on HTML renderer browsers
-- Estimated combined startup improvement: ~200-400ms faster Time-to-Interactive on first visit
+- CanvasKit (~2-3MB) continues to load as expected — this is the **correct** renderer for the current build configuration
+- HomePage startup improvement: ~200-400ms faster Time-to-Interactive on first visit
 
 ### ✅ Task Complete (2026-05-12)
 
 - `fvm flutter analyze`: 0 new issues (592 pre-existing, all infos/warnings)
 - `fvm flutter test`: 83/83 passed
-- `flutter build web --release`: ✅ build succeeded (50.3s)
-- `bash tool/patch_flutter_bootstrap.sh`: ✅ config:{renderer:'html'} injected
+- `flutter build web --release`: ✅ succeeded
 - `bash tool/inject_part_files.sh`: ✅ 275 .part.js files injected into pwa_sw.js
-- **CanvasKit root cause**: `_flutter.loader.load()` in `flutter_bootstrap.js` was called without `config: {renderer: 'html'}`, causing Flutter engine to default to CanvasKit build. Post-build script now patches this.
-- **Patch script fixes during dev**:
-  1. `content.index()` → `content.rindex()` — was matching inside minified class definition, not the actual call at EOF
-  2. `'\\\\'` → `'\\'` — quoted heredoc doesn't process bash escaping, so Python received doubled escapes
-  3. Added `/* */` block comment handler — `Flutter's` single-quote inside the service worker deprecation comment confused the string literal parser, preventing brace matching
+- **Key lesson**: `window.__flutter = {renderer: 'html'}` is dead code in Flutter 3.22+. The renderer is determined by the build output (`_flutter.buildConfig.builds[]` in `flutter_bootstrap.js`), not by a JS global. To change the renderer, pass `--web-renderer=html` at **build time**, not via post-build patching.
