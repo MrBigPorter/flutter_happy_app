@@ -795,3 +795,23 @@ await apiCall().withRetry(maxRetries: 3, context: 'Upload file');
 2. Meanwhile, the `.part.js` chunk downloads in the background via `loadLibrary()`.
 3. Once the chunk is ready (typically 100-300ms), `DeferredPage` swaps the skeleton with the real page using a 300ms easeInOut fade animation — no layout shift, no flash.
 4. The skeleton colors automatically adapt to light/dark mode via design tokens.
+
+## 🎯 Current Task — Remaining Eager Pages Deferred (Guide, 404, WinnerDetail) (2026-05-12)
+
+**Phase**: Deferred Loading Completion — Web Performance
+**Goal**: Convert the last 3 eager pages (`guide_page.dart`, `page_404.dart`, `deposit_detail_page.dart`) to deferred imports, reducing main bundle size further.
+
+### Changes Made
+
+- [x] **Deferred imports** ([`lib/app/routes/app_router.dart`](lib/app/routes/app_router.dart)):
+  - Converted `page_404.dart` → `deferred as _page_404` — used in `errorPageBuilder` with `unawaited(_page_404.loadLibrary())` + `DeferredPage` wrapper (same pattern as `_product_group`)
+  - Converted `deposit_detail_page.dart` → `deferred as _winner_detail` — used in walletDetail route with `unawaited(_winner_detail.loadLibrary())` + `DeferredPage(loadLibrary: ..., builder: () => _winner_detail.WinnerDetailPage(...))`
+  - Converted `guide_page.dart` → `deferred as _guide` — used in guide route with simple `DeferredPage(loadLibrary: ..., builder: () => _guide.GuidePage())`
+- [x] **Verification**: `fvm flutter analyze` ✅ (no new errors/warnings, 590 pre-existing info-level issues) | `fvm flutter test` ✅ (83/83 all passed)
+
+### How it works
+
+1. `errorPageBuilder` uses the dual-call pattern: `unawaited(_page_404.loadLibrary())` triggers chunk loading early, then `DeferredPage(loadLibrary: _page_404.loadLibrary, ...)` wraps the actual page. This ensures the 404 page is ready by the time the error UI renders.
+2. `walletDetail` route follows the same `pageBuilder` pattern used by `_product_group` and `_my_vouchers`: `unawaited()` at pageBuilder level kicks off chunk loading immediately, `DeferredPage` in child handles the loading→ready transition.
+3. `guide` route uses the simpler `builder` pattern since it doesn't need a custom page transition — `DeferredPage` handles loading and fade-in directly.
+4. After this change, the only remaining eager pages are: `home_page.dart` (tab 1), `login_page.dart` (auth flow), and `oauth_processing_page.dart` (auth callback) — all are first-screen critical and **must** remain eager.

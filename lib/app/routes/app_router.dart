@@ -7,7 +7,7 @@ import 'package:flutter_app/app/page/group_member_page.dart' deferred as _group_
 import 'package:flutter_app/app/page/group_room_page.dart' deferred as _group_room;
 import 'package:flutter_app/app/page/kyc_verify/kyc_verify_page.dart' deferred as _kyc_verify;
 import 'package:flutter_app/app/page/order_list_page.dart' deferred as _order_list;
-import 'package:flutter_app/app/page/page_404.dart';
+import 'package:flutter_app/app/page/page_404.dart' deferred as _page_404;
 import 'package:flutter_app/app/page/payment/payment_page.dart' deferred as _payment hide PagePaymentParamsExt;
 import 'package:flutter_app/app/page/product_group_page.dart' deferred as _product_group;
 import 'package:flutter_app/app/page/setting_page.dart' deferred as _setting;
@@ -37,9 +37,9 @@ import 'package:flutter_app/ui/chat/contact_search_page.dart' deferred as _conta
 import 'package:flutter_app/ui/chat/group/group_member_select_page.dart' deferred as _group_member_select;
 import 'package:flutter_app/ui/chat/new_friend_page.dart' deferred as _new_friend;
 import 'package:flutter_app/app/page/deposit/deposit_page.dart' deferred as _deposit show DepositPage;
-import 'package:flutter_app/app/page/deposit_detail_page.dart';
+import 'package:flutter_app/app/page/deposit_detail_page.dart' deferred as _winner_detail;
 import 'package:flutter_app/app/page/group_lobby/group_lobby_page.dart' deferred as _group_lobby;
-import 'package:flutter_app/app/page/guide_page.dart';
+import 'package:flutter_app/app/page/guide_page.dart' deferred as _guide;
 import 'package:flutter_app/app/page/home_page.dart';
 import 'package:flutter_app/app/page/product_page.dart' deferred as _product;
 import 'package:flutter_app/app/page/transaction/transaction_ui_model.dart';
@@ -424,10 +424,14 @@ class AppRouter {
           name: 'walletDetail',
           path: '/winners/:id',
           pageBuilder: (ctx, state) {
+            unawaited(_winner_detail.loadLibrary());
             final id = state.pathParameters['id']!;
             return fxPage(
               key: state.pageKey,
-              child: WinnerDetailPage(winnerId: id),
+              child: DeferredPage(
+                loadLibrary: _winner_detail.loadLibrary,
+                builder: () => _winner_detail.WinnerDetailPage(winnerId: id),
+              ),
               fx: RouteFx.sharedScale,
             );
           },
@@ -537,7 +541,10 @@ class AppRouter {
         GoRoute(
           name: 'guide',
           path: '/guide',
-          builder: (context, state) => GuidePage(),
+          builder: (context, state) => DeferredPage(
+            loadLibrary: _guide.loadLibrary,
+            builder: () => _guide.GuidePage(),
+          ),
         ),
         GoRoute(
           name: 'setting',
@@ -777,9 +784,13 @@ class AppRouter {
         Future.microtask(() {
           ref.read(overlayProgressProvider.notifier).state = 0.0;
         });
+        unawaited(_page_404.loadLibrary());
         return fxPage(
           key: state.pageKey,
-          child: Page404(),
+          child: DeferredPage(
+            loadLibrary: _page_404.loadLibrary,
+            builder: () => _page_404.Page404(),
+          ),
           fx: RouteFx.fadeThrough,
         );
       },
