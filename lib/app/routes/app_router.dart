@@ -3,16 +3,15 @@ import 'dart:async';
 import 'package:bot_toast/bot_toast.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_app/app/page/deposit/deposit_page.dart';
 import 'package:flutter_app/app/page/group_member_page.dart';
 import 'package:flutter_app/app/page/group_room_page.dart';
-import 'package:flutter_app/app/page/kyc_verify/kyc_verify_page.dart';
+import 'package:flutter_app/app/page/kyc_verify/kyc_verify_page.dart' deferred as _kyc_verify;
 import 'package:flutter_app/app/page/order_list_page.dart';
 import 'package:flutter_app/app/page/page_404.dart';
-import 'package:flutter_app/app/page/payment/payment_page.dart';
+import 'package:flutter_app/app/page/payment/payment_page.dart' deferred as _payment hide PagePaymentParamsExt;
 import 'package:flutter_app/app/page/product_group_page.dart';
 import 'package:flutter_app/app/page/setting_page.dart';
-import 'package:flutter_app/app/page/treasure_coins_page.dart';
+import 'package:flutter_app/app/page/treasure_coins_page.dart' deferred as _treasure_coins;
 import 'package:flutter_app/app/routes/route_auth_config.dart';
 import 'package:flutter_app/app/routes/transitions.dart';
 import 'package:flutter_app/core/models/payment.dart';
@@ -35,31 +34,32 @@ import 'package:flutter_app/ui/chat/contact_profile_page.dart' deferred as _cont
 import 'package:flutter_app/ui/chat/contact_search_page.dart' deferred as _contact_search;
 import 'package:flutter_app/ui/chat/group/group_member_select_page.dart' deferred as _group_member_select;
 import 'package:flutter_app/ui/chat/new_friend_page.dart' deferred as _new_friend;
+import 'package:flutter_app/app/page/deposit/deposit_page.dart' deferred as _deposit show DepositPage;
 import 'package:flutter_app/app/page/deposit_detail_page.dart';
 import 'package:flutter_app/app/page/group_lobby/group_lobby_page.dart';
 import 'package:flutter_app/app/page/guide_page.dart';
 import 'package:flutter_app/app/page/home_page.dart';
 import 'package:flutter_app/app/page/product_page.dart';
 import 'package:flutter_app/app/page/transaction/transaction_ui_model.dart';
-import 'package:flutter_app/app/page/transaction_record_page.dart';
+import 'package:flutter_app/app/page/transaction_record_page.dart' deferred as _transaction_record;
 import 'package:flutter_app/app/page/me_components/me_page.dart';
 import 'package:flutter_app/app/page/login_page/login_page.dart';
-import 'package:flutter_app/app/page/lucky_draw/lucky_draw_page.dart';
+import 'package:flutter_app/app/page/lucky_draw/lucky_draw_page.dart' deferred as _lucky_draw;
 import 'package:flutter_app/app/page/oauth_processing_page/oauth_processing_page.dart';
 import 'package:flutter_app/app/page/pwa_debug_page.dart';
 import 'package:flutter_app/app/page/product_detail_page.dart';
-import 'package:flutter_app/app/page/withdraw/withdraw_page.dart';
-import 'package:flutter_app/app/page/lucky_draw/lucky_draw_wheel_page.dart';
+import 'package:flutter_app/app/page/withdraw/withdraw_page.dart' deferred as _withdraw hide WithdrawPageUI;
+import 'package:flutter_app/app/page/lucky_draw/lucky_draw_wheel_page.dart' deferred as _lucky_draw_wheel;
 import 'package:flutter_app/ui/chat/group/group_request_list/group_request_list_page.dart' deferred as _group_request;
 import 'package:flutter_app/ui/chat/group/group_profile/group_profile_page.dart' deferred as _group_profile;
 import '../../ui/chat/group/group_search/group_search_page.dart' deferred as _group_search;
-import '../page/deposit/deposit_result_page.dart';
-import '../page/deposit/web_popup_auto_close.dart';
-import '../page/kyc_status_page.dart';
-import '../page/liveness_debug_page.dart';
+import '../page/deposit/deposit_result_page.dart' deferred as _deposit_result;
+import '../page/deposit/web_popup_auto_close.dart' deferred as _web_popup_auto_close;
+import '../page/kyc_status_page.dart' deferred as _kyc_status;
+import '../page/liveness_debug_page.dart' deferred as _liveness_debug;
 import '../page/my_vouchers_page.dart';
-import '../page/flash_sale/flash_sale_page.dart';
-import '../page/flash_sale/flash_sale_product_page.dart';
+import '../page/flash_sale/flash_sale_page.dart' deferred as _flash_sale;
+import '../page/flash_sale/flash_sale_product_page.dart' deferred as _flash_sale_product;
 import 'extra_codec.dart';
 import 'package:flutter_app/ui/chat/direct_chat_settings_page.dart' deferred as _direct_chat_settings;
 import 'package:flutter_app/ui/chat/local_contact_search_page.dart' deferred as _local_contact_search;
@@ -469,6 +469,7 @@ class AppRouter {
           name: 'payment',
           path: '/payment',
           pageBuilder: (ctx, state) {
+            unawaited(_payment.loadLibrary());
             final queryParams = state.uri.queryParameters;
             final PagePaymentParams params = (
               entries: queryParams['entries'],
@@ -483,7 +484,10 @@ class AppRouter {
               isGroupBuy: queryParams['isGroupBuy'],
             );
             return fxPage(
-              child: PaymentPage(params: params),
+              child: DeferredPage(
+                loadLibrary: _payment.loadLibrary,
+                builder: () => _payment.PaymentPage(params: params),
+              ),
               key: state.pageKey,
               fx: RouteFx.slideUp,
             );
@@ -519,7 +523,10 @@ class AppRouter {
             final initialTab = state.uri.queryParameters['tab'] == 'results'
                 ? 1
                 : 0;
-            return LuckyDrawPage(initialTab: initialTab);
+            return DeferredPage(
+              loadLibrary: _lucky_draw.loadLibrary,
+              builder: () => _lucky_draw.LuckyDrawPage(initialTab: initialTab),
+            );
           },
         ),
         GoRoute(
@@ -528,26 +535,39 @@ class AppRouter {
           parentNavigatorKey: NavHub.key,
           builder: (context, state) {
             final ticketId = state.pathParameters['ticketId']!;
-            return LuckyDrawWheelPage(ticketId: ticketId);
+            return DeferredPage(
+              loadLibrary: _lucky_draw_wheel.loadLibrary,
+              builder: () => _lucky_draw_wheel.LuckyDrawWheelPage(ticketId: ticketId),
+            );
           },
         ),
         GoRoute(
           name: 'flashSale',
           path: '/flash-sale',
-          pageBuilder: (ctx, state) => fxPage(
-            key: state.pageKey,
-            child: const FlashSalePage(),
-            fx: RouteFx.slideUp,
-          ),
+          pageBuilder: (ctx, state) {
+            unawaited(_flash_sale.loadLibrary());
+            return fxPage(
+              key: state.pageKey,
+              child: DeferredPage(
+                loadLibrary: _flash_sale.loadLibrary,
+                builder: () => _flash_sale.FlashSalePage(),
+              ),
+              fx: RouteFx.slideUp,
+            );
+          },
         ),
         GoRoute(
           name: 'flashSaleProduct',
           path: '/flash-sale/products/:id',
           pageBuilder: (ctx, state) {
+            unawaited(_flash_sale_product.loadLibrary());
             final id = state.pathParameters['id']!;
             return fxPage(
               key: state.pageKey,
-              child: FlashSaleProductPage(flashSaleProductId: id),
+              child: DeferredPage(
+                loadLibrary: _flash_sale_product.loadLibrary,
+                builder: () => _flash_sale_product.FlashSaleProductPage(flashSaleProductId: id),
+              ),
               fx: RouteFx.zoomIn,
             );
           },
@@ -555,24 +575,36 @@ class AppRouter {
         GoRoute(
           name: 'kycStatus',
           path: '/me/kyc/status',
-          builder: (context, state) => const KycStatusPage(),
+          builder: (context, state) => DeferredPage(
+            loadLibrary: _kyc_status.loadLibrary,
+            builder: () => _kyc_status.KycStatusPage(),
+          ),
         ),
         GoRoute(
           name: 'kycVerify',
           path: '/me/kyc/verify',
-          builder: (context, state) => KycVerifyPage(),
+          builder: (context, state) => DeferredPage(
+            loadLibrary: _kyc_verify.loadLibrary,
+            builder: () => _kyc_verify.KycVerifyPage(),
+          ),
         ),
         GoRoute(
           name: 'deposit',
           path: '/me/wallet/deposit',
-          builder: (context, state) => DepositPage(),
+          builder: (context, state) => DeferredPage(
+            loadLibrary: _deposit.loadLibrary,
+            builder: () => _deposit.DepositPage(),
+          ),
         ),
         GoRoute(
           name: 'walletRechargeFailure',
           path: '/wallet/recharge/failure/:orderNo',
           builder: (context, state) {
             final orderNo = state.pathParameters['orderNo'] ?? '';
-            return DepositResultPage(orderNo: orderNo);
+            return DeferredPage(
+              loadLibrary: _deposit_result.loadLibrary,
+              builder: () => _deposit_result.DepositResultPage(orderNo: orderNo),
+            );
           },
         ),
         GoRoute(
@@ -580,7 +612,10 @@ class AppRouter {
           path: '/wallet/recharge/success/:orderNo',
           builder: (context, state) {
             final orderNo = state.pathParameters['orderNo'] ?? '';
-            return WebPopupAutoClose(orderNo: orderNo);
+            return DeferredPage(
+              loadLibrary: _web_popup_auto_close.loadLibrary,
+              builder: () => _web_popup_auto_close.WebPopupAutoClose(orderNo: orderNo),
+            );
           },
         ),
         GoRoute(
@@ -591,27 +626,42 @@ class AppRouter {
             final type = tab == 'withdraw'
                 ? UiTransactionType.withdraw
                 : UiTransactionType.deposit;
-            return TransactionHistoryPage(initialType: type);
+            return DeferredPage(
+              loadLibrary: _transaction_record.loadLibrary,
+              builder: () => _transaction_record.TransactionHistoryPage(initialType: type),
+            );
           },
         ),
         GoRoute(
           name: 'withdraw',
           path: '/me/wallet/withdraw',
-          builder: (context, state) => WithdrawPage(),
+          builder: (context, state) => DeferredPage(
+            loadLibrary: _withdraw.loadLibrary,
+            builder: () => _withdraw.WithdrawPage(),
+          ),
         ),
         GoRoute(
           name: 'treasureCoins',
           path: '/me/wallet/coins',
-          pageBuilder: (ctx, state) => fxPage(
-            key: state.pageKey,
-            child: const TreasureCoinsPage(),
-            fx: RouteFx.slideUp,
-          ),
+          pageBuilder: (ctx, state) {
+            unawaited(_treasure_coins.loadLibrary());
+            return fxPage(
+              key: state.pageKey,
+              child: DeferredPage(
+                loadLibrary: _treasure_coins.loadLibrary,
+                builder: () => _treasure_coins.TreasureCoinsPage(),
+              ),
+              fx: RouteFx.slideUp,
+            );
+          },
         ),
         GoRoute(
           name: 'debug-liveness',
           path: '/me/kyc/debug-liveness',
-          builder: (context, state) => LivenessDebugPage(),
+          builder: (context, state) => DeferredPage(
+            loadLibrary: _liveness_debug.loadLibrary,
+            builder: () => _liveness_debug.LivenessDebugPage(),
+          ),
         ),
         GoRoute(
           name: 'product-groups-detail',
