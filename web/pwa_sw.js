@@ -20,7 +20,7 @@ const API_CACHE_MAX_ENTRIES = 50;
 // Business/order/user-state APIs must remain network-only.
 const SAFE_API_PREFIXES = [
     '/api/v1/home',
-    '/api/v1/banner',
+    '/api/v1/banners',
 ];
 
 // App shell resources to pre-cache on SW install
@@ -41,14 +41,19 @@ const PRECACHE_URLS = [
     // DEFERRED_PART_FILES_INJECT_HERE — injected by tool/inject_part_files.sh after build
 ];
 
-// ── Install: pre-cache app shell ──────────────────────────────────────────────
+// ── Install: pre-cache app shell + pre-fetch home page API data ───────────────
 self.addEventListener('install', (event) => {
     console.log('[SW] Installing version:', SW_VERSION);
     event.waitUntil(
         caches.open(CACHE_NAME).then((cache) => {
             console.log('[SW] Pre-caching app shell');
             return cache.addAll(PRECACHE_URLS);
-        }).then(() => self.skipWaiting())
+        }).then(() => {
+            // Fire-and-forget home page API pre-fetch (don't block skipWaiting).
+            // Even if prefetchHomePageAPIs() fails, SW activation proceeds.
+            prefetchHomePageAPIs();
+            return self.skipWaiting();
+        })
     );
 });
 
@@ -82,6 +87,27 @@ function isImageRequest(request, url) {
     const accept = request.headers.get('accept') || '';
     const looksLikeImagePath = /\.(png|jpe?g|webp|gif|avif|svg)$/i.test(url.pathname);
     return accept.includes('image/') || looksLikeImagePath;
+}
+
+async function prefetchHomePageAPIs() {
+    // Phase D: Pre-fetch home page API data during SW install.
+    // Flutter engine boot takes ~2-3s, so by the time the app makes API calls,
+    // the responses are already in cache — even on the very first visit.
+    const urls = [
+        '/api/v1/banners?bannerCate=1&limit=10',
+        '/api/v1/home/sections?limit=10',
+    ];
+    const cache = await caches.open(API_CACHE_NAME);
+    await Promise.allSettled(urls.map((url) => {
+        return fetch(url).then((response) => {
+            if (response && response.ok) {
+                cache.put(new Request(url), response);
+                console.log('[SW] Pre-fetched:', url);
+            }
+        }).catch(() => {
+            // Fail silently — app falls back to normal network request.
+        });
+    }));
 }
 
 async function trimCache(cacheName, maxEntries) {
