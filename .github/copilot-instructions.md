@@ -844,3 +844,16 @@ await apiCall().withRetry(maxRetries: 3, context: 'Upload file');
 - `main.dart.js` reduces by ~120-140KB (removes `home_page.dart`, all `home_components/*.dart`, `swiper_banner.dart` with `card_swiper` package, `base_scaffold.dart`, `pwa_banners.dart`, `lucky_custom_material_indicator.dart`, `image_preloader.dart`, `image_optimization_init.dart`, `home_provider`)
 - CanvasKit download eliminated (−2-3MB JS+WASM) on HTML renderer browsers
 - Estimated combined startup improvement: ~200-400ms faster Time-to-Interactive on first visit
+
+### ✅ Task Complete (2026-05-12)
+
+- `fvm flutter analyze`: 0 new issues (592 pre-existing, all infos/warnings)
+- `fvm flutter test`: 83/83 passed
+- `flutter build web --release`: ✅ build succeeded (50.3s)
+- `bash tool/patch_flutter_bootstrap.sh`: ✅ config:{renderer:'html'} injected
+- `bash tool/inject_part_files.sh`: ✅ 275 .part.js files injected into pwa_sw.js
+- **CanvasKit root cause**: `_flutter.loader.load()` in `flutter_bootstrap.js` was called without `config: {renderer: 'html'}`, causing Flutter engine to default to CanvasKit build. Post-build script now patches this.
+- **Patch script fixes during dev**:
+  1. `content.index()` → `content.rindex()` — was matching inside minified class definition, not the actual call at EOF
+  2. `'\\\\'` → `'\\'` — quoted heredoc doesn't process bash escaping, so Python received doubled escapes
+  3. Added `/* */` block comment handler — `Flutter's` single-quote inside the service worker deprecation comment confused the string literal parser, preventing brace matching

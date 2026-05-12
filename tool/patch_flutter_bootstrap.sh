@@ -25,75 +25,83 @@ if [ ! -f "$BOOTSTRAP_FILE" ]; then
   exit 1
 fi
 
-# Delegate to Python for cross-platform compatibility (macOS + Linux CI)
-python3 << PYEOF
-import re
+# Use quoted heredoc (<< 'PYEOF') to avoid bash escaping issues.
+python3 - "$BOOTSTRAP_FILE" << 'PYEOF'
+import sys
 
-bootstrap_file = "$BOOTSTRAP_FILE"
+bootstrap_file = sys.argv[1]
 
 with open(bootstrap_file, 'r') as f:
     content = f.read()
 
-# Target pattern: _flutter.loader.load({serviceWorkerSettings:{...}})
-# We need to inject config: {renderer: 'html'} before the final closing paren.
-#
-# Strategy: Find "_flutter.loader.load(" then find the matching "})" closure
-# using brace counting, and insert the config before the final "})".
 MARKER = "_flutter.loader.load("
 CONFIG_STR = ",config:{renderer:'html'}"
 
 if MARKER not in content:
-    print("⚠️  No _flutter.loader.load() call found — skipping")
+    print("WARNING: No _flutter.loader.load() call found - skipping")
     exit(0)
 
 # Check if config already exists
-if "config:" in content and "renderer:" in content:
-    print("⚠️  config: {renderer: ...} already present — skipping")
+if "config:{renderer:'html'}" in content:
+    print("WARNING: config: {renderer: 'html'} already present - skipping")
     exit(0)
 
-# Find the load() call and insert config before the closing brace
-idx = content.index(MARKER)
-# Find the opening paren after MARKER
-paren_start = content.index('(', idx) + 1
-# Count braces to find the matching end
+# Use rindex to find the LAST occurrence (avoids matching inside minified blob)
+idx = content.rindex(MARKER)
+paren_start = idx + len(MARKER)
+
+# Count braces using a state machine that handles:
+#   - String literals (single/double quoted)
+#   - Escape sequences inside strings
+#   - Block comments /* ... */ (critical: Chrome's ServiceWorker comment contains
+#     single quotes like "Flutter's service worker" that would confuse simple parsing)
 depth = 0
 in_string = False
 string_char = None
-i = paren_start
 
+i = paren_start
 while i < len(content):
     ch = content[i]
-    # Handle string literals to avoid counting braces inside strings
+
+    # ── Block comment handling ──
+    if ch == '/' and i + 1 < len(content) and content[i + 1] == '*':
+        i += 2  # skip '/*'
+        while i < len(content):
+            if content[i] == '*' and i + 1 < len(content) and content[i + 1] == '/':
+                i += 2  # skip '*/'
+                break
+            i += 1
+        continue
+
+    # ── String literal handling ──
     if in_string:
         if ch == '\\':
-            i += 2
-            continue
+            i += 1  # skip escaped character
         elif ch == string_char:
             in_string = False
         i += 1
         continue
-    
+
     if ch in ("'", '"'):
         in_string = True
         string_char = ch
         i += 1
         continue
-    
+
+    # ── Brace counting ──
     if ch == '{':
         depth += 1
     elif ch == '}':
         depth -= 1
         if depth == 0:
-            # Found the closing brace — insert config before it
-            # The pattern is: ...}) or ...})
-            # We need to insert before the closing })
-            insert_pos = i  # position of the final }
-            new_content = content[:insert_pos] + CONFIG_STR + content[insert_pos:]
+            # Found the matching closing brace — insert config before it
+            new_content = content[:i] + CONFIG_STR + content[i:]
             with open(bootstrap_file, 'w') as f:
                 f.write(new_content)
-            print("✅ Patched flutter_bootstrap.js: config: {renderer: 'html'} injected")
+            print("Patched flutter_bootstrap.js: config: {renderer: 'html'} injected")
             exit(0)
+
     i += 1
 
-print("⚠️  Could not find matching brace closure — skipping")
+print("WARNING: Could not find matching brace closure - skipping")
 PYEOF
