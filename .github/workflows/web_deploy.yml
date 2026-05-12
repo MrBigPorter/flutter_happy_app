@@ -134,6 +134,15 @@ jobs:
           bash tool/inject_part_files.sh
           echo "✅ .part.js files injected into build/web/pwa_sw.js"
 
+      # ── Phase 5.5b: Patch Flutter Bootstrap (Force HTML Renderer) ──
+      # flutter_bootstrap.js doesn't pass config: {renderer: 'html'} to
+      # _flutter.loader.load(), causing CanvasKit download despite index.html
+      # setting window.__flutter = {renderer: 'html'}. This patches it.
+      - name: 🩹 5.5b. Patch Flutter Bootstrap (Force HTML Renderer)
+        run: |
+          bash tool/patch_flutter_bootstrap.sh
+          echo "✅ flutter_bootstrap.js patched: config: {renderer: 'html'}"
+
       # ── Phase 6: Deploy to Cloudflare Pages ────────────────────
       - name: ☁️ 6. Deploy to Cloudflare Pages
         uses: cloudflare/pages-action@v1

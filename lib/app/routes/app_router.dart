@@ -20,6 +20,7 @@ import 'package:flutter_app/core/store/auth/auth_provider.dart';
 import 'package:flutter_app/app/routes/deferred_page.dart';
 import 'package:flutter_app/app/page/product_page_skeleton.dart';
 import 'package:flutter_app/app/page/me_components/me_page_skeleton.dart';
+import 'package:flutter_app/app/page/home_page_skeleton.dart';
 import 'package:flutter_app/ui/chat/chat_search/chat_search_page.dart' deferred as _chat_search;
 import 'package:flutter_app/ui/chat/conversation_list_page.dart' deferred as _chat;
 import 'package:flutter_app/ui/chat/models/conversation.dart';
@@ -40,7 +41,7 @@ import 'package:flutter_app/app/page/deposit/deposit_page.dart' deferred as _dep
 import 'package:flutter_app/app/page/deposit_detail_page.dart' deferred as _winner_detail;
 import 'package:flutter_app/app/page/group_lobby/group_lobby_page.dart' deferred as _group_lobby;
 import 'package:flutter_app/app/page/guide_page.dart' deferred as _guide;
-import 'package:flutter_app/app/page/home_page.dart';
+import 'package:flutter_app/app/page/home_page.dart' deferred as _home;
 import 'package:flutter_app/app/page/product_page.dart' deferred as _product;
 import 'package:flutter_app/app/page/transaction/transaction_ui_model.dart';
 import 'package:flutter_app/app/page/transaction_record_page.dart' deferred as _transaction_record;
@@ -390,7 +391,11 @@ class AppRouter {
             GoRoute(
               name: 'home',
               path: '/home',
-              builder: (context, state) => const HomePage(),
+              builder: (context, state) => DeferredPage(
+                loadLibrary: _home.loadLibrary,
+                skeletonBuilder: () => const HomePageSkeleton(),
+                builder: () => _home.HomePage(),
+              ),
             ),
             GoRoute(
               name: 'product',

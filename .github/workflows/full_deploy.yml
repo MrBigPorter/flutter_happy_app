@@ -144,6 +144,12 @@ jobs:
           bash tool/inject_part_files.sh
           echo "✅ .part.js files injected into build/web/pwa_sw.js"
 
+      # ── Phase 5.5b: Patch Flutter Bootstrap (Force HTML Renderer) ──
+      - name: 🩹 5.5b. Patch Flutter Bootstrap (Force HTML Renderer)
+        run: |
+          bash tool/patch_flutter_bootstrap.sh
+          echo "✅ flutter_bootstrap.js patched: config: {renderer: 'html'}"
+
       - name: ☁️ Deploy to Cloudflare Pages
         uses: cloudflare/pages-action@v1
         with:

@@ -815,3 +815,32 @@ await apiCall().withRetry(maxRetries: 3, context: 'Upload file');
 2. `walletDetail` route follows the same `pageBuilder` pattern used by `_product_group` and `_my_vouchers`: `unawaited()` at pageBuilder level kicks off chunk loading immediately, `DeferredPage` in child handles the loading→ready transition.
 3. `guide` route uses the simpler `builder` pattern since it doesn't need a custom page transition — `DeferredPage` handles loading and fade-in directly.
 4. After this change, the only remaining eager pages are: `home_page.dart` (tab 1), `login_page.dart` (auth flow), and `oauth_processing_page.dart` (auth callback) — all are first-screen critical and **must** remain eager.
+
+## 🎯 Current Task — HomePage Deferred + CanvasKit Fix (2026-05-12)
+
+**Phase**: Web Performance — Final Sprint
+**Goal**: Defer HomePage (`home_page.dart`) to its own `.part.js` chunk, and fix CanvasKit loading issue in `flutter_bootstrap.js`.
+
+### Changes Made
+
+- [x] **New skeleton** ([`lib/app/page/home_page_skeleton.dart`](lib/app/page/home_page_skeleton.dart)): Lightweight shimmer skeleton for the chunk loading phase — banner, flash sale, group buying, and treasure grid placeholders. Uses existing `Skeleton.react` with theme-aware design tokens. Separate from the data-loading `HomeTreasureSkeleton`.
+- [x] **Deferred import + route** ([`lib/app/routes/app_router.dart`](lib/app/routes/app_router.dart)):
+  - Converted `home_page.dart` → `deferred as _home`
+  - Wrapped `HomePage` route with `DeferredPage(loadLibrary: _home.loadLibrary, skeletonBuilder: () => const HomePageSkeleton(), builder: () => _home.HomePage())`
+  - Added `import 'package:flutter_app/app/page/home_page_skeleton.dart';`
+- [x] **Background prefetch** ([`lib/main.dart`](lib/main.dart)): Added `unawaited(_home.loadLibrary())` alongside existing `_chat.loadLibrary()` for background chunk preloading.
+- [x] **CanvasKit fix — patch script** ([`tool/patch_flutter_bootstrap.sh`](tool/patch_flutter_bootstrap.sh)): Post-build script that injects `config: {renderer: 'html'}` into `_flutter.loader.load({...})` call in `flutter_bootstrap.js`. Uses brace-matching Python logic to safely insert config before the closing brace.
+- [x] **CI/CD integration** ([`.github/workflows/web_deploy.yml`](.github/workflows/web_deploy.yml), [`.github/workflows/full_deploy.yml`](.github/workflows/full_deploy.yml)): Added Phase 5.5b to both workflows — runs `bash tool/patch_flutter_bootstrap.sh` after Phase 5.5 (part file injection).
+
+### How it works
+
+1. **HomePage deferred**: On first visit, `DeferredPage` shows the shimmer skeleton while the `.part_*.js` chunk downloads. The `unawaited(_home.loadLibrary())` in `main.dart` starts preloading immediately after `runApp()`, so by the time `ShellRoute` navigates to `/home`, the chunk is typically already cached.
+2. **Two-layer skeleton**: Chunk loading skeleton (`HomePageSkeleton`) shown during `.part.js` download → then real `HomePage` loads and shows its own data-loading skeleton (`HomeTreasureSkeleton`) during API fetch. This eliminates blank states entirely.
+3. **CanvasKit fix**: `flutter_bootstrap.js` now passes `config: {renderer: 'html'}` to `_flutter.loader.load()`, which tells the Flutter engine loader to use the HTML renderer build instead of defaulting to CanvasKit (which adds ~2-3MB of JS+WASM downloads).
+4. **No SW changes needed**: `inject_part_files.sh` already auto-discovers all `.part.js` files and injects them into `pwa_sw.js` PRECACHE_URLS. The new HomePage chunk is handled automatically.
+
+### Expected Impact
+
+- `main.dart.js` reduces by ~120-140KB (removes `home_page.dart`, all `home_components/*.dart`, `swiper_banner.dart` with `card_swiper` package, `base_scaffold.dart`, `pwa_banners.dart`, `lucky_custom_material_indicator.dart`, `image_preloader.dart`, `image_optimization_init.dart`, `home_provider`)
+- CanvasKit download eliminated (−2-3MB JS+WASM) on HTML renderer browsers
+- Estimated combined startup improvement: ~200-400ms faster Time-to-Interactive on first visit
