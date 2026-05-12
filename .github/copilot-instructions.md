@@ -903,3 +903,24 @@ await apiCall().withRetry(maxRetries: 3, context: 'Upload file');
 - `fvm flutter test`: 83/83 passed
 
 ### ✅ Task Complete (2026-05-12)
+
+
+## 🎯 Current Task — Deferred .part.js Prefetch Optimization (2026-05-12)
+
+### Problem
+SW install's `cache.addAll(PRECACHE_URLS)` downloaded 275+ deferred `.part.js` files simultaneously with `main.dart.js`, competing for browser's limited TCP connections (6 per domain). This caused `main.dart.js` download time to increase from ~300ms to ~715ms.
+
+### Solution
+Moved deferred `.part.js` caching out of SW install critical path. Now cached lazily via `requestIdleCallback` after Flutter engine is fully loaded and App Shell is removed.
+
+### Changes Made
+- `web/pwa_sw.js` — moved `DEFERRED_PART_FILES_INJECT_HERE` marker from `PRECACHE_URLS` into new `DEFERRED_PART_URLS` array; added `CACHE_PARTS` message handler
+- `web/index.html` — wrapped `__removeAppShell()` to trigger `requestIdleCallback` → SW `CACHE_PARTS` message after Flutter is interactive; fallback `setTimeout(5s)` for older browsers
+- `tool/inject_part_files.sh` — updated docs to reflect new injection target (`DEFERRED_PART_URLS`)
+- `plans/deferred_part_prefetch_optimization.md` — created
+
+### Verification
+- `fvm flutter analyze`: 593 pre-existing issues, 0 new
+- `fvm flutter test`: 83/83 passed
+
+### ✅ Task Complete (2026-05-12)

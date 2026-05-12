@@ -495,6 +495,37 @@
     }, 10000);
 </script>
 
+<!-- ===== H3: Lazy cache deferred .part.js files (after Flutter is interactive) ===== -->
+<script>
+    // Deferred .part.js files are NOT cached during SW install to avoid competing
+    // with main.dart.js download. Instead, cache them lazily when the browser is idle,
+    // triggered by __removeAppShell() — which means Flutter engine is fully loaded.
+    //
+    // Why requestIdleCallback: ensures we don't steal bandwidth/CPU from the critical
+    // first-frame rendering. The browser calls this when the main thread is idle.
+    // Fallback to setTimeout(5s) for browsers without requestIdleCallback support.
+    (function initDeferredPartCaching() {
+        // The original __removeAppShell
+        var _origRemove = window.__removeAppShell;
+        window.__removeAppShell = function() {
+            // Call original first (removes App Shell)
+            if (_origRemove) _origRemove();
+
+            // Then lazily cache deferred .part.js files for second-visit speed.
+            function cacheParts() {
+                if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+                    navigator.serviceWorker.controller.postMessage({ type: 'CACHE_PARTS' });
+                }
+            }
+            if ('requestIdleCallback' in window) {
+                requestIdleCallback(cacheParts, { timeout: 5000 });
+            } else {
+                setTimeout(cacheParts, 5000);
+            }
+        };
+    })();
+</script>
+
 <!-- ===== PWA: Install Prompt ===== -->
 <script>
     // Capture install prompt for manual triggering later

@@ -4,7 +4,7 @@
 # ─────────────────────────────────────────────────────────────────
 # 用途: 在 flutter build web --release 后执行，扫描 build/web/
 #       下所有 main.dart.js_*.part.js 文件，注入到 pwa_sw.js 的
-#       PRECACHE_URLS 中。
+#       DEFERRED_PART_URLS 中（非 PRECACHE_URLS，避免与 main.dart.js 竞争带宽）。
 #
 # 用法: bash tool/inject_part_files.sh [build_dir]
 #       默认 build_dir = build/web

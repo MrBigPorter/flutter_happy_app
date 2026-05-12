@@ -38,7 +38,13 @@ const PRECACHE_URLS = [
     '/flutter.js',
     '/flutter_bootstrap.js',
     '/main.dart.js',
-    // DEFERRED_PART_FILES_INJECT_HERE — injected by tool/inject_part_files.sh after build
+];
+
+// Deferred .part.js files — NOT cached during SW install (would compete with main.dart.js).
+// Instead, cached lazily via requestIdleCallback after Flutter is interactive.
+// Injected by tool/inject_part_files.sh after build.
+const DEFERRED_PART_URLS = [
+    // DEFERRED_PART_FILES_INJECT_HERE
 ];
 
 // ── Install: pre-cache app shell + pre-fetch home page API data ───────────────
@@ -74,10 +80,20 @@ self.addEventListener('activate', (event) => {
 });
 
 // Allow index.html to tell the waiting SW to activate immediately.
+// Also handle lazy caching of deferred .part.js files when browser is idle.
 self.addEventListener('message', (event) => {
     const msg = event.data;
     if (msg === 'skipWaiting' || (msg && msg.type === 'SKIP_WAITING')) {
         self.skipWaiting();
+    }
+    // Cache deferred .part.js files lazily (triggered by requestIdleCallback in index.html).
+    // These are NOT cached during SW install to avoid competing with main.dart.js download.
+    if (msg && msg.type === 'CACHE_PARTS') {
+        event.waitUntil(
+            caches.open(CACHE_NAME).then((cache) => {
+                return cache.addAll(DEFERRED_PART_URLS);
+            })
+        );
     }
 });
 
