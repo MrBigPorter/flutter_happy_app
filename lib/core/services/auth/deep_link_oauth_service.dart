@@ -134,6 +134,14 @@ class DeepLinkOAuthService {
   static String _getWebWindowOrigin() => DeepLinkOAuthServiceWeb.getWindowOrigin();
 
   /// Web 平台 OAuth 登录
+  ///
+  /// 使用弹窗（popup）方式代替整页跳转，避免 Flutter App 完全重新加载。
+  /// 流程：
+  /// 1. 同步打开空白弹窗（绕过浏览器弹窗拦截）
+  /// 2. 将弹窗导航到后端 OAuth URL
+  /// 3. 弹窗完成 OAuth 后着陆到 /oauth-popup-callback.html
+  /// 4. callback.html 通过 postMessage 或 localStorage 传回 token
+  /// 5. 主窗口收到 token 后完成登录
   static Future<Map<String, String>> _webLoginWithProvider(
     String provider,
     String apiBaseUrl, {
@@ -141,7 +149,8 @@ class DeepLinkOAuthService {
   }) async {
     final state = _generateState();
     final origin = _getWebOrigin();
-    final redirectUri = '$origin/oauth/callback';
+    // 弹窗回调页改为静态 HTML，无需加载 Flutter App
+    final redirectUri = '$origin/oauth-popup-callback.html';
     final cleanBaseUrl = apiBaseUrl.endsWith('/')
         ? apiBaseUrl.substring(0, apiBaseUrl.length - 1)
         : apiBaseUrl;
@@ -149,26 +158,57 @@ class DeepLinkOAuthService {
     var loginPath =
         '/auth/$provider/login'
         '?state=${Uri.encodeComponent(state)}'
-        '&redirect_uri=${Uri.encodeComponent(redirectUri)}';
+        '&callback=${Uri.encodeComponent(redirectUri)}';
     if (inviteCode != null && inviteCode.isNotEmpty) {
       loginPath += '&inviteCode=${Uri.encodeComponent(inviteCode)}';
     }
     final loginUrl = cleanBaseUrl + loginPath;
-    if (kDebugMode) debugPrint('[DeepLinkOAuthService] Web OAuth URL: $loginUrl');
+    if (kDebugMode) {
+      debugPrint('[DeepLinkOAuthService] Web OAuth URL: $loginUrl');
+      debugPrint('[DeepLinkOAuthService] callback param: ${Uri.encodeComponent(redirectUri)}');
+    }
 
-    if (kIsWeb) {
-      try { _storeStateInSession(provider, state); } catch (e) {
-        debugPrint('[DeepLinkOAuthService] Failed to store state: $e');
-      }
-      try { _redirectToUrl(loginUrl); } catch (e) {
+    if (!kIsWeb) {
+      throw DeepLinkOAuthException('_webLoginWithProvider called on non-web platform');
+    }
+
+    // 存储 state 用于后续验证
+    try { _storeStateInSession(provider, state); } catch (e) {
+      debugPrint('[DeepLinkOAuthService] Failed to store state: $e');
+    }
+
+    // 尝试弹窗方式（先开空白弹窗再填 URL，绕过拦截器）
+    final popupOpened = DeepLinkOAuthServiceWeb.openPopup(loginUrl);
+    if (!popupOpened) {
+      // 弹窗被拦截，降级为整页跳转
+      debugPrint('[DeepLinkOAuthService] Popup blocked, falling back to full-page redirect');
+      try {
+        _redirectToUrl(loginUrl);
+      } catch (e) {
         throw DeepLinkOAuthException('Failed to redirect: $e');
       }
+      throw DeepLinkOAuthException(
+        'Web OAuth cancelled: redirect initiated, awaiting browser completion.',
+      );
     }
-    // 整页跳转已发起，浏览器即将离开当前页面，此行正常情况下不会到达。
-    // 若浏览器通过 BFCache 恢复此页面，以"取消"处理，不向用户展示错误。
-    throw DeepLinkOAuthException(
-      'Web OAuth cancelled: redirect initiated, awaiting browser completion.',
-    );
+
+    // 弹窗成功打开，监听 token（postMessage + localStorage 双通道）
+    if (kDebugMode) debugPrint('[DeepLinkOAuthService] Popup opened, waiting for OAuth token...');
+
+    try {
+      if (kDebugMode) debugPrint('[DeepLinkOAuthService] Listening for token via postMessage + StorageEvent...');
+      final token = await DeepLinkOAuthServiceWeb
+          .listenForOAuthToken()
+          .timeout(const Duration(minutes: 5))
+          .first;
+      if (kDebugMode) {
+        debugPrint('[DeepLinkOAuthService] OAuth token received');
+        debugPrint('[DeepLinkOAuthService] Token keys: ${token.keys}');
+      }
+      return token;
+    } on TimeoutException {
+      throw DeepLinkOAuthException('OAuth login timeout after 5 minutes');
+    }
   }
 
   /// 移动端 OAuth 登录（使用 OAuthWebViewPage，基于官方 webview_flutter，兼容 iOS 26+）

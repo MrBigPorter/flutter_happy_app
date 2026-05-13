@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Completing Sign In...</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f8f9fa;
+            color: #333;
+        }
+        .container {
+            text-align: center;
+            padding: 24px;
+        }
+        .spinner {
+            width: 40px;
+            height: 40px;
+            margin: 0 auto 16px;
+            border: 3px solid #e0e0e0;
+            border-top-color: #FF5722;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        p { margin: 0; font-size: 16px; color: #666; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="spinner"></div>
+        <p>Sign in completed. Returning to app...</p>
+    </div>
+    <script>
+        (function() {
+            try {
+                console.log('[OAuthPopupCallback] Callback loaded. URL:', window.location.href);
+                
+                // ===== Parse URL parameters =====
+                var params = {};
+                var queryString = window.location.search.substring(1);
+                if (queryString) {
+                    var pairs = queryString.split('&');
+                    for (var i = 0; i < pairs.length; i++) {
+                        var pair = pairs[i].split('=');
+                        if (pair[0]) {
+                            params[decodeURIComponent(pair[0])] = decodeURIComponent(pair[1] || '');
+                        }
+                    }
+                }
+
+                console.log('[OAuthPopupCallback] Parsed params:', JSON.stringify(Object.keys(params)));
+                
+                var token = params['token'] || '';
+                var refreshToken = params['refreshToken'] || '';
+                var state = params['state'] || '';
+                var provider = params['provider'] || 'google';
+
+                console.log('[OAuthPopupCallback] token=***, state=' + state + ', provider=' + provider);
+
+                // Only require token — backend may not echo state/provider back
+                if (!token) {
+                    console.warn('[OAuthPopupCallback] Missing token parameter');
+                    document.body.innerHTML = '<div class="container"><p>Sign in could not be completed. Missing token.</p></div>';
+                    return;
+                }
+
+                // ===== Build result payload =====
+                // All values must be strings — the Dart receiver uses Map<String, String>
+                var result = JSON.stringify({
+                    type: 'oauth_token',
+                    token: token,
+                    refreshToken: refreshToken,
+                    state: state,
+                    provider: provider,
+                    timestamp: String(Date.now())
+                });
+
+                // ===== Channel 1: postMessage (works when opener is intact) =====
+                if (window.opener && window.opener !== window) {
+                    try {
+                        window.opener.postMessage(JSON.parse(result), '*');
+                        console.log('[OAuthPopupCallback] Token sent via postMessage');
+                    } catch (e) {
+                        console.warn('[OAuthPopupCallback] postMessage failed:', e);
+                    }
+                }
+
+                // ===== Channel 2: localStorage StorageEvent (fallback when opener is null due to COOP) =====
+                try {
+                    localStorage.setItem('oauth_token_result', result);
+                    console.log('[OAuthPopupCallback] Token saved to localStorage');
+                } catch (e) {
+                    console.warn('[OAuthPopupCallback] localStorage write failed:', e);
+                }
+
+                // ===== Clean URL (remove sensitive params from address bar) =====
+                try {
+                    window.history.replaceState({}, '', window.location.pathname);
+                } catch (e) {
+                    // Non-critical, ignore
+                }
+
+                // ===== Close popup =====
+                // window.close() may fail if browser restricts it after cross-origin navigation.
+                // Token is already delivered via localStorage, so this is best-effort.
+                setTimeout(function() {
+                    try { window.close(); } catch (e) {
+                        // Popup close blocked - token already delivered, user can close manually
+                        document.body.innerHTML = '<div class="container"><p>Sign in successful! You can close this window.</p></div>';
+                    }
+                }, 1500);
+            } catch (e) {
+                console.error('[OAuthPopupCallback] Error:', e);
+                document.body.innerHTML = '<div class="container"><p>An error occurred during sign in. Please try again.</p></div>';
+            }
+        })();
+    </script>
+</body>
+</html>
