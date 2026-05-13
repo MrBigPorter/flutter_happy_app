@@ -48,6 +48,9 @@ mixin WithdrawPageLogic on ConsumerState<WithdrawPage> {
 
   void updateValidators(double currentBalance) {
     if (selectedChannel == null) return;
+    // Guard: skip if balance hasn't loaded yet to avoid setting
+    // withdrawableBalance=0 which would reject all positive amounts
+    if (currentBalance <= 0) return;
     final kycStatus = ref.read(userProvider)?.kycStatus ?? 0;
     final isVerified = KycStatusEnum.fromStatus(kycStatus) == KycStatusEnum.approved;
     final amountControl = formGroup.amountControl;

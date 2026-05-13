@@ -42,8 +42,15 @@ class VoiceRecorderService {
       path = p.join(folder.path, '${const Uuid().v4()}.m4a');
     }
 
-    // Architectural Note: AAC-LC is chosen for high compatibility across mobile and web players.
-    const config = RecordConfig(encoder: AudioEncoder.aacLc);
+    // Platform-specific encoder selection:
+    // Web: Opus (audio/webm;codecs=opus) — broadest MediaRecorder support across all browsers.
+    // Native: AAC-LC (audio/mp4) — smaller file size, native codec efficiency.
+    // Web: WAV is universally supported by both MediaRecorder and AudioContext.decodeAudioData()
+    // across all browsers (Chrome, Safari, Firefox). Avoid Opus/WebM which uses a video container
+    // format that decodeAudioData() cannot parse.
+    // Native: AAC-LC (audio/mp4) — smaller file size, native codec efficiency.
+    final encoder = kIsWeb ? AudioEncoder.wav : AudioEncoder.aacLc;
+    final config = RecordConfig(encoder: encoder);
 
     await _audioRecorder.start(config, path: path);
     return path;

@@ -7,7 +7,7 @@ part 'withdraw_form.gform.dart';
 @Rf()
 class WithdrawFormModel {
   const WithdrawFormModel({
-    @RfControl(validators: [NonEmpty(), WithdrawAmount()]) this.amount = '',
+    @RfControl(validators: [NonEmpty()]) this.amount = '',
     @RfControl(validators: [NonEmpty(),MinLengthValidator(2),]) this.accountName = '',
     @RfControl(validators: [NonEmpty(),MinLengthValidator(5),]) this.accountNumber = '',
   });

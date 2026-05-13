@@ -19,7 +19,7 @@ import 'package:flutter_app/utils/asset/asset_manager.dart';
 final ValueNotifier<String?> _playingMsgId = ValueNotifier(null);
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// 📦  Fix 3 — LRU Controller Pool
+// 📦  LRU Controller Pool
 //
 //     Problem : every time another video is played the old one is fully disposed.
 //               Scrolling back means re-downloading + re-initialize (1-3 s lag).
@@ -94,7 +94,7 @@ class _VideoMsgBubbleState extends State<VideoMsgBubble> {
   bool _isPlaying = false;
   bool _isLoading = false;
 
-  // ── Fix 2: pre-warm state ──────────────────────────────────────────────────
+  // ── pre-warm state ─────────────────────────────────────────────────────────
   bool _isPrewarming = false;
   Timer? _prewarmTimer;
 
@@ -153,7 +153,7 @@ class _VideoMsgBubbleState extends State<VideoMsgBubble> {
     return UrlResolver.resolveVideo(widget.message.content);
   }
 
-  // ── Fix 1: controller factory (always uses VideoPlaybackService → Range header)
+  // ── controller factory (uses VideoPlaybackService → Range header)
   //
   //   VideoPlaybackService.createController() adds  `Range: bytes=0-`  so the
   //   player only fetches the MOOV atom first (HTTP 206), then streams the rest.
@@ -164,7 +164,7 @@ class _VideoMsgBubbleState extends State<VideoMsgBubble> {
     final pooled = _pool.get(widget.message.id);
     if (pooled != null && pooled.value.isInitialized) return pooled;
 
-    // Fix 1: use service factory (adds Range header for network URLs)
+    // use service factory (adds Range header for network URLs)
     final ctrl = _svc.createController(url);
     try {
       await ctrl.initialize();
@@ -176,7 +176,7 @@ class _VideoMsgBubbleState extends State<VideoMsgBubble> {
     }
   }
 
-  // ── Fix 3: global-play handler → park in pool instead of dispose ───────────
+  // ── global-play handler → park in pool instead of dispose ──────────────────
 
   void _onGlobalPlayChanged() {
     if (_playingMsgId.value == widget.message.id) return; // still ours
@@ -193,7 +193,7 @@ class _VideoMsgBubbleState extends State<VideoMsgBubble> {
     if (mounted) setState(() { _isPlaying = false; _isLoading = false; });
   }
 
-  // ── Fix 2: viewport pre-warm ───────────────────────────────────────────────
+  // ── viewport pre-warm ─────────────────────────────────────────────────────
   //
   //   VisibilityDetector fires when the bubble scrolls into view.
   //   A 400 ms debounce timer filters fast scrolls — only bubbles the user
@@ -201,7 +201,7 @@ class _VideoMsgBubbleState extends State<VideoMsgBubble> {
   //   (no play), so by the time the user taps, the controller is ready.
   // ──────────────────────────────────────────────────────────────────────────
 
-  // ── Fix 2 (improved): adaptive debounce
+  // ── adaptive debounce
   //   Fully visible (≥0.85) → 50ms  : new message at bottom, user likely to tap soon
   //   Partially visible (0.3-0.85) → 250ms : scrolling through history, filter fast scrolls
   void _onVisibilityChanged(VisibilityInfo info) {
@@ -242,15 +242,15 @@ class _VideoMsgBubbleState extends State<VideoMsgBubble> {
 
     _isPrewarming = true;
     debugPrint('[Video] Pre-warming: ${widget.message.id}');
-    final ctrl = _svc.createController(url); // Fix 1: Range header
+    final ctrl = _svc.createController(url);
     try {
       await ctrl.initialize();
-      // Bug 1 fix: use finally-style logic so _isPrewarming is ALWAYS reset,
+      // Use finally-style logic so _isPrewarming is ALWAYS reset,
       // even when the controller is discarded due to mount/race conditions.
       if (!mounted || _controller != null) {
         // Widget gone, or _togglePlay already set a controller — discard silently
         ctrl.dispose();
-        if (mounted) setState(() => _isPrewarming = false); // ← was missing!
+        if (mounted) setState(() => _isPrewarming = false);
       } else {
         setState(() { _controller = ctrl; _isPrewarming = false; });
         debugPrint('[Video] Pre-warm done: ${widget.message.id}');
@@ -262,9 +262,15 @@ class _VideoMsgBubbleState extends State<VideoMsgBubble> {
     }
   }
 
-  // ── tap: toggle playback ───────────────────────────────────────────────────
+  // ── tap: toggle playback (Native) / open full-screen (Web) ────────────────
 
   Future<void> _togglePlay() async {
+    // 🎯  Web: no inline VideoPlayer — navigate to full-screen player instead.
+    if (kIsWeb) {
+      _openFullScreen();
+      return;
+    }
+
     // Pause if playing
     if (_isPlaying && _controller != null) {
       _controller!.pause();
@@ -287,7 +293,7 @@ class _VideoMsgBubbleState extends State<VideoMsgBubble> {
 
       _playingMsgId.value = widget.message.id;
 
-      final ctrl = await _buildController(url); // Fix 1 + Fix 3
+      final ctrl = await _buildController(url);
       if (!mounted || ctrl == null) {
         ctrl?.dispose();
         setState(() => _isLoading = false);
@@ -335,10 +341,13 @@ class _VideoMsgBubbleState extends State<VideoMsgBubble> {
     final double h = (widget.message.meta?['h'] ?? 9).toDouble();
     final double aspectRatio = (w / h).clamp(0.6, 1.8);
 
-    final bool showVideo =
-        _controller != null && _controller!.value.isInitialized && _isPlaying;
+    // 🎯  Native: show VideoPlayer widget only when actively playing.
+    //      On Web the VideoPlayer is never rendered inline (thumbnail only).
+    final bool showVideo = !kIsWeb &&
+        _controller != null &&
+        _controller!.value.isInitialized &&
+        _isPlaying;
 
-    // Fix 2: wrap with VisibilityDetector for pre-warm trigger
     return VisibilityDetector(
       key: Key('vd_${widget.message.id}'),
       onVisibilityChanged: _onVisibilityChanged,
@@ -359,7 +368,7 @@ class _VideoMsgBubbleState extends State<VideoMsgBubble> {
             child: Stack(
               alignment: Alignment.center,
               children: [
-                // 1. Thumbnail / cover
+                // 1. Thumbnail / cover — shown when video not actively playing
                 if (!showVideo)
                   Positioned.fill(
                     child: AppCachedImage(
@@ -373,7 +382,7 @@ class _VideoMsgBubbleState extends State<VideoMsgBubble> {
                     ),
                   ),
 
-                // 2. Video player
+                // 2. Video player — only rendered on Native when actively playing
                 if (showVideo)
                   Positioned.fill(
                     child: FittedBox(
@@ -395,7 +404,7 @@ class _VideoMsgBubbleState extends State<VideoMsgBubble> {
                   const Center(
                     child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                   )
-                else if (!_isPlaying) ...[
+                else if (!_isPlaying || (kIsWeb && _controller == null)) ...[
                   // Play button — fully opaque when pre-warmed (ready to play instantly)
                   Container(
                     decoration: BoxDecoration(

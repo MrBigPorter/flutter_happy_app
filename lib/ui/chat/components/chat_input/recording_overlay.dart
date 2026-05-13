@@ -1,45 +1,78 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
+/// Full-width recording bottom bar positioned at the very bottom of the screen.
+///
+/// Uses [ValueNotifier] for the elapsed duration so the display stays in sync
+/// via [ValueListenableBuilder] — avoiding [OverlayEntry.markNeedsBuild] issues
+/// on web and preventing state tree conflicts.
 class RecordingOverlay extends StatelessWidget {
-  final int duration;
+  final ValueNotifier<int> durationNotifier;
   final bool isCancelArea;
 
-  const RecordingOverlay({super.key, required this.duration, this.isCancelArea = false});
+  const RecordingOverlay({
+    super.key,
+    required this.durationNotifier,
+    this.isCancelArea = false,
+  });
+
+  static String formatDuration(int seconds) {
+    final min = (seconds ~/ 60).toString().padLeft(2, '0');
+    final sec = (seconds % 60).toString().padLeft(2, '0');
+    return '$min:$sec';
+  }
 
   @override
   Widget build(BuildContext context) {
-    // Core Fix: Wrap with IgnorePointer to allow touch events to pass through to underlying components
-    return IgnorePointer(
-      ignoring: true,
-      child: Material( // Wrap with Material to ensure correct text styling
-        color: Colors.transparent,
-        child: Center(
+    final isCancel = isCancelArea;
+    final bgColor = isCancel ? Colors.red.shade700 : Colors.black87;
+
+    return Positioned(
+      bottom: 0,
+      left: 0,
+      right: 0,
+      child: IgnorePointer(
+        ignoring: true,
+        child: Material(
+          color: Colors.transparent,
           child: Container(
-            width: 150.w,
-            height: 150.w,
-            decoration: BoxDecoration(
-              color: Colors.black87.withOpacity(0.8),
-              borderRadius: BorderRadius.circular(20.r),
+            color: bgColor.withValues(alpha: 0.85),
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.of(context).padding.bottom,
             ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  isCancelArea ? Icons.undo : Icons.mic,
-                  size: 50.sp,
-                  color: isCancelArea ? Colors.red : Colors.white,
-                ),
-                SizedBox(height: 12.h),
-                Text(
-                  isCancelArea ? "Release to cancel" : "${duration}s",
-                  style: TextStyle(
-                    color: isCancelArea ? Colors.red : Colors.white,
-                    fontSize: 16.sp,
-                  ),
-                ),
-              ],
+            child: SizedBox(
+              height: 56.h,
+              child: ValueListenableBuilder<int>(
+                valueListenable: durationNotifier,
+                builder: (context, seconds, _) {
+                  return Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.mic, size: 20.sp, color: Colors.white),
+                      SizedBox(width: 8.w),
+                      Text(
+                        formatDuration(seconds),
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 18.sp,
+                          fontWeight: FontWeight.w600,
+                          fontFeatures: const [FontFeature.tabularFigures()],
+                        ),
+                      ),
+                      if (isCancel) ...[
+                        SizedBox(width: 12.w),
+                        Text(
+                          "Slide to Cancel",
+                          style: TextStyle(
+                            color: Colors.white70,
+                            fontSize: 14.sp,
+                          ),
+                        ),
+                      ],
+                    ],
+                  );
+                },
+              ),
             ),
           ),
         ),

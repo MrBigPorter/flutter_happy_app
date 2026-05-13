@@ -1,7 +1,7 @@
 {
   "FLAVOR": "dev",
   "API_BASE_URL": "https://dev-api.joyminis.com",
-  "IMG_BASE_URL": "https://dev.joyminis.com",
+  "IMG_BASE_URL": "https://img.joyminis.com",
   "LOG_HTTP": true,
   "APP_ID_SUFFIX": ".test",
   "APP_NAME_SUFFIX": "(Test)",

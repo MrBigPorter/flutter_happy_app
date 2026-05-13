@@ -301,6 +301,7 @@ class UploadStep implements PipelineStep {
             if (ext == 'bin') {
               if (ctx.initialMsg.type == MessageType.video) ext = 'mp4';
               if (ctx.initialMsg.type == MessageType.image) ext = 'jpg';
+              if (ctx.initialMsg.type == MessageType.audio) ext = kIsWeb ? 'wav' : 'm4a';
             }
             fileToUpload = XFile(uploadPath, name: 'upload_${DateTime.now().millisecondsSinceEpoch}.$ext');
           }

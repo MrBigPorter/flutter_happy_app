@@ -320,6 +320,14 @@ mixin ChatPageLogic on ConsumerState<ChatPage> {
       }
     } catch (e) {
       debugPrint("[ChatPageLogic] Location error: $e");
+      final errMsg = e.toString();
+      if (errMsg.contains('denied')) {
+        if (mounted) RadixToast.error('Location permission denied');
+      } else if (errMsg.contains('disabled')) {
+        if (mounted) RadixToast.error('Please enable location services in your device settings');
+      } else {
+        if (mounted) RadixToast.error('Unable to get location');
+      }
     }
   }
 

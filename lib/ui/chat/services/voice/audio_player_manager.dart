@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 import 'package:just_audio/just_audio.dart';
 
 class AudioPlayerManager {
@@ -58,6 +59,7 @@ class AudioPlayerManager {
     } catch(e) {
       debugPrint("Audio playback error: $e");
       _currentPlayingId = null;
+      Fluttertoast.showToast(msg: "Playback failed, please try again");
     }
   }
 

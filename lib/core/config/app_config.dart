@@ -19,8 +19,8 @@ class AppConfig {
 
   static const String _imgBaseRaw = String.fromEnvironment(
       'IMG_BASE_URL',
-      defaultValue: 'https://dev.joyminis.com'
-    // 注意：Dev 环境默认指向网关代理，Prod环境才指向 img.joyminis.com
+      defaultValue: 'https://img.joyminis.com'
+    // 统一使用 img.joyminis.com 作为唯一的 Cloudflare 资源服务器
   );
 
   static const bool _logHttpRaw = bool.fromEnvironment(

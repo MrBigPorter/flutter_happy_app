@@ -144,18 +144,15 @@ PreferredSizeWidget _buildAppBar(
       ],
     ),
     actions: [
-      // Call buttons are hidden for customer-service conversations
-      // (type SUPPORT or BUSINESS) — agents do not support WebRTC calls.
-      if (detail?.type != ConversationType.support &&
+      // Call buttons are hidden for group chats and customer-service
+      // conversations (type SUPPORT or BUSINESS) — neither supports calls.
+      if (!isGroup &&
+          detail?.type != ConversationType.support &&
           detail?.type != ConversationType.business) ...[
         // 1. Video Call Button
         IconButton(
           icon: Icon(Icons.videocam, color: context.textPrimary900, size: 24.sp),
           onPressed: () {
-            if (isGroup) {
-              // Group video calls currently not supported
-              return;
-            }
             if (targetUserId == null) {
               // Target user not found
               return;
@@ -187,7 +184,6 @@ PreferredSizeWidget _buildAppBar(
             size: 22.sp,
           ),
           onPressed: () {
-            if (isGroup) return;
             if (targetUserId == null) return;
 
             Navigator.push(

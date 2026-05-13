@@ -4,7 +4,28 @@ import 'package:geolocator/geolocator.dart';
 
 class LocationService {
   /// Retrieves current coordinates, including comprehensive permission handling.
+  ///
+  /// Note: On Web (kIsWeb), [Geolocator.isLocationServiceEnabled] is not
+  /// supported and will throw. We skip it and go straight to permission
+  /// check + getCurrentPosition, which uses the browser's Geolocation API.
   static Future<Position?> getCurrentPosition() async {
+    if (kIsWeb) {
+      // Web: Bypass isLocationServiceEnabled (unsupported), directly use
+      // browser Geolocation API via getCurrentPosition.
+      // On Web, requestPermission() triggers the browser permission prompt.
+      // checkPermission() uses navigator.permissions.query().
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          return Future.error('Location permissions are denied');
+        }
+      }
+      return await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
+    }
+
     bool serviceEnabled;
     LocationPermission permission;
 

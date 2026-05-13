@@ -1,10 +1,10 @@
-import 'dart:async';
 import 'package:flutter_app/ui/chat/widgets/voice_record_button_web_utils.dart'
 if (dart.library.js) 'package:flutter_app/ui/chat/widgets/voice_record_button_web_utils_web.dart'
 as web_utils;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -29,15 +29,23 @@ class VoiceRecordButton extends ConsumerStatefulWidget {
   ConsumerState<VoiceRecordButton> createState() => _VoiceRecordButtonState();
 }
 
-class _VoiceRecordButtonState extends ConsumerState<VoiceRecordButton> {
+class _VoiceRecordButtonState extends ConsumerState<VoiceRecordButton>
+    with TickerProviderStateMixin {
   bool _isRecording = false;
   bool _isCancelArea = false;
   bool _isPressing = false;
 
   int _recordDuration = 0;
-  Timer? _recordTimer;
+  Ticker? _durationTicker;
   OverlayEntry? _overlayEntry;
   DateTime? _recordStartTime;
+
+  // ValueNotifier drives the overlay display — no markNeedsBuild needed.
+  final ValueNotifier<int> _durationNotifier = ValueNotifier<int>(0);
+
+  // Animation for pulsing recording indicator
+  late AnimationController _pulseController;
+  late Animation<double> _pulseAnimation;
 
   @override
   void initState() {
@@ -45,12 +53,21 @@ class _VoiceRecordButtonState extends ConsumerState<VoiceRecordButton> {
     if (kIsWeb) {
       web_utils.preventDefaultContextMenu();
     }
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1000),
+    );
+    _pulseAnimation = Tween<double>(begin: 0.6, end: 1.0).animate(
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+    );
   }
 
   @override
   void dispose() {
-    _recordTimer?.cancel();
+    _durationTicker?.dispose();
     _hideOverlay();
+    _durationNotifier.dispose();
+    _pulseController.dispose();
     super.dispose();
   }
 
@@ -75,14 +92,24 @@ class _VoiceRecordButtonState extends ConsumerState<VoiceRecordButton> {
       _recordStartTime = DateTime.now();
     });
 
+    _durationNotifier.value = 0;
+
+    // Start pulse animation
+    _pulseController.repeat(reverse: true);
+
     _showOverlay();
 
-    _recordTimer = Timer.periodic(const Duration(seconds: 1), (t) {
-      if (mounted) {
-        setState(() => _recordDuration++);
-        _updateOverlay();
+    // Use Ticker instead of Timer.periodic — Ticker is tied to Flutter's render
+    // pipeline, unaffected by OverlayEntry rebuilds on Web where Timer delegates
+    // to browser setInterval and can lose callbacks when mounted flips to false.
+    _durationTicker = createTicker((elapsed) {
+      if (!mounted) return;
+      final seconds = elapsed.inSeconds;
+      if (seconds != _recordDuration) {
+        setState(() => _recordDuration = seconds);
+        _durationNotifier.value = seconds;
       }
-    });
+    })..start();
 
     try {
       await VoiceRecorderService().start();
@@ -94,9 +121,12 @@ class _VoiceRecordButtonState extends ConsumerState<VoiceRecordButton> {
   }
 
   Future<void> _stopRecording({bool forceDiscard = false}) async {
-    _recordTimer?.cancel();
-    _recordTimer = null;
+    _durationTicker?.stop();
+    _durationTicker?.dispose();
+    _durationTicker = null;
     _hideOverlay();
+    _pulseController.stop();
+    _pulseController.reset();
 
     if (!_isRecording) return;
 
@@ -131,13 +161,14 @@ class _VoiceRecordButtonState extends ConsumerState<VoiceRecordButton> {
     if (_overlayEntry != null) return;
     _overlayEntry = OverlayEntry(
       builder: (context) => RecordingOverlay(
-        duration: _recordDuration,
+        durationNotifier: _durationNotifier,
         isCancelArea: _isCancelArea,
       ),
     );
     Overlay.of(context).insert(_overlayEntry!);
   }
 
+  /// Rebuilds the overlay entry so it picks up updated [isCancelArea].
   void _updateOverlay() {
     _overlayEntry?.markNeedsBuild();
   }
@@ -145,6 +176,16 @@ class _VoiceRecordButtonState extends ConsumerState<VoiceRecordButton> {
   void _hideOverlay() {
     _overlayEntry?.remove();
     _overlayEntry = null;
+  }
+
+  // ===========================================================================
+  // Helpers
+  // ===========================================================================
+
+  String _formatDuration(int seconds) {
+    final min = (seconds ~/ 60).toString().padLeft(2, '0');
+    final sec = (seconds % 60).toString().padLeft(2, '0');
+    return '$min:$sec';
   }
 
   // ===========================================================================
@@ -193,27 +234,76 @@ class _VoiceRecordButtonState extends ConsumerState<VoiceRecordButton> {
       }
           : null,
 
-      child: Container(
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
         height: 40.h,
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: _isRecording ? Colors.grey[300] : Colors.grey[100],
+          color: _isRecording ? Colors.red.withValues(alpha: 0.08) : Colors.grey[100],
           borderRadius: BorderRadius.circular(20.r),
-          border: Border.all(color: Colors.black12),
-        ),
-        child: Text(
-          _isRecording
-              ? (_isCancelArea
-              ? "Release to Cancel"
-              : (kIsWeb ? "Click to Send" : "Release to Send"))
-              : (kIsWeb ? "Click to Record" : "Hold to Talk"),
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: _isCancelArea
-                ? Colors.red
-                : (_isRecording ? Colors.black54 : Colors.black87),
+          border: Border.all(
+            color: _isRecording ? Colors.red.withValues(alpha: 0.3) : Colors.black12,
           ),
         ),
+        child: _isRecording
+            ? Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // Pulsing red recording dot
+            _PulsingDot(animation: _pulseAnimation),
+            SizedBox(width: 8.w),
+            // Elapsed timer
+            Text(
+              _formatDuration(_recordDuration),
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 14.sp,
+                color: Colors.red.shade700,
+              ),
+            ),
+            SizedBox(width: 8.w),
+            // Stop icon
+            Icon(
+              Icons.stop_circle_outlined,
+              size: 18.sp,
+              color: Colors.red.shade700,
+            ),
+          ],
+        )
+            : Text(
+          kIsWeb ? "Click to Record" : "Hold to Talk",
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: Colors.black87,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Animated pulsing red dot widget used as recording indicator.
+class _PulsingDot extends AnimatedWidget {
+  const _PulsingDot({required Animation<double> animation})
+      : super(listenable: animation);
+
+  Animation<double> get _animation => listenable as Animation<double>;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 10.w,
+      height: 10.w,
+      decoration: BoxDecoration(
+        color: Colors.red,
+        shape: BoxShape.circle,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.red.withValues(alpha: 0.6 * _animation.value),
+            blurRadius: 4 * _animation.value,
+            spreadRadius: 1 * _animation.value,
+          ),
+        ],
       ),
     );
   }

@@ -496,7 +496,7 @@ class WithdrawFormModelForm implements FormModel<WithdrawFormModel> {
       FormGroup({
         amountControlName: FormControl<String>(
             value: withdrawFormModel?.amount,
-            validators: [NonEmpty(), WithdrawAmount()],
+            validators: [NonEmpty()],
             asyncValidators: [],
             asyncValidatorsDebounceTime: 250,
             disabled: false,
