@@ -37,6 +37,10 @@ const PRECACHE_URLS = [
     // Flutter engine assets — pre-cache on SW install for faster second-visit cold start
     '/flutter.js',
     '/flutter_bootstrap.js',
+    // dart2wasm primary output (WasmGC browsers)
+    '/main.dart.wasm',
+    '/main.dart.mjs',
+    // dart2js fallback output (non-WasmGC browsers)
     '/main.dart.js',
 ];
 

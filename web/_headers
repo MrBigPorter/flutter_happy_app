@@ -21,10 +21,11 @@
 # main.dart.js has a unique hash per build (e.g., main.dart.js?hash=abc123)
 # flutter.js and flutter_bootstrap.js are versioned by Flutter SDK
 *.js
+*.mjs
   Cache-Control: public, max-age=31536000, immutable
   Content-Type: application/javascript; charset=utf-8
 
-# ── WebAssembly (canvaskit.wasm etc.): Immutable ──────────────────────────────
+# ── WebAssembly (canvaskit.wasm, main.dart.wasm): Immutable ──────────────────
 *.wasm
   Cache-Control: public, max-age=31536000, immutable
   Content-Type: application/wasm

@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:math';
 import 'package:camera/camera.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_app/common.dart';
 import 'package:flutter_app/core/models/coupon_threshold_data.dart';
@@ -378,6 +379,12 @@ class Api {
     final res = await Http.post(
       '/api/v1/auth/email/login',
       data: {'email': email, 'code': code},
+      // skipTokenGuard: 防止后端 40100（验证码无效）被误判为 token 过期而触发登出
+      options: Options(extra: {
+        'noAuth': true,
+        'skipTokenGuard': true,
+        'noErrorToast': true, // UI 层自行控制错误提示
+      }),
     );
     return AuthLoginEmail.fromJson(res);
   }

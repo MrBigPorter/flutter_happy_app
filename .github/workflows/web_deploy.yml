@@ -120,14 +120,16 @@ jobs:
           echo "✅ SW_VERSION injected: $SW_VERSION"
 
       # ── Phase 5: Build Web ────────────────────────────────────
-      # Note: In Flutter 3.22+, --web-renderer CLI flag was removed.
-      #       The renderer is determined by the build config (canvaskit default).
+      # Note: dart2wasm compilation generates dual output:
+      #       - main.dart.wasm (primary, WasmGC browsers) → skwasm renderer
+      #       - main.dart.js (fallback, unsupported browsers) → canvaskit renderer
+      #       Flutter auto-selects based on browser WasmGC support.
       #       CanvasKit WASM is loaded from gstatic CDN (~2-3MB).
       #       Cache-Control is set in web/_headers.
       - name: 🚀 5. Build Web (H5)
         run: |
           rm -rf build/web
-          flutter build web --release \
+          flutter build web --release --wasm \
             --dart-define-from-file=${{ env.env_file }}
 
       # ── Phase 5.5: Inject Deferred Part Files into SW ─────────

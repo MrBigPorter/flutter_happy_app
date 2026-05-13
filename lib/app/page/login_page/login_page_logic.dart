@@ -64,12 +64,17 @@ mixin LoginPageLogic on ConsumerState<LoginPage> {
 
       if (!mounted) return;
 
-      if (result.isNotNullOrEmpty && result.tokens.isNotNullOrEmpty) {
+      // 检查 token.accessToken 是否非空，确保后端真正返回了有效令牌
+      if (result.tokens.accessToken.isNotEmpty) {
         _isSuccessRedirecting = true;
         await _syncLoginTokens(result.tokens.accessToken, result.tokens.refreshToken);
       }
     } catch (e) {
-      // 静默处理错误
+      // 显示后端错误信息（如 Invalid code）
+      final message = e.toString().replaceFirst('Exception: ', '');
+      if (mounted) {
+        RadixToast.error(message);
+      }
     } finally {
       if (mounted && !_isSuccessRedirecting) {
         setState(() => _emailLoginInFlight = false);

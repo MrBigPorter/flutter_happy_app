@@ -23,6 +23,8 @@
     <!-- ===== Resource Hints (Preload for faster first paint) ===== -->
     <link rel="preload" href="flutter.js" as="script" crossorigin>
     <link rel="preload" href="flutter_bootstrap.js" as="script" crossorigin>
+    <link rel="preload" href="main.dart.js" as="script" crossorigin>
+    <link rel="preload" href="main.dart.wasm" as="fetch" type="application/wasm" crossorigin>
     <link rel="dns-prefetch" href="//api.joyminis.com">
     <link rel="preconnect" href="https://api.joyminis.com">
     <link rel="dns-prefetch" href="//cdn.joyminis.com">
@@ -472,10 +474,12 @@
 
                         observer.disconnect();
 
-                        // Keep App Shell visible for at least 4s from page load.
+                        // Keep App Shell visible for at least 2.5s from page load.
                         // This gives Flutter time to finish engine init + first frame.
+                        // The JS interop __removeAppShell() call from Dart handles the
+                        // exact timing; this is just a fallback for slow engine loads.
                         var elapsed = Date.now() - _appShellStart;
-                        var delay = Math.max(0, 4000 - elapsed);
+                        var delay = Math.max(0, 2500 - elapsed);
 
                         setTimeout(function() {
                             window.__removeAppShell();
