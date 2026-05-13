@@ -97,14 +97,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.0.4"
-  app_tracking_transparency:
-    dependency: "direct main"
-    description:
-      name: app_tracking_transparency
-      sha256: "1f71f4d8402552fbf8b191d4edab301f233c1af794878b7bc56c708470ffd74c"
-      url: "https://pub.dev"
-    source: hosted
-    version: "2.0.6+1"
   archive:
     dependency: transitive
     description:
@@ -972,7 +964,7 @@ packages:
     source: sdk
     version: "0.0.0"
   flutter_native_splash:
-    dependency: "direct main"
+    dependency: "direct dev"
     description:
       name: flutter_native_splash
       sha256: "4fb9f4113350d3a80841ce05ebf1976a36de622af7d19aca0ca9a9911c7ff002"
@@ -1133,14 +1125,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "9.0.0"
-  font_awesome_flutter:
-    dependency: "direct main"
-    description:
-      name: font_awesome_flutter
-      sha256: b9011df3a1fa02993630b8fb83526368cf2206a711259830325bab2f1d2a4eb0
-      url: "https://pub.dev"
-    source: hosted
-    version: "10.12.0"
   freezed_annotation:
     dependency: transitive
     description:
@@ -2787,7 +2771,7 @@ packages:
     source: hosted
     version: "3.23.8"
   widgetbook:
-    dependency: "direct main"
+    dependency: "direct dev"
     description:
       name: widgetbook
       sha256: d4723df880c59e5df00da7ee02c5e29faf230d860319547e8fea011821ae93a9

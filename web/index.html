@@ -22,9 +22,7 @@
 
     <!-- ===== Resource Hints (Preload for faster first paint) ===== -->
     <link rel="preload" href="flutter.js" as="script" crossorigin>
-    <link rel="preload" href="flutter_bootstrap.js" as="script" crossorigin>
     <link rel="preload" href="main.dart.js" as="script" crossorigin>
-    <link rel="preload" href="main.dart.wasm" as="fetch" type="application/wasm" crossorigin>
     <link rel="dns-prefetch" href="//api.joyminis.com">
     <link rel="preconnect" href="https://api.joyminis.com">
     <link rel="dns-prefetch" href="//cdn.joyminis.com">
@@ -436,7 +434,27 @@
     })();
   </script>
 
-<script src="flutter_bootstrap.js" async=""></script>
+<script src="flutter.js" defer></script>
+<script>
+    window.addEventListener('load', function(ev) {
+      // 使用最新的 FlutterLoader API（Flutter 3.10+）
+      // load() 替代已废弃的 loadEntrypoint()，支持自动 SW 版本注入
+      _flutter.loader.load({
+        serviceWorker: {
+          serviceWorkerVersion: {{flutter_service_worker_version}},
+        },
+        onEntrypointLoaded: async function(engineInitializer) {
+          // 核心配置：强制锁定 HTML 渲染器
+          // 这是安全删除 canvaskit/ 目录的前提条件
+          const config = {
+            renderer: "html",
+          };
+          const appRunner = await engineInitializer.initializeEngine(config);
+          await appRunner.runApp();
+        }
+      });
+    });
+</script>
 <script>
     // ===== App Shell Removal Strategy =====
     //

@@ -119,17 +119,14 @@ jobs:
           sed -i "s/{{SW_VERSION}}/$SW_VERSION/g" web/pwa_sw.js
           echo "✅ SW_VERSION injected: $SW_VERSION"
 
-      # ── Phase 5: Build Web ────────────────────────────────────
-      # Note: dart2wasm compilation generates dual output:
-      #       - main.dart.wasm (primary, WasmGC browsers) → skwasm renderer
-      #       - main.dart.js (fallback, unsupported browsers) → canvaskit renderer
-      #       Flutter auto-selects based on browser WasmGC support.
-      #       CanvasKit WASM is loaded from gstatic CDN (~2-3MB).
-      #       Cache-Control is set in web/_headers.
-      - name: 🚀 5. Build Web (H5)
+      # ── Phase 5: Build Web (HTML Renderer) ────────────────────
+      # HTML renderer: no CanvasKit (saves ~31MB), faster cold start
+      # 渲染器已在 web/index.html 的 _flutter.loader.load() 中锁定为 html
+      # Flutter 3.22+ 不再支持 --web-renderer CLI 参数
+      - name: 🚀 5. Build Web (H5 — HTML Renderer)
         run: |
           rm -rf build/web
-          flutter build web --release --wasm \
+          flutter build web --release \
             --dart-define-from-file=${{ env.env_file }}
 
       # ── Phase 5.5: Inject Deferred Part Files into SW ─────────
@@ -137,6 +134,37 @@ jobs:
         run: |
           bash tool/inject_part_files.sh
           echo "✅ .part.js files injected into build/web/pwa_sw.js"
+
+      # ── Phase 5.6: Post-Build Cleanup ─────────────────────────
+      - name: 🧹 5.6. Remove CanvasKit (~31MB)
+        run: |
+          rm -rf build/web/canvaskit
+          echo "✅ Removed build/web/canvaskit/"
+
+      - name: 🧹 5.6b. Remove Assets NOTICES (~1.7MB)
+        run: |
+          rm -f build/web/assets/NOTICES
+          echo "✅ Removed assets/NOTICES"
+
+      - name: 🧹 5.6c. Remove Widgetbook Leaked Assets
+        run: |
+          # widgetbook may leak its asset manifests into build output
+          rm -f build/web/assets/AssetManifest*_widgetbook* 2>/dev/null || true
+          rm -f build/web/assets/FontManifest*_widgetbook* 2>/dev/null || true
+          echo "✅ Widgetbook leaked assets removed (if any)"
+
+      # ── Phase 5.7: Size Audit ─────────────────────────────────
+      - name: 📊 5.7. Build Size Audit
+        run: |
+          echo "## 📊 Build Size Audit" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Artifact | Size |" >> $GITHUB_STEP_SUMMARY
+          echo "|---------|------|" >> $GITHUB_STEP_SUMMARY
+          du -sh build/web/main.dart.js | awk '{print "| `main.dart.js` | "$1" |"}' >> $GITHUB_STEP_SUMMARY
+          du -sh build/web/assets/    | awk '{print "| `assets/` | "$1" |"}' >> $GITHUB_STEP_SUMMARY
+          du -sh build/web/           | awk '{print "| **Total** | **"$1"** |"}' >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Size audit written to job summary"
 
       # ── Phase 6: Deploy to Cloudflare Pages ────────────────────
       - name: ☁️ 6. Deploy to Cloudflare Pages
