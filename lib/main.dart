@@ -1,8 +1,4 @@
 import 'dart:async';
-// ignore: unused_import
-import 'package:flutter_app/ui/chat/conversation_list_page.dart' deferred as _chat;
-// ignore: unused_import
-import 'package:flutter_app/app/page/home_page.dart' deferred as _home;
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -90,18 +86,6 @@ void main() {
     // 6. Firebase 异步初始化（runApp 后 fire-and-forget）
     //    Firebase SDK 脚本下载（~165ms）不再阻塞首帧。
     unawaited(AppBootstrap.initFirebaseAsync());
-
-    // 6. 后台预加载 Chat 模块 chunk（用户浏览首页时悄悄下载）
-    //    等用户点击 Chat tab 时，chunk 已经缓存，无需等待。
-    unawaited(_chat.loadLibrary().catchError((_) {
-      debugPrint(' [H5分包] Chat 模块后台预加载失败，将在首次访问时按需下载');
-    }));
-
-    // 7. 后台预加载 HomePage chunk
-    //    HomePage 作为首屏页面，预加载确保导航到 /home 时无需等待 chunk 下载。
-    unawaited(_home.loadLibrary().catchError((_) {
-      debugPrint(' [H5分包] HomePage 模块后台预加载失败，将在首次访问时按需下载');
-    }));
 
   }, (error, stackTrace) {
     debugPrint(' [全局拦截到的崩溃异常]: $error');

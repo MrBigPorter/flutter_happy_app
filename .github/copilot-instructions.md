@@ -81,6 +81,7 @@
 
 | Date | Task | Status |
 |------|------|--------|
+| 2026-05-13 | **Deferred Loading Optimization (HomePage + Chat + KYC)** — Undeferred critical-path pages that should not be `DeferredPage`-wrapped: HomePage, ConversationListPage (non-deferred direct render). Undeferred KYC pages (kyc_verify, kyc_status) to eliminate black screen while `.part.js` chunks load on H5 face recognition. Removed `deferred as` imports and preload blocks from `main.dart`. | ✅ |
 | 2026-05-13 | **Fix Video Playback on Web** — Platform-conditional architecture: Web → thumbnail + full-screen only; Native → full inline playback (unchanged). Removed CSS `pointer-events:none` hack, deleted `video_element_web/stub` utility files. | ✅ |
 | 2026-05-13 | **Recording Overlay Bottom Bar + Timer Freeze Fix** — Full-width bottom bar at `bottom:0`; replaced `Timer.periodic`→`Ticker` for drift-free timer on Web. | ✅ |
 | 2026-05-12 | **Deferred .part.js Prefetch Optimization** — Moved deferred chunk caching out of SW install critical path → `requestIdleCallback` after Flutter ready. | ✅ |
@@ -100,6 +101,6 @@
 ### Key Technical Decisions
 - **Video Playback (Web)**: No inline `VideoPlayer` — always use full-screen `VideoPlayerPage`. Native keeps full inline playback with LRU pool + pre-warming.
 - **Recording Timer**: Use `Ticker` (Flutter render pipeline) instead of `Timer.periodic` (browser `setInterval`) for drift-free Web behavior.
-- **Deferred Loading**: All routes except `login_page.dart` (has extension via `part`) deferred to `.part.js` chunks with shimmer skeletons + fade-in transitions.
+- **Deferred Loading**: Critical-path pages (HomePage, LoginPage, ConversationListPage) are non-deferred in main bundle. Tab bar pages (ProductPage, MePage) remain deferred with shimmer skeletons. All secondary pages remain deferred.
 - **PWA**: No inline SW version check on fresh page load; deferred 30s + 15s min visit duration guard.
 - **App Shell**: Removed via Dart JS interop (`PwaHelper.removeAppShell()`) on Flutter's first frame — no JS timer can match paint cycle timing.

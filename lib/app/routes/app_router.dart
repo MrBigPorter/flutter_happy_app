@@ -5,7 +5,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_app/app/page/group_member_page.dart' deferred as _group_member;
 import 'package:flutter_app/app/page/group_room_page.dart' deferred as _group_room;
-import 'package:flutter_app/app/page/kyc_verify/kyc_verify_page.dart' deferred as _kyc_verify;
+import 'package:flutter_app/app/page/kyc_verify/kyc_verify_page.dart';
 import 'package:flutter_app/app/page/order_list_page.dart' deferred as _order_list;
 import 'package:flutter_app/app/page/page_404.dart' deferred as _page_404;
 import 'package:flutter_app/app/page/payment/payment_page.dart' deferred as _payment hide PagePaymentParamsExt;
@@ -22,7 +22,6 @@ import 'package:flutter_app/app/page/product_page_skeleton.dart';
 import 'package:flutter_app/app/page/me_components/me_page_skeleton.dart';
 import 'package:flutter_app/app/page/home_page_skeleton.dart';
 import 'package:flutter_app/ui/chat/chat_search/chat_search_page.dart' deferred as _chat_search;
-import 'package:flutter_app/ui/chat/conversation_list_page.dart' deferred as _chat;
 import 'package:flutter_app/ui/chat/models/conversation.dart';
 import 'package:flutter_app/ui/modal/base/modal_auto_close_observer.dart';
 import 'package:flutter_app/ui/modal/base/nav_hub.dart';
@@ -33,6 +32,7 @@ import 'package:go_router/go_router.dart';
 import 'package:flutter_app/components/lucky_tab_bar.dart';
 import 'package:flutter_app/ui/chat/chat_room/chat_page.dart' deferred as _chat_room;
 import 'package:flutter_app/ui/chat/contact_list/contact_list_page.dart' deferred as _contact;
+import 'package:flutter_app/ui/chat/conversation_list_page.dart';
 import 'package:flutter_app/ui/chat/contact_profile_page.dart' deferred as _contact_profile;
 import 'package:flutter_app/ui/chat/contact_search_page.dart' deferred as _contact_search;
 import 'package:flutter_app/ui/chat/group/group_member_select_page.dart' deferred as _group_member_select;
@@ -41,7 +41,7 @@ import 'package:flutter_app/app/page/deposit/deposit_page.dart' deferred as _dep
 import 'package:flutter_app/app/page/deposit_detail_page.dart' deferred as _winner_detail;
 import 'package:flutter_app/app/page/group_lobby/group_lobby_page.dart' deferred as _group_lobby;
 import 'package:flutter_app/app/page/guide_page.dart' deferred as _guide;
-import 'package:flutter_app/app/page/home_page.dart' deferred as _home;
+import 'package:flutter_app/app/page/home_page.dart';
 import 'package:flutter_app/app/page/product_page.dart' deferred as _product;
 import 'package:flutter_app/app/page/transaction/transaction_ui_model.dart';
 import 'package:flutter_app/app/page/transaction_record_page.dart' deferred as _transaction_record;
@@ -58,7 +58,7 @@ import 'package:flutter_app/ui/chat/group/group_profile/group_profile_page.dart'
 import '../../ui/chat/group/group_search/group_search_page.dart' deferred as _group_search;
 import '../page/deposit/deposit_result_page.dart' deferred as _deposit_result;
 import '../page/deposit/web_popup_auto_close.dart' deferred as _web_popup_auto_close;
-import '../page/kyc_status_page.dart' deferred as _kyc_status;
+import '../page/kyc_status_page.dart';
 import '../page/liveness_debug_page.dart' deferred as _liveness_debug;
 import '../page/my_vouchers_page.dart' deferred as _my_vouchers;
 import '../page/flash_sale/flash_sale_page.dart' deferred as _flash_sale;
@@ -394,11 +394,7 @@ class AppRouter {
             GoRoute(
               name: 'home',
               path: '/home',
-              builder: (context, state) => DeferredPage(
-                loadLibrary: _home.loadLibrary,
-                skeletonBuilder: () => const HomePageSkeleton(),
-                builder: () => _home.HomePage(),
-              ),
+              builder: (context, state) => const HomePage(),
             ),
             GoRoute(
               name: 'product',
@@ -412,10 +408,7 @@ class AppRouter {
             GoRoute(
               name: 'conversations',
               path: '/conversations',
-              builder: (context, state) => DeferredPage(
-                loadLibrary: _chat.loadLibrary,
-                builder: () => _chat.ConversationListPage(),
-              ),
+              builder: (context, state) => const ConversationListPage(),
             ),
             GoRoute(
               name: 'me',
@@ -629,18 +622,12 @@ class AppRouter {
         GoRoute(
           name: 'kycStatus',
           path: '/me/kyc/status',
-          builder: (context, state) => DeferredPage(
-            loadLibrary: _kyc_status.loadLibrary,
-            builder: () => _kyc_status.KycStatusPage(),
-          ),
+          builder: (context, state) => const KycStatusPage(),
         ),
         GoRoute(
           name: 'kycVerify',
           path: '/me/kyc/verify',
-          builder: (context, state) => DeferredPage(
-            loadLibrary: _kyc_verify.loadLibrary,
-            builder: () => _kyc_verify.KycVerifyPage(),
-          ),
+          builder: (context, state) => const KycVerifyPage(),
         ),
         GoRoute(
           name: 'deposit',
