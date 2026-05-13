@@ -49,31 +49,21 @@ echo ""
 
 # ─── Step 1: Clean ───────────────────────────────────────────────
 if [ "$DO_CLEAN" = true ]; then
-  info "Step 1/8: 清理旧构建产物..."
+  info "Step 1/7: 清理旧构建产物..."
   rm -rf "$BUILD_DIR"
   ok "清理完成"
 else
-  info "Step 1/8: 跳过清理 (--no-clean)"
+  info "Step 1/7: 跳过清理 (--no-clean)"
 fi
 
 # ─── Step 2: Build ───────────────────────────────────────────────
-# 渲染器已在 web/index.html 的 _flutter.loader.load() 中锁定为 html
-# Flutter 3.22+ 不再支持 --web-renderer CLI 参数，移除以避免报错
-info "Step 2/8: 生产环境构建 (渲染器由 index.html 运行时锁定)..."
+# flutter_bootstrap.js 自动处理加载逻辑，无需手动调用 load()
+info "Step 2/7: 生产环境构建..."
 fvm flutter build web --release --no-tree-shake-icons
 ok "构建完成"
 
-# ─── Step 3: Remove CanvasKit ────────────────────────────────────
-info "Step 3/8: 物理切除 CanvasKit (安全: 渲染器已锁定为 html)..."
-if [ -d "$BUILD_DIR/canvaskit" ]; then
-  rm -rf "$BUILD_DIR/canvaskit"
-  ok "已删除 canvaskit/ 目录 (~31MB)"
-else
-  ok "canvaskit/ 目录不存在，无需删除"
-fi
-
-# ─── Step 4: Remove NOTICES ──────────────────────────────────────
-info "Step 4/8: 删除 NOTICES 文件..."
+# ─── Step 3: Remove NOTICES ──────────────────────────────────────
+info "Step 3/7: 删除 NOTICES 文件..."
 if [ -f "$BUILD_DIR/assets/NOTICES" ]; then
   rm -f "$BUILD_DIR/assets/NOTICES"
   ok "已删除 assets/NOTICES (~1.7MB)"
@@ -81,8 +71,8 @@ else
   ok "NOTICES 文件不存在，无需删除"
 fi
 
-# ─── Step 5: Remove widgetbook leaked assets ─────────────────────
-info "Step 5/8: 彻底清除 widgetbook 调试残留..."
+# ─── Step 4: Remove widgetbook leaked assets ─────────────────────
+info "Step 4/7: 彻底清除 widgetbook 调试残留..."
 if [ -d "$BUILD_DIR/assets/packages/widgetbook" ]; then
   rm -rf "$BUILD_DIR/assets/packages/widgetbook"
   ok "已删除 widgetbook 资产泄漏"
@@ -90,8 +80,8 @@ else
   ok "无 widgetbook 泄漏残留"
 fi
 
-# ─── Step 6: Inject deferred .part.js into SW ────────────────────
-info "Step 6/8: 注入 deferred .part.js 到 PWA Service Worker..."
+# ─── Step 5: Inject deferred .part.js into SW ────────────────────
+info "Step 5/7: 注入 deferred .part.js 到 PWA Service Worker..."
 if [ -f "tool/inject_part_files.sh" ]; then
   bash tool/inject_part_files.sh "$BUILD_DIR"
   ok "Deferred chunk 注入完成"
@@ -99,18 +89,18 @@ else
   warn "tool/inject_part_files.sh 不存在，跳过"
 fi
 
-# ─── Step 7: Pre-compression (可选) ──────────────────────────────
+# ─── Step 6: Pre-compression (可选) ──────────────────────────────
 if [ "$DO_GZIP" = true ]; then
-  info "Step 7/8: 对静态资源进行 gzip 预压缩..."
+  info "Step 6/7: 对静态资源进行 gzip 预压缩..."
   find "$BUILD_DIR" -type f \( -name "*.js" -o -name "*.css" -o -name "*.html" \) \
     -exec gzip -9 -k {} \;
   ok "gzip 预压缩完成"
 else
-  info "Step 7/8: 跳过 gzip 预压缩 (使用 --gzip 启用)"
+  info "Step 6/7: 跳过 gzip 预压缩 (使用 --gzip 启用)"
 fi
 
-# ─── Step 8: Size Audit ──────────────────────────────────────────
-info "Step 8/8: 📊 体积审计..."
+# ─── Step 7: Size Audit ──────────────────────────────────────────
+info "Step 7/7: 📊 体积审计..."
 END_TIME=$(date +%s)
 DURATION=$((END_TIME - START_TIME))
 

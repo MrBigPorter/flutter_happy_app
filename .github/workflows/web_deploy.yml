@@ -136,17 +136,12 @@ jobs:
           echo "✅ .part.js files injected into build/web/pwa_sw.js"
 
       # ── Phase 5.6: Post-Build Cleanup ─────────────────────────
-      - name: 🧹 5.6. Remove CanvasKit (~31MB)
-        run: |
-          rm -rf build/web/canvaskit
-          echo "✅ Removed build/web/canvaskit/"
-
-      - name: 🧹 5.6b. Remove Assets NOTICES (~1.7MB)
+      - name: 🧹 5.6a. Remove Assets NOTICES (~1.7MB)
         run: |
           rm -f build/web/assets/NOTICES
           echo "✅ Removed assets/NOTICES"
 
-      - name: 🧹 5.6c. Remove Widgetbook Leaked Assets
+      - name: 🧹 5.6b. Remove Widgetbook Leaked Assets
         run: |
           # widgetbook may leak its asset manifests into build output
           rm -f build/web/assets/AssetManifest*_widgetbook* 2>/dev/null || true

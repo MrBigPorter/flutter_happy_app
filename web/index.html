@@ -434,27 +434,15 @@
     })();
   </script>
 
-<script src="flutter.js" defer></script>
-<script>
-    window.addEventListener('load', function(ev) {
-      // 使用最新的 FlutterLoader API（Flutter 3.10+）
-      // load() 替代已废弃的 loadEntrypoint()，支持自动 SW 版本注入
-      _flutter.loader.load({
-        serviceWorker: {
-          serviceWorkerVersion: {{flutter_service_worker_version}},
-        },
-        onEntrypointLoaded: async function(engineInitializer) {
-          // 核心配置：强制锁定 HTML 渲染器
-          // 这是安全删除 canvaskit/ 目录的前提条件
-          const config = {
-            renderer: "html",
-          };
-          const appRunner = await engineInitializer.initializeEngine(config);
-          await appRunner.runApp();
-        }
-      });
-    });
-</script>
+<!--
+  Flutter 3.22+ bootstrap loader.
+  flutter_bootstrap.js 由 build 系统自动生成，包含：
+    - flutter.js 引擎代码
+    - _flutter.buildConfig（构建配置 + 渲染器选择）
+    - 自动 _flutter.loader.load() 调用
+  不再需要手动调用 load()，bootstrap 自动处理。
+-->
+<script src="flutter_bootstrap.js" defer></script>
 <script>
     // ===== App Shell Removal Strategy =====
     //
