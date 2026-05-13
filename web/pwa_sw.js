@@ -19,7 +19,6 @@ const API_CACHE_MAX_ENTRIES = 50;
 // API paths safe for stale-while-revalidate caching (read-only home page data).
 // Business/order/user-state APIs must remain network-only.
 const SAFE_API_PREFIXES = [
-    '/api/v1/home',
     '/api/v1/banners',
 ];
 
