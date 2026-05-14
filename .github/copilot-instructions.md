@@ -70,7 +70,7 @@
 ## 🎯 Current Task
 
 **Phase**: Phase F1 — H5 Build Size Optimization + UX Fixes + Caching Fix (Completed ✅)
-**Last Stop**: Preload crossorigin mismatch + OAuth Login Race Condition (2026-05-14)
+**Last Stop**: PWA Mobile Update — SW update check delay reduced to 2s (2026-05-14)
 
 ### Recent Accomplishments
 
@@ -107,9 +107,12 @@
 | 2026-05-05 | **Web Startup Phase 4** — Auth-aware service manager, HTML renderer, Cache-Control headers, Brotli/Gzip, PWA false detection fix. | ✅ |
 | 2026-05-05 | **API 503 Triple Fix** — COOP/HSTS nginx header fixes, SW cache bump. | ✅ |
 
+| | 2026-05-14 | **PWA Mobile Update — Reduce SW update check from 30s → 2s** — The 30-second delay in `reg.update()` caused a timing mismatch with `PwaUpdateBanner`'s 15-second minimum visit check. On mobile, where there's no 'Update on reload' DevTools option, users had to clear site data to get the new deployment. Now the update check runs at 2s, giving the banner enough time to detect the new SW version and show the 'Reload' button. The 15-second minimum visit guard in `PwaUpdateBanner` (Dart-side) already prevents false 'new version' banners on payment gateway returns, so the 30s JS delay was redundant. Committed as `f6d266b`. | ✅ |
+| | 2026-05-14 | **True Root Cause: Chrome StorageEvent Throttling on Background Tabs** — Discovered why the initial OAuth fix (sync StreamController + 1000ms) worked on localhost but failed in production: Chrome delays/delivers StorageEvent when the main tab is in the background during OAuth popup flow. Fixed with 3-part redundancy: (1) postMessage (fastest, when `window.opener` exists), (2) StorageEvent (when COOP headers nullify opener), (3) localStorage polling every 200ms (bypasses ALL browser event system delays). Replaced `Stream.first` with explicit `StreamSubscription` + `finally` cleanup. Extended grace period to 5000ms. Committed as `72a2ac9`. | ✅ |
+
 ### Key Technical Decisions
 - **Video Playback (Web)**: No inline `VideoPlayer` — always use full-screen `VideoPlayerPage`. Native keeps full inline playback with LRU pool + pre-warming.
 - **Recording Timer**: Use `Ticker` (Flutter render pipeline) instead of `Timer.periodic` (browser `setInterval`) for drift-free Web behavior.
 - **Deferred Loading**: Critical-path pages (HomePage, LoginPage, ConversationListPage) are non-deferred in main bundle. Tab bar pages (ProductPage, MePage) remain deferred with shimmer skeletons. All secondary pages remain deferred.
-- **PWA**: No inline SW version check on fresh page load; deferred 30s + 15s min visit duration guard.
+- **PWA**: No inline SW version check on fresh page load; deferred 2s + 15s min visit duration guard (reduced from 30s to fix mobile cache issue).
 - **App Shell**: Removed via Dart JS interop (`PwaHelper.removeAppShell()`) on Flutter's first frame — no JS timer can match paint cycle timing.
