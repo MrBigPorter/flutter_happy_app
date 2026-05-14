@@ -85,7 +85,6 @@ class _HomePageState extends ConsumerState<HomePage> with WidgetsBindingObserver
       }
       // 预加载静态图片（icon/logo 等无需 API 数据）
       await imageOptimization.preloadStaticImages(context);
-      debugPrint('[HomePage] Image system initialized.');
     } catch (e) {
       debugPrint('[HomePage] Image system init failed: $e');
     }
@@ -170,7 +169,6 @@ class _HomePageState extends ConsumerState<HomePage> with WidgetsBindingObserver
       // 去重并预加载
       if (imageUrls.isNotEmpty) {
         final uniqueUrls = imageUrls.toSet().toList();
-        debugPrint('[HomePage] Preloading ${uniqueUrls.length} images for home page (including Flash Sale)');
 
         final criticalUrls = uniqueUrls.take(10).toList();
         await preloader.preloadUrls(criticalUrls, context); // 此时传进去的就是带有 cdn-cgi 的最终地址了

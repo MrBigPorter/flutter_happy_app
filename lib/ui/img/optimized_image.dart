@@ -74,7 +74,7 @@ class OptimizedImage extends StatefulWidget {
 class _OptimizedImageState extends State<OptimizedImage> {
   late String _optimizedUrl;
   late ImageCacheManager _cacheManager;
-  late ImagePerformanceMonitor _performanceMonitor;
+  // late ImagePerformanceMonitor _performanceMonitor;
   String? _eventId;
   DateTime? _startTime;
   bool _isLoading = true;
@@ -86,7 +86,7 @@ class _OptimizedImageState extends State<OptimizedImage> {
   void initState() {
     super.initState();
     _cacheManager = ImageCacheManager();
-    _performanceMonitor = ImagePerformanceMonitor();
+    // _performanceMonitor = ImagePerformanceMonitor();
     _setupAndLoad(widget.url);
   }
 
@@ -137,18 +137,18 @@ class _OptimizedImageState extends State<OptimizedImage> {
     // 开始性能监控
     if (widget.enableMonitoring) {
       _startTime = DateTime.now();
-      _eventId = _performanceMonitor.startImageLoad(
-        url: _optimizedUrl,
-        component: widget.componentName,
-        source: ImageLoadSource.network,
-        metadata: {
-          'width': widget.width,
-          'height': widget.height,
-          'fit': widget.fit.toString(),
-          'originalUrl': url,
-          'optimizedUrl': _optimizedUrl,
-        },
-      );
+      // _eventId = _performanceMonitor.startImageLoad(
+      //   url: _optimizedUrl,
+      //   component: widget.componentName,
+      //   source: ImageLoadSource.network,
+      //   metadata: {
+      //     'width': widget.width,
+      //     'height': widget.height,
+      //     'fit': widget.fit.toString(),
+      //     'originalUrl': url,
+      //     'optimizedUrl': _optimizedUrl,
+      //   },
+      // );
     }
 
     _loadImage();
@@ -236,12 +236,12 @@ class _OptimizedImageState extends State<OptimizedImage> {
         // 记录成功
         if (widget.enableMonitoring && _eventId != null && _startTime != null) {
           final duration = DateTime.now().difference(_startTime!);
-          _performanceMonitor.recordLoadSuccess(
-            eventId: _eventId!,
-            loadDuration: duration,
-            byteSize: imageData.length,
-            cacheLevel: ImageCacheLevel.memory,
-          );
+          // _performanceMonitor.recordLoadSuccess(
+          //   eventId: _eventId!,
+          //   loadDuration: duration,
+          //   byteSize: imageData.length,
+          //   cacheLevel: ImageCacheLevel.memory,
+          // );
         }
       }
     } catch (e) {
@@ -260,11 +260,11 @@ class _OptimizedImageState extends State<OptimizedImage> {
         
         if (widget.enableMonitoring && _eventId != null && _startTime != null) {
           final duration = DateTime.now().difference(_startTime!);
-          _performanceMonitor.recordLoadFailure(
-            eventId: _eventId!,
-            error: e.toString(),
-            loadDuration: duration,
-          );
+          // _performanceMonitor.recordLoadFailure(
+          //   eventId: _eventId!,
+          //   error: e.toString(),
+          //   loadDuration: duration,
+          // );
         }
       }
     }
@@ -393,11 +393,11 @@ class _OptimizedImageState extends State<OptimizedImage> {
     if (widget.enableMonitoring && _eventId != null && _startTime != null) {
       final duration = DateTime.now().difference(_startTime!);
       if (duration > const Duration(seconds: 10) && _isLoading) {
-        _performanceMonitor.recordLoadFailure(
-          eventId: _eventId!,
-          error: 'Image load timeout (${duration.inSeconds}s)',
-          loadDuration: duration,
-        );
+        // _performanceMonitor.recordLoadFailure(
+        //   eventId: _eventId!,
+        //   error: 'Image load timeout (${duration.inSeconds}s)',
+        //   loadDuration: duration,
+        // );
       }
     }
     

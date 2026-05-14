@@ -72,12 +72,10 @@ class ImageOptimizationInit {
     try {
       final urlsToPreload = staticPreloadManager.getUrlsToPreload();
       if (urlsToPreload.isEmpty) {
-        debugPrint('[ImageOptimizationInit] No static images to preload');
         return;
       }
 
-      debugPrint('[ImageOptimizationInit] Preloading ${urlsToPreload.length} static images...');
-      
+
       // 分批预加载，避免阻塞主线程
       final batchSize = 3;
       for (var i = 0; i < urlsToPreload.length; i += batchSize) {

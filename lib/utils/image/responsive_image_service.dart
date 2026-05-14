@@ -29,13 +29,11 @@ class ResponsiveImageService {
 
     // 检查URL是否已经包含CDN处理参数
     if (_isAlreadyOptimized(originalUrl)) {
-      debugPrint('[ResponsiveImageService] URL already optimized, returning as-is: $originalUrl');
       return originalUrl;
     }
 
     final uri = Uri.tryParse(originalUrl);
     if (uri == null) {
-      debugPrint('[ResponsiveImageService] Failed to parse URL: $originalUrl');
       return originalUrl;
     }
 

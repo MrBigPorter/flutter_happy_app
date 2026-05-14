@@ -82,7 +82,7 @@ class Http {
     _dio.interceptors.add(UnifiedInterceptor(_rawDio));
 
     //  调试：打印 API 请求/响应（只在 debug）
-    assert(() {
+    /*assert(() {
       _dio.interceptors.add(InterceptorsWrapper(
         onRequest: (options, handler) async {
           final uri = options.uri.toString();
@@ -104,7 +104,7 @@ class Http {
         },
       ));
       return true;
-    }());
+    }());*/
   }
 
   // =========================================================

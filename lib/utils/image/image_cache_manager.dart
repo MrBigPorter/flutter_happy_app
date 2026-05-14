@@ -75,7 +75,6 @@ class ImageCacheManager {
   Future<Uint8List> _fetchFromNetwork(String url, {Map<String, String>? headers}) async {
     try {
       if (kIsWeb) {
-        debugPrint('[ImageCacheManager] Fetching image from network: $url');
         final request = await HttpFileService().get(url, headers: headers);
 
         // 【核心修复】：完整读取整个数据流，解决第二张图（大图）被截断的问题
@@ -85,12 +84,11 @@ class ImageCacheManager {
         }
         final uint8List = Uint8List.fromList(allBytes);
 
-        debugPrint('[ImageCacheManager] Raw data received: ${uint8List.length} bytes');
 
         // 【核心修复】: 将 50 字节检查改为只记录日志，不再抛出异常
         // 有些合法的图标/小图片可能小于 50 字节，不应该因此抛出异常
         if (uint8List.length < 50) {
-          debugPrint('[ImageCacheManager] Warning: Data small ($url): ${uint8List.length} bytes');
+         // debugPrint('[ImageCacheManager] Warning: Data small ($url): ${uint8List.length} bytes');
           // 不再抛出异常，而是继续处理
         }
 
@@ -98,12 +96,11 @@ class ImageCacheManager {
           final head = String.fromCharCodes(uint8List.take(20));
           if (head.contains('<!DOC') || head.contains('<html') || head.contains('error')) {
             // 记录日志但继续返回数据，让上层解码器处理
-            debugPrint('[ImageCacheManager] Warning: Possible HTML response ($url)');
+           // debugPrint('[ImageCacheManager] Warning: Possible HTML response ($url)');
             // 不再抛出异常，而是返回数据让上层处理
           }
         }
 
-        debugPrint('[ImageCacheManager] Successfully fetched image data ($url): ${uint8List.length} bytes');
         return uint8List;
       } else {
         // ... 原生端逻辑保持不变
