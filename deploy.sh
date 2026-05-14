@@ -89,6 +89,15 @@ else
   warn "tool/inject_part_files.sh 不存在，跳过"
 fi
 
+# ─── Step 5.5: Inject SW_VERSION (unique cache name per build) ───
+# CI workflow (web_deploy.yml) does this via sed before build.
+# Local deploy.sh needs to do it post-build for pwa_sw.js to have
+# a unique SW_VERSION, ensuring old caches are cleaned on SW activate.
+info "Step 5.5/7: 注入 SW_VERSION..."
+SW_VERSION=$(date +%s)
+sed -i '' "s/{{SW_VERSION}}/$SW_VERSION/" "$BUILD_DIR/pwa_sw.js"
+ok "SW_VERSION injected: $SW_VERSION"
+
 # ─── Step 6: Pre-compression (可选) ──────────────────────────────
 if [ "$DO_GZIP" = true ]; then
   info "Step 6/7: 对静态资源进行 gzip 预压缩..."
