@@ -142,6 +142,9 @@ class DeepLinkOAuthService {
   /// 3. 弹窗完成 OAuth 后着陆到 /oauth-popup-callback.html
   /// 4. callback.html 通过 postMessage 或 localStorage 传回 token
   /// 5. 主窗口收到 token 后完成登录
+  ///
+  /// 额外安全机制：轮询 popup.closed 检测用户主动关闭弹窗，
+  /// 在 500ms 内即可恢复按钮状态，避免 loading 卡死。
   static Future<Map<String, String>> _webLoginWithProvider(
     String provider,
     String apiBaseUrl, {
@@ -178,8 +181,8 @@ class DeepLinkOAuthService {
     }
 
     // 尝试弹窗方式（先开空白弹窗再填 URL，绕过拦截器）
-    final popupOpened = DeepLinkOAuthServiceWeb.openPopup(loginUrl);
-    if (!popupOpened) {
+    final popup = DeepLinkOAuthServiceWeb.openPopup(loginUrl);
+    if (popup == null) {
       // 弹窗被拦截，降级为整页跳转
       debugPrint('[DeepLinkOAuthService] Popup blocked, falling back to full-page redirect');
       try {
@@ -193,21 +196,54 @@ class DeepLinkOAuthService {
     }
 
     // 弹窗成功打开，监听 token（postMessage + localStorage 双通道）
+    // 同时轮询 popup.closed 检测用户手动关闭弹窗
     if (kDebugMode) debugPrint('[DeepLinkOAuthService] Popup opened, waiting for OAuth token...');
 
     try {
       if (kDebugMode) debugPrint('[DeepLinkOAuthService] Listening for token via postMessage + StorageEvent...');
-      final token = await DeepLinkOAuthServiceWeb
+
+      // 创建 token 监听 Future
+      final tokenFuture = DeepLinkOAuthServiceWeb
           .listenForOAuthToken()
-          .timeout(const Duration(minutes: 5))
           .first;
+
+      // 创建弹窗关闭检测 Future：每 500ms 检查一次 popup.closed
+      final popupClosedFuture = _waitForPopupClose(popup);
+
+      // 谁先完成就用谁的结果
+      final token = await Future.any([tokenFuture, popupClosedFuture])
+          .timeout(const Duration(minutes: 5));
+
       if (kDebugMode) {
         debugPrint('[DeepLinkOAuthService] OAuth token received');
         debugPrint('[DeepLinkOAuthService] Token keys: ${token.keys}');
       }
       return token;
+    } on DeepLinkOAuthException {
+      // popup 关闭异常直接透传
+      rethrow;
     } on TimeoutException {
       throw DeepLinkOAuthException('OAuth login timeout after 5 minutes');
+    }
+  }
+
+  /// 轮询弹窗是否被用户关闭，每 500ms 检测一次。
+  /// 检测到关闭时抛出 [DeepLinkOAuthException]，让调用方恢复按钮 loading 状态。
+  ///
+  /// 使用 dynamic 类型避免非 Web 平台编译 dart:html 依赖。
+  /// 此方法仅在 _webLoginWithProvider（kIsWeb 守卫）中调用，安全。
+  static Future<Map<String, String>> _waitForPopupClose(dynamic popup) async {
+    while (true) {
+      await Future.delayed(const Duration(milliseconds: 500));
+      try {
+        if (popup.closed == true) {
+          debugPrint('[DeepLinkOAuthService] Popup closed by user');
+          throw DeepLinkOAuthException('Login cancelled by user');
+        }
+      } catch (e) {
+        // 跨域弹窗可能无法访问 .closed 属性，静默忽略（等待超时兜底）
+        if (e is DeepLinkOAuthException) rethrow;
+      }
     }
   }
 

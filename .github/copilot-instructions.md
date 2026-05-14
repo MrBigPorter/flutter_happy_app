@@ -69,8 +69,8 @@
 
 ## 🎯 Current Task
 
-**Phase**: Phase F1 — H5 Build Size Optimization
-**Last Stop**: HTML Renderer + Dependency Cleanup (2026-05-13)
+**Phase**: Phase F1 — H5 Build Size Optimization + UX Fixes (Completed ✅)
+**Last Stop**: OAuth Popup Close Detection (2026-05-14)
 
 ### Recent Accomplishments
 
@@ -80,6 +80,9 @@
 | 2026-05-13 | **Engineering Infrastructure — Widgetbook entry alias + deploy.sh + web_deploy.yml** — Created `lib/main_widgetbook.dart` standard entry point (`fvm flutter run --target lib/main_widgetbook.dart`). Created `deploy.sh` as 7-stage build pipeline (clean → build → rm NOTICES/widgetbook → inject part files → gzip → audit). Unified `web_deploy.yml` CI/CD: `--wasm` → standard build, added NOTICES/widgetbook cleanup + build size audit. | ✅ |
 | 2026-05-13 | **Fix Flutter 3.22+ bootstrap loader crash** — `_flutter.loader.load()` new API requires `_flutter.buildConfig` set by build system. Fixed `web/index.html`: load `flutter_bootstrap.js` (not `flutter.js`) which includes auto-generated build config + auto `load()` call. Removed redundant manual `_flutter.loader.load()` that caused double-load error. Removed `canvaskit/` deletion from deploy.sh since current build uses CanvasKit renderer. | ✅ |
 | 2026-05-14 | **Fix dual main.dart.js loading (preload + dynamic import conflict)** — `<link rel="preload" href="main.dart.js">` triggers a browser download but dynamic `_flutter.loader.load()` creates an independent fetch — preloads can only be consumed by direct `<script>` tags. Changed preload from `flutter.js` → `flutter_bootstrap.js`, removed `main.dart.js` preload entirely. Saves ~1.6MB transferred (3.3MB decompressed) in first page load. | ✅ |
+| 2026-05-14 | **OAuth Popup Close Detection — Fix loading state stuck on popup close** — When user closes OAuth popup (Google/Facebook), `listenForOAuthToken().first` never emits, leaving buttons stuck in spinner state for 5min until timeout. Fix: Capture `html.WindowBase?` popup reference from `openPopup()`, poll `popup.closed` every 500ms via new `_waitForPopupClose()` method, race token stream vs popup-closed stream with `Future.any()`. Three files modified: `deep_link_oauth_service_web.dart` (return popup ref), `deep_link_oauth_service.dart` (add `_waitForPopupClose` + `Future.any` race), `deep_link_oauth_service_web_stub.dart` (return `dynamic` to match). | ✅ |
+| 2026-05-14 | **Dead Dependency Cleanup (15 packages removed)** — Comprehensive audit of 70+ pubspec.yaml deps identified 15 dead packages (0 imports in lib/). Removed: `provider`, `syncfusion_flutter_sliders/core` (32KB), `dartx`, `jiffy`, `infinite_scroll_pagination`, `pull_to_refresh_notification`, `pull_to_refresh`, `dismissible_page`, `google_mlkit_face_detection`, `firebase_performance`, `firebase_auth`, `flutter_facebook_auth`, `universal_html`, `idb_shim`. Cleaned up `firebase_service.dart` (removed unused `FirebaseAuth` import/getter). Also cleared dep tree of 25 transitive sub-deps (`firebase_auth_web`, `firebase_performance_web`, `flutter_facebook_auth_web`, etc.). | ✅ |
+| 2026-05-14 | **HTML Renderer enforcement** — Added `window.flutterWebRenderer = "html"` to `web/index.html` before `flutter_bootstrap.js` load. Ensures HTML renderer (no CanvasKit WASM download) regardless of Flutter build defaults. | ✅ |
 | 2026-05-13 | **Deferred Loading Optimization (HomePage + Chat + KYC)** — Undeferred critical-path pages that should not be `DeferredPage`-wrapped: HomePage, ConversationListPage (non-deferred direct render). Undeferred KYC pages (kyc_verify, kyc_status) to eliminate black screen while `.part.js` chunks load on H5 face recognition. Removed `deferred as` imports and preload blocks from `main.dart`. | ✅ |
 | 2026-05-13 | **Fix Video Playback on Web** — Platform-conditional architecture: Web → thumbnail + full-screen only; Native → full inline playback (unchanged). Removed CSS `pointer-events:none` hack, deleted `video_element_web/stub` utility files. | ✅ |
 | 2026-05-13 | **Recording Overlay Bottom Bar + Timer Freeze Fix** — Full-width bottom bar at `bottom:0`; replaced `Timer.periodic`→`Ticker` for drift-free timer on Web. | ✅ |

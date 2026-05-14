@@ -102,8 +102,8 @@ class DeepLinkOAuthServiceWeb {
   /// 先同步打开空白弹窗（触发用户激活检查），再将真实OAuth URL填入。
   ///
   /// [url] 要导航到的 OAuth URL
-  /// 返回 true 表示弹窗成功打开，false 表示被浏览器拦截
-  static bool openPopup(String url) {
+  /// 返回 popup 引用表示弹窗成功打开，null 表示被浏览器拦截
+  static html.WindowBase? openPopup(String url) {
     try {
       // 1. 同步打开空白弹窗（浏览器允许，因为是用户手势触发）
       //    使用 about:blank 以确保始终能获得可写入的 document
@@ -159,10 +159,10 @@ class DeepLinkOAuthServiceWeb {
       // 3. 将弹窗导航到实际的 OAuth URL
       popup.location.href = url;
 
-      return true;
+      return popup;
     } catch (e) {
       // 弹窗被浏览器拦截或其他异常
-      return false;
+      return null;
     }
   }
 

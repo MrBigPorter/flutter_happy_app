@@ -29,8 +29,10 @@ class DeepLinkOAuthServiceWeb {
   }
 
   /// 打开空白弹窗（非Web平台不支持）
-  static bool openPopup(String url) {
-    return false;
+  /// 返回 null 以匹配 Web 实现的可空返回类型。
+  /// 此方法仅在 kIsWeb 为 true 时调用，非 Web 平台不会被调用。
+  static dynamic openPopup(String url) {
+    return null;
   }
 
   /// 监听 OAuth token（非Web平台不支持）
