@@ -219,9 +219,27 @@ class DeepLinkOAuthServiceWeb {
       }
     });
 
+    // 3. localStorage 轮询（新增 — 绕过 Chrome 后台 tab StorageEvent 延迟）
+    // StorageEvent 在 main tab 处于后台时被 Chrome 延迟投递。
+    // 直接轮询 localStorage 确保无论 tab 可见性如何都能立即获取 token。
+    Timer? pollTimer;
+    pollTimer = Timer.periodic(const Duration(milliseconds: 200), (_) {
+      final stored = html.window.localStorage['oauth_token_result'];
+      if (stored != null) {
+        try {
+          final data = jsonDecode(stored) as Map<String, dynamic>;
+          html.window.localStorage.remove('oauth_token_result');
+          handleData(data, 'localStoragePoll');
+        } catch (e) {
+          debugPrint('[OAuthTokenListener] Poll parse error: $e');
+        }
+      }
+    });
+
     controller.onCancel = () {
       msgSub.cancel();
       storageSub.cancel();
+      pollTimer?.cancel();
     };
 
     return controller.stream;

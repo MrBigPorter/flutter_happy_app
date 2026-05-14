@@ -199,33 +199,38 @@ class DeepLinkOAuthService {
     // 同时轮询 popup.closed 检测用户手动关闭弹窗
     if (kDebugMode) debugPrint('[DeepLinkOAuthService] Popup opened, waiting for OAuth token...');
 
+    StreamSubscription<Map<String, String>>? subscription;
     try {
-      if (kDebugMode) debugPrint('[DeepLinkOAuthService] Listening for token via postMessage + StorageEvent...');
+      if (kDebugMode) debugPrint('[DeepLinkOAuthService] Listening for token via postMessage + StorageEvent + localStoragePoll...');
 
-      // 使用 Completer 替代 Future.any，避免弹窗关闭检测与 token 到达的竞态条件。
-      // 问题：Future.any 取最先完成的 Future，但 StorageEvent 可能比 popup.closed 检测
-      // 晚几毫秒送达，导致 token 被丢弃而登录失败。
-      // 修复：弹窗关闭后，给 500ms 宽限期让 pending StorageEvent 有时间送达。
+      // 使用 Completer + 显式 StreamSubscription（替代 .first）以支持资源清理。
+      // 三通道冗余：postMessage / StorageEvent / localStoragePoll（轮询）。
+      // localStorage 轮询绕过 Chrome 后台 Tab 延迟投递 StorageEvent 的问题。
       final completer = Completer<Map<String, String>>();
 
-      // Token 到达 → 正常路径
-      final tokenFuture = DeepLinkOAuthServiceWeb
+      // Token 到达 → 正常路径（使用 listen() 而非 .first，以获得可取消的 StreamSubscription）
+      subscription = DeepLinkOAuthServiceWeb
           .listenForOAuthToken()
-          .first;
-      tokenFuture.then((token) {
-        if (!completer.isCompleted) completer.complete(token);
-      }).catchError((Object e) {
-        if (!completer.isCompleted) completer.completeError(e);
-      });
+          .listen(
+            (token) {
+              if (!completer.isCompleted) completer.complete(token);
+            },
+            onError: (Object e) {
+              if (!completer.isCompleted) completer.completeError(e);
+            },
+          );
 
-      // 弹窗关闭 → 等待 1000ms 宽限期，如果 token 在此期间到达则登录成功
+      // 弹窗关闭 → 等待 5000ms 宽限期，让 localStorage 轮询有时间找到 token
+      // Chrome 在后台 tab 可能延迟投递 StorageEvent 数秒，轮询直接读取 localStorage
+      // 不受此限制，通常 ≤200ms 即可找到 token。5000ms 是保守安全余量。
       _waitForPopupClose(popup).then((_) {
-        Future.delayed(const Duration(milliseconds: 1000), () {
+        Future.delayed(const Duration(milliseconds: 5000), () {
           if (!completer.isCompleted) {
             completer.completeError(
               DeepLinkOAuthException('Login cancelled by user'),
             );
           }
+          subscription?.cancel();
         });
       });
 
@@ -239,6 +244,8 @@ class DeepLinkOAuthService {
       rethrow;
     } on TimeoutException {
       throw DeepLinkOAuthException('OAuth login timeout after 5 minutes');
+    } finally {
+      subscription?.cancel();
     }
   }
 
