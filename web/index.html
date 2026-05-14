@@ -666,14 +666,12 @@
                         });
                     });
 
-                    // Defer background update check by 30 seconds.
-                    // This prevents false "new version" detection on fresh page loads
-                    // from external redirects (e.g. payment gateway return), where
-                    // a leftover waiting worker or cache discrepancy would immediately
-                    // trigger the banner on the deposit result page.
+                    // Defer background update check briefly to let SW registration settle.
+                    // The 15-second minimum visit guard in PwaUpdateBanner (Dart-side)
+                    // prevents false "new version" detection on payment gateway returns.
                     setTimeout(function() {
                         reg.update().catch(() => {});
-                    }, 30000);
+                    }, 2000);
 
                     navigator.serviceWorker.addEventListener('controllerchange', () => {
                         window.__pwaUpdateReady = false;
