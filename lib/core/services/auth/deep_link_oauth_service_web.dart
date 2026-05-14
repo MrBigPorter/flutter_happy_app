@@ -172,7 +172,7 @@ class DeepLinkOAuthServiceWeb {
   ///
   /// 两个通道同时使用，谁先触发就用谁，不会重复处理。
   static Stream<Map<String, String>> listenForOAuthToken() {
-    final controller = StreamController<Map<String, String>>();
+    final controller = StreamController<Map<String, String>>(sync: true);
 
     void handleData(Map<String, dynamic> data, String channel) {
       debugPrint('[OAuthTokenListener] Received event via $channel');

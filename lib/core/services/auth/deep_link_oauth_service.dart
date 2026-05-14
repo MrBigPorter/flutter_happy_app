@@ -218,9 +218,9 @@ class DeepLinkOAuthService {
         if (!completer.isCompleted) completer.completeError(e);
       });
 
-      // 弹窗关闭 → 等待 500ms 宽限期，如果 token 在此期间到达则登录成功
+      // 弹窗关闭 → 等待 1000ms 宽限期，如果 token 在此期间到达则登录成功
       _waitForPopupClose(popup).then((_) {
-        Future.delayed(const Duration(milliseconds: 500), () {
+        Future.delayed(const Duration(milliseconds: 1000), () {
           if (!completer.isCompleted) {
             completer.completeError(
               DeepLinkOAuthException('Login cancelled by user'),
@@ -232,10 +232,8 @@ class DeepLinkOAuthService {
       final token = await completer.future
           .timeout(const Duration(minutes: 5));
 
-      if (kDebugMode) {
-        debugPrint('[DeepLinkOAuthService] OAuth token received');
-        debugPrint('[DeepLinkOAuthService] Token keys: ${token.keys}');
-      }
+      debugPrint('[DeepLinkOAuthService] OAuth token received');
+      debugPrint('[DeepLinkOAuthService] Token keys: ${token.keys}');
       return token;
     } on DeepLinkOAuthException {
       rethrow;
