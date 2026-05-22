@@ -1,7 +1,7 @@
 # Lucky Flutter App — Copilot Working Instructions
 
 > This document guides the AI (Cline/Roo) on development decisions, quality standards, and communication style.
-> Last updated: 2026-05-14
+> Last updated: 2026-05-22
 
 # 1. 引导指令
 
@@ -111,6 +111,7 @@
 | | 2026-05-14 | **PWA Mobile Update — Reduce SW update check from 30s → 2s** — The 30-second delay in `reg.update()` caused a timing mismatch with `PwaUpdateBanner`'s 15-second minimum visit check. On mobile, where there's no 'Update on reload' DevTools option, users had to clear site data to get the new deployment. Now the update check runs at 2s, giving the banner enough time to detect the new SW version and show the 'Reload' button. The 15-second minimum visit guard in `PwaUpdateBanner` (Dart-side) already prevents false 'new version' banners on payment gateway returns, so the 30s JS delay was redundant. Committed as `f6d266b`. | ✅ |
 | | 2026-05-14 | **True Root Cause: Chrome StorageEvent Throttling on Background Tabs** — Discovered why the initial OAuth fix (sync StreamController + 1000ms) worked on localhost but failed in production: Chrome delays/delivers StorageEvent when the main tab is in the background during OAuth popup flow. Fixed with 3-part redundancy: (1) postMessage (fastest, when `window.opener` exists), (2) StorageEvent (when COOP headers nullify opener), (3) localStorage polling every 200ms (bypasses ALL browser event system delays). Replaced `Stream.first` with explicit `StreamSubscription` + `finally` cleanup. Extended grace period to 5000ms. Committed as `72a2ac9`. | ✅ |
 | | 2026-05-14 | **Update DEEP_LINK_OAUTH_IMPLEMENTATION_GUIDE.md to v3.0** — Updated main OAuth technical guide with Web popup login flow, 3-channel token redundancy (postMessage + StorageEvent + localStoragePoll), Completer race condition fix, popup close detection with 5000ms grace period, and Chrome background tab throttling workaround. Also updated `plans/web_oauth_popup_flow.md` and `plans/web_oauth_flow_explained.md` with the same fixes. | ✅ |
+| | 2026-05-22 | **Widgetbook dependency warnings fixed** — Excluded `lib/widgetbook/**` from flutter analyze via `analysis_options.yaml`. The 3 `depend_on_referenced_packages` info warnings about widgetbook (in dev_dependencies) are now suppressed. `widgetbook` stays in `dev_dependencies` to avoid 2.9MB production build bloat. | ✅ |
 
 ### Key Technical Decisions
 - **Video Playback (Web)**: No inline `VideoPlayer` — always use full-screen `VideoPlayerPage`. Native keeps full inline playback with LRU pool + pre-warming.
