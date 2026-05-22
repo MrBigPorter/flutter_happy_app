@@ -153,7 +153,7 @@ jobs:
         with:
           apiToken: ${{ secrets.CF_API_TOKEN }}
           accountId: ${{ secrets.CF_ACCOUNT_ID }}
-          command: pages deploy build/web --project-name=${{ env.cf_project }} --branch=${{ env.cf_branch }}
+          command: pages deploy build/web --project-name=${{ env.cf_project }} --branch=${{ env.cf_branch }} --commit-dirty=true
 
   # ─────────────────────────────────────────────────────────────────
   # Job 2: Mobile Build  ── macos-latest（只在非 PR 时运行）

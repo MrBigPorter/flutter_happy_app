@@ -167,7 +167,7 @@ jobs:
         with:
           apiToken: ${{ secrets.CF_API_TOKEN }}
           accountId: ${{ secrets.CF_ACCOUNT_ID }}
-          command: pages deploy build/web --project-name=${{ env.cf_project }} --branch=${{ env.cf_branch }}
+          command: pages deploy build/web --project-name=${{ env.cf_project }} --branch=${{ env.cf_branch }} --commit-dirty=true
 
       # ── Phase 7: Cleanup ───────────────────────────────────────
       - name: 🧹 7. Smart Cleanup
