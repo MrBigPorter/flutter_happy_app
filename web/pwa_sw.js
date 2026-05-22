@@ -54,9 +54,16 @@ const DEFERRED_PART_URLS = [
 self.addEventListener('install', (event) => {
     console.log('[SW] Installing version:', SW_VERSION);
     event.waitUntil(
-        caches.open(CACHE_NAME).then((cache) => {
+        caches.open(CACHE_NAME).then(async (cache) => {
             console.log('[SW] Pre-caching app shell');
-            return cache.addAll(PRECACHE_URLS);
+            // Use individual add() with catch — one 500 won't break the entire precache
+            await Promise.all(
+                PRECACHE_URLS.map(url =>
+                    cache.add(url).catch(err => {
+                        console.warn('[SW] Failed to precache:', url, err);
+                    })
+                )
+            );
         }).then(() => {
             // Fire-and-forget home page API pre-fetch (don't block skipWaiting).
             // Even if prefetchHomePageAPIs() fails, SW activation proceeds.
@@ -93,8 +100,15 @@ self.addEventListener('message', (event) => {
     // These are NOT cached during SW install to avoid competing with main.dart.js download.
     if (msg && msg.type === 'CACHE_PARTS') {
         event.waitUntil(
-            caches.open(CACHE_NAME).then((cache) => {
-                return cache.addAll(DEFERRED_PART_URLS);
+            caches.open(CACHE_NAME).then(async (cache) => {
+                // Individual add() with catch — one failure won't block others
+                await Promise.all(
+                    DEFERRED_PART_URLS.map(url =>
+                        cache.add(url).catch(err => {
+                            console.warn('[SW] Failed to cache part:', url, err);
+                        })
+                    )
+                );
             })
         );
     }
