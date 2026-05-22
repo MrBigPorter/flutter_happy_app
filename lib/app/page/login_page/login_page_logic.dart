@@ -8,6 +8,7 @@ mixin LoginPageLogic on ConsumerState<LoginPage> {
     null,
   );
 
+  bool _isTestMode = false;
   bool _submitted = false;
   bool _emailLoginInFlight = false;
   bool _socialOauthInFlight = false;
@@ -22,6 +23,30 @@ mixin LoginPageLogic on ConsumerState<LoginPage> {
     if (isAppRouterReady) {
       appRouter.routeInformationProvider.addListener(_onRouteChanged);
     }
+    // [TestMode] 检查是否通过 ?type=test 进入，自动填入测试凭据
+    _checkTestMode();
+  }
+
+  /// 检测 Test Mode：如果启动时 URL 包含 ?type=test，
+  /// 则自动填入测试账号凭据并显示引导提示。
+  Future<void> _checkTestMode() async {
+    final prefs = await SharedPreferences.getInstance();
+    final isTestMode = prefs.getBool(TestModeService.testModeKey) ?? false;
+    if (!isTestMode || !mounted) return;
+
+    // 自动填入测试邮箱
+    emailForm.form.control('email')
+      ..value = TestModeService.testEmail
+      ..markAsDirty();
+
+    // 自动填入验证码占位符（仅 UI 展示，用户仍需点击获取验证码）
+    emailForm.form.control('code')
+      ..value = TestModeService.testCode
+      ..markAsDirty();
+
+    // 标记 test mode 状态，触发 UI 重新构建显示横幅
+    if (!mounted) return;
+    setState(() => _isTestMode = true);
   }
 
   /// 路由监听：如果用户在 OAuth 进行中被 deep link 带离登录页，重置 loading 状态

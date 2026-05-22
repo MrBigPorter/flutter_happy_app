@@ -70,7 +70,39 @@ extension LoginPageUI on _LoginPageState {
                             ),
                           ).animate().fadeIn(duration: 500.ms, delay: 100.ms),
 
-                          SizedBox(height: 48.h),
+                          // ─── 测试模式引导横幅（仅 test mode 可见） ───
+                          if (_isTestMode) ...[
+                            SizedBox(height: 16.h),
+                            Container(
+                              width: double.infinity,
+                              padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+                              decoration: BoxDecoration(
+                                color: context.bgWarningPrimary,
+                                border: Border.all(color: context.bgWarningSecondary),
+                                borderRadius: BorderRadius.circular(12.h),
+                              ),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Icon(Icons.info_outline, color: context.textWhite, size: 20.sp),
+                                  SizedBox(width: 10.w),
+                                  Expanded(
+                                    child: Text(
+                                      'login.test_mode_banner'.tr(),
+                                      style: TextStyle(
+                                        fontSize: context.textSm,
+                                        color: context.textWhite,
+                                        height: context.leadingMd,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            SizedBox(height: 24.h),
+                          ] else ...[
+                            SizedBox(height: 48.h),
+                          ],
 
                           // ─── 表单区域 ───
                           ReactiveFormConfig(

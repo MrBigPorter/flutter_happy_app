@@ -222,6 +222,7 @@
   "login.email_code.label": "Email Code",
   "login.email_code.hint": "Ilagay ang code mula sa email",
   "login.email_code_sent": "Naipadala na ang verification code sa {email}",
+  "login.test_mode_banner": "🧪 Test Mode\nMangyaring i-click muna ang \"Get Verification Code\", pagkatapos ay i-click ang \"Login\"",
   "login.send_code": "magpadala ng code",
   "login.resend_in": "Muling ipadala sa loob ng {seconds}s",
   "login.or_continue_with": "o magpatuloy gamit ang",

@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_app/core/api/http_client.dart';
 import 'package:flutter_app/core/services/firebase_service.dart';
+import 'package:flutter_app/core/services/test_mode_service.dart';
 import 'package:flutter_app/core/store/auth/auth_initial.dart';
 import 'package:flutter_app/theme/theme_provider.dart';
 import 'package:flutter_app/utils/asset/asset_manager.dart';
@@ -72,6 +73,19 @@ class AppBootstrap {
   /// 读取本地存储，决定 App 启动时的初始状态 (Overrides)
   static Future<List<Override>> loadInitialOverrides() async {
     final prefs = await SharedPreferences.getInstance();
+
+    // [TestMode] 检测 URL 参数 ?type=test（仅 Web 端）
+    // 在 SharedPreferences 中持久化，供 LoginPage 使用
+    if (kIsWeb) {
+      final isTestMode = TestModeService.isTestParamPresent();
+      await prefs.setBool(TestModeService.testModeKey, isTestMode);
+      if (isTestMode) {
+        debugPrint('[Bootstrap] Test mode activated via ?type=test');
+      }
+    } else {
+      // 非 Web 平台强制关闭 test mode，防止误用
+      await prefs.remove(TestModeService.testModeKey);
+    }
 
     // A. 主题处理 — 默认黑色主题
     // 迁移：首次升级后清除旧版 'light' 偏好，让新 dark 默认值生效
