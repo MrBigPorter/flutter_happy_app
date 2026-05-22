@@ -163,14 +163,11 @@ jobs:
 
       # ── Phase 6: Deploy to Cloudflare Pages ────────────────────
       - name: ☁️ 6. Deploy to Cloudflare Pages
-        uses: cloudflare/pages-action@v1
+        uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CF_API_TOKEN }}
           accountId: ${{ secrets.CF_ACCOUNT_ID }}
-          projectName: ${{ env.cf_project }}
-          directory: build/web
-          branch: ${{ env.cf_branch }}
-          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
+          command: pages deploy build/web --project-name=${{ env.cf_project }} --branch=${{ env.cf_branch }}
 
       # ── Phase 7: Cleanup ───────────────────────────────────────
       - name: 🧹 7. Smart Cleanup

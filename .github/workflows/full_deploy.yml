@@ -149,14 +149,11 @@ jobs:
           echo "✅ .part.js files injected into build/web/pwa_sw.js"
 
       - name: ☁️ Deploy to Cloudflare Pages
-        uses: cloudflare/pages-action@v1
+        uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CF_API_TOKEN }}
           accountId: ${{ secrets.CF_ACCOUNT_ID }}
-          projectName: ${{ env.cf_project }}
-          directory: build/web
-          branch: ${{ env.cf_branch }}
-          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
+          command: pages deploy build/web --project-name=${{ env.cf_project }} --branch=${{ env.cf_branch }}
 
   # ─────────────────────────────────────────────────────────────────
   # Job 2: Mobile Build  ── macos-latest（只在非 PR 时运行）
