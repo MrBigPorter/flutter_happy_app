@@ -134,6 +134,16 @@ mixin SocketDispatcherMixin on _SocketBase {
       case SocketEvents.luckyDrawTicketIssued:
         _onBusinessEvent(type, data);
         break;
+
+      // AI customer service events
+      case SocketEvents.aiToken:
+      case SocketEvents.aiStep:
+      case SocketEvents.aiDone:
+      case SocketEvents.aiError:
+      case SocketEvents.aiTransfer:
+        _onAiEvent(type, data);
+        break;
+
       default:
         debugPrint(" [SocketService] Unhandled event type: $type, data: $data");
 
@@ -154,6 +164,8 @@ mixin SocketDispatcherMixin on _SocketBase {
   void _onBusinessEvent(String type, dynamic data);
 
   void _onContactApply(dynamic data);
+
+  void _onAiEvent(String type, dynamic data);
 
   void _onContactAccept(dynamic data);
 

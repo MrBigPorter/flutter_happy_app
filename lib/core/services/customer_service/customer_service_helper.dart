@@ -13,10 +13,16 @@ class CustomerServiceHelper {
   // Prevent multiple simultaneous chat initiations
   static bool _isLoading = false;
 
+  /// 入口上下文（静态存储，ChatPage 读取后清空）
+  static String? pendingEntryPoint;
+  static Map<String, dynamic>? pendingMetadata;
+
   // start customer service chat
   static Future<void> startChat({
     CustomerServiceScene scene = CustomerServiceScene.support,
     String? businessId,
+    String? entryPoint,
+    Map<String, dynamic>? metadata,
   }) async {
     if (_isLoading) return;
 
@@ -28,6 +34,10 @@ class CustomerServiceHelper {
       RadixToast.error('Missing customer service business id.');
       return;
     }
+
+    // 把入口上下文暂存到静态变量，ChatPage 读取后清空
+    pendingEntryPoint = entryPoint;
+    pendingMetadata = metadata;
 
     _isLoading = true;
     RadixToast.showLoading(); // 全局弹窗 loading

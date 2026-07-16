@@ -77,6 +77,18 @@ abstract class SocketEvents {
   /// Call invitation
   static const String callInvite = 'call_invite';
 
+  // --- AI Customer Service Events ---
+  /// AI 逐字回复 token
+  static const String aiToken = 'ai_token';
+  /// AI 处理步骤
+  static const String aiStep = 'ai_step';
+  /// AI 回复完成
+  static const String aiDone = 'ai_done';
+  /// AI 处理出错
+  static const String aiError = 'ai_error';
+  /// 转人工
+  static const String aiTransfer = 'ai_transfer';
+
   // --- Business/System Notifications ---
   static const String groupSuccess = 'group_success';
   static const String groupFailed = 'group_failed';

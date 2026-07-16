@@ -11,6 +11,9 @@ import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 
 import 'package:flutter_app/app/routes/app_router.dart';
 import 'package:flutter_app/common.dart';
+import 'package:flutter_app/core/services/customer_service/customer_service_helper.dart';
+import 'package:flutter_app/core/store/ai_chat/ai_chat_view_model.dart';
+import 'package:flutter_app/core/store/ai_chat/ai_chat_state.dart';
 import 'package:flutter_app/components/preloader/scroll_aware_preloader.dart';
 import 'package:flutter_app/ui/chat/components/chat_action_sheet.dart';
 import 'package:flutter_app/ui/chat/providers/chat_group_provider.dart';
@@ -47,26 +50,160 @@ class ChatPage extends ConsumerStatefulWidget {
 }
 
 class _ChatPageState extends ConsumerState<ChatPage> with ChatPageLogic {
+  final _aiTextController = TextEditingController();
+
+  /// 入口上下文（从 CustomerServiceHelper 暂存）
+  String? _entryPoint;
+  Map<String, dynamic>? _entryMetadata;
+
+  /// 是否已自动发送上下文消息（防重复）
+  bool _autoSentContext = false;
+
+  /// 是否已转人工（由 AiChatViewModel.onTransfer 设为 true）
+  bool _transferredToHuman = false;
 
   @override
   void initState() {
     super.initState();
-    initLogic(); // Initialize the scroll listener for pagination
+    // 消费入口上下文
+    _entryPoint = CustomerServiceHelper.pendingEntryPoint;
+    _entryMetadata = CustomerServiceHelper.pendingMetadata;
+    CustomerServiceHelper.pendingEntryPoint = null;
+    CustomerServiceHelper.pendingMetadata = null;
+
+    initLogic();
   }
 
   @override
   void dispose() {
+    _aiTextController.dispose();
     disposeLogic();
     try {
-      // Clear active conversation ID state on dispose
       ref.read(activeConversationIdProvider.notifier).state = null;
     } catch (_) {}
     super.dispose();
   }
 
+  /// 转人工 — 由 AiChatViewModel.onTransfer 触发
+  void _onTransferToHuman() {
+    if (!mounted) return;
+    setState(() => _transferredToHuman = true);
+  }
+
+  /// 根据入口上下文构造 AI 初始消息
+  String _buildContextMessage(String entryPoint, Map<String, dynamic>? metadata) {
+    switch (entryPoint) {
+      case 'order_detail':
+        final orderId = metadata?['orderId'] ?? '';
+        return 'Check my order $orderId status';
+      case 'deposit':
+        final depositId = metadata?['depositId'] ?? '';
+        return 'Check my deposit $depositId status';
+      case 'profile':
+        return 'Check my profile';
+      default:
+        return 'Hello';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    // Initialize the chat controller
+    // ── 通过 Conversation.type 决定 AI 还是 IM 模式 ──
+    // 所有客服对话（support/ai）默认走 AI，群聊/私聊走 IM。
+    // 详情还没加载时乐观默认 AI（新对话大概率是客服）。
+    final groupAsync = ref.watch(chatGroupProvider(widget.conversationId));
+    final basicAsync = ref.watch(chatDetailProvider(widget.conversationId));
+    final detail = groupAsync.valueOrNull ?? basicAsync.valueOrNull;
+
+    final bool useAiMode;
+    if (_transferredToHuman) {
+      useAiMode = false;
+    } else if (detail != null) {
+      useAiMode = detail.type == ConversationType.support ||
+                  detail.type == ConversationType.ai;
+    } else {
+      useAiMode = widget.conversationId == kAiConversationId;
+    }
+
+    // ── AI 模式：不走 Socket，走 SSE ──
+    if (useAiMode) {
+      // 把 onTransfer 回调传递给 AiChatViewModel
+      final aiProvider = aiChatViewModelProvider(widget.conversationId);
+      final aiState = ref.watch(aiProvider);
+      final aiNotifier = ref.read(aiProvider.notifier)
+        ..onTransfer = _onTransferToHuman;
+      final bool isGroup = detail?.type == ConversationType.group;
+
+      // 首次进入且有入口上下文 → 自动发给 AI 处理
+      if (!_autoSentContext && _entryPoint != null && aiState.messages.isEmpty) {
+        _autoSentContext = true;
+        final contextMsg = _buildContextMessage(_entryPoint!, _entryMetadata);
+        Future.microtask(() => aiNotifier.sendMessage(contextMsg));
+      }
+
+      debugPrint('[ChatPage] AI build: messages=${aiState.messages.length}');
+
+      // 思考气泡：SSE 活跃、未收到 token、有状态文字时在列表底部显示
+      final bool showThinking = aiState.isReceiving &&
+          aiState.currentStreamContent.isEmpty &&
+          aiState.statusText.isNotEmpty;
+
+      return WillPopScope(
+        onWillPop: onWillPop,
+        child: Scaffold(
+          backgroundColor: context.bgPrimary,
+          resizeToAvoidBottomInset: true,
+          appBar: _buildAppBar(context, detail, isGroup, ref,
+            conversationId: widget.conversationId,
+          ),
+          body: Column(
+            children: [
+	              // 消息列表
+	              Expanded(
+	                child: aiState.messages.isEmpty && !showThinking
+	                    ? Center(
+	                        child: Text("No messages yet",
+	                          style: TextStyle(color: Colors.grey[400], fontSize: 15),
+	                        ),
+	                      )
+	                    : ListView.builder(
+	                        reverse: true,
+	                        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+	                        itemCount: aiState.messages.length + (showThinking ? 1 : 0),
+	                        itemBuilder: (context, index) {
+	                          if (showThinking && index == 0) {
+	                            return _buildAiThinkingBubble(context, aiState.statusText);
+	                          }
+	                          final msgIndex = showThinking ? index - 1 : index;
+	                          final msg = aiState.messages[msgIndex];
+	                          return ChatBubble(
+	                            key: ValueKey(msg.id),
+	                            isGroup: false,
+	                            message: msg,
+	                          );
+	                        },
+	                      ),
+	              ),
+              // 错误提示（AI 出错时显示）
+              if (aiState.error != null)
+                _buildAiErrorBar(context, aiState.error!, aiNotifier.retry),
+              // 输入栏 — 使用与 IM 相同的 ModernChatInputBar
+              ModernChatInputBar(
+                conversationId: widget.conversationId,
+                onSend: (text) => aiNotifier.sendMessage(text),
+                onSendVoice: (_, __) {},
+                onSendImage: (_) {},
+                onSendVideo: (_) {},
+                onAddPressed: () {},
+                onTextFieldTap: () {},
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // ── IM 模式：走 Socket ──
     ref.watch(chatControllerProvider(widget.conversationId));
 
     // Synchronize the active conversation ID for signaling or notification filtering
@@ -79,10 +216,6 @@ class _ChatPageState extends ConsumerState<ChatPage> with ChatPageLogic {
     final messages = chatState.messages;
     final actionService = ref.read(chatActionServiceProvider(widget.conversationId));
 
-    // Conversation Detail Fetching
-    final groupAsync = ref.watch(chatGroupProvider(widget.conversationId));
-    final basicAsync = ref.watch(chatDetailProvider(widget.conversationId));
-    final detail = groupAsync.valueOrNull ?? basicAsync.valueOrNull;
     final bool isGroup = detail?.type == ConversationType.group;
 
     // Permission and Restriction Check

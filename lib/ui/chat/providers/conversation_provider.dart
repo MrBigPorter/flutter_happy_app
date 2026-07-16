@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_app/common.dart';
+import 'package:flutter_app/core/store/ai_chat/ai_chat_view_model.dart';
 import 'package:flutter_app/core/store/user_store.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';

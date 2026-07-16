@@ -362,6 +362,26 @@ class LocalDatabaseService {
   // Basic DAO Support (Patch, Update, Save)
   // ========================================================================
 
+  /// 保存 AI 客服的完整回复到本地 DB
+  /// 供 ChatEventHandler 在收到 ai_done 后调用
+  Future<void> saveAiMessage({
+    required String conversationId,
+    required String content,
+  }) async {
+    if (content.isEmpty) return;
+    final msg = ChatUiModel(
+      id: 'ai_${DateTime.now().millisecondsSinceEpoch}',
+      content: content,
+      type: MessageType.ai,
+      isMe: false,
+      createdAt: DateTime.now().millisecondsSinceEpoch,
+      conversationId: conversationId,
+      status: MessageStatus.success,
+      senderName: 'Customer Service',
+    );
+    await saveMessage(msg);
+  }
+
   Future<void> saveMessage(ChatUiModel msg) async {
     final db = await database;
 

@@ -18,6 +18,9 @@ mixin SocketChatMixin on _SocketBase, SocketDispatcherMixin {
   final _conversationUpdateStream = StreamController<Map<String, dynamic>>.broadcast();
   Stream<Map<String, dynamic>> get conversationUpdateStream => _conversationUpdateStream.stream;
 
+  final _aiEventController = StreamController<Map<String, dynamic>>.broadcast();
+  Stream<Map<String, dynamic>> get aiEventStream => _aiEventController.stream;
+
   // group events are handled in SocketNotificationMixin as business events, so no need to handle them here\
   final _groupEventController = StreamController<SocketGroupEvent>.broadcast();
   Stream<SocketGroupEvent> get groupEventStream => _groupEventController.stream;
@@ -52,6 +55,13 @@ mixin SocketChatMixin on _SocketBase, SocketDispatcherMixin {
   void _onConversationUpdated(dynamic data) {
     if (data != null && !_conversationUpdateStream.isClosed) {
       _conversationUpdateStream.add(Map<String, dynamic>.from(data));
+    }
+  }
+
+  @override
+  void _onAiEvent(String type, dynamic data) {
+    if (!_aiEventController.isClosed) {
+      _aiEventController.add({'type': type, 'data': data});
     }
   }
 

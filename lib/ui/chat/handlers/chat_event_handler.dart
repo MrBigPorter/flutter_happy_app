@@ -19,7 +19,7 @@ class ChatEventHandler {
   final SocketService _socketService;
   final String _currentUserId;
 
-  StreamSubscription? _msgSub, _readStatusSub, _recallSub;
+  StreamSubscription? _msgSub, _readStatusSub, _recallSub, _aiSub;
   StreamSubscription? _debounceSub;
 
   final _readReceiptSubject = PublishSubject<void>();
@@ -66,6 +66,7 @@ class ChatEventHandler {
     _msgSub?.cancel();
     _readStatusSub?.cancel();
     _recallSub?.cancel();
+    _aiSub?.cancel();
     _debounceSub?.cancel();
     _readReceiptSubject.close();
   }
@@ -116,6 +117,7 @@ class ChatEventHandler {
     _msgSub = _socketService.chatMessageStream.listen(_onSocketMessage);
     _readStatusSub = _socketService.readStatusStream.listen(_onReadStatusUpdate);
     _recallSub = _socketService.recallEventStream.listen(_onMessageRecalled);
+    _aiSub = _socketService.aiEventStream.listen(_onAiEvent);
   }
 
   // ===========================================================================
@@ -157,6 +159,58 @@ class ChatEventHandler {
     final tip = event.isSelf ? "You unsent a message" : "This message was unsent";
     await LocalDatabaseService().doLocalRecall(event.messageId, tip);
     _updateListSnapshot(tip, DateTime.now().millisecondsSinceEpoch);
+  }
+
+  /// AI 回复累积 buffer（Socket `ai_token` 累积，`ai_done` 后写 DB）
+  String _aiResponseBuffer = '';
+
+  void _onAiEvent(Map<String, dynamic> payload) {
+    if (_isDisposed) return;
+    final type = payload['type'] as String?;
+    final data = payload['data'] as Map<String, dynamic>?;
+    if (type == null || data == null) return;
+
+    switch (type) {
+      case SocketEvents.aiToken:
+        final token = data['content'] as String? ?? '';
+        _aiResponseBuffer += token;
+        debugPrint('[ChatEventHandler] AI token: "$token" (buffer=${_aiResponseBuffer.length} chars)');
+        break;
+
+      case SocketEvents.aiDone:
+        debugPrint('[ChatEventHandler] AI done, saving ${_aiResponseBuffer.length} chars to DB');
+        _saveAiMessage(_aiResponseBuffer);
+        _aiResponseBuffer = '';
+        break;
+
+      case SocketEvents.aiTransfer:
+        debugPrint('[ChatEventHandler] AI transfer requested');
+        _saveAiMessage(_aiResponseBuffer);
+        _aiResponseBuffer = '';
+        _updateListSnapshot('Transferred to human agent', DateTime.now().millisecondsSinceEpoch);
+        break;
+
+      case SocketEvents.aiError:
+        final error = data['content'] as String? ?? 'AI error';
+        debugPrint('[ChatEventHandler] AI error: $error');
+        _aiResponseBuffer = '';
+        _updateListSnapshot('AI service error', DateTime.now().millisecondsSinceEpoch);
+        break;
+    }
+  }
+
+  /// 把 AI 完整回复写入本地 DB（供 ChatViewModel 的 DB 流消费）
+  Future<void> _saveAiMessage(String content) async {
+    if (content.isEmpty) return;
+    if (_isDisposed) return;
+    try {
+      await LocalDatabaseService().saveAiMessage(
+        conversationId: conversationId,
+        content: content,
+      );
+    } catch (e) {
+      debugPrint('[ChatEventHandler] Failed to save AI message: $e');
+    }
   }
 
   // ===========================================================================
