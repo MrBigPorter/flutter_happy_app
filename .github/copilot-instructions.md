@@ -69,13 +69,14 @@
 
 ## 🎯 Current Task
 
-**Phase**: Phase F1 — H5 Build Size Optimization + UX Fixes + Caching Fix (Completed ✅)
-**Last Stop**: PWA Mobile Update — SW update check delay reduced to 2s (2026-05-14)
+**Phase**: Phase 0 — SamaHub Backend Monorepo Initialization (P0.0 ✅)
+**Last Stop**: SamaHub monorepo created — NestJS 11 + GraphQL + Socket.IO + Prisma + AI Service (2026-06-11)
 
 ### Recent Accomplishments
 
 | Date | Task | Status |
 |------|------|--------|
+| 2026-06-11 | **SamaHub P0.0 — Monorepo Initialization** — Created `/Users/porter/Developer/SamaHub/` with npm workspaces: `apps/backend` (NestJS 11 + Apollo GraphQL + Socket.IO + Prisma 6.18 + JWT + ioredis + S3 + Zod, port 4000), `services/ai` (NestJS 11 + ioredis + openai SDK, port 5000), `packages/shared` (`@samahub/shared` with SocketEvents enum, 7 enums, DomainEvent interface). 23 files. `tsc --noEmit` passes with zero errors. See [`sama_phase0_implementation_plan.md`](../Sama/plans/sama_phase0_implementation_plan.md:91). | ✅ |
 | 2026-05-22 | **Web Test Mode Login Flow** — `/?type=test` URL param detection via `TestModeService` (conditional import pattern). Auto-fills email `mrsuperportertest@gmail.com` + code `999999` on login page. Replaced toast popup with inline warning banner (amber theme tokens) — only visible in test mode. | ✅ |
 | 2026-05-22 | **Fix Cloudflare Pages Deploy — Wrangler v2 → v3 Migration** — `cloudflare/pages-action@v1` (bundled Wrangler v2.21.3) deprecated by Cloudflare; API returned 500. Migrated to `cloudflare/wrangler-action@v3` in both `web_deploy.yml` and `full_deploy.yml`. Removed deprecated `directory`/`projectName`/`branch`/`gitHubToken` inputs; replaced with `command: pages deploy build/web --project-name=... --branch=...`. | ❌ |
 | 2026-05-23 | **PROD Outage — Wrangler v3 + wasm deployment corrupted main.dart.js (HTTP 500, 0 bytes)** — The `cloudflare/wrangler-action@v3` with `pages deploy --branch=main --commit-dirty=true` created a corrupted production deployment: `main.dart.js` returned HTTP 500 with 0 bytes, `main.dart.wasm` was 28KB HTML error page. The CSP violation error was a red herring (Chrome extension failing on 500 error page). Fixed by triggering `web_deploy.yml` (H5 deploy without `--wasm`) which built a clean dart2js+canvaskit deployment. Root cause: Wrangler v3 `pages deploy` may not handle `--wasm` builds correctly or creates preview deployments instead of production updates. **Action**: Avoid `full_deploy.yml` (with `--wasm`) until Wrangler v3 + wasm compatibility is verified. | ✅ |

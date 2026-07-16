@@ -13,6 +13,8 @@ enum MessageType {
   recalled(4, label:'[Recalled]'),
   file(5, label:'[File]'),
   location(6, label:'[Location]'),
+  ai(8, label:'[AI]'),
+  card(9, label:'[ActionCard]'),
   system(99, label:'[System]');
 
   final int value;
@@ -34,8 +36,8 @@ enum MessageType {
       return '[Message Recalled]';
     }
 
-    // Priority 2: For text or system messages, return the raw content.
-    if (this == MessageType.text || this == MessageType.system) {
+    // Priority 2: For text, ai, or system messages, return the raw content.
+    if (this == MessageType.text || this == MessageType.ai || this == MessageType.system) {
       return content;
     }
 

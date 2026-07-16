@@ -14,6 +14,7 @@ enum ConversationType {
   @JsonValue('GROUP') group,
   @JsonValue('BUSINESS') business,
   @JsonValue('SUPPORT') support,
+  @JsonValue('AI') ai,
 }
 
 /// Relationship status codes: 0=Stranger, 1=Friend, 2=RequestSent

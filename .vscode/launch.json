@@ -1,25 +1,78 @@
 {
   "version": "0.2.0",
   "configurations": [
+    
     {
-      "name": "🚀 Dev模式",
+      "name": "🚀 Dev (Mobile)",
       "request": "launch",
       "type": "dart",
       "program": "lib/main.dart",
       "args": [
         "--dart-define-from-file=lib/core/config/env/dev.json",
-        "--web-port=4000" 
-    ]
+        "--web-port=4000"
+      ]
     },
     {
-      "name": "🧪 Test模式",
+      "name": "🧪 Test (Mobile)",
       "request": "launch",
       "type": "dart",
       "program": "lib/main.dart",
-     "args": [
+      "args": [
         "--dart-define-from-file=lib/core/config/env/test.json",
-         "--web-port=4000" 
-    ]
+        "--web-port=4000"
+      ]
+    },
+    {
+      "name": "🏭 Prod (Mobile)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "args": [
+        "--dart-define-from-file=lib/core/config/env/prod.json",
+        "--web-port=4000"
+      ]
+    },
+    {
+      "name": "🌐 Dev (Web)",
+      "request": "launch",
+      "type": "dart",
+      "deviceId": "chrome",
+      "program": "lib/main.dart",
+      "args": [
+        "--dart-define-from-file=lib/core/config/env/dev.json",
+        "--web-port=4000"
+      ]
+    },
+    {
+      "name": "🌐 Test (Web)",
+      "request": "launch",
+      "type": "dart",
+      "deviceId": "chrome",
+      "program": "lib/main.dart",
+      "args": [
+        "--dart-define-from-file=lib/core/config/env/test.json",
+        "--web-port=4000"
+      ]
+    },
+    {
+      "name": "🌐 Prod (Web)",
+      "request": "launch",
+      "type": "dart",
+      "deviceId": "chrome",
+      "program": "lib/main.dart",
+      "args": [
+        "--dart-define-from-file=lib/core/config/env/prod.json",
+        "--web-port=4000"
+      ]
+    },
+    {
+      "name": "📚 Widgetbook",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main_widgetbook.dart",
+      "args": [
+        "--web-port=5000"
+      ]
     }
   ]
 }

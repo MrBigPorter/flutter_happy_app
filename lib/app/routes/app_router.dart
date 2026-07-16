@@ -276,6 +276,13 @@ class AppRouter {
             );
           },
         ),
+
+        // ── AI Chat（重定向到集成页面）──
+        GoRoute(
+          path: '/ai/chat',
+          name: 'aiChat',
+          redirect: (context, state) => '/chat/room/ai_chat',
+        ),
         GoRoute(
           name: "login",
           path: '/login',

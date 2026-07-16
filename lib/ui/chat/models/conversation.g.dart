@@ -65,6 +65,7 @@ const _$ConversationTypeEnumMap = {
   ConversationType.group: 'GROUP',
   ConversationType.business: 'BUSINESS',
   ConversationType.support: 'SUPPORT',
+  ConversationType.ai: 'AI',
 };
 
 const _$MessageStatusEnumMap = {

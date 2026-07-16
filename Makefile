@@ -29,7 +29,7 @@ help:
 	@echo "│  🧹 清理后运行（构建失败时首选，比 dev 多 30-60s）        │"
 	@echo "│    make dev-clean    clean + dev 运行                    │"
 	@echo "│    make test-clean   clean + test 运行                   │"
-	@echo "│    make prod-clean   clean + prod 运行                   │"
+	@echo "│    make prod-clean   clean + jg aZprod 运行                   │"
 	@echo "├─────────────────────────────────────────────────────────┤"
 	@echo "│  🔧 基础工具                                              │"
 	@echo "│    make clean        flutter clean + pub get             │"
