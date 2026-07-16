@@ -193,8 +193,8 @@ class _ChatPageState extends ConsumerState<ChatPage> with ChatPageLogic {
                   padding: EdgeInsets.only(bottom: 4.h),
                   child: GestureDetector(
                     onTap: () {
-                      _onTransferToHuman();
-                      aiNotifier.cancelStream();
+                      // 发送转人工消息，后端意图分类检测到 human_support 后触发 transfer
+                      aiNotifier.sendMessage('I want to speak to a human agent');
                     },
                     child: Center(
                       child: Container(
