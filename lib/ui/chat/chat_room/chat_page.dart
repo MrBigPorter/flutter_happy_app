@@ -187,6 +187,33 @@ class _ChatPageState extends ConsumerState<ChatPage> with ChatPageLogic {
               // 错误提示（AI 出错时显示）
               if (aiState.error != null)
                 _buildAiErrorBar(context, aiState.error!, aiNotifier.retry),
+              // 转人工按钮
+              if (aiState.isReceiving || aiState.messages.isNotEmpty)
+                Container(
+                  padding: EdgeInsets.only(bottom: 4.h),
+                  child: GestureDetector(
+                    onTap: () {
+                      _onTransferToHuman();
+                      aiNotifier.cancelStream();
+                    },
+                    child: Center(
+                      child: Container(
+                        padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 6.h),
+                        decoration: BoxDecoration(
+                          color: context.bgSecondary,
+                          borderRadius: BorderRadius.circular(12.r),
+                        ),
+                        child: Text(
+                          'Contact Human Agent',
+                          style: TextStyle(
+                            fontSize: 12.sp,
+                            color: context.textSecondary700,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
               // 输入栏 — 使用与 IM 相同的 ModernChatInputBar
               ModernChatInputBar(
                 conversationId: widget.conversationId,
