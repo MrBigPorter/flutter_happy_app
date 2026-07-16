@@ -11,6 +11,7 @@ import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 
 import 'package:flutter_app/app/routes/app_router.dart';
 import 'package:flutter_app/common.dart';
+import 'package:flutter_app/core/providers/socket_provider.dart';
 import 'package:flutter_app/core/services/customer_service/customer_service_helper.dart';
 import 'package:flutter_app/core/store/ai_chat/ai_chat_view_model.dart';
 import 'package:flutter_app/core/store/ai_chat/ai_chat_state.dart';
@@ -193,8 +194,19 @@ class _ChatPageState extends ConsumerState<ChatPage> with ChatPageLogic {
                   padding: EdgeInsets.only(bottom: 4.h),
                   child: GestureDetector(
                     onTap: () {
-                      // 发送转人工消息，后端意图分类检测到 human_support 后触发 transfer
-                      aiNotifier.sendMessage('I want to speak to a human agent');
+                      // 通过 Socket 发送转人工消息，不走 SSE
+                      // 后端收到 /chat/message → 检测 human_support → 触发 transfer
+                      final socketService = ref.read(socketServiceProvider);
+                      final tempId = 'transfer_${DateTime.now().millisecondsSinceEpoch}';
+                      socketService.sendMessage(
+                        conversationId: widget.conversationId,
+                        content: 'I want to speak to a human agent',
+                        type: 0,
+                        tempId: tempId,
+                      );
+                      // 取消 SSE 流，切 IM 模式
+                      aiNotifier.cancelStream();
+                      _onTransferToHuman();
                     },
                     child: Center(
                       child: Container(
