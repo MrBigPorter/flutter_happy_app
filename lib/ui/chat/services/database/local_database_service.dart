@@ -8,6 +8,7 @@ import 'package:sembast/sembast.dart';
 import 'package:sembast/sembast_io.dart';
 import 'package:sembast_web/sembast_web.dart';
 import 'package:lpinyin/lpinyin.dart';
+import 'package:uuid/uuid.dart';
 
 import '../../models/chat_ui_model.dart';
 import '../../models/conversation.dart';
@@ -367,10 +368,13 @@ class LocalDatabaseService {
   Future<void> saveAiMessage({
     required String conversationId,
     required String content,
+    String? messageId,
+    int? seqId,
   }) async {
     if (content.isEmpty) return;
     final msg = ChatUiModel(
-      id: 'ai_${DateTime.now().millisecondsSinceEpoch}',
+      id: messageId ?? const Uuid().v4(),
+      seqId: seqId,
       content: content,
       type: MessageType.ai,
       isMe: false,
@@ -379,10 +383,16 @@ class LocalDatabaseService {
       status: MessageStatus.success,
       senderName: 'Customer Service',
     );
+    debugPrint(
+      '[DupTrace] saveAiMessage: id=${msg.id} seqId=$seqId conv=$conversationId',
+    );
     await saveMessage(msg);
   }
 
   Future<void> saveMessage(ChatUiModel msg) async {
+    debugPrint(
+      '[DupTrace] saveMessage: id=${msg.id} type=${msg.type.value} seqId=${msg.seqId} conv=${msg.conversationId}',
+    );
     final db = await database;
 
     await db.transaction((txn) async {
@@ -402,11 +412,73 @@ class LocalDatabaseService {
 
   Future<void> saveMessages(List<ChatUiModel> msgs) async {
     if (msgs.isEmpty) return;
+    debugPrint('[DupTrace] saveMessages batch: ${msgs.length} msgs');
     final db = await database;
 
     await db.transaction((txn) async {
       for (final msg in msgs) {
         if (msg.id.trim().isEmpty) continue;
+
+        // 去重：API 同步的消息可能和本地已存的是同一条（AI 消息本地存时 ID 不同）
+        // 优先按 seqId 匹配，AI 消息没 seqId 则按 type=ai 匹配
+        final List<Filter> dupFilters = [
+          Filter.equals('conversationId', msg.conversationId),
+          Filter.notEquals('id', msg.id),
+        ];
+        bool dedupAttempted = false;
+        if (msg.seqId != null && msg.seqId! > 0) {
+          dupFilters.add(Filter.equals('seqId', msg.seqId));
+          dedupAttempted = true;
+        } else if (msg.type == MessageType.ai) {
+          dupFilters.add(Filter.equals('type', MessageType.ai.value));
+          dedupAttempted = true;
+        } else {
+          dupFilters.clear(); // 没有匹配条件，跳过去重
+        }
+        if (dupFilters.isNotEmpty) {
+          final dupRecords = await _messageStore.find(
+            txn,
+            finder: Finder(filter: Filter.and(dupFilters)),
+          );
+          if (dupRecords.isNotEmpty) {
+            debugPrint(
+              '[DupTrace] dedup HIT: conv=${msg.conversationId} type=${msg.type.value} '
+              'seqId=${msg.seqId} deleted ${dupRecords.length} records',
+            );
+          } else if (dedupAttempted) {
+            debugPrint(
+              '[DupTrace] dedup MISS: conv=${msg.conversationId} '
+              'type=${msg.type.value} seqId=${msg.seqId} — not found by seqId',
+            );
+          }
+          for (final dup in dupRecords) {
+            await _messageStore.record(dup.key).delete(txn);
+          }
+        }
+
+        // 补充清理：消息有 seqId 时，删除同对话中同类型但 seqId=null 的残留记录
+        // 这些是 SyncStep（用户消息）或 ai_done（AI 消息）写的本地草稿，
+        // 因缺少 seqId 无法被上面的 seqId 去重捕获。API 版本有 seqId 是权威版本。
+        if (msg.seqId != null && msg.seqId! > 0) {
+          final residFilter = Filter.and([
+            Filter.equals('conversationId', msg.conversationId),
+            Filter.equals('type', msg.type.value),
+            Filter.isNull('seqId'),
+          ]);
+          final residuals = await _messageStore.find(
+            txn,
+            finder: Finder(filter: residFilter),
+          );
+          if (residuals.isNotEmpty) {
+            debugPrint(
+              '[DupTrace] residual cleanup: conv=${msg.conversationId} '
+              'type=${msg.type.value} deleted ${residuals.length} msgs (seqId=null)',
+            );
+            for (final r in residuals) {
+              await _messageStore.record(r.key).delete(txn);
+            }
+          }
+        }
 
         final record = _messageStore.record(msg.id);
         final snapshot = await record.getSnapshot(txn);

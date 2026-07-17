@@ -3,15 +3,22 @@ import 'dart:async';
 import 'package:bot_toast/bot_toast.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_app/app/page/group_member_page.dart' deferred as _group_member;
-import 'package:flutter_app/app/page/group_room_page.dart' deferred as _group_room;
+import 'package:flutter_app/app/page/group_member_page.dart'
+    deferred as _group_member;
+import 'package:flutter_app/app/page/group_room_page.dart'
+    deferred as _group_room;
 import 'package:flutter_app/app/page/kyc_verify/kyc_verify_page.dart';
-import 'package:flutter_app/app/page/order_list_page.dart' deferred as _order_list;
+import 'package:flutter_app/app/page/order_list_page.dart'
+    deferred as _order_list;
 import 'package:flutter_app/app/page/page_404.dart' deferred as _page_404;
-import 'package:flutter_app/app/page/payment/payment_page.dart' deferred as _payment hide PagePaymentParamsExt;
-import 'package:flutter_app/app/page/product_group_page.dart' deferred as _product_group;
+import 'package:flutter_app/app/page/payment/payment_page.dart'
+    deferred as _payment
+    hide PagePaymentParamsExt;
+import 'package:flutter_app/app/page/product_group_page.dart'
+    deferred as _product_group;
 import 'package:flutter_app/app/page/setting_page.dart' deferred as _setting;
-import 'package:flutter_app/app/page/treasure_coins_page.dart' deferred as _treasure_coins;
+import 'package:flutter_app/app/page/treasure_coins_page.dart'
+    deferred as _treasure_coins;
 import 'package:flutter_app/app/routes/route_auth_config.dart';
 import 'package:flutter_app/app/routes/transitions.dart';
 import 'package:flutter_app/core/models/payment.dart';
@@ -21,7 +28,8 @@ import 'package:flutter_app/app/routes/deferred_page.dart';
 import 'package:flutter_app/app/page/product_page_skeleton.dart';
 import 'package:flutter_app/app/page/me_components/me_page_skeleton.dart';
 import 'package:flutter_app/app/page/home_page_skeleton.dart';
-import 'package:flutter_app/ui/chat/chat_search/chat_search_page.dart' deferred as _chat_search;
+import 'package:flutter_app/ui/chat/chat_search/chat_search_page.dart'
+    deferred as _chat_search;
 import 'package:flutter_app/ui/chat/models/conversation.dart';
 import 'package:flutter_app/ui/modal/base/modal_auto_close_observer.dart';
 import 'package:flutter_app/ui/modal/base/nav_hub.dart';
@@ -30,44 +38,71 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:flutter_app/components/lucky_tab_bar.dart';
-import 'package:flutter_app/ui/chat/chat_room/chat_page.dart' deferred as _chat_room;
-import 'package:flutter_app/ui/chat/contact_list/contact_list_page.dart' deferred as _contact;
+import 'package:flutter_app/ui/chat/chat_room/chat_page.dart'
+    deferred as _chat_room;
+import 'package:flutter_app/ui/chat/contact_list/contact_list_page.dart'
+    deferred as _contact;
 import 'package:flutter_app/ui/chat/conversation_list_page.dart';
-import 'package:flutter_app/ui/chat/contact_profile_page.dart' deferred as _contact_profile;
-import 'package:flutter_app/ui/chat/contact_search_page.dart' deferred as _contact_search;
-import 'package:flutter_app/ui/chat/group/group_member_select_page.dart' deferred as _group_member_select;
-import 'package:flutter_app/ui/chat/new_friend_page.dart' deferred as _new_friend;
-import 'package:flutter_app/app/page/deposit/deposit_page.dart' deferred as _deposit show DepositPage;
-import 'package:flutter_app/app/page/deposit_detail_page.dart' deferred as _winner_detail;
-import 'package:flutter_app/app/page/group_lobby/group_lobby_page.dart' deferred as _group_lobby;
+import 'package:flutter_app/ui/chat/contact_profile_page.dart'
+    deferred as _contact_profile;
+import 'package:flutter_app/ui/chat/contact_search_page.dart'
+    deferred as _contact_search;
+import 'package:flutter_app/ui/chat/group/group_member_select_page.dart'
+    deferred as _group_member_select;
+import 'package:flutter_app/ui/chat/new_friend_page.dart'
+    deferred as _new_friend;
+import 'package:flutter_app/app/page/deposit/deposit_page.dart'
+    deferred as _deposit
+    show DepositPage;
+import 'package:flutter_app/app/page/deposit_detail_page.dart'
+    deferred as _winner_detail;
+import 'package:flutter_app/app/page/group_lobby/group_lobby_page.dart'
+    deferred as _group_lobby;
 import 'package:flutter_app/app/page/guide_page.dart' deferred as _guide;
 import 'package:flutter_app/app/page/home_page.dart';
 import 'package:flutter_app/app/page/product_page.dart' deferred as _product;
 import 'package:flutter_app/app/page/transaction/transaction_ui_model.dart';
-import 'package:flutter_app/app/page/transaction_record_page.dart' deferred as _transaction_record;
-import 'package:flutter_app/app/page/me_components/me_page.dart' deferred as _me;
+import 'package:flutter_app/app/page/transaction_record_page.dart'
+    deferred as _transaction_record;
+import 'package:flutter_app/app/page/me_components/me_page.dart'
+    deferred as _me;
 import 'package:flutter_app/app/page/login_page/login_page.dart';
-import 'package:flutter_app/app/page/lucky_draw/lucky_draw_page.dart' deferred as _lucky_draw;
-import 'package:flutter_app/app/page/oauth_processing_page/oauth_processing_page.dart' deferred as _oauth;
-import 'package:flutter_app/app/page/pwa_debug_page.dart' deferred as _pwa_debug;
-import 'package:flutter_app/app/page/product_detail_page.dart' deferred as _product_detail;
-import 'package:flutter_app/app/page/withdraw/withdraw_page.dart' deferred as _withdraw hide WithdrawPageUI;
-import 'package:flutter_app/app/page/lucky_draw/lucky_draw_wheel_page.dart' deferred as _lucky_draw_wheel;
-import 'package:flutter_app/ui/chat/group/group_request_list/group_request_list_page.dart' deferred as _group_request;
-import 'package:flutter_app/ui/chat/group/group_profile/group_profile_page.dart' deferred as _group_profile;
-import '../../ui/chat/group/group_search/group_search_page.dart' deferred as _group_search;
+import 'package:flutter_app/app/page/lucky_draw/lucky_draw_page.dart'
+    deferred as _lucky_draw;
+import 'package:flutter_app/app/page/oauth_processing_page/oauth_processing_page.dart'
+    deferred as _oauth;
+import 'package:flutter_app/app/page/pwa_debug_page.dart'
+    deferred as _pwa_debug;
+import 'package:flutter_app/app/page/product_detail_page.dart'
+    deferred as _product_detail;
+import 'package:flutter_app/app/page/withdraw/withdraw_page.dart'
+    deferred as _withdraw
+    hide WithdrawPageUI;
+import 'package:flutter_app/app/page/lucky_draw/lucky_draw_wheel_page.dart'
+    deferred as _lucky_draw_wheel;
+import 'package:flutter_app/ui/chat/group/group_request_list/group_request_list_page.dart'
+    deferred as _group_request;
+import 'package:flutter_app/ui/chat/group/group_profile/group_profile_page.dart'
+    deferred as _group_profile;
+import '../../ui/chat/group/group_search/group_search_page.dart'
+    deferred as _group_search;
 import '../page/deposit/deposit_result_page.dart' deferred as _deposit_result;
-import '../page/deposit/web_popup_auto_close.dart' deferred as _web_popup_auto_close;
+import '../page/deposit/web_popup_auto_close.dart'
+    deferred as _web_popup_auto_close;
 import '../page/kyc_status_page.dart';
 import '../page/liveness_debug_page.dart' deferred as _liveness_debug;
 import '../page/my_vouchers_page.dart' deferred as _my_vouchers;
 import '../page/flash_sale/flash_sale_page.dart' deferred as _flash_sale;
-import '../page/flash_sale/flash_sale_product_page.dart' deferred as _flash_sale_product;
+import '../page/flash_sale/flash_sale_product_page.dart'
+    deferred as _flash_sale_product;
 import 'extra_codec.dart';
-import 'package:flutter_app/ui/chat/direct_chat_settings_page.dart' deferred as _direct_chat_settings;
-import 'package:flutter_app/ui/chat/local_contact_search_page.dart' deferred as _local_contact_search;
+import 'package:flutter_app/ui/chat/direct_chat_settings_page.dart'
+    deferred as _direct_chat_settings;
+import 'package:flutter_app/ui/chat/local_contact_search_page.dart'
+    deferred as _local_contact_search;
 import 'package:flutter_app/ui/chat/models/selection_types.dart';
-import 'package:flutter_app/ui/chat/selector/contact_selection_page.dart' deferred as _selector;
+import 'package:flutter_app/ui/chat/selector/contact_selection_page.dart'
+    deferred as _selector;
 
 final _shellKey = GlobalKey<NavigatorState>(debugLabel: 'shell');
 // 全局路由器实例  Global router instance
@@ -144,7 +179,8 @@ class AppRouter {
             final groupId = state.pathParameters['groupId']!;
             return DeferredPage(
               loadLibrary: _group_request.loadLibrary,
-              builder: () => _group_request.GroupRequestListPage(groupId: groupId),
+              builder: () =>
+                  _group_request.GroupRequestListPage(groupId: groupId),
             );
           },
         ),
@@ -182,7 +218,8 @@ class AppRouter {
             final cid = state.pathParameters['id']!;
             return DeferredPage(
               loadLibrary: _group_profile.loadLibrary,
-              builder: () => _group_profile.GroupProfilePage(conversationId: cid),
+              builder: () =>
+                  _group_profile.GroupProfilePage(conversationId: cid),
             );
           },
         ),
@@ -206,7 +243,8 @@ class AppRouter {
               key: state.pageKey,
               child: DeferredPage(
                 loadLibrary: () => Future<void>.value(),
-                builder: () => _chat_search.ChatSearchPage(conversationId: conversationId),
+                builder: () =>
+                    _chat_search.ChatSearchPage(conversationId: conversationId),
               ),
               fx: RouteFx.slideUp,
             );
@@ -226,7 +264,9 @@ class AppRouter {
             final cid = state.pathParameters['id']!;
             return DeferredPage(
               loadLibrary: _direct_chat_settings.loadLibrary,
-              builder: () => _direct_chat_settings.DirectChatSettingsPage(conversationId: cid),
+              builder: () => _direct_chat_settings.DirectChatSettingsPage(
+                conversationId: cid,
+              ),
             );
           },
         ),
@@ -241,7 +281,10 @@ class AppRouter {
 
             return DeferredPage(
               loadLibrary: _contact_profile.loadLibrary,
-              builder: () => _contact_profile.ContactProfilePage(userId: userId, cachedUser: cachedUser),
+              builder: () => _contact_profile.ContactProfilePage(
+                userId: userId,
+                cachedUser: cachedUser,
+              ),
             );
           },
         ),
@@ -277,7 +320,9 @@ class AppRouter {
           },
         ),
 
-        // ── AI Chat（重定向到集成页面）──
+        // @deprecated ── AI Chat 独立路由已废弃 ──
+        // AI 消息统一走 HTTP POST /chat/message + Socket aiEventStream
+        // `/ai/chat` 原用于独立 AI 聊天页，后续需移除该路由。
         GoRoute(
           path: '/ai/chat',
           name: 'aiChat',
@@ -305,25 +350,26 @@ class AppRouter {
           builder: (context, state) {
             debugPrint('GoRouter: Deep Link OAuth callback route matched');
             debugPrint('Callback URL: ${state.uri}');
-            
+
             // Extract token from URL parameters
             final token = state.uri.queryParameters['token'];
             final refreshToken = state.uri.queryParameters['refreshToken'];
             final stateParam = state.uri.queryParameters['state'];
-            
+
             if (token != null) {
               debugPrint('Token received: ${token.substring(0, 20)}...');
               debugPrint('Refresh token: ${refreshToken?.substring(0, 20)}...');
               debugPrint('State: $stateParam');
-              
+
               // 调用全局处理器处理 Deep Link OAuth 回调
               // 注意：这里需要异步处理，但路由 builder 是同步的
               // 所以使用 Future.microtask 在下一帧执行
               Future.microtask(() async {
                 try {
                   // 从 URL 参数解析 provider（后端在 state 或 URL 中返回）
-                  final provider = state.uri.queryParameters['provider'] ?? 'google';
-                  
+                  final provider =
+                      state.uri.queryParameters['provider'] ?? 'google';
+
                   // 调用全局处理器保存 token
                   await GlobalOAuthHandler.handleDeepLinkOAuthCallback(
                     token: token,
@@ -333,12 +379,12 @@ class AppRouter {
                     navigateAfterSuccess: true,
                     showGlobalLoading: true,
                   );
-                  
+
                   debugPrint('GoRouter: Deep Link OAuth processing completed');
                 } catch (e, stackTrace) {
                   debugPrint('GoRouter: Deep Link OAuth processing failed: $e');
                   debugPrint('Stack trace: $stackTrace');
-                  
+
                   // 即使处理失败，也重定向到首页（避免卡在回调页面）
                   if (context.mounted) {
                     context.go('/home');
@@ -349,7 +395,9 @@ class AppRouter {
               // 无 token：可能是取消授权（error=cancelled）或其他错误
               final error = state.uri.queryParameters['error'];
               final provider = state.uri.queryParameters['provider'] ?? '';
-              debugPrint('No token in callback URL, error=$error provider=$provider');
+              debugPrint(
+                'No token in callback URL, error=$error provider=$provider',
+              );
               Future.microtask(() {
                 if (!context.mounted) return;
                 // 取消授权 → 直接回登录页，不经过 /home 再被守卫跳回
@@ -357,7 +405,7 @@ class AppRouter {
                 context.go('/login');
               });
             }
-            
+
             // 返回空白页面，不显示额外的loading
             // GlobalOAuthHandler已经处理了全局loading
             return const SizedBox.shrink();
@@ -386,7 +434,10 @@ class AppRouter {
               key: state.pageKey,
               child: DeferredPage(
                 loadLibrary: _product_detail.loadLibrary,
-                builder: () => _product_detail.ProductDetailPage(productId: id, queryParams: queryParams),
+                builder: () => _product_detail.ProductDetailPage(
+                  productId: id,
+                  queryParams: queryParams,
+                ),
               ),
               fx: RouteFx.zoomIn,
             );
@@ -591,7 +642,8 @@ class AppRouter {
             final ticketId = state.pathParameters['ticketId']!;
             return DeferredPage(
               loadLibrary: _lucky_draw_wheel.loadLibrary,
-              builder: () => _lucky_draw_wheel.LuckyDrawWheelPage(ticketId: ticketId),
+              builder: () =>
+                  _lucky_draw_wheel.LuckyDrawWheelPage(ticketId: ticketId),
             );
           },
         ),
@@ -620,7 +672,9 @@ class AppRouter {
               key: state.pageKey,
               child: DeferredPage(
                 loadLibrary: _flash_sale_product.loadLibrary,
-                builder: () => _flash_sale_product.FlashSaleProductPage(flashSaleProductId: id),
+                builder: () => _flash_sale_product.FlashSaleProductPage(
+                  flashSaleProductId: id,
+                ),
               ),
               fx: RouteFx.zoomIn,
             );
@@ -651,7 +705,8 @@ class AppRouter {
             final orderNo = state.pathParameters['orderNo'] ?? '';
             return DeferredPage(
               loadLibrary: _deposit_result.loadLibrary,
-              builder: () => _deposit_result.DepositResultPage(orderNo: orderNo),
+              builder: () =>
+                  _deposit_result.DepositResultPage(orderNo: orderNo),
             );
           },
         ),
@@ -662,7 +717,8 @@ class AppRouter {
             final orderNo = state.pathParameters['orderNo'] ?? '';
             return DeferredPage(
               loadLibrary: _web_popup_auto_close.loadLibrary,
-              builder: () => _web_popup_auto_close.WebPopupAutoClose(orderNo: orderNo),
+              builder: () =>
+                  _web_popup_auto_close.WebPopupAutoClose(orderNo: orderNo),
             );
           },
         ),
@@ -676,7 +732,8 @@ class AppRouter {
                 : UiTransactionType.deposit;
             return DeferredPage(
               loadLibrary: _transaction_record.loadLibrary,
-              builder: () => _transaction_record.TransactionHistoryPage(initialType: type),
+              builder: () =>
+                  _transaction_record.TransactionHistoryPage(initialType: type),
             );
           },
         ),

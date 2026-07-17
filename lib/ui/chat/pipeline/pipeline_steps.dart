@@ -378,7 +378,8 @@ class SyncStep implements PipelineStep {
     final updates = <String, dynamic>{
       'status': MessageStatus.success.name,
       'content': serverMsg.content.isNotEmpty ? serverMsg.content : ctx.remoteUrl,
-      'meta': mergedMeta
+      'meta': mergedMeta,
+      if (serverMsg.seqId != null) 'seqId': serverMsg.seqId,
     };
 
     // Web Double-Insurance: Explicitly preserve local Blob paths to maintain

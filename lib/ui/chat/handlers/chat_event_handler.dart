@@ -31,18 +31,24 @@ class ChatEventHandler {
   bool _isDisposed = false;
 
   ChatEventHandler(
-      this.conversationId,
-      this._ref,
-      this._socketService,
-      this._currentUserId,
-      );
+    this.conversationId,
+    this._ref,
+    this._socketService,
+    this._currentUserId,
+  );
 
   void init() {
-    debugPrint("💬 [ChatEventHandler] Initializing for conversation: $conversationId");
+    debugPrint(
+      "💬 [ChatEventHandler] Initializing for conversation: $conversationId",
+    );
     debugPrint("💬 [ChatEventHandler] Current user ID: $_currentUserId");
-    debugPrint("💬 [ChatEventHandler] Socket service available: ${_socketService != null}");
-    debugPrint("💬 [ChatEventHandler] Socket connected: ${_socketService?.isConnected}");
-    
+    debugPrint(
+      "💬 [ChatEventHandler] Socket service available: ${_socketService != null}",
+    );
+    debugPrint(
+      "💬 [ChatEventHandler] Socket connected: ${_socketService?.isConnected}",
+    );
+
     _setupSubscriptions();
     _setupReadReceiptDebounce();
     _setupJoinRoomLogic();
@@ -101,7 +107,9 @@ class ChatEventHandler {
         Future.microtask(() {
           if (_isDisposed) return;
           try {
-            final notifier = _ref.read(chatViewModelProvider(conversationId).notifier);
+            final notifier = _ref.read(
+              chatViewModelProvider(conversationId).notifier,
+            );
             notifier.performIncrementalSync();
           } catch (e) {
             debugPrint(" [WS-Path] Trigger sync failed: $e");
@@ -115,7 +123,9 @@ class ChatEventHandler {
 
   void _setupSubscriptions() {
     _msgSub = _socketService.chatMessageStream.listen(_onSocketMessage);
-    _readStatusSub = _socketService.readStatusStream.listen(_onReadStatusUpdate);
+    _readStatusSub = _socketService.readStatusStream.listen(
+      _onReadStatusUpdate,
+    );
     _recallSub = _socketService.recallEventStream.listen(_onMessageRecalled);
     _aiSub = _socketService.aiEventStream.listen(_onAiEvent);
   }
@@ -129,6 +139,10 @@ class ChatEventHandler {
     final msg = SocketMessage.fromJson(data);
 
     if (msg.conversationId != conversationId) return;
+
+    // 去重：同一个 msg.id 只处理一次
+    if (_processedMsgIds.contains(msg.id)) return;
+    _processedMsgIds.add(msg.id);
 
     // 允许通话结束系统消息通过 (type 99)，但跳过已读上报
     // 通话结束消息是系统消息，不需要触发已读上报
@@ -149,20 +163,38 @@ class ChatEventHandler {
     if (_isDisposed) return;
     if (event.lastReadSeqId > _maxReadSeqId) {
       _maxReadSeqId = event.lastReadSeqId;
-      await LocalDatabaseService().markMessagesAsRead(conversationId, _maxReadSeqId);
+      await LocalDatabaseService().markMessagesAsRead(
+        conversationId,
+        _maxReadSeqId,
+      );
     }
   }
 
   void _onMessageRecalled(SocketRecallEvent event) async {
     if (_isDisposed) return;
     if (event.conversationId != conversationId) return;
-    final tip = event.isSelf ? "You unsent a message" : "This message was unsent";
+    final tip = event.isSelf
+        ? "You unsent a message"
+        : "This message was unsent";
     await LocalDatabaseService().doLocalRecall(event.messageId, tip);
     _updateListSnapshot(tip, DateTime.now().millisecondsSinceEpoch);
   }
 
   /// AI 回复累积 buffer（Socket `ai_token` 累积，`ai_done` 后写 DB）
   String _aiResponseBuffer = '';
+  String _lastAiStep = '';
+
+  /// Push streaming update to ChatViewModel for typing effect
+  void _updateAiStreaming() {
+    try {
+      final notifier = _ref.read(
+        chatViewModelProvider(conversationId).notifier,
+      );
+      notifier.updateAiToken('');
+      // Force a minimal state refresh so UI rebuilds with latest buffer
+      notifier.updateAiToken('');
+    } catch (_) {}
+  }
 
   void _onAiEvent(Map<String, dynamic> payload) {
     if (_isDisposed) return;
@@ -170,43 +202,131 @@ class ChatEventHandler {
     final data = payload['data'] as Map<String, dynamic>?;
     if (type == null || data == null) return;
 
+    try {
+      final vmNotifier = _ref.read(
+        chatViewModelProvider(conversationId).notifier,
+      );
+
+      switch (type) {
+        case SocketEvents.aiToken:
+          final token = data['content'] as String? ?? '';
+          _aiResponseBuffer += token;
+          vmNotifier.updateAiToken(token);
+          debugPrint(
+            '[ChatEventHandler] AI token: "$token" (buffer=${_aiResponseBuffer.length} chars)',
+          );
+          break;
+
+        case SocketEvents.aiStep:
+          {
+            final step = data['step'] as String? ?? '';
+            final tool = data['tool'] as String?;
+            debugPrint(
+              '[ChatEventHandler] AI step: step=$step, tool=$tool, content=${data['content']}',
+            );
+            if (step == 'tool_start' && tool != null) {
+              _lastAiStep = tool;
+              vmNotifier.updateAiStatusText(tool);
+            } else if (step == 'tool_end') {
+              _lastAiStep = '';
+              vmNotifier.updateAiStatusText('');
+            } else if (step == 'thinking' && data['content'] != null) {
+              vmNotifier.updateAiStatusText(data['content'] as String);
+            }
+            break;
+          }
+
+        case SocketEvents.aiDone:
+          debugPrint(
+            '[ChatEventHandler] AI done, saving ${_aiResponseBuffer.length} chars to DB',
+          );
+          vmNotifier.clearAiStreaming();
+          _saveAiMessage(
+            _aiResponseBuffer,
+            messageId: data['id'] as String?,
+            seqId: data['seqId'] as int?,
+          );
+          _aiResponseBuffer = '';
+          _lastAiStep = '';
+          break;
+
+        case SocketEvents.aiTransfer:
+          debugPrint('[ChatEventHandler] AI transfer requested');
+          vmNotifier.clearAiStreaming();
+          _saveAiMessage(
+            _aiResponseBuffer,
+            messageId: data['id'] as String?,
+            seqId: data['seqId'] as int?,
+          );
+          _aiResponseBuffer = '';
+          _lastAiStep = '';
+          _updateListSnapshot(
+            'Transferred to human agent',
+            DateTime.now().millisecondsSinceEpoch,
+          );
+          break;
+
+        case SocketEvents.aiError:
+          final error = data['content'] as String? ?? 'AI error';
+          debugPrint('[ChatEventHandler] AI error: $error');
+          vmNotifier.clearAiStreaming();
+          _aiResponseBuffer = '';
+          _lastAiStep = '';
+          _updateListSnapshot(
+            'AI service error',
+            DateTime.now().millisecondsSinceEpoch,
+          );
+          break;
+      }
+    } catch (_) {
+      // ChatViewModel may not be available yet; fallback to DB-only path
+      _onAiEventFallback(type, data);
+    }
+  }
+
+  /// Fallback: DB-only path when ChatViewModel is not available
+  void _onAiEventFallback(String type, Map<String, dynamic> data) {
     switch (type) {
       case SocketEvents.aiToken:
         final token = data['content'] as String? ?? '';
         _aiResponseBuffer += token;
-        debugPrint('[ChatEventHandler] AI token: "$token" (buffer=${_aiResponseBuffer.length} chars)');
         break;
-
       case SocketEvents.aiDone:
-        debugPrint('[ChatEventHandler] AI done, saving ${_aiResponseBuffer.length} chars to DB');
-        _saveAiMessage(_aiResponseBuffer);
+        _saveAiMessage(
+          _aiResponseBuffer,
+          messageId: data['id'] as String?,
+          seqId: data['seqId'] as int?,
+        );
         _aiResponseBuffer = '';
         break;
-
       case SocketEvents.aiTransfer:
-        debugPrint('[ChatEventHandler] AI transfer requested');
-        _saveAiMessage(_aiResponseBuffer);
+        _saveAiMessage(
+          _aiResponseBuffer,
+          messageId: data['id'] as String?,
+          seqId: data['seqId'] as int?,
+        );
         _aiResponseBuffer = '';
-        _updateListSnapshot('Transferred to human agent', DateTime.now().millisecondsSinceEpoch);
         break;
-
       case SocketEvents.aiError:
-        final error = data['content'] as String? ?? 'AI error';
-        debugPrint('[ChatEventHandler] AI error: $error');
         _aiResponseBuffer = '';
-        _updateListSnapshot('AI service error', DateTime.now().millisecondsSinceEpoch);
         break;
     }
   }
 
   /// 把 AI 完整回复写入本地 DB（供 ChatViewModel 的 DB 流消费）
-  Future<void> _saveAiMessage(String content) async {
+  Future<void> _saveAiMessage(
+    String content, {
+    String? messageId,
+    int? seqId,
+  }) async {
     if (content.isEmpty) return;
     if (_isDisposed) return;
     try {
       await LocalDatabaseService().saveAiMessage(
         conversationId: conversationId,
         content: content,
+        messageId: messageId,
+        seqId: seqId,
       );
     } catch (e) {
       debugPrint('[ChatEventHandler] Failed to save AI message: $e');
@@ -221,9 +341,9 @@ class ChatEventHandler {
     _debounceSub = _readReceiptSubject
         .debounceTime(const Duration(milliseconds: 500))
         .listen((_) {
-      if (_isDisposed) return;
-      markAsRead();
-    });
+          if (_isDisposed) return;
+          markAsRead();
+        });
   }
 
   Future<void> markAsRead() async {
@@ -239,11 +359,16 @@ class ChatEventHandler {
       // DirectChatSettingsPage [关键修复 4] 中途拦截：查数据库可能耗时，在此期间可能已销毁
       if (_isDisposed) return;
 
-      await LocalDatabaseService().markMessagesAsRead(conversationId, maxSeqId ?? 0);
+      await LocalDatabaseService().markMessagesAsRead(
+        conversationId,
+        maxSeqId ?? 0,
+      );
 
       if (maxSeqId != null) {
         // DirectChatSettingsPage [关键修复 5] 发起 Api 前检查会话是否还存在（解决被踢后上报 403 问题）
-        final conversation = await _ref.read(messageRepositoryProvider).getConversation(conversationId);
+        final conversation = await _ref
+            .read(messageRepositoryProvider)
+            .getConversation(conversationId);
         if (conversation == null || _isDisposed) return;
 
         await Api.messageMarkAsReadApi(
@@ -263,11 +388,13 @@ class ChatEventHandler {
   void _updateListSnapshot(String text, int time) {
     if (_isDisposed) return;
     try {
-      _ref.read(conversationListProvider.notifier).updateLocalItem(
-        conversationId: conversationId,
-        lastMsgContent: text,
-        lastMsgTime: time,
-      );
+      _ref
+          .read(conversationListProvider.notifier)
+          .updateLocalItem(
+            conversationId: conversationId,
+            lastMsgContent: text,
+            lastMsgTime: time,
+          );
     } catch (_) {}
   }
 }

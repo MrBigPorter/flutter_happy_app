@@ -15,11 +15,19 @@ class ChatListState {
   final bool isInitializing;
   final bool hasMore;
 
+  // AI streaming state (for SUPPORT/AI conversations)
+  final bool isAiStreaming;
+  final String currentAiToken;
+  final String aiStatusText;
+
   ChatListState({
     this.messages = const [],
     this.isLoadingMore = false,
     this.isInitializing = false,
     this.hasMore = true,
+    this.isAiStreaming = false,
+    this.currentAiToken = '',
+    this.aiStatusText = '',
   });
 
   ChatListState copyWith({
@@ -27,12 +35,19 @@ class ChatListState {
     bool? isLoadingMore,
     bool? isInitializing,
     bool? hasMore,
+    bool? isAiStreaming,
+    String? currentAiToken,
+    String? aiStatusText,
+    bool clearAiError = false,
   }) {
     return ChatListState(
       messages: messages ?? this.messages,
       isLoadingMore: isLoadingMore ?? this.isLoadingMore,
       isInitializing: isInitializing ?? this.isInitializing,
       hasMore: hasMore ?? this.hasMore,
+      isAiStreaming: isAiStreaming ?? this.isAiStreaming,
+      currentAiToken: currentAiToken ?? this.currentAiToken,
+      aiStatusText: aiStatusText ?? this.aiStatusText,
     );
   }
 }
@@ -88,11 +103,13 @@ class ChatViewModel extends StateNotifier<ChatListState> {
   /// Listens to local database changes to update the UI reactively
   void _subscribeToStream() {
     _subscription?.cancel();
-    _subscription = _dbService.watchMessages(conversationId, limit: _currentLimit).listen((msgs) {
-      if (mounted) {
-        state = state.copyWith(messages: msgs);
-      }
-    });
+    _subscription = _dbService
+        .watchMessages(conversationId, limit: _currentLimit)
+        .listen((msgs) {
+          if (mounted) {
+            state = state.copyWith(messages: msgs);
+          }
+        });
   }
 
   // ============================================================
@@ -129,10 +146,14 @@ class ChatViewModel extends StateNotifier<ChatListState> {
       // Newly created business/support conversations may have no messages on the
       // first fetch because the server-side initialization (welcome message, etc.)
       // hasn't completed yet. We retry with a delay to give the server time.
-      if (response.list.isEmpty && localMaxSeqId == 0 && _syncRetryCount < _maxSyncRetries) {
+      if (response.list.isEmpty &&
+          localMaxSeqId == 0 &&
+          _syncRetryCount < _maxSyncRetries) {
         _syncRetryCount++;
-        debugPrint("[Sync] New conversation, empty response from server. "
-            "Retry $_syncRetryCount of $_maxSyncRetries in 2s...");
+        debugPrint(
+          "[Sync] New conversation, empty response from server. "
+          "Retry $_syncRetryCount of $_maxSyncRetries in 2s...",
+        );
         if (mounted) state = state.copyWith(isInitializing: false);
         await Future.delayed(const Duration(seconds: 2));
         if (!mounted) return;
@@ -148,7 +169,9 @@ class ChatViewModel extends StateNotifier<ChatListState> {
 
         // 3. Decision: Does a gap exist between local and server sequence IDs?
         if (localMaxSeqId > 0 && serverMaxSeqId > localMaxSeqId) {
-          debugPrint("[Sync] Gap detected: Local $localMaxSeqId, Server $serverMaxSeqId");
+          debugPrint(
+            "[Sync] Gap detected: Local $localMaxSeqId, Server $serverMaxSeqId",
+          );
 
           final lastMsg = response.list.last;
           final int oldestInThisPage = (lastMsg.seqId ?? 0);
@@ -158,7 +181,9 @@ class ChatViewModel extends StateNotifier<ChatListState> {
             await _saveApiMessages(response.list);
           } else {
             // Scenario A-2: Large gap detected; trigger recursive back-fill
-            debugPrint("[Sync] Large gap detected; initiating recursive bridge...");
+            debugPrint(
+              "[Sync] Large gap detected; initiating recursive bridge...",
+            );
             await _recursiveSyncGap(localMaxSeqId, oldestInThisPage);
             await _saveApiMessages(response.list);
           }
@@ -193,7 +218,9 @@ class ChatViewModel extends StateNotifier<ChatListState> {
 
         // B. Resolution: If server says 0 but local says > 0, force local reset
         if (remoteConv.unreadCount == 0 && localUnread > 0) {
-          debugPrint("[Sync] State mismatch detected; performing silent healing...");
+          debugPrint(
+            "[Sync] State mismatch detected; performing silent healing...",
+          );
 
           int targetReadSeqId = localMaxSeqId;
           if (response.list.isNotEmpty) {
@@ -213,7 +240,6 @@ class ChatViewModel extends StateNotifier<ChatListState> {
       } catch (e) {
         debugPrint("[Sync] Self-healing check failed: $e");
       }
-
     } catch (e) {
       debugPrint("[Sync] Incremental sync failed: $e");
     } finally {
@@ -245,14 +271,21 @@ class ChatViewModel extends StateNotifier<ChatListState> {
       } else {
         debugPrint("[Sync] Gap bridged successfully.");
       }
-    } catch(e) {
+    } catch (e) {
       debugPrint("[Sync] Recursive sync failed: $e");
     }
   }
 
   /// Internal utility: Maps and persists API messages to local storage
   Future<void> _saveApiMessages(List<dynamic> apiMsgs) async {
-    final uiMsgs = apiMsgs.map((m) => ChatUiModelMapper.fromApiModel(m, conversationId)).toList();
+    final currentUserId = ref.read(userProvider)?.id;
+    final uiMsgs = apiMsgs
+        .map((m) => ChatUiModelMapper.fromApiModel(
+              m,
+              conversationId,
+              currentUserId,
+            ))
+        .toList();
 
     // Architectural Defense: Uses saveBatch to prevent overwriting local HD images
     // with server-provided empty thumbnail paths.
@@ -325,6 +358,35 @@ class ChatViewModel extends StateNotifier<ChatListState> {
     }
   }
 
+  // ============================================================
+  // AI Streaming State (Socket ai_token / ai_done)
+  // ============================================================
+
+  /// Update AI streaming token (called by ChatEventHandler._onAiEvent)
+  void updateAiToken(String token) {
+    if (!mounted) return;
+    state = state.copyWith(
+      currentAiToken: state.currentAiToken + token,
+      isAiStreaming: true,
+    );
+  }
+
+  /// Update AI status text (called by ChatEventHandler._onAiEvent for step events)
+  void updateAiStatusText(String text) {
+    if (!mounted) return;
+    state = state.copyWith(aiStatusText: text, isAiStreaming: true);
+  }
+
+  /// Clear AI streaming state (called by ChatEventHandler on ai_done)
+  void clearAiStreaming() {
+    if (!mounted) return;
+    state = state.copyWith(
+      isAiStreaming: false,
+      currentAiToken: '',
+      aiStatusText: '',
+    );
+  }
+
   @override
   void dispose() {
     _subscription?.cancel();
@@ -333,8 +395,7 @@ class ChatViewModel extends StateNotifier<ChatListState> {
 }
 
 /// Provider definition with Ref injection for repository access
-final chatViewModelProvider = StateNotifierProvider.family.autoDispose<ChatViewModel, ChatListState, String>(
-      (ref, conversationId) {
-    return ChatViewModel(conversationId, ref);
-  },
-);
+final chatViewModelProvider = StateNotifierProvider.family
+    .autoDispose<ChatViewModel, ChatListState, String>((ref, conversationId) {
+      return ChatViewModel(conversationId, ref);
+    });

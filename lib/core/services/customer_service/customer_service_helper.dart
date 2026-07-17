@@ -14,6 +14,8 @@ class CustomerServiceHelper {
   static bool _isLoading = false;
 
   /// 入口上下文（静态存储，ChatPage 读取后清空）
+  // @deprecated 后续统一走 HTTP POST /chat/message + Socket aiEventStream
+  // pendingEntryPoint/pendingMetadata 仅用于 SSE AI 模式的入口上下文，后续可移除
   static String? pendingEntryPoint;
   static Map<String, dynamic>? pendingMetadata;
 

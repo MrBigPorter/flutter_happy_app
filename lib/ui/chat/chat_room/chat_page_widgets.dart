@@ -57,14 +57,14 @@ class ChatAnnouncementBar extends StatelessWidget {
 
 // --- Helper: AppBar Construction Method ---
 PreferredSizeWidget _buildAppBar(
-    BuildContext context,
-    ConversationDetail? detail,
-    bool isGroup,
-    WidgetRef ref, {
-      required String conversationId,
-      VoidCallback? onSettingsTap,
-      bool isSyncing = false, // <-- Added syncing flag for header loader
-    }) {
+  BuildContext context,
+  ConversationDetail? detail,
+  bool isGroup,
+  WidgetRef ref, {
+  required String conversationId,
+  VoidCallback? onSettingsTap,
+  bool isSyncing = false, // <-- Added syncing flag for header loader
+}) {
   // 1. Retrieve current user ID
   final myUserId = ref.read(userProvider)?.id;
 
@@ -90,7 +90,7 @@ PreferredSizeWidget _buildAppBar(
         size: 22.sp,
       ),
       onPressed: () =>
-      context.canPop() ? context.pop() : context.go('/conversations'),
+          context.canPop() ? context.pop() : context.go('/conversations'),
     ),
     title: Row(
       children: [
@@ -99,12 +99,12 @@ PreferredSizeWidget _buildAppBar(
           backgroundColor: Colors.grey[200],
           backgroundImage: detail?.avatar != null
               ? CachedNetworkImageProvider(
-            UrlResolver.resolveImage(
-              context,
-              displayAvatar,
-              logicalWidth: 36,
-            ),
-          )
+                  UrlResolver.resolveImage(
+                    context,
+                    displayAvatar,
+                    logicalWidth: 36,
+                  ),
+                )
               : null,
           child: detail?.avatar == null
               ? Icon(Icons.person, color: context.textSecondary700, size: 20.sp)
@@ -137,7 +137,7 @@ PreferredSizeWidget _buildAppBar(
                     color: context.textSecondary700,
                   ),
                 ),
-              ]
+              ],
             ],
           ),
         ),
@@ -151,7 +151,11 @@ PreferredSizeWidget _buildAppBar(
           detail?.type != ConversationType.business) ...[
         // 1. Video Call Button
         IconButton(
-          icon: Icon(Icons.videocam, color: context.textPrimary900, size: 24.sp),
+          icon: Icon(
+            Icons.videocam,
+            color: context.textPrimary900,
+            size: 24.sp,
+          ),
           onPressed: () {
             if (targetUserId == null) {
               // Target user not found
@@ -178,11 +182,7 @@ PreferredSizeWidget _buildAppBar(
 
         // 2. Voice Call Button
         IconButton(
-          icon: Icon(
-            Icons.call,
-            color: context.textPrimary900,
-            size: 22.sp,
-          ),
+          icon: Icon(Icons.call, color: context.textPrimary900, size: 22.sp),
           onPressed: () {
             if (targetUserId == null) return;
 
@@ -204,15 +204,13 @@ PreferredSizeWidget _buildAppBar(
       // 3. Refresh / Re-Sync Button (shown when not actively syncing)
       if (!isSyncing)
         IconButton(
-          icon: Icon(
-            Icons.refresh,
-            color: context.textPrimary900,
-            size: 22.sp,
-          ),
+          icon: Icon(Icons.refresh, color: context.textPrimary900, size: 22.sp),
           tooltip: 'Refresh',
           onPressed: () {
             // Read the ViewModel notifier and trigger incremental sync
-            final notifier = ref.read(chatViewModelProvider(conversationId).notifier);
+            final notifier = ref.read(
+              chatViewModelProvider(conversationId).notifier,
+            );
             notifier.performIncrementalSync();
           },
         ),
@@ -231,201 +229,121 @@ PreferredSizeWidget _buildAppBar(
   );
 }
 
-// ================================================================
-//  AI 组件
-// ================================================================
-
-/// AI AppBar
-PreferredSizeWidget _buildAiAppBar(
-  BuildContext context,
-  AiChatState aiState,
-  AiChatViewModel notifier,
-) {
-  return AppBar(
-    backgroundColor: context.bgPrimary,
-    surfaceTintColor: Colors.transparent,
-    elevation: 0.5,
-    leading: IconButton(
-      icon: Icon(Icons.arrow_back_ios_new, color: context.textPrimary900),
-      onPressed: () => context.canPop() ? context.pop() : context.go('/conversations'),
-    ),
-    title: Row(
-      children: [
-        CircleAvatar(
-          radius: 18.r,
-          backgroundColor: context.bgSecondary,
-          child: Icon(Icons.smart_toy, color: context.textBrandPrimary900, size: 20.sp),
-        ),
-        SizedBox(width: 10.w),
-        Text('AI 智能客服', style: TextStyle(fontSize: 17.sp, fontWeight: FontWeight.w600)),
-      ],
-    ),
-    actions: [
-      if (aiState.isReceiving)
-        IconButton(
-          icon: Icon(Icons.stop, color: context.textPrimary900),
-          onPressed: () => notifier.cancelStream(),
-        ),
-      if (aiState.messages.isNotEmpty)
-        IconButton(
-          icon: Icon(Icons.delete_outline, color: context.textPrimary900),
-          onPressed: () => notifier.clearMessages(),
-        ),
-    ],
-  );
-}
-
-/// AI 空状态
-Widget _buildAiEmptyState(BuildContext context) {
-  return Center(
-    child: Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(Icons.smart_toy, size: 64, color: Colors.grey[300]),
-        SizedBox(height: 16),
-        Text('AI 智能客服', style: TextStyle(fontSize: 18, color: Colors.grey[400])),
-        SizedBox(height: 8),
-        Text('可以问我任何问题', style: TextStyle(fontSize: 14, color: Colors.grey[400])),
-      ],
-    ),
-  );
-}
-
-/// AI 状态文字（正在查余额...）
-Widget _buildAiStatusText(BuildContext context, String statusText) {
-  return Padding(
-    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-    child: Row(
-      children: [
-        SizedBox(width: 8),
-        SizedBox(width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 2)),
-        SizedBox(width: 8),
-        Text(statusText, style: TextStyle(fontSize: 12, color: Colors.grey[500])),
-      ],
-    ),
-  );
-}
-
-/// AI 思考气泡（列表内，AI 侧气泡 + spinner + 状态文字）
-Widget _buildAiThinkingBubble(BuildContext context, String statusText) {
-  return Padding(
-    padding: EdgeInsets.symmetric(vertical: 8.h, horizontal: 12.w),
+/// 流式打字机气泡 — 显示 AI 逐字回复
+Widget _buildStreamingBubble(BuildContext context, ChatListState chatState) {
+  final hasContent = chatState.currentAiToken.isNotEmpty;
+  return Container(
+    margin: EdgeInsets.symmetric(vertical: 4, horizontal: 8),
     child: Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // AI 头像
-        CircleAvatar(
-          radius: 18.r,
-          backgroundColor: context.bgSecondary,
-          child: Icon(Icons.smart_toy, size: 20.sp, color: context.textBrandPrimary900),
-        ),
-        SizedBox(width: 8.w),
-        // 白色圆角气泡 + spinner + 文字
+        // Avatar slot (small, consistent with ChatBubble layout)
         Container(
-          constraints: BoxConstraints(maxWidth: 0.72.sw),
-          padding: EdgeInsets.all(12.w),
+          width: 32.w,
+          height: 32.w,
+          margin: EdgeInsets.only(right: 8.w),
           decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12.r),
+            borderRadius: BorderRadius.circular(6.r),
+            color: Colors.grey[200],
           ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              SizedBox(width: 14.w, height: 14.w,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              ),
-              SizedBox(width: 8.w),
-              Flexible(
-                child: Text(statusText,
-                  style: TextStyle(fontSize: 13.sp, color: Colors.grey[600]),
-                ),
-              ),
-            ],
-          ),
+          child: Icon(Icons.support_agent, color: Colors.grey[400], size: 18.sp),
         ),
-      ],
-    ),
-  );
-}
-
-/// AI 错误提示
-Widget _buildAiErrorBar(
-  BuildContext context,
-  String error,
-  VoidCallback onRetry,
-) {
-  return Padding(
-    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-    child: Row(
-      children: [
-        Icon(Icons.error_outline, size: 14, color: Colors.red),
-        SizedBox(width: 4),
-        Expanded(
-          child: Text(error, style: TextStyle(fontSize: 12, color: Colors.red)),
-        ),
-        TextButton(
-          onPressed: onRetry,
-          child: Text('重试', style: TextStyle(fontSize: 12)),
-        ),
-      ],
-    ),
-  );
-}
-
-/// AI 简单输入栏（只有文字，无语音/图片/文件）
-Widget _buildAiInput(
-  BuildContext context,
-  TextEditingController textController,
-  void Function(String) onSend,
-) {
-  return Container(
-    padding: EdgeInsets.only(bottom: MediaQuery.of(context).padding.bottom),
-    decoration: BoxDecoration(
-      color: context.bgPrimary,
-      border: Border(top: BorderSide(color: context.borderPrimary, width: 0.5)),
-    ),
-    child: Row(
-      children: [
-        Expanded(
-          child: Padding(
-            padding: EdgeInsets.only(left: 12, top: 8, bottom: 8),
-            child: TextField(
-              controller: textController,
-              decoration: InputDecoration(
-                hintText: '输入消息...',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(24),
-                  borderSide: BorderSide.none,
-                ),
-                filled: true,
-                fillColor: context.bgSecondary,
-                contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              ),
-              onSubmitted: (text) {
-                if (text.trim().isNotEmpty) {
-                  onSend(text);
-                  textController.clear();
-                }
-              },
+        // Bubble content
+        Flexible(
+          child: Container(
+            padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+            decoration: BoxDecoration(
+              color: context.bgSecondary,
+              borderRadius: BorderRadius.circular(12.r),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Step indicator text (e.g. "Thinking...", tool name)
+                if (chatState.aiStatusText.isNotEmpty)
+                  Padding(
+                    padding: EdgeInsets.only(bottom: 4.h),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        SizedBox(
+                          width: 10,
+                          height: 10,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                        SizedBox(width: 6),
+                        Text(
+                          chatState.aiStatusText,
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: Colors.grey[500],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                // Streaming token text
+                if (hasContent) ...[
+                  Text(
+                    chatState.currentAiToken,
+                    style: TextStyle(
+                      fontSize: 15.sp,
+                      color: context.textPrimary900,
+                    ),
+                  ),
+                  SizedBox(height: 2),
+                ],
+                // Blinking cursor (shows even when content is empty, for waiting state)
+                _BlinkingCursor(),
+              ],
             ),
           ),
         ),
-        Padding(
-          padding: EdgeInsets.only(right: 8),
-          child: IconButton(
-            icon: Icon(Icons.send, color: context.textBrandPrimary900),
-            onPressed: () {
-              final text = textController.text.trim();
-              if (text.isNotEmpty) {
-                onSend(text);
-                textController.clear();
-              }
-            },
-          ),
-        ),
       ],
     ),
   );
+}
+
+/// 闪烁光标组件（打字机效果的视觉提示）
+class _BlinkingCursor extends StatefulWidget {
+  @override
+  State<_BlinkingCursor> createState() => _BlinkingCursorState();
+}
+
+class _BlinkingCursorState extends State<_BlinkingCursor>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: Duration(milliseconds: 600),
+    )..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FadeTransition(
+      opacity: _controller,
+      child: Container(
+        width: 2,
+        height: 16,
+        decoration: BoxDecoration(
+          color: context.textBrandPrimary900,
+          borderRadius: BorderRadius.circular(1),
+        ),
+      ),
+    );
+  }
 }
 
 // --- Component: Bottom Loading Indicator ---

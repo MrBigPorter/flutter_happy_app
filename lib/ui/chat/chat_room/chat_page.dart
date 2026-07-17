@@ -13,8 +13,6 @@ import 'package:flutter_app/app/routes/app_router.dart';
 import 'package:flutter_app/common.dart';
 import 'package:flutter_app/core/providers/socket_provider.dart';
 import 'package:flutter_app/core/services/customer_service/customer_service_helper.dart';
-import 'package:flutter_app/core/store/ai_chat/ai_chat_view_model.dart';
-import 'package:flutter_app/core/store/ai_chat/ai_chat_state.dart';
 import 'package:flutter_app/components/preloader/scroll_aware_preloader.dart';
 import 'package:flutter_app/ui/chat/components/chat_action_sheet.dart';
 import 'package:flutter_app/ui/chat/providers/chat_group_provider.dart';
@@ -51,33 +49,14 @@ class ChatPage extends ConsumerStatefulWidget {
 }
 
 class _ChatPageState extends ConsumerState<ChatPage> with ChatPageLogic {
-  final _aiTextController = TextEditingController();
-
-  /// 入口上下文（从 CustomerServiceHelper 暂存）
-  String? _entryPoint;
-  Map<String, dynamic>? _entryMetadata;
-
-  /// 是否已自动发送上下文消息（防重复）
-  bool _autoSentContext = false;
-
-  /// 是否已转人工（由 AiChatViewModel.onTransfer 设为 true）
-  bool _transferredToHuman = false;
-
   @override
   void initState() {
     super.initState();
-    // 消费入口上下文
-    _entryPoint = CustomerServiceHelper.pendingEntryPoint;
-    _entryMetadata = CustomerServiceHelper.pendingMetadata;
-    CustomerServiceHelper.pendingEntryPoint = null;
-    CustomerServiceHelper.pendingMetadata = null;
-
     initLogic();
   }
 
   @override
   void dispose() {
-    _aiTextController.dispose();
     disposeLogic();
     try {
       ref.read(activeConversationIdProvider.notifier).state = null;
@@ -85,175 +64,29 @@ class _ChatPageState extends ConsumerState<ChatPage> with ChatPageLogic {
     super.dispose();
   }
 
-  /// 转人工 — 由 AiChatViewModel.onTransfer 触发
-  void _onTransferToHuman() {
-    if (!mounted) return;
-    setState(() => _transferredToHuman = true);
-  }
-
-  /// 根据入口上下文构造 AI 初始消息
-  String _buildContextMessage(String entryPoint, Map<String, dynamic>? metadata) {
-    switch (entryPoint) {
-      case 'order_detail':
-        final orderId = metadata?['orderId'] ?? '';
-        return 'Check my order $orderId status';
-      case 'deposit':
-        final depositId = metadata?['depositId'] ?? '';
-        return 'Check my deposit $depositId status';
-      case 'profile':
-        return 'Check my profile';
-      default:
-        return 'Hello';
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    // ── 通过 Conversation.type 决定 AI 还是 IM 模式 ──
-    // 所有客服对话（support/ai）默认走 AI，群聊/私聊走 IM。
-    // 详情还没加载时乐观默认 AI（新对话大概率是客服）。
-    final groupAsync = ref.watch(chatGroupProvider(widget.conversationId));
-    final basicAsync = ref.watch(chatDetailProvider(widget.conversationId));
-    final detail = groupAsync.valueOrNull ?? basicAsync.valueOrNull;
-
-    final bool useAiMode;
-    if (_transferredToHuman) {
-      useAiMode = false;
-    } else if (detail != null) {
-      useAiMode = detail.type == ConversationType.support ||
-                  detail.type == ConversationType.ai;
-    } else {
-      useAiMode = widget.conversationId == kAiConversationId;
-    }
-
-    // ── AI 模式：不走 Socket，走 SSE ──
-    if (useAiMode) {
-      // 把 onTransfer 回调传递给 AiChatViewModel
-      final aiProvider = aiChatViewModelProvider(widget.conversationId);
-      final aiState = ref.watch(aiProvider);
-      final aiNotifier = ref.read(aiProvider.notifier)
-        ..onTransfer = _onTransferToHuman;
-      final bool isGroup = detail?.type == ConversationType.group;
-
-      // 首次进入且有入口上下文 → 自动发给 AI 处理
-      if (!_autoSentContext && _entryPoint != null && aiState.messages.isEmpty) {
-        _autoSentContext = true;
-        final contextMsg = _buildContextMessage(_entryPoint!, _entryMetadata);
-        Future.microtask(() => aiNotifier.sendMessage(contextMsg));
-      }
-
-      debugPrint('[ChatPage] AI build: messages=${aiState.messages.length}');
-
-      // 思考气泡：SSE 活跃、未收到 token、有状态文字时在列表底部显示
-      final bool showThinking = aiState.isReceiving &&
-          aiState.currentStreamContent.isEmpty &&
-          aiState.statusText.isNotEmpty;
-
-      return WillPopScope(
-        onWillPop: onWillPop,
-        child: Scaffold(
-          backgroundColor: context.bgPrimary,
-          resizeToAvoidBottomInset: true,
-          appBar: _buildAppBar(context, detail, isGroup, ref,
-            conversationId: widget.conversationId,
-          ),
-          body: Column(
-            children: [
-	              // 消息列表
-	              Expanded(
-	                child: aiState.messages.isEmpty && !showThinking
-	                    ? Center(
-	                        child: Text("No messages yet",
-	                          style: TextStyle(color: Colors.grey[400], fontSize: 15),
-	                        ),
-	                      )
-	                    : ListView.builder(
-	                        reverse: true,
-	                        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-	                        itemCount: aiState.messages.length + (showThinking ? 1 : 0),
-	                        itemBuilder: (context, index) {
-	                          if (showThinking && index == 0) {
-	                            return _buildAiThinkingBubble(context, aiState.statusText);
-	                          }
-	                          final msgIndex = showThinking ? index - 1 : index;
-	                          final msg = aiState.messages[msgIndex];
-	                          return ChatBubble(
-	                            key: ValueKey(msg.id),
-	                            isGroup: false,
-	                            message: msg,
-	                          );
-	                        },
-	                      ),
-	              ),
-              // 错误提示（AI 出错时显示）
-              if (aiState.error != null)
-                _buildAiErrorBar(context, aiState.error!, aiNotifier.retry),
-              // 转人工按钮
-              if (aiState.isReceiving || aiState.messages.isNotEmpty)
-                Container(
-                  padding: EdgeInsets.only(bottom: 4.h),
-                  child: GestureDetector(
-                    onTap: () {
-                      // 通过 Socket 发送转人工消息，不走 SSE
-                      // 后端收到 /chat/message → 检测 human_support → 触发 transfer
-                      final socketService = ref.read(socketServiceProvider);
-                      final tempId = 'transfer_${DateTime.now().millisecondsSinceEpoch}';
-                      socketService.sendMessage(
-                        conversationId: widget.conversationId,
-                        content: 'I want to speak to a human agent',
-                        type: 0,
-                        tempId: tempId,
-                      );
-                      // 取消 SSE 流，切 IM 模式
-                      aiNotifier.cancelStream();
-                      _onTransferToHuman();
-                    },
-                    child: Center(
-                      child: Container(
-                        padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 6.h),
-                        decoration: BoxDecoration(
-                          color: context.bgSecondary,
-                          borderRadius: BorderRadius.circular(12.r),
-                        ),
-                        child: Text(
-                          'Contact Human Agent',
-                          style: TextStyle(
-                            fontSize: 12.sp,
-                            color: context.textSecondary700,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              // 输入栏 — 使用与 IM 相同的 ModernChatInputBar
-              ModernChatInputBar(
-                conversationId: widget.conversationId,
-                onSend: (text) => aiNotifier.sendMessage(text),
-                onSendVoice: (_, __) {},
-                onSendImage: (_) {},
-                onSendVideo: (_) {},
-                onAddPressed: () {},
-                onTextFieldTap: () {},
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
-    // ── IM 模式：走 Socket ──
+    // ── SUPPORT/AI 对话统一使用 ChatViewModel + Socket AI events ──
     ref.watch(chatControllerProvider(widget.conversationId));
 
     // Synchronize the active conversation ID for signaling or notification filtering
     Future.microtask(() {
-      if (mounted) ref.read(activeConversationIdProvider.notifier).state = widget.conversationId;
+      if (mounted)
+        ref.read(activeConversationIdProvider.notifier).state =
+            widget.conversationId;
     });
+
+    // Conversation detail for determining type and permissions
+    final detail =
+        ref.watch(chatGroupProvider(widget.conversationId)).valueOrNull ??
+        ref.watch(chatDetailProvider(widget.conversationId)).valueOrNull;
 
     // Data Source and View Models
     final chatState = ref.watch(chatViewModelProvider(widget.conversationId));
     final messages = chatState.messages;
-    final actionService = ref.read(chatActionServiceProvider(widget.conversationId));
+    final actionService = ref.read(
+      chatActionServiceProvider(widget.conversationId),
+    );
 
     final bool isGroup = detail?.type == ConversationType.group;
 
@@ -264,7 +97,8 @@ class _ChatPageState extends ConsumerState<ChatPage> with ChatPageLogic {
 
     // Announcement Handling
     final announcement = detail?.announcement;
-    final hasAnnouncement = announcement != null && announcement.trim().isNotEmpty;
+    final hasAnnouncement =
+        announcement != null && announcement.trim().isNotEmpty;
 
     return WillPopScope(
       onWillPop: onWillPop,
@@ -273,19 +107,19 @@ class _ChatPageState extends ConsumerState<ChatPage> with ChatPageLogic {
         resizeToAvoidBottomInset: true,
         // Pass the isSyncing state and settings callback to the AppBar
         appBar: _buildAppBar(
-            context,
-            detail,
-            isGroup,
-            ref,
-            conversationId: widget.conversationId,
-            // Show AppBar spinner whenever syncing, even when messages are visible.
-            // This is WeChat/Telegram style: content shows instantly, spinner signals background sync.
-            isSyncing: chatState.isInitializing,
-            onSettingsTap: () {
-              if (detail != null) {
-                goToSettingsAndHandleSearch(detail, isGroup);
-              }
+          context,
+          detail,
+          isGroup,
+          ref,
+          conversationId: widget.conversationId,
+          // Show AppBar spinner whenever syncing, even when messages are visible.
+          // This is WeChat/Telegram style: content shows instantly, spinner signals background sync.
+          isSyncing: chatState.isInitializing,
+          onSettingsTap: () {
+            if (detail != null) {
+              goToSettingsAndHandleSearch(detail, isGroup);
             }
+          },
         ),
         body: Column(
           children: [
@@ -300,33 +134,54 @@ class _ChatPageState extends ConsumerState<ChatPage> with ChatPageLogic {
             Expanded(
               child: Builder(
                 builder: (context) {
-                  // Empty state: Only display this when initialization is completely done
-                  if (messages.isEmpty && !chatState.isInitializing) {
+                  // Empty state: Show only when no messages AND not streaming AND not initializing
+                  if (messages.isEmpty &&
+                      !chatState.isAiStreaming &&
+                      !chatState.isInitializing) {
                     return Center(
                       child: GestureDetector(
                         onTap: () {
-                          final notifier = ref.read(chatViewModelProvider(widget.conversationId).notifier);
+                          final notifier = ref.read(
+                            chatViewModelProvider(
+                              widget.conversationId,
+                            ).notifier,
+                          );
                           notifier.performIncrementalSync();
                         },
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.inbox_outlined, size: 48, color: Colors.grey[400]),
+                            Icon(
+                              Icons.inbox_outlined,
+                              size: 48,
+                              color: Colors.grey[400],
+                            ),
                             SizedBox(height: 12),
                             Text(
                               "No messages yet",
-                              style: TextStyle(color: Colors.grey[400], fontSize: 15),
+                              style: TextStyle(
+                                color: Colors.grey[400],
+                                fontSize: 15,
+                              ),
                             ),
                             SizedBox(height: 8),
                             Text(
                               "Tap to retry",
-                              style: TextStyle(color: Colors.grey[500], fontSize: 13),
+                              style: TextStyle(
+                                color: Colors.grey[500],
+                                fontSize: 13,
+                              ),
                             ),
                           ],
                         ),
                       ),
                     );
                   }
+
+                  final bool hasStreamingBubble = chatState.isAiStreaming;
+                  // 流式气泡在 index 0（reverse: true 最底部），其后是消息列表 + loading
+                  final int itemCount = messages.length + 1 +
+                      (hasStreamingBubble ? 1 : 0);
 
                   return Stack(
                     children: [
@@ -340,27 +195,67 @@ class _ChatPageState extends ConsumerState<ChatPage> with ChatPageLogic {
                           itemAverageHeight: 300.0,
                           preloadWindow: 30,
                           predictWidth: 240.0,
-                          // ScrollablePositionedList replaces standard ListView
                           child: ScrollablePositionedList.builder(
                             itemScrollController: itemScrollController,
                             itemPositionsListener: itemPositionsListener,
-                            reverse: true, // Newer messages at the bottom
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                            itemCount: messages.length + 1,
+                            reverse: true,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 10,
+                            ),
+                            itemCount: itemCount,
                             itemBuilder: (context, index) {
-                              if (index == messages.length) {
-                                return _buildLoadingIndicator(context, chatState.hasMore);
+                              // 流式气泡：始终在 index 0（reverse: true 的最底部 = 最新位置）
+                              if (hasStreamingBubble) {
+                                if (index == 0) {
+                                  return _buildStreamingBubble(
+                                    context,
+                                    chatState,
+                                  );
+                                }
+                                // 有气泡时，后续索引 +1
+                                final msgIndex = index - 1;
+                                if (msgIndex == messages.length) {
+                                  return _buildLoadingIndicator(
+                                    context,
+                                    chatState.hasMore,
+                                  );
+                                }
+                                final msg = messages[msgIndex];
+                                return ChatBubble(
+                                  key: ValueKey(msg.id),
+                                  isGroup: isGroup,
+                                  message: msg,
+                                  showReadStatus:
+                                      msg.isMe &&
+                                      msg.status == MessageStatus.read &&
+                                      msgIndex == 0,
+                                  onRetry: () => actionService.resend(msg.id),
+                                  onLongPress: (m) =>
+                                      onMessageLongPress(context, m),
+                                );
+                              } else {
+                                // 无流式气泡：原始逻辑
+                                if (index == messages.length) {
+                                  return _buildLoadingIndicator(
+                                    context,
+                                    chatState.hasMore,
+                                  );
+                                }
+                                final msg = messages[index];
+                                return ChatBubble(
+                                  key: ValueKey(msg.id),
+                                  isGroup: isGroup,
+                                  message: msg,
+                                  showReadStatus:
+                                      msg.isMe &&
+                                      msg.status == MessageStatus.read &&
+                                      index == 0,
+                                  onRetry: () => actionService.resend(msg.id),
+                                  onLongPress: (m) =>
+                                      onMessageLongPress(context, m),
+                                );
                               }
-                              final msg = messages[index];
-                              return ChatBubble(
-                                key: ValueKey(msg.id),
-                                isGroup: isGroup,
-                                message: msg,
-                                showReadStatus: msg.isMe && msg.status == MessageStatus.read && index == 0,
-                                onRetry: () => actionService.resend(msg.id),
-                                // Forward long press events to the logic layer handler
-                                onLongPress: (m) => onMessageLongPress(context, m),
-                              );
                             },
                           ),
                         ),
@@ -404,31 +299,56 @@ class _ChatPageState extends ConsumerState<ChatPage> with ChatPageLogic {
                 onTextFieldTap: closePanel,
               )
             else
-            // Disabled Input State (Muted or Group Restriction)
+              // Disabled Input State (Muted or Group Restriction)
               Container(
                 width: double.infinity,
                 padding: EdgeInsets.symmetric(vertical: 16.h),
                 color: context.bgSecondary,
                 alignment: Alignment.center,
-                child: Text(disableReason, style: TextStyle(color: context.textSecondary700)),
+                child: Text(
+                  disableReason,
+                  style: TextStyle(color: context.textSecondary700),
+                ),
               ),
 
             // Functional Bottom Panel (Action Grid)
             AnimatedContainer(
               duration: const Duration(milliseconds: 250),
               curve: Curves.easeOutQuad,
-              height: isPanelOpen ? 280.h + MediaQuery.of(context).padding.bottom : 0,
+              height: isPanelOpen
+                  ? 280.h + MediaQuery.of(context).padding.bottom
+                  : 0,
               color: context.bgPrimary,
               child: SingleChildScrollView(
                 physics: const NeverScrollableScrollPhysics(),
                 child: ChatActionSheet(
                   type: ActionSheetType.grid,
                   actions: [
-                    ActionItem(label: "Photos", icon: Icons.photo_library, onTap: handlePickImage),
-                    ActionItem(label: "Camera", icon: Icons.camera_alt, onTap: handleTakePhoto),
-                    ActionItem(label: "Video", icon: Icons.videocam, onTap: handlePickVideo),
-                    ActionItem(label: "File", icon: Icons.folder, onTap: handleTakeFile),
-                    ActionItem(label: "Location", icon: Icons.location_on, onTap: handleTakeLocation),
+                    ActionItem(
+                      label: "Photos",
+                      icon: Icons.photo_library,
+                      onTap: handlePickImage,
+                    ),
+                    ActionItem(
+                      label: "Camera",
+                      icon: Icons.camera_alt,
+                      onTap: handleTakePhoto,
+                    ),
+                    ActionItem(
+                      label: "Video",
+                      icon: Icons.videocam,
+                      onTap: handlePickVideo,
+                    ),
+                    ActionItem(
+                      label: "File",
+                      icon: Icons.folder,
+                      onTap: handleTakeFile,
+                    ),
+                    ActionItem(
+                      label: "Location",
+                      icon: Icons.location_on,
+                      onTap: handleTakeLocation,
+                    ),
                   ],
                 ),
               ),

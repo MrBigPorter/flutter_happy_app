@@ -1,5 +1,6 @@
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_app/core/services/fcm/fcm_payload.dart';
+import 'package:flutter_app/core/services/socket/socket_service.dart';
 import 'package:flutter_app/ui/chat/core/call_manager/call_dispatcher.dart';
 
 import 'fcm_ui_factory.dart';
@@ -84,6 +85,14 @@ class FcmDispatcher {
   // 内部逻辑：处理前台弹窗
   void _handleForeground(FcmPayload payload) {
     print("[FCM Dispatcher] 执行前台展示逻辑: ${payload.title}");
+     // 聊天消息如果 Socket 已连接，跳过弹窗（Socket 通道会处理）
+    if (payload.type == FcmType.chat) {
+     final socket = SocketService();
+     if(socket.isConnected){
+      print("[FCM Dispatcher] Socket 已连接，跳过前台通知弹窗");
+      return;
+     }
+    }
 
     FcmUiFactory.showNotification(
       payload,

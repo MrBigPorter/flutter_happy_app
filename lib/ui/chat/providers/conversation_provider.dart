@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:math';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_app/common.dart';
-import 'package:flutter_app/core/store/ai_chat/ai_chat_view_model.dart';
 import 'package:flutter_app/core/store/user_store.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
@@ -99,7 +98,10 @@ class ConversationList extends _$ConversationList {
 
       _sortAndEmit(newList);
 
-      ref.read(messageRepositoryProvider).updateConversationField(conversationId, {'isPinned': isPinned});
+      ref.read(messageRepositoryProvider).updateConversationField(
+        conversationId,
+        {'isPinned': isPinned},
+      );
     }
   }
 
@@ -118,7 +120,10 @@ class ConversationList extends _$ConversationList {
 
       _sortAndEmit(newList);
 
-      ref.read(messageRepositoryProvider).updateConversationField(conversationId, {'isMuted': isMuted});
+      ref.read(messageRepositoryProvider).updateConversationField(
+        conversationId,
+        {'isMuted': isMuted},
+      );
     }
   }
 
@@ -174,9 +179,10 @@ class ConversationList extends _$ConversationList {
   }
 
   Future<List<Conversation>> _fetchList() async {
-
     /// set global sync flag to true to suppress UI updates from socket events during this critical sync window
-    Future.microtask(() => ref.read(globalSyncStateProvider.notifier).state = true);
+    Future.microtask(
+      () => ref.read(globalSyncStateProvider.notifier).state = true,
+    );
 
     try {
       final list = await Api.chatListApi(page: 1);
@@ -198,9 +204,11 @@ class ConversationList extends _$ConversationList {
       debugPrint("[ConversationList] Sync failed: $e");
       if (state.hasValue) return state.value!;
       return [];
-    }finally {
+    } finally {
       // Sync complete, reset global flag to re-enable socket-driven UI updates. Using microtask to avoid setState conflicts if we're still in the build phase.
-      Future.microtask(() => ref.read(globalSyncStateProvider.notifier).state = false);
+      Future.microtask(
+        () => ref.read(globalSyncStateProvider.notifier).state = false,
+      );
     }
   }
 
@@ -243,10 +251,10 @@ class ConversationList extends _$ConversationList {
       sender: msg.sender == null
           ? null
           : ChatSender(
-        id: msg.sender!.id,
-        nickname: msg.sender!.nickname,
-        avatar: msg.sender!.avatar,
-      ),
+              id: msg.sender!.id,
+              nickname: msg.sender!.nickname,
+              avatar: msg.sender!.avatar,
+            ),
     );
 
     final uiMsg = ChatUiModelMapper.fromApiModel(apiMsg, convId);
@@ -272,10 +280,16 @@ class ConversationList extends _$ConversationList {
       final currentActiveId = ref.read(activeConversationIdProvider);
       final bool isViewingNow = (currentActiveId == convId);
 
-      final newUnreadCount = (isMe || isViewingNow) ? 0 : (oldConv.unreadCount + 1);
+      final newUnreadCount = (isMe || isViewingNow)
+          ? 0
+          : (oldConv.unreadCount + 1);
 
       final newConv = oldConv.copyWith(
-        lastMsgContent: _getPreviewContent(msg.type, msg.content, isRecalled: msg.isRecalled ?? false),
+        lastMsgContent: _getPreviewContent(
+          msg.type,
+          msg.content,
+          isRecalled: msg.isRecalled ?? false,
+        ),
         lastMsgTime: DateTime.now().millisecondsSinceEpoch,
         unreadCount: newUnreadCount,
         lastMsgStatus: MessageStatus.success,
@@ -337,8 +351,14 @@ class ConversationList extends _$ConversationList {
     _sortAndEmit(newList);
   }
 
-  String _getPreviewContent(dynamic type, String rawContent, {bool isRecalled = false}) {
-    final int typeInt = (type is int) ? type : int.tryParse(type.toString()) ?? 0;
+  String _getPreviewContent(
+    dynamic type,
+    String rawContent, {
+    bool isRecalled = false,
+  }) {
+    final int typeInt = (type is int)
+        ? type
+        : int.tryParse(type.toString()) ?? 0;
     final typeEnum = MessageType.fromValue(typeInt);
     return typeEnum.getPreviewText(rawContent, isRecalled: isRecalled);
   }
@@ -386,7 +406,10 @@ class ChatDetail extends _$ChatDetail {
     return networkData;
   }
 
-  Future<void> _syncNetworkData(String conversationId, MessageRepository repo) async {
+  Future<void> _syncNetworkData(
+    String conversationId,
+    MessageRepository repo,
+  ) async {
     try {
       final networkData = await Api.chatDetailApi(conversationId);
       await repo.saveGroupDetail(networkData);
@@ -417,9 +440,13 @@ class ConversationSettingsController extends _$ConversationSettingsController {
     if (detail != null) {
       final newDetail = detail.copyWith(isMuted: isMuted);
       await repo.saveGroupDetail(newDetail);
-      ref.read(chatDetailProvider(conversationId).notifier).updateState(newDetail);
+      ref
+          .read(chatDetailProvider(conversationId).notifier)
+          .updateState(newDetail);
     }
-    ref.read(conversationListProvider.notifier).updateConversationMute(conversationId, isMuted);
+    ref
+        .read(conversationListProvider.notifier)
+        .updateConversationMute(conversationId, isMuted);
   }
 
   Future<void> togglePin(String conversationId, bool isPinned) async {
@@ -431,10 +458,14 @@ class ConversationSettingsController extends _$ConversationSettingsController {
     if (detail != null) {
       final newDetail = detail.copyWith(isPinned: isPinned);
       await repo.saveGroupDetail(newDetail);
-      ref.read(chatDetailProvider(conversationId).notifier).updateState(newDetail);
+      ref
+          .read(chatDetailProvider(conversationId).notifier)
+          .updateState(newDetail);
     }
 
-    ref.read(conversationListProvider.notifier).updateConversationPin(conversationId, isPinned);
+    ref
+        .read(conversationListProvider.notifier)
+        .updateConversationPin(conversationId, isPinned);
   }
 
   Future<void> clearHistory(String conversationId) async {
